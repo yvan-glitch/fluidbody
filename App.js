@@ -1777,7 +1777,7 @@ function Biblio({ lang }) {
 // ══════════════════════════════════
 // PARCOURS
 // ══════════════════════════════════
-function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak }) {
+function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak, supabase, supaUser, onLogout }) {
   const tr = T[lang] || T['fr'];
   const totalDone = Object.values(done).flat().filter(Boolean).length;
   const pct = Math.round(totalDone / 140 * 100);
@@ -1904,12 +1904,25 @@ function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak 
 
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22 }}>
           <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.55)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>{tr.mon_compte}</Text>
+          {/* Email si connecté */}
+          {supaUser && (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,195,240,0.08)' }}>
+              <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(155,215,240,0.5)' }}>Email</Text>
+              <Text style={{ fontSize: 12, fontWeight: '300', color: 'rgba(0,215,255,0.7)' }} numberOfLines={1}>{supaUser.email}</Text>
+            </View>
+          )}
           {tr.compte_info.map(([label, val], i) => (
             <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: i < 2 ? 0.5 : 0, borderBottomColor: 'rgba(0,195,240,0.08)' }}>
               <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(155,215,240,0.5)' }}>{label}</Text>
               <Text style={{ fontSize: 13, fontWeight: '300', color: 'rgba(0,215,255,0.7)' }}>{val}</Text>
             </View>
           ))}
+          {/* Bouton déconnexion */}
+          {supaUser && onLogout && (
+            <TouchableOpacity onPress={onLogout} style={{ marginTop: 16, paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,80,80,0.35)', backgroundColor: 'rgba(255,50,50,0.08)', alignItems: 'center' }}>
+              <Text style={{ fontSize: 13, color: 'rgba(255,120,120,0.85)', letterSpacing: 1 }}>Se déconnecter</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
       </ScrollView>
@@ -2369,7 +2382,7 @@ function MainApp({ prenom, lang, onChangeLang, tensionIdxs, supabase, supaUser }
         <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Path d="M3 20h18M3 14h12M3 8h8" stroke={color} strokeWidth="1.8" strokeLinecap="round"/><Circle cx="19" cy="8" r="3" stroke={color} strokeWidth="1.6" fill="none"/></Svg> }}>{() => <Progresser done={done} lang={lang} tensionIdxs={tensionIdxs} />}</Tab.Screen>
         <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="8" r="5" stroke={color} strokeWidth="1.6" fill="none"/><Path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={color} strokeWidth="1.6" strokeLinecap="round" fill="none"/></Svg> }}>{() => <SabrinaScreen prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} />}</Tab.Screen>
         <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Path d="M4 4h16v16H4z" stroke={color} strokeWidth="1.6" strokeLinejoin="round" fill="none" rx="2"/><Path d="M8 8h8M8 12h8M8 16h5" stroke={color} strokeWidth="1.6" strokeLinecap="round"/></Svg> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
-        <Tab.Screen name={tr.tabs[4]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.6" fill="none"/><Path d="M12 7v5l3 3" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></Svg> }}>{() => <ParcoursScreen prenom={prenom} done={done} lang={lang} onChangeLang={onChangeLang} tensionIdxs={tensionIdxs} streak={streak} />}</Tab.Screen>
+        <Tab.Screen name={tr.tabs[4]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.6" fill="none"/><Path d="M12 7v5l3 3" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></Svg> }}>{() => <ParcoursScreen prenom={prenom} done={done} lang={lang} onChangeLang={onChangeLang} tensionIdxs={tensionIdxs} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} />}</Tab.Screen>
       </Tab.Navigator>
     </NavigationContainer>
   );
