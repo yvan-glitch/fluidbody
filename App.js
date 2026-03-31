@@ -1,24 +1,108 @@
 import 'react-native-url-polyfill/auto';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, Dimensions, Modal } from 'react-native';
+import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { ErrorBoundary } from './components/ErrorBoundary';
+// IAP (achats Apple) — indisponible dans Expo Go, donc import "safe"
+let InAppPurchases = null;
+try { InAppPurchases = require('expo-in-app-purchases'); } catch (e) {}
 // Notifications optionnelles — package peut ne pas être installé
 let Notifications = null;
 let Device = null;
+let HapticsMod = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
 try { Device = require('expo-device'); } catch(e) {}
+try { HapticsMod = require('expo-haptics'); } catch(e) {}
 import { useEffect, useRef, useState } from 'react';
-import Svg, { Path, Circle, Ellipse, Line, Rect, Defs, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Circle, Ellipse, Line, Rect, Defs, RadialGradient, Stop, G } from 'react-native-svg';
 import { Video, ResizeMode, Audio } from 'expo-av';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+function devWarn(...args) {
+  if (__DEV__) console.warn('[FluidBody]', ...args);
+}
+
+function hapticLight() {
+  if (Platform.OS === 'web' || !HapticsMod) return;
+  try { void HapticsMod.impactAsync(HapticsMod.ImpactFeedbackStyle.Light); } catch (e) {}
+}
+function hapticSuccess() {
+  if (Platform.OS === 'web' || !HapticsMod) return;
+  try { void HapticsMod.notificationAsync(HapticsMod.NotificationFeedbackType.Success); } catch (e) {}
+}
 
 const Tab = createBottomTabNavigator();
-const ANTHROPIC_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_KEY || '';
-const { width: SW } = Dimensions.get('window');
+const { width: SW, height: SH } = Dimensions.get('window');
+const IS_IPAD = SW >= 768;
+const SCALE = IS_IPAD ? SW / 390 : 1; // Scale factor relative to iPhone 390px
 const VIDEO_DEMO = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+
+/** Indices 0 et 1 gratuits ; le reste verrouillé si pas d’abonnement simulé (AsyncStorage `fluid_sub`). */
+const FREE_SEANCE_INDEX = 2;
+
+const PRODUCT_IDS = {
+  monthly: 'com.fluidbody.app.premium.monthly',
+  yearly: 'com.fluidbody.app.premium.yearly',
+};
+const ALL_PRODUCT_IDS = Object.values(PRODUCT_IDS);
+
+const VIDEO_RESUME_PREFIX = 'fluid_video_resume_v1_';
+function videoResumeStorageKey(pilierKey, seanceIndex) {
+  return `${VIDEO_RESUME_PREFIX}${pilierKey}_${seanceIndex}`;
+}
+async function saveVideoResume(pilierKey, seanceIndex, uri, positionMillis, durationMillis) {
+  if (!uri || !durationMillis || positionMillis == null) return;
+  if (positionMillis < 2500) return;
+  if (durationMillis - positionMillis < 5000) return;
+  try {
+    await AsyncStorage.setItem(
+      videoResumeStorageKey(pilierKey, seanceIndex),
+      JSON.stringify({ uri, positionMillis, durationMillis, t: Date.now() }),
+    );
+  } catch (e) {}
+}
+async function clearVideoResume(pilierKey, seanceIndex) {
+  try {
+    await AsyncStorage.removeItem(videoResumeStorageKey(pilierKey, seanceIndex));
+  } catch (e) {}
+}
+async function loadVideoResume(pilierKey, seanceIndex, currentUri, currentDurationMillis) {
+  try {
+    const raw = await AsyncStorage.getItem(videoResumeStorageKey(pilierKey, seanceIndex));
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (o.uri !== currentUri) return null;
+    const d0 = o.durationMillis || 0;
+    const d1 = currentDurationMillis || 0;
+    if (d0 > 0 && d1 > 0 && Math.abs(d0 - d1) / Math.max(d0, d1) > 0.18) return null;
+    if (o.positionMillis < 2000) return null;
+    if ((o.durationMillis || 0) - o.positionMillis < 4000) return null;
+    return o.positionMillis;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function getResumeIndicesForPilier(pilierKey) {
+  const indices = new Set();
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    const prefix = `${VIDEO_RESUME_PREFIX}${pilierKey}_`;
+    for (const k of keys) {
+      if (!k.startsWith(prefix)) continue;
+      const idx = parseInt(k.slice(prefix.length), 10);
+      if (!Number.isNaN(idx)) indices.add(idx);
+    }
+  } catch (e) {}
+  return indices;
+}
+
+function canAccessSeanceIndex(idx, isSubscriber) {
+  return idx < FREE_SEANCE_INDEX || isSubscriber;
+}
 
 
 // ══════════════════════════════════
@@ -63,9 +147,10 @@ function getSeanceDuJour(done, tensionIdxs, lang) {
 const T = {
   fr: {
     lang: 'fr', flag: '🇫🇷', nom: 'Français',
-    tabs: ['Mon Corps', 'Progresser', 'Sabrina', 'Biblio', 'Parcours'],
+    tabs: ['Mon Corps', 'Progresser', 'Biblio', 'Parcours'],
     logoSub: '🪼  Sentir · Préparer · Transformer',
     bonjour: (p) => p ? `Bonjour ${p}` : '',
+    bonjour_mot: 'Bonjour',
     ob_tag: 'Une nouvelle façon d\'habiter son corps',
     ob_l1: 'Les autres apps te montrent ',
     ob_l1b: 'quoi faire.',
@@ -86,24 +171,21 @@ const T = {
     ob_varie: 'Ça varie',
     ob_prenom_tag: 'Dernière étape',
     ob_prenom: 'Comment\nt\'appelles-tu ?',
-    ob_prenom_sub: 'Sabrina, ton coach IA, va créer\nton programme personnalisé.',
+    ob_prenom_sub: 'Ton programme s\'adapte à ton profil.\nFluidBody t\'accompagne au quotidien.',
     ob_placeholder: 'Ton prénom...',
-    ob_demarrer: 'Démarrer avec Sabrina →',
+    ob_demarrer: 'Démarrer →',
     ob_anon: 'Entrer anonymement',
-    piliers: ['Épaules', 'Dos', 'Mobilité', 'Posture', 'Respir.', 'Conscience', 'Mat Pilates'],
+    piliers: ['Épaules', 'Dos', 'Mobilité', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates'],
     etapes: { Comprendre: 'Comprendre', Ressentir: 'Ressentir', Préparer: 'Préparer', Exécuter: 'Exécuter', Évoluer: 'Évoluer' },
     retour: '← Mon Corps',
     seances_done: (n) => `${n} / 20 séances complétées`,
     m_seances: 'Séances', m_streak: 'Streak', m_progress: 'Progression',
     retour_video: '← Retour',
+    video_resume: (t) => `Reprise · ${t}`,
+    reprise_badge: 'Reprise',
+    video_load_error: 'La vidéo n’a pas pu être chargée.',
+    video_retry: 'Réessayer',
     seance_done: '✓  Séance terminée',
-    sabrina_sub: 'Coach FluidBody · IA',
-    sabrina_hello: (p) => `Bonjour ${p || 'toi'} 🪼\n\nJe suis Sabrina, ton coach FluidBody.\n\nDis-moi comment tu te sens dans ton corps aujourd'hui.`,
-    sabrina_thinking: 'Sabrina réfléchit… 🪼',
-    sabrina_placeholder: 'Parle à Sabrina...',
-    sabrina_label: 'SABRINA · FLUIDBODY',
-    sabrina_suggestions: ['Mon dos est tendu ce matin', 'Je veux travailler mes épaules', 'Comment respirer profondément ?', 'Propose-moi une séance du jour'],
-    sabrina_system: `Tu es Sabrina, coach IA de FluidBody — une app de mouvement conscient fondée sur 23 ans d'expertise Pilates. Ta méthode : Comprendre → Ressentir → Préparer → Exécuter → Évoluer. Réponds en français, maximum 150 mots, de façon chaleureuse et incarnée.`,
     biblio_titre: 'Bibliothèque',
     biblio_sub: 'Comprendre pour mieux ressentir',
     tab_piliers: 'Les 6 piliers',
@@ -116,7 +198,7 @@ const T = {
     prog_globale: 'Progression globale',
     par_pilier: 'Par pilier',
     mon_compte: 'Mon compte',
-    compte_info: [['Coach IA', 'Sabrina · FluidBody'], ['Version', 'FluidBody Beta 1.0'], ['Méthode', 'Pilates Conscient · 23 ans']],
+    compte_info: [['Application', 'FluidBody · Pilates'], ['Version', 'FluidBody Beta 1.0'], ['Méthode', 'Pilates Conscient · 23 ans']],
     progresser_sub: (p) => `${p}% du parcours complété`,
     recommande_pour_toi: 'POUR TOI',
     seance_du_jour: 'Séance du jour',
@@ -131,21 +213,31 @@ const T = {
       streak < 14 ? `"${streak} jours ! Une vraie habitude\nse construit."` :
       `"${streak} jours. Tu es remarquable. 🌊"`,
     celebration: 'Ton corps a progressé.\nContinue comme ça 💪',
-    free_messages_left: (n) => `${n} message${n > 1 ? 's' : ''} gratuit${n > 1 ? 's' : ''} restant`,
-    free_limit_title: 'Continue avec Sabrina',
-    free_limit_sub: 'Tu as utilisé tes 3 messages gratuits aujourd\'hui.',
-    free_limit_cta: 'Débloquer Sabrina Premium',
-    free_limit_price: '4,99€ / mois · Sans engagement',
-    free_limit_restore: 'Restaurer un achat',
-    free_limit_later: 'Plus tard',
-    premium_badge: 'PREMIUM',
-    premium_active: 'Sabrina illimitée ✓',
+    biblio_signature: '— FluidBody',
+    premium_alert_title: 'Contenu Premium',
+    premium_alert_simulate: 'Voir les offres',
+    premium_alert_later: 'Plus tard',
+    paywall_title: 'Débloquer FluidBody Premium',
+    paywall_sub: 'Accès illimité à toutes les séances.',
+    paywall_monthly: 'Mensuel',
+    paywall_yearly: 'Annuel',
+    paywall_buy_monthly: 'Acheter mensuel',
+    paywall_buy_yearly: 'Acheter annuel',
+    paywall_restore: 'Restaurer mes achats',
+    paywall_close: 'Fermer',
+    paywall_prices_loading: 'Chargement des prix…',
+    paywall_not_available: 'Achats indisponibles (Expo Go / simulateur).',
+    subscription_status_label: 'Abonnement vidéos',
+    subscription_status_active: 'Actif — toutes les séances',
+    subscription_status_free: 'Inactif — séances 1 et 2 gratuites',
+    subscription_reset: 'Restaurer mes achats',
   },
   en: {
     lang: 'en', flag: '🇬🇧', nom: 'English',
-    tabs: ['My Body', 'Progress', 'Sabrina', 'Library', 'Journey'],
+    tabs: ['My Body', 'Progress', 'Library', 'Journey'],
     logoSub: '🪼  Feel · Prepare · Transform',
     bonjour: (p) => p ? `Hello ${p}` : '',
+    bonjour_mot: 'Hello',
     ob_tag: 'A new way to inhabit your body',
     ob_l1: 'Other apps show you ',
     ob_l1b: 'what to do.',
@@ -166,24 +258,21 @@ const T = {
     ob_varie: 'It varies',
     ob_prenom_tag: 'Last step',
     ob_prenom: 'What\'s\nyour name?',
-    ob_prenom_sub: 'Sabrina, your AI coach, will create\nyour personalized program.',
+    ob_prenom_sub: 'Your program adapts to your profile.\nFluidBody supports you every day.',
     ob_placeholder: 'Your first name...',
-    ob_demarrer: 'Start with Sabrina →',
+    ob_demarrer: 'Get started →',
     ob_anon: 'Enter anonymously',
-    piliers: ['Shoulders', 'Back', 'Mobility', 'Posture', 'Breath.', 'Awareness', 'Mat Pilates'],
+    piliers: ['Shoulders', 'Back', 'Mobility', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates'],
     etapes: { Comprendre: 'Understand', Ressentir: 'Feel', Préparer: 'Prepare', Exécuter: 'Execute', Évoluer: 'Evolve' },
     retour: '← My Body',
     seances_done: (n) => `${n} / 20 sessions completed`,
     m_seances: 'Sessions', m_streak: 'Streak', m_progress: 'Progress',
     retour_video: '← Back',
+    video_resume: (t) => `Resumed · ${t}`,
+    reprise_badge: 'Resume',
+    video_load_error: 'Couldn’t load the video.',
+    video_retry: 'Try again',
     seance_done: '✓  Session complete',
-    sabrina_sub: 'FluidBody Coach · AI',
-    sabrina_hello: (p) => `Hello ${p || 'there'} 🪼\n\nI'm Sabrina, your FluidBody coach.\n\nTell me how you feel in your body today.`,
-    sabrina_thinking: 'Sabrina is thinking… 🪼',
-    sabrina_placeholder: 'Talk to Sabrina...',
-    sabrina_label: 'SABRINA · FLUIDBODY',
-    sabrina_suggestions: ['My back is tense this morning', 'I want to work on my shoulders', 'How to breathe deeply?', 'Suggest a session for today'],
-    sabrina_system: `You are Sabrina, AI coach of FluidBody — a conscious movement app founded on 23 years of Pilates expertise. Your method: Understand → Feel → Prepare → Execute → Evolve. Reply in English, maximum 150 words, warmly and authentically.`,
     biblio_titre: 'Library',
     biblio_sub: 'Understand to feel better',
     tab_piliers: 'The 6 pillars',
@@ -196,7 +285,7 @@ const T = {
     prog_globale: 'Overall progress',
     par_pilier: 'By pillar',
     mon_compte: 'My account',
-    compte_info: [['AI Coach', 'Sabrina · FluidBody'], ['Version', 'FluidBody Beta 1.0'], ['Method', 'Conscious Pilates · 23 years']],
+    compte_info: [['App', 'FluidBody · Pilates'], ['Version', 'FluidBody Beta 1.0'], ['Method', 'Conscious Pilates · 23 years']],
     progresser_sub: (p) => `${p}% of journey completed`,
     recommande_pour_toi: 'FOR YOU',
     seance_du_jour: 'Session of the day',
@@ -211,21 +300,31 @@ const T = {
       streak < 14 ? `"${streak} days! A real habit\nis forming."` :
       `"${streak} days. You are remarkable. 🌊"`,
     celebration: 'Your body has progressed.\nKeep it up 💪',
-    free_messages_left: (n) => `${n} free message${n > 1 ? 's' : ''} left`,
-    free_limit_title: 'Continue with Sabrina',
-    free_limit_sub: 'You\'ve used your 3 free messages today.',
-    free_limit_cta: 'Unlock Sabrina Premium',
-    free_limit_price: '€4.99 / month · No commitment',
-    free_limit_restore: 'Restore purchase',
-    free_limit_later: 'Later',
-    premium_badge: 'PREMIUM',
-    premium_active: 'Unlimited Sabrina ✓',
+    biblio_signature: '— FluidBody',
+    premium_alert_title: 'Premium content',
+    premium_alert_simulate: 'See offers',
+    premium_alert_later: 'Later',
+    paywall_title: 'Unlock FluidBody Premium',
+    paywall_sub: 'Unlimited access to all sessions.',
+    paywall_monthly: 'Monthly',
+    paywall_yearly: 'Yearly',
+    paywall_buy_monthly: 'Buy monthly',
+    paywall_buy_yearly: 'Buy yearly',
+    paywall_restore: 'Restore purchases',
+    paywall_close: 'Close',
+    paywall_prices_loading: 'Loading prices…',
+    paywall_not_available: 'Purchases unavailable (Expo Go / simulator).',
+    subscription_status_label: 'Video subscription',
+    subscription_status_active: 'Active — all sessions',
+    subscription_status_free: 'Inactive — sessions 1–2 free',
+    subscription_reset: 'Restore purchases',
   },
   es: {
     lang: 'es', flag: '🇪🇸', nom: 'Español',
-    tabs: ['Mi Cuerpo', 'Progresar', 'Sabrina', 'Biblioteca', 'Recorrido'],
+    tabs: ['Mi Cuerpo', 'Progresar', 'Biblioteca', 'Recorrido'],
     logoSub: '🪼  Sentir · Preparar · Transformar',
     bonjour: (p) => p ? `Hola ${p}` : '',
+    bonjour_mot: 'Hola',
     ob_tag: 'Una nueva forma de habitar tu cuerpo',
     ob_l1: 'Otras apps te muestran ',
     ob_l1b: 'qué hacer.',
@@ -246,24 +345,21 @@ const T = {
     ob_varie: 'Varía',
     ob_prenom_tag: 'Último paso',
     ob_prenom: '¿Cómo\nte llamas?',
-    ob_prenom_sub: 'Sabrina, tu coach IA, creará\ntu programa personalizado.',
+    ob_prenom_sub: 'Tu programa se adapta a tu perfil.\nFluidBody te acompaña cada día.',
     ob_placeholder: 'Tu nombre...',
-    ob_demarrer: 'Comenzar con Sabrina →',
+    ob_demarrer: 'Empezar →',
     ob_anon: 'Entrar anónimamente',
-    piliers: ['Hombros', 'Espalda', 'Movilidad', 'Postura', 'Respir.', 'Conciencia', 'Mat Pilates'],
+    piliers: ['Hombros', 'Espalda', 'Movilidad', 'Postura', 'Eldoa', 'Golf', 'Mat Pilates'],
     etapes: { Comprendre: 'Comprender', Ressentir: 'Sentir', Préparer: 'Preparar', Exécuter: 'Ejecutar', Évoluer: 'Evolucionar' },
     retour: '← Mi Cuerpo',
     seances_done: (n) => `${n} / 20 sesiones completadas`,
     m_seances: 'Sesiones', m_streak: 'Racha', m_progress: 'Progreso',
     retour_video: '← Volver',
+    video_resume: (t) => `Continuación · ${t}`,
+    reprise_badge: 'Continuar',
+    video_load_error: 'No se pudo cargar el vídeo.',
+    video_retry: 'Reintentar',
     seance_done: '✓  Sesión terminada',
-    sabrina_sub: 'Coach FluidBody · IA',
-    sabrina_hello: (p) => `Hola ${p || 'tú'} 🪼\n\nSoy Sabrina, tu coach FluidBody.\n\nCuéntame cómo te sientes en tu cuerpo hoy.`,
-    sabrina_thinking: 'Sabrina está pensando… 🪼',
-    sabrina_placeholder: 'Habla con Sabrina...',
-    sabrina_label: 'SABRINA · FLUIDBODY',
-    sabrina_suggestions: ['Mi espalda está tensa esta mañana', 'Quiero trabajar mis hombros', '¿Cómo respirar profundamente?', 'Sugiere una sesión para hoy'],
-    sabrina_system: `Eres Sabrina, coach IA de FluidBody — una app de movimiento consciente basada en 23 años de experiencia en Pilates. Tu método: Comprender → Sentir → Preparar → Ejecutar → Evolucionar. Responde en español, máximo 150 palabras, de forma cálida y auténtica.`,
     biblio_titre: 'Biblioteca',
     biblio_sub: 'Comprender para sentir mejor',
     tab_piliers: 'Los 6 pilares',
@@ -276,7 +372,7 @@ const T = {
     prog_globale: 'Progreso global',
     par_pilier: 'Por pilar',
     mon_compte: 'Mi cuenta',
-    compte_info: [['Coach IA', 'Sabrina · FluidBody'], ['Versión', 'FluidBody Beta 1.0'], ['Método', 'Pilates Consciente · 23 años']],
+    compte_info: [['Aplicación', 'FluidBody · Pilates'], ['Versión', 'FluidBody Beta 1.0'], ['Método', 'Pilates Consciente · 23 años']],
     progresser_sub: (p) => `${p}% del recorrido completado`,
     recommande_pour_toi: 'PARA TI',
     seance_du_jour: 'Sesión del día',
@@ -291,21 +387,31 @@ const T = {
       streak < 14 ? `"¡${streak} días! Un hábito real\nse está formando."` :
       `"${streak} días. Eres extraordinario. 🌊"`,
     celebration: 'Tu cuerpo ha progresado.\n¡Sigue así! 💪',
-    free_messages_left: (n) => `${n} mensaje${n > 1 ? 's' : ''} gratis restante${n > 1 ? 's' : ''}`,
-    free_limit_title: 'Continúa con Sabrina',
-    free_limit_sub: 'Has usado tus 3 mensajes gratuitos de hoy.',
-    free_limit_cta: 'Desbloquear Sabrina Premium',
-    free_limit_price: '4,99€ / mes · Sin compromiso',
-    free_limit_restore: 'Restaurar compra',
-    free_limit_later: 'Más tarde',
-    premium_badge: 'PREMIUM',
-    premium_active: 'Sabrina ilimitada ✓',
+    biblio_signature: '— FluidBody',
+    premium_alert_title: 'Contenido Premium',
+    premium_alert_simulate: 'Ver ofertas',
+    premium_alert_later: 'Más tarde',
+    paywall_title: 'Desbloquear FluidBody Premium',
+    paywall_sub: 'Acceso ilimitado a todas las sesiones.',
+    paywall_monthly: 'Mensual',
+    paywall_yearly: 'Anual',
+    paywall_buy_monthly: 'Comprar mensual',
+    paywall_buy_yearly: 'Comprar anual',
+    paywall_restore: 'Restaurar compras',
+    paywall_close: 'Cerrar',
+    paywall_prices_loading: 'Cargando precios…',
+    paywall_not_available: 'Compras no disponibles (Expo Go / simulador).',
+    subscription_status_label: 'Suscripción de vídeo',
+    subscription_status_active: 'Activa — todas las sesiones',
+    subscription_status_free: 'Inactiva — sesiones 1–2 gratis',
+    subscription_reset: 'Restaurar compras',
   },
   it: {
     lang: 'it', flag: '🇮🇹', nom: 'Italiano',
-    tabs: ['Il Mio Corpo', 'Progredire', 'Sabrina', 'Biblioteca', 'Percorso'],
+    tabs: ['Il Mio Corpo', 'Progredire', 'Biblioteca', 'Percorso'],
     logoSub: '🪼  Sentire · Preparare · Trasformare',
     bonjour: (p) => p ? `Ciao ${p}` : '',
+    bonjour_mot: 'Ciao',
     ob_tag: 'Un nuovo modo di abitare il tuo corpo',
     ob_l1: 'Le altre app ti mostrano ',
     ob_l1b: 'cosa fare.',
@@ -326,24 +432,21 @@ const T = {
     ob_varie: 'Varia',
     ob_prenom_tag: 'Ultimo passo',
     ob_prenom: 'Come ti\nchiami?',
-    ob_prenom_sub: 'Sabrina, la tua coach IA, creerà\nil tuo programma personalizzato.',
+    ob_prenom_sub: 'Il tuo programma si adatta al tuo profilo.\nFluidBody ti accompagna ogni giorno.',
     ob_placeholder: 'Il tuo nome...',
-    ob_demarrer: 'Inizia con Sabrina →',
+    ob_demarrer: 'Inizia →',
     ob_anon: 'Entra anonimamente',
-    piliers: ['Spalle', 'Schiena', 'Mobilità', 'Postura', 'Respir.', 'Coscienza', 'Mat Pilates'],
+    piliers: ['Spalle', 'Schiena', 'Mobilità', 'Postura', 'Eldoa', 'Golf', 'Mat Pilates'],
     etapes: { Comprendre: 'Capire', Ressentir: 'Sentire', Préparer: 'Preparare', Exécuter: 'Eseguire', Évoluer: 'Evolvere' },
     retour: '← Il Mio Corpo',
     seances_done: (n) => `${n} / 20 sessioni completate`,
     m_seances: 'Sessioni', m_streak: 'Serie', m_progress: 'Progresso',
     retour_video: '← Indietro',
+    video_resume: (t) => `Ripresa · ${t}`,
+    reprise_badge: 'Riprendi',
+    video_load_error: 'Impossibile caricare il video.',
+    video_retry: 'Riprova',
     seance_done: '✓  Sessione completata',
-    sabrina_sub: 'Coach FluidBody · IA',
-    sabrina_hello: (p) => `Ciao ${p || 'tu'} 🪼\n\nSono Sabrina, la tua coach FluidBody.\n\nDimmi come ti senti nel tuo corpo oggi.`,
-    sabrina_thinking: 'Sabrina sta pensando… 🪼',
-    sabrina_placeholder: 'Parla con Sabrina...',
-    sabrina_label: 'SABRINA · FLUIDBODY',
-    sabrina_suggestions: ['La mia schiena è tesa stamattina', 'Voglio lavorare sulle spalle', 'Come respirare in profondità?', 'Suggerisci una sessione per oggi'],
-    sabrina_system: `Sei Sabrina, coach IA di FluidBody — un'app di movimento consapevole fondata su 23 anni di esperienza nel Pilates. Il tuo metodo: Capire → Sentire → Preparare → Eseguire → Evolvere. Rispondi in italiano, massimo 150 parole, in modo caldo e autentico.`,
     biblio_titre: 'Biblioteca',
     biblio_sub: 'Capire per sentire meglio',
     tab_piliers: 'I 6 pilastri',
@@ -356,7 +459,7 @@ const T = {
     prog_globale: 'Progresso globale',
     par_pilier: 'Per pilastro',
     mon_compte: 'Il mio account',
-    compte_info: [['Coach IA', 'Sabrina · FluidBody'], ['Versione', 'FluidBody Beta 1.0'], ['Metodo', 'Pilates Consapevole · 23 anni']],
+    compte_info: [['App', 'FluidBody · Pilates'], ['Versione', 'FluidBody Beta 1.0'], ['Metodo', 'Pilates Consapevole · 23 anni']],
     progresser_sub: (p) => `${p}% del percorso completato`,
     recommande_pour_toi: 'PER TE',
     seance_du_jour: 'Sessione del giorno',
@@ -371,15 +474,24 @@ const T = {
       streak < 14 ? `"${streak} giorni! Una vera abitudine\nsi sta formando."` :
       `"${streak} giorni. Sei straordinario. 🌊"`,
     celebration: 'Il tuo corpo ha progredito.\nContinua così! 💪',
-    free_messages_left: (n) => `${n} messaggio${n > 1 ? 'i' : ''} gratuito${n > 1 ? 'i' : ''} rimasto${n > 1 ? 'i' : ''}`,
-    free_limit_title: 'Continua con Sabrina',
-    free_limit_sub: 'Hai usato i tuoi 3 messaggi gratuiti di oggi.',
-    free_limit_cta: 'Sblocca Sabrina Premium',
-    free_limit_price: '4,99€ / mese · Senza impegno',
-    free_limit_restore: 'Ripristina acquisto',
-    free_limit_later: 'Più tardi',
-    premium_badge: 'PREMIUM',
-    premium_active: 'Sabrina illimitata ✓',
+    biblio_signature: '— FluidBody',
+    premium_alert_title: 'Contenuto Premium',
+    premium_alert_simulate: 'Vedi offerte',
+    premium_alert_later: 'Più tardi',
+    paywall_title: 'Sblocca FluidBody Premium',
+    paywall_sub: 'Accesso illimitato a tutte le sessioni.',
+    paywall_monthly: 'Mensile',
+    paywall_yearly: 'Annuale',
+    paywall_buy_monthly: 'Acquista mensile',
+    paywall_buy_yearly: 'Acquista annuale',
+    paywall_restore: 'Ripristina acquisti',
+    paywall_close: 'Chiudi',
+    paywall_prices_loading: 'Caricamento prezzi…',
+    paywall_not_available: 'Acquisti non disponibili (Expo Go / simulatore).',
+    subscription_status_label: 'Abbonamento video',
+    subscription_status_active: 'Attivo — tutte le sessioni',
+    subscription_status_free: 'Inattivo — sessioni 1–2 gratuite',
+    subscription_reset: 'Ripristina acquisti',
   },
 };
 
@@ -456,45 +568,41 @@ const FICHES = {
 const SEANCES_FR = {
   p1: [['Comprendre l\'épaule', '12 min', 'Comprendre'], ['La coiffe des rotateurs', '15 min', 'Comprendre'], ['Ressentir les omoplates', '12 min', 'Ressentir'], ['Le poids du bras', '15 min', 'Ressentir'], ['Cercles de conscience', '18 min', 'Ressentir'], ['Libérer les trapèzes', '20 min', 'Préparer'], ['Mobiliser la scapula', '22 min', 'Préparer'], ['Activer le dentelé', '25 min', 'Préparer'], ['Ouverture thoracique', '28 min', 'Préparer'], ['Proprioception épaule', '30 min', 'Préparer'], ['Le geste juste', '25 min', 'Exécuter'], ['Élévation consciente', '28 min', 'Exécuter'], ['Rotation externe guidée', '30 min', 'Exécuter'], ['Tirés et poussés', '32 min', 'Exécuter'], ['Circuit épaule complète', '35 min', 'Exécuter'], ['Force & souplesse I', '35 min', 'Évoluer'], ['Épaule sous charge', '38 min', 'Évoluer'], ['Équilibre scapulaire', '40 min', 'Évoluer'], ['L\'épaule athlétique', '42 min', 'Évoluer'], ['Maîtrise totale', '45 min', 'Évoluer']],
   p2: [['Le dos expliqué', '12 min', 'Comprendre'], ['Pourquoi le dos souffre', '15 min', 'Comprendre'], ['La nuque et ses tensions', '15 min', 'Comprendre'], ['Ressentir sa colonne', '12 min', 'Ressentir'], ['Le sacrum comme base', '18 min', 'Ressentir'], ['Relâcher le psoas', '20 min', 'Préparer'], ['Décompression lombaire', '22 min', 'Préparer'], ['Mobiliser les thoraciques', '25 min', 'Préparer'], ['Cat-Cow conscient', '20 min', 'Préparer'], ['Libérer la nuque', '22 min', 'Préparer'], ['Renforcement profond I', '25 min', 'Exécuter'], ['La planche consciente', '28 min', 'Exécuter'], ['Pont fessier guidé', '28 min', 'Exécuter'], ['Rotation vertébrale', '30 min', 'Exécuter'], ['Extension du dos', '32 min', 'Exécuter'], ['Programme anti-douleur I', '30 min', 'Évoluer'], ['Programme anti-douleur II', '35 min', 'Évoluer'], ['Dos & respiration', '38 min', 'Évoluer'], ['Colonne intégrée', '40 min', 'Évoluer'], ['La colonne parfaite', '45 min', 'Évoluer']],
-  p3: [['Comprendre la hanche', '12 min', 'Comprendre'], ['Le genou fragile', '15 min', 'Comprendre'], ['La cheville oubliée', '12 min', 'Comprendre'], ['Ressentir la hanche', '15 min', 'Ressentir'], ['Cartographie bas du corps', '20 min', 'Ressentir'], ['Mobilisation de hanche I', '20 min', 'Préparer'], ['Libération des fléchisseurs', '22 min', 'Préparer'], ['Mobilisation de hanche II', '25 min', 'Préparer'], ['Mobilité du genou', '20 min', 'Préparer'], ['La cheville en action', '22 min', 'Préparer'], ['Squat conscient I', '25 min', 'Exécuter'], ['Fente guidée', '28 min', 'Exécuter'], ['Pont et rotation de hanche', '28 min', 'Exécuter'], ['Station unipodale', '30 min', 'Exécuter'], ['Circuit mobilité', '32 min', 'Exécuter'], ['Mobilité & Pilates I', '30 min', 'Évoluer'], ['Profondeur de hanche', '35 min', 'Évoluer'], ['Genoux & force', '38 min', 'Évoluer'], ['La chaîne postérieure', '40 min', 'Évoluer'], ['Corps libre en bas', '45 min', 'Évoluer']],
+  p3: [['Comprendre la hanche', '2 min 10 s', 'Comprendre', 'https://vz-1a4e2cac-0dc.b-cdn.net/596e732b-fa75-4606-aa8a-45fb034d2e0b/playlist.m3u8'], ['Le genou fragile', '15 min', 'Comprendre'], ['La cheville oubliée', '12 min', 'Comprendre'], ['Ressentir la hanche', '15 min', 'Ressentir'], ['Cartographie bas du corps', '20 min', 'Ressentir'], ['Mobilisation de hanche I', '20 min', 'Préparer'], ['Libération des fléchisseurs', '22 min', 'Préparer'], ['Mobilisation de hanche II', '25 min', 'Préparer'], ['Mobilité du genou', '20 min', 'Préparer'], ['La cheville en action', '22 min', 'Préparer'], ['Squat conscient I', '25 min', 'Exécuter'], ['Fente guidée', '28 min', 'Exécuter'], ['Pont et rotation de hanche', '28 min', 'Exécuter'], ['Station unipodale', '30 min', 'Exécuter'], ['Circuit mobilité', '32 min', 'Exécuter'], ['Mobilité & Pilates I', '30 min', 'Évoluer'], ['Profondeur de hanche', '35 min', 'Évoluer'], ['Genoux & force', '38 min', 'Évoluer'], ['La chaîne postérieure', '40 min', 'Évoluer'], ['Corps libre en bas', '45 min', 'Évoluer']],
   p4: [['La posture expliquée', '12 min', 'Comprendre'], ['Les 4 courbes naturelles', '15 min', 'Comprendre'], ['Posture & douleur', '15 min', 'Comprendre'], ['Ressentir l\'alignement', '12 min', 'Ressentir'], ['L\'axe vertical', '18 min', 'Ressentir'], ['Débloquer la cage thoracique', '20 min', 'Préparer'], ['Activer les stabilisateurs', '22 min', 'Préparer'], ['Rééquilibrer le bassin', '25 min', 'Préparer'], ['Aligner le cou', '22 min', 'Préparer'], ['Proprioception posturale', '25 min', 'Préparer'], ['Debout conscient', '25 min', 'Exécuter'], ['Marche consciente', '28 min', 'Exécuter'], ['Assis sans souffrir', '25 min', 'Exécuter'], ['Travail en miroir', '30 min', 'Exécuter'], ['Posture sous charge', '32 min', 'Exécuter'], ['Programme bureau I', '25 min', 'Évoluer'], ['Programme bureau II', '30 min', 'Évoluer'], ['Posture & respiration', '35 min', 'Évoluer'], ['Corps en équilibre', '40 min', 'Évoluer'], ['L\'alignement parfait', '45 min', 'Évoluer']],
   p5: [['Comprendre le souffle', '12 min', 'Comprendre'], ['Le diaphragme', '15 min', 'Comprendre'], ['Respiration & nerfs', '15 min', 'Comprendre'], ['Ressentir son souffle', '10 min', 'Ressentir'], ['Le souffle tridimensionnel', '15 min', 'Ressentir'], ['Cohérence cardiaque I', '12 min', 'Préparer'], ['Libérer le diaphragme', '15 min', 'Préparer'], ['Respiration latérale', '18 min', 'Préparer'], ['Respiration dorsale', '20 min', 'Préparer'], ['Plancher pelvien', '22 min', 'Préparer'], ['Pilates breathing I', '20 min', 'Exécuter'], ['Souffle & mouvement', '25 min', 'Exécuter'], ['Cohérence cardiaque II', '20 min', 'Exécuter'], ['Souffle & gainage', '28 min', 'Exécuter'], ['Séquence souffle complet', '30 min', 'Exécuter'], ['Techniques avancées I', '25 min', 'Évoluer'], ['Souffle & performance', '30 min', 'Évoluer'], ['Respiration & émotions', '32 min', 'Évoluer'], ['Anti-stress respiratoire', '35 min', 'Évoluer'], ['Maître du souffle', '40 min', 'Évoluer']],
   p6: [['Qu\'est-ce que la proprioception', '12 min', 'Comprendre'], ['Le corps dans l\'espace', '15 min', 'Comprendre'], ['Conscience & douleur', '15 min', 'Comprendre'], ['Le scan corporel I', '12 min', 'Ressentir'], ['Sentir sans voir', '15 min', 'Ressentir'], ['Équilibre statique I', '15 min', 'Préparer'], ['Micro-mouvements', '18 min', 'Préparer'], ['Équilibre instable', '20 min', 'Préparer'], ['Le regard intérieur', '22 min', 'Préparer'], ['Mapping corporel', '25 min', 'Préparer'], ['Mouvement lent I', '20 min', 'Exécuter'], ['Coordination fine', '25 min', 'Exécuter'], ['Anticipation & réaction', '28 min', 'Exécuter'], ['Mouvement lent II', '30 min', 'Exécuter'], ['Fluidité consciente', '32 min', 'Exécuter'], ['Méditation en mouvement', '25 min', 'Évoluer'], ['Inversion consciente', '30 min', 'Évoluer'], ['Conscience des fascias', '35 min', 'Évoluer'], ['Intelligence corporelle', '38 min', 'Évoluer'], ['L\'être dans le corps', '45 min', 'Évoluer']],
   p7: [['Joseph Pilates & sa méthode', '12 min', 'Comprendre'], ['Les 6 principes du Mat', '15 min', 'Comprendre'], ['Le centre — powerhouse', '15 min', 'Comprendre'], ['Sentir le tapis sous soi', '12 min', 'Ressentir'], ['Connexion bassin-plancher', '15 min', 'Ressentir'], ['Le Hundred — initiation', '20 min', 'Préparer'], ['Roll-Up conscient', '22 min', 'Préparer'], ['Single Leg Circle', '20 min', 'Préparer'], ['Rolling Like a Ball', '18 min', 'Préparer'], ['Activation du centre', '22 min', 'Préparer'], ['La série des 5', '25 min', 'Exécuter'], ['Spine Stretch Forward', '28 min', 'Exécuter'], ['Open Leg Rocker', '30 min', 'Exécuter'], ['Swan & Child', '28 min', 'Exécuter'], ['Side Kick Series', '32 min', 'Exécuter'], ['Séquence Mat niveau 1', '35 min', 'Évoluer'], ['Séquence Mat niveau 2', '38 min', 'Évoluer'], ['Teaser guidé', '40 min', 'Évoluer'], ['Mat flow complet', '42 min', 'Évoluer'], ['Maîtrise du Mat', '45 min', 'Évoluer']],
-
 };
 
 const SEANCES_EN = {
   p1: [['Understanding the shoulder', '12 min', 'Comprendre'], ['The rotator cuff', '15 min', 'Comprendre'], ['Feeling the shoulder blades', '12 min', 'Ressentir'], ['The weight of the arm', '15 min', 'Ressentir'], ['Awareness circles', '18 min', 'Ressentir'], ['Releasing the trapezius', '20 min', 'Préparer'], ['Mobilizing the scapula', '22 min', 'Préparer'], ['Activating the serratus', '25 min', 'Préparer'], ['Thoracic opening', '28 min', 'Préparer'], ['Shoulder proprioception', '30 min', 'Préparer'], ['The right gesture', '25 min', 'Exécuter'], ['Conscious elevation', '28 min', 'Exécuter'], ['Guided external rotation', '30 min', 'Exécuter'], ['Pulls and pushes', '32 min', 'Exécuter'], ['Full shoulder circuit', '35 min', 'Exécuter'], ['Strength & flexibility I', '35 min', 'Évoluer'], ['Loaded shoulder', '38 min', 'Évoluer'], ['Scapular balance', '40 min', 'Évoluer'], ['The athletic shoulder', '42 min', 'Évoluer'], ['Total mastery', '45 min', 'Évoluer']],
   p2: [['The back explained', '12 min', 'Comprendre'], ['Why the back hurts', '15 min', 'Comprendre'], ['The neck and its tensions', '15 min', 'Comprendre'], ['Feeling the spine', '12 min', 'Ressentir'], ['The sacrum as base', '18 min', 'Ressentir'], ['Releasing the psoas', '20 min', 'Préparer'], ['Lumbar decompression', '22 min', 'Préparer'], ['Mobilizing the thoracics', '25 min', 'Préparer'], ['Conscious Cat-Cow', '20 min', 'Préparer'], ['Releasing the neck', '22 min', 'Préparer'], ['Deep strengthening I', '25 min', 'Exécuter'], ['The conscious plank', '28 min', 'Exécuter'], ['Guided glute bridge', '28 min', 'Exécuter'], ['Vertebral rotation', '30 min', 'Exécuter'], ['Back extension', '32 min', 'Exécuter'], ['Anti-pain program I', '30 min', 'Évoluer'], ['Anti-pain program II', '35 min', 'Évoluer'], ['Back & breathing', '38 min', 'Évoluer'], ['Integrated spine', '40 min', 'Évoluer'], ['The perfect spine', '45 min', 'Évoluer']],
-  p3: [['Understanding the hip', '12 min', 'Comprendre'], ['The fragile knee', '15 min', 'Comprendre'], ['The forgotten ankle', '12 min', 'Comprendre'], ['Feeling the hip', '15 min', 'Ressentir'], ['Lower body mapping', '20 min', 'Ressentir'], ['Hip mobilization I', '20 min', 'Préparer'], ['Releasing the flexors', '22 min', 'Préparer'], ['Hip mobilization II', '25 min', 'Préparer'], ['Knee mobility', '20 min', 'Préparer'], ['The ankle in action', '22 min', 'Préparer'], ['Conscious squat I', '25 min', 'Exécuter'], ['Guided lunge', '28 min', 'Exécuter'], ['Hip bridge & rotation', '28 min', 'Exécuter'], ['Single leg stance', '30 min', 'Exécuter'], ['Mobility circuit', '32 min', 'Exécuter'], ['Mobility & Pilates I', '30 min', 'Évoluer'], ['Hip depth', '35 min', 'Évoluer'], ['Knees & strength', '38 min', 'Évoluer'], ['The posterior chain', '40 min', 'Évoluer'], ['Free lower body', '45 min', 'Évoluer']],
+  p3: [['Understanding the hip', '2 min 10 s', 'Comprendre'], ['The fragile knee', '15 min', 'Comprendre'], ['The forgotten ankle', '12 min', 'Comprendre'], ['Feeling the hip', '15 min', 'Ressentir'], ['Lower body mapping', '20 min', 'Ressentir'], ['Hip mobilization I', '20 min', 'Préparer'], ['Releasing the flexors', '22 min', 'Préparer'], ['Hip mobilization II', '25 min', 'Préparer'], ['Knee mobility', '20 min', 'Préparer'], ['The ankle in action', '22 min', 'Préparer'], ['Conscious squat I', '25 min', 'Exécuter'], ['Guided lunge', '28 min', 'Exécuter'], ['Hip bridge & rotation', '28 min', 'Exécuter'], ['Single leg stance', '30 min', 'Exécuter'], ['Mobility circuit', '32 min', 'Exécuter'], ['Mobility & Pilates I', '30 min', 'Évoluer'], ['Hip depth', '35 min', 'Évoluer'], ['Knees & strength', '38 min', 'Évoluer'], ['The posterior chain', '40 min', 'Évoluer'], ['Free lower body', '45 min', 'Évoluer']],
   p4: [['Posture explained', '12 min', 'Comprendre'], ['The 4 natural curves', '15 min', 'Comprendre'], ['Posture & pain', '15 min', 'Comprendre'], ['Feeling alignment', '12 min', 'Ressentir'], ['The vertical axis', '18 min', 'Ressentir'], ['Opening the chest', '20 min', 'Préparer'], ['Activating stabilizers', '22 min', 'Préparer'], ['Rebalancing the pelvis', '25 min', 'Préparer'], ['Aligning the neck', '22 min', 'Préparer'], ['Postural proprioception', '25 min', 'Préparer'], ['Standing consciously', '25 min', 'Exécuter'], ['Conscious walking', '28 min', 'Exécuter'], ['Sitting without pain', '25 min', 'Exécuter'], ['Mirror work', '30 min', 'Exécuter'], ['Posture under load', '32 min', 'Exécuter'], ['Desk program I', '25 min', 'Évoluer'], ['Desk program II', '30 min', 'Évoluer'], ['Posture & breathing', '35 min', 'Évoluer'], ['Body in balance', '40 min', 'Évoluer'], ['Perfect alignment', '45 min', 'Évoluer']],
   p5: [['Understanding the breath', '12 min', 'Comprendre'], ['The diaphragm', '15 min', 'Comprendre'], ['Breathing & nerves', '15 min', 'Comprendre'], ['Feeling your breath', '10 min', 'Ressentir'], ['3D breathing', '15 min', 'Ressentir'], ['Cardiac coherence I', '12 min', 'Préparer'], ['Releasing the diaphragm', '15 min', 'Préparer'], ['Lateral breathing', '18 min', 'Préparer'], ['Dorsal breathing', '20 min', 'Préparer'], ['Pelvic floor', '22 min', 'Préparer'], ['Pilates breathing I', '20 min', 'Exécuter'], ['Breath & movement', '25 min', 'Exécuter'], ['Cardiac coherence II', '20 min', 'Exécuter'], ['Breath & core', '28 min', 'Exécuter'], ['Full breath sequence', '30 min', 'Exécuter'], ['Advanced techniques I', '25 min', 'Évoluer'], ['Breath & performance', '30 min', 'Évoluer'], ['Breathing & emotions', '32 min', 'Évoluer'], ['Anti-stress breathing', '35 min', 'Évoluer'], ['Master of breath', '40 min', 'Évoluer']],
   p6: [['What is proprioception', '12 min', 'Comprendre'], ['The body in space', '15 min', 'Comprendre'], ['Awareness & pain', '15 min', 'Comprendre'], ['Body scan I', '12 min', 'Ressentir'], ['Feeling without seeing', '15 min', 'Ressentir'], ['Static balance I', '15 min', 'Préparer'], ['Micro-movements', '18 min', 'Préparer'], ['Unstable balance', '20 min', 'Préparer'], ['The inner gaze', '22 min', 'Préparer'], ['Body mapping', '25 min', 'Préparer'], ['Slow movement I', '20 min', 'Exécuter'], ['Fine coordination', '25 min', 'Exécuter'], ['Anticipation & reaction', '28 min', 'Exécuter'], ['Slow movement II', '30 min', 'Exécuter'], ['Conscious fluidity', '32 min', 'Exécuter'], ['Movement meditation', '25 min', 'Évoluer'], ['Conscious inversion', '30 min', 'Évoluer'], ['Fascia awareness', '35 min', 'Évoluer'], ['Body intelligence', '38 min', 'Évoluer'], ['Being in the body', '45 min', 'Évoluer']],
   p7: [['Joseph Pilates & his method', '12 min', 'Comprendre'], ['The 6 Mat principles', '15 min', 'Comprendre'], ['The center — powerhouse', '15 min', 'Comprendre'], ['Feeling the mat beneath you', '12 min', 'Ressentir'], ['Pelvis-floor connection', '15 min', 'Ressentir'], ['The Hundred — initiation', '20 min', 'Préparer'], ['Conscious Roll-Up', '22 min', 'Préparer'], ['Single Leg Circle', '20 min', 'Préparer'], ['Rolling Like a Ball', '18 min', 'Préparer'], ['Center activation', '22 min', 'Préparer'], ['The series of 5', '25 min', 'Exécuter'], ['Spine Stretch Forward', '28 min', 'Exécuter'], ['Open Leg Rocker', '30 min', 'Exécuter'], ['Swan & Child', '28 min', 'Exécuter'], ['Side Kick Series', '32 min', 'Exécuter'], ['Mat sequence level 1', '35 min', 'Évoluer'], ['Mat sequence level 2', '38 min', 'Évoluer'], ['Guided Teaser', '40 min', 'Évoluer'], ['Full Mat flow', '42 min', 'Évoluer'], ['Mat mastery', '45 min', 'Évoluer']],
-
 };
 
 const SEANCES_ES = {
   p1: [['Entender el hombro', '12 min', 'Comprendre'], ['El manguito rotador', '15 min', 'Comprendre'], ['Sentir los omóplatos', '12 min', 'Ressentir'], ['El peso del brazo', '15 min', 'Ressentir'], ['Círculos de conciencia', '18 min', 'Ressentir'], ['Liberar los trapecios', '20 min', 'Préparer'], ['Movilizar la escápula', '22 min', 'Préparer'], ['Activar el serrato', '25 min', 'Préparer'], ['Apertura torácica', '28 min', 'Préparer'], ['Propiocepción hombro', '30 min', 'Préparer'], ['El gesto correcto', '25 min', 'Exécuter'], ['Elevación consciente', '28 min', 'Exécuter'], ['Rotación externa guiada', '30 min', 'Exécuter'], ['Jalones y empujes', '32 min', 'Exécuter'], ['Circuito hombro completo', '35 min', 'Exécuter'], ['Fuerza & flexibilidad I', '35 min', 'Évoluer'], ['Hombro con carga', '38 min', 'Évoluer'], ['Equilibrio escapular', '40 min', 'Évoluer'], ['El hombro atlético', '42 min', 'Évoluer'], ['Dominio total', '45 min', 'Évoluer']],
   p2: [['La espalda explicada', '12 min', 'Comprendre'], ['Por qué duele la espalda', '15 min', 'Comprendre'], ['El cuello y sus tensiones', '15 min', 'Comprendre'], ['Sentir la columna', '12 min', 'Ressentir'], ['El sacro como base', '18 min', 'Ressentir'], ['Liberar el psoas', '20 min', 'Préparer'], ['Descompresión lumbar', '22 min', 'Préparer'], ['Movilizar las torácicas', '25 min', 'Préparer'], ['Cat-Cow consciente', '20 min', 'Préparer'], ['Liberar el cuello', '22 min', 'Préparer'], ['Fortalecimiento profundo I', '25 min', 'Exécuter'], ['La plancha consciente', '28 min', 'Exécuter'], ['Puente glúteo guiado', '28 min', 'Exécuter'], ['Rotación vertebral', '30 min', 'Exécuter'], ['Extensión de espalda', '32 min', 'Exécuter'], ['Programa antidolor I', '30 min', 'Évoluer'], ['Programa antidolor II', '35 min', 'Évoluer'], ['Espalda & respiración', '38 min', 'Évoluer'], ['Columna integrada', '40 min', 'Évoluer'], ['La columna perfecta', '45 min', 'Évoluer']],
-  p3: [['Entender la cadera', '12 min', 'Comprendre'], ['La rodilla frágil', '15 min', 'Comprendre'], ['El tobillo olvidado', '12 min', 'Comprendre'], ['Sentir la cadera', '15 min', 'Ressentir'], ['Cartografía parte inferior', '20 min', 'Ressentir'], ['Movilización de cadera I', '20 min', 'Préparer'], ['Liberación de flexores', '22 min', 'Préparer'], ['Movilización de cadera II', '25 min', 'Préparer'], ['Movilidad de rodilla', '20 min', 'Préparer'], ['El tobillo en acción', '22 min', 'Préparer'], ['Sentadilla consciente I', '25 min', 'Exécuter'], ['Zancada guiada', '28 min', 'Exécuter'], ['Puente y rotación cadera', '28 min', 'Exécuter'], ['Postura unipodal', '30 min', 'Exécuter'], ['Circuito movilidad', '32 min', 'Exécuter'], ['Movilidad & Pilates I', '30 min', 'Évoluer'], ['Profundidad de cadera', '35 min', 'Évoluer'], ['Rodillas & fuerza', '38 min', 'Évoluer'], ['La cadena posterior', '40 min', 'Évoluer'], ['Cuerpo libre abajo', '45 min', 'Évoluer']],
+  p3: [['Entender la cadera', '2 min 10 s', 'Comprendre'], ['La rodilla frágil', '15 min', 'Comprendre'], ['El tobillo olvidado', '12 min', 'Comprendre'], ['Sentir la cadera', '15 min', 'Ressentir'], ['Cartografía parte inferior', '20 min', 'Ressentir'], ['Movilización de cadera I', '20 min', 'Préparer'], ['Liberación de flexores', '22 min', 'Préparer'], ['Movilización de cadera II', '25 min', 'Préparer'], ['Movilidad de rodilla', '20 min', 'Préparer'], ['El tobillo en acción', '22 min', 'Préparer'], ['Sentadilla consciente I', '25 min', 'Exécuter'], ['Zancada guiada', '28 min', 'Exécuter'], ['Puente y rotación cadera', '28 min', 'Exécuter'], ['Postura unipodal', '30 min', 'Exécuter'], ['Circuito movilidad', '32 min', 'Exécuter'], ['Movilidad & Pilates I', '30 min', 'Évoluer'], ['Profundidad de cadera', '35 min', 'Évoluer'], ['Rodillas & fuerza', '38 min', 'Évoluer'], ['La cadena posterior', '40 min', 'Évoluer'], ['Cuerpo libre abajo', '45 min', 'Évoluer']],
   p4: [['La postura explicada', '12 min', 'Comprendre'], ['Las 4 curvas naturales', '15 min', 'Comprendre'], ['Postura & dolor', '15 min', 'Comprendre'], ['Sentir la alineación', '12 min', 'Ressentir'], ['El eje vertical', '18 min', 'Ressentir'], ['Abrir la caja torácica', '20 min', 'Préparer'], ['Activar estabilizadores', '22 min', 'Préparer'], ['Reequilibrar la pelvis', '25 min', 'Préparer'], ['Alinear el cuello', '22 min', 'Préparer'], ['Propiocepción postural', '25 min', 'Préparer'], ['De pie consciente', '25 min', 'Exécuter'], ['Caminar consciente', '28 min', 'Exécuter'], ['Sentado sin dolor', '25 min', 'Exécuter'], ['Trabajo frente al espejo', '30 min', 'Exécuter'], ['Postura bajo carga', '32 min', 'Exécuter'], ['Programa oficina I', '25 min', 'Évoluer'], ['Programa oficina II', '30 min', 'Évoluer'], ['Postura & respiración', '35 min', 'Évoluer'], ['Cuerpo en equilibrio', '40 min', 'Évoluer'], ['Alineación perfecta', '45 min', 'Évoluer']],
   p5: [['Entender el aliento', '12 min', 'Comprendre'], ['El diafragma', '15 min', 'Comprendre'], ['Respiración & nervios', '15 min', 'Comprendre'], ['Sentir la respiración', '10 min', 'Ressentir'], ['Respiración 3D', '15 min', 'Ressentir'], ['Coherencia cardíaca I', '12 min', 'Préparer'], ['Liberar el diafragma', '15 min', 'Préparer'], ['Respiración lateral', '18 min', 'Préparer'], ['Respiración dorsal', '20 min', 'Préparer'], ['Suelo pélvico', '22 min', 'Préparer'], ['Pilates breathing I', '20 min', 'Exécuter'], ['Aliento & movimiento', '25 min', 'Exécuter'], ['Coherencia cardíaca II', '20 min', 'Exécuter'], ['Aliento & core', '28 min', 'Exécuter'], ['Secuencia aliento completo', '30 min', 'Exécuter'], ['Técnicas avanzadas I', '25 min', 'Évoluer'], ['Aliento & rendimiento', '30 min', 'Évoluer'], ['Respiración & emociones', '32 min', 'Évoluer'], ['Respiración antiestres', '35 min', 'Évoluer'], ['Maestro del aliento', '40 min', 'Évoluer']],
   p6: [['Qué es la propiocepción', '12 min', 'Comprendre'], ['El cuerpo en el espacio', '15 min', 'Comprendre'], ['Conciencia & dolor', '15 min', 'Comprendre'], ['Scan corporal I', '12 min', 'Ressentir'], ['Sentir sin ver', '15 min', 'Ressentir'], ['Equilibrio estático I', '15 min', 'Préparer'], ['Micro-movimientos', '18 min', 'Préparer'], ['Equilibrio inestable', '20 min', 'Préparer'], ['La mirada interior', '22 min', 'Préparer'], ['Mapeo corporal', '25 min', 'Préparer'], ['Movimiento lento I', '20 min', 'Exécuter'], ['Coordinación fina', '25 min', 'Exécuter'], ['Anticipación & reacción', '28 min', 'Exécuter'], ['Movimiento lento II', '30 min', 'Exécuter'], ['Fluidez consciente', '32 min', 'Exécuter'], ['Meditación en movimiento', '25 min', 'Évoluer'], ['Inversión consciente', '30 min', 'Évoluer'], ['Conciencia de fascias', '35 min', 'Évoluer'], ['Inteligencia corporal', '38 min', 'Évoluer'], ['Ser en el cuerpo', '45 min', 'Évoluer']],
   p7: [['Joseph Pilates & su método', '12 min', 'Comprendre'], ['Los 6 principios del Mat', '15 min', 'Comprendre'], ['El centro — powerhouse', '15 min', 'Comprendre'], ['Sentir la colchoneta', '12 min', 'Ressentir'], ['Conexión pelvis-suelo', '15 min', 'Ressentir'], ['El Hundred — iniciación', '20 min', 'Préparer'], ['Roll-Up consciente', '22 min', 'Préparer'], ['Single Leg Circle', '20 min', 'Préparer'], ['Rolling Like a Ball', '18 min', 'Préparer'], ['Activación del centro', '22 min', 'Préparer'], ['La serie de los 5', '25 min', 'Exécuter'], ['Spine Stretch Forward', '28 min', 'Exécuter'], ['Open Leg Rocker', '30 min', 'Exécuter'], ['Swan & Child', '28 min', 'Exécuter'], ['Side Kick Series', '32 min', 'Exécuter'], ['Secuencia Mat nivel 1', '35 min', 'Évoluer'], ['Secuencia Mat nivel 2', '38 min', 'Évoluer'], ['Teaser guiado', '40 min', 'Évoluer'], ['Flujo Mat completo', '42 min', 'Évoluer'], ['Dominio del Mat', '45 min', 'Évoluer']],
-
 };
 
 const SEANCES_IT = {
   p1: [['Capire la spalla', '12 min', 'Comprendre'], ['La cuffia dei rotatori', '15 min', 'Comprendre'], ['Sentire le scapole', '12 min', 'Ressentir'], ['Il peso del braccio', '15 min', 'Ressentir'], ['Cerchi di consapevolezza', '18 min', 'Ressentir'], ['Liberare i trapezi', '20 min', 'Préparer'], ['Mobilizzare la scapola', '22 min', 'Préparer'], ['Attivare il dentato', '25 min', 'Préparer'], ['Apertura toracica', '28 min', 'Préparer'], ['Propriocezione spalla', '30 min', 'Préparer'], ['Il gesto giusto', '25 min', 'Exécuter'], ['Elevazione consapevole', '28 min', 'Exécuter'], ['Rotazione esterna guidata', '30 min', 'Exécuter'], ['Tirate e spinte', '32 min', 'Exécuter'], ['Circuito spalla completo', '35 min', 'Exécuter'], ['Forza & flessibilità I', '35 min', 'Évoluer'], ['Spalla sotto carico', '38 min', 'Évoluer'], ['Equilibrio scapolare', '40 min', 'Évoluer'], ['La spalla atletica', '42 min', 'Évoluer'], ['Maestria totale', '45 min', 'Évoluer']],
   p2: [['La schiena spiegata', '12 min', 'Comprendre'], ['Perché fa male la schiena', '15 min', 'Comprendre'], ['Il collo e le sue tensioni', '15 min', 'Comprendre'], ['Sentire la colonna', '12 min', 'Ressentir'], ['Il sacro come base', '18 min', 'Ressentir'], ['Rilasciare lo psoas', '20 min', 'Préparer'], ['Decompressione lombare', '22 min', 'Préparer'], ['Mobilizzare le toraciche', '25 min', 'Préparer'], ['Cat-Cow consapevole', '20 min', 'Préparer'], ['Liberare il collo', '22 min', 'Préparer'], ['Rinforzo profondo I', '25 min', 'Exécuter'], ['Il plank consapevole', '28 min', 'Exécuter'], ['Ponte glutei guidato', '28 min', 'Exécuter'], ['Rotazione vertebrale', '30 min', 'Exécuter'], ['Estensione della schiena', '32 min', 'Exécuter'], ['Programma antidolore I', '30 min', 'Évoluer'], ['Programma antidolore II', '35 min', 'Évoluer'], ['Schiena & respirazione', '38 min', 'Évoluer'], ['Colonna integrata', '40 min', 'Évoluer'], ['La colonna perfetta', '45 min', 'Évoluer']],
-  p3: [['Capire l\'anca', '12 min', 'Comprendre'], ['Il ginocchio fragile', '15 min', 'Comprendre'], ['La caviglia dimenticata', '12 min', 'Comprendre'], ['Sentire l\'anca', '15 min', 'Ressentir'], ['Mappatura parte inferiore', '20 min', 'Ressentir'], ['Mobilizzazione anca I', '20 min', 'Préparer'], ['Liberare i flessori', '22 min', 'Préparer'], ['Mobilizzazione anca II', '25 min', 'Préparer'], ['Mobilità del ginocchio', '20 min', 'Préparer'], ['La caviglia in azione', '22 min', 'Préparer'], ['Squat consapevole I', '25 min', 'Exécuter'], ['Affondo guidato', '28 min', 'Exécuter'], ['Ponte e rotazione anca', '28 min', 'Exécuter'], ['Stazione monopodica', '30 min', 'Exécuter'], ['Circuito mobilità', '32 min', 'Exécuter'], ['Mobilità & Pilates I', '30 min', 'Évoluer'], ['Profondità dell\'anca', '35 min', 'Évoluer'], ['Ginocchia & forza', '38 min', 'Évoluer'], ['La catena posteriore', '40 min', 'Évoluer'], ['Corpo libero in basso', '45 min', 'Évoluer']],
+  p3: [['Capire l\'anca', '2 min 10 s', 'Comprendre'], ['Il ginocchio fragile', '15 min', 'Comprendre'], ['La caviglia dimenticata', '12 min', 'Comprendre'], ['Sentire l\'anca', '15 min', 'Ressentir'], ['Mappatura parte inferiore', '20 min', 'Ressentir'], ['Mobilizzazione anca I', '20 min', 'Préparer'], ['Liberare i flessori', '22 min', 'Préparer'], ['Mobilizzazione anca II', '25 min', 'Préparer'], ['Mobilità del ginocchio', '20 min', 'Préparer'], ['La caviglia in azione', '22 min', 'Préparer'], ['Squat consapevole I', '25 min', 'Exécuter'], ['Affondo guidato', '28 min', 'Exécuter'], ['Ponte e rotazione anca', '28 min', 'Exécuter'], ['Stazione monopodica', '30 min', 'Exécuter'], ['Circuito mobilità', '32 min', 'Exécuter'], ['Mobilità & Pilates I', '30 min', 'Évoluer'], ['Profondità dell\'anca', '35 min', 'Évoluer'], ['Ginocchia & forza', '38 min', 'Évoluer'], ['La catena posteriore', '40 min', 'Évoluer'], ['Corpo libero in basso', '45 min', 'Évoluer']],
   p4: [['La postura spiegata', '12 min', 'Comprendre'], ['Le 4 curve naturali', '15 min', 'Comprendre'], ['Postura & dolore', '15 min', 'Comprendre'], ['Sentire l\'allineamento', '12 min', 'Ressentir'], ['L\'asse verticale', '18 min', 'Ressentir'], ['Aprire la gabbia toracica', '20 min', 'Préparer'], ['Attivare gli stabilizzatori', '22 min', 'Préparer'], ['Riequilibrare il bacino', '25 min', 'Préparer'], ['Allineare il collo', '22 min', 'Préparer'], ['Propriocezione posturale', '25 min', 'Préparer'], ['In piedi consapevole', '25 min', 'Exécuter'], ['Camminata consapevole', '28 min', 'Exécuter'], ['Seduti senza dolore', '25 min', 'Exécuter'], ['Lavoro allo specchio', '30 min', 'Exécuter'], ['Postura sotto carico', '32 min', 'Exécuter'], ['Programma ufficio I', '25 min', 'Évoluer'], ['Programma ufficio II', '30 min', 'Évoluer'], ['Postura & respirazione', '35 min', 'Évoluer'], ['Corpo in equilibrio', '40 min', 'Évoluer'], ['L\'allineamento perfetto', '45 min', 'Évoluer']],
   p5: [['Capire il respiro', '12 min', 'Comprendre'], ['Il diaframma', '15 min', 'Comprendre'], ['Respirazione & nervi', '15 min', 'Comprendre'], ['Sentire il proprio respiro', '10 min', 'Ressentir'], ['Respirazione 3D', '15 min', 'Ressentir'], ['Coerenza cardiaca I', '12 min', 'Préparer'], ['Liberare il diaframma', '15 min', 'Préparer'], ['Respirazione laterale', '18 min', 'Préparer'], ['Respirazione dorsale', '20 min', 'Préparer'], ['Pavimento pelvico', '22 min', 'Préparer'], ['Pilates breathing I', '20 min', 'Exécuter'], ['Respiro & movimento', '25 min', 'Exécuter'], ['Coerenza cardiaca II', '20 min', 'Exécuter'], ['Respiro & core', '28 min', 'Exécuter'], ['Sequenza respiro completo', '30 min', 'Exécuter'], ['Tecniche avanzate I', '25 min', 'Évoluer'], ['Respiro & prestazione', '30 min', 'Évoluer'], ['Respirazione & emozioni', '32 min', 'Évoluer'], ['Anti-stress respiratorio', '35 min', 'Évoluer'], ['Maestro del respiro', '40 min', 'Évoluer']],
   p6: [['Cos\'è la propriocezione', '12 min', 'Comprendre'], ['Il corpo nello spazio', '15 min', 'Comprendre'], ['Consapevolezza & dolore', '15 min', 'Comprendre'], ['Scan corporeo I', '12 min', 'Ressentir'], ['Sentire senza vedere', '15 min', 'Ressentir'], ['Equilibrio statico I', '15 min', 'Préparer'], ['Micro-movimenti', '18 min', 'Préparer'], ['Equilibrio instabile', '20 min', 'Préparer'], ['Lo sguardo interiore', '22 min', 'Préparer'], ['Mappatura corporea', '25 min', 'Préparer'], ['Movimento lento I', '20 min', 'Exécuter'], ['Coordinazione fine', '25 min', 'Exécuter'], ['Anticipazione & reazione', '28 min', 'Exécuter'], ['Movimento lento II', '30 min', 'Exécuter'], ['Fluidità consapevole', '32 min', 'Exécuter'], ['Meditazione in movimento', '25 min', 'Évoluer'], ['Inversione consapevole', '30 min', 'Évoluer'], ['Consapevolezza delle fasce', '35 min', 'Évoluer'], ['Intelligenza corporea', '38 min', 'Évoluer'], ['Essere nel corpo', '45 min', 'Évoluer']],
   p7: [['Joseph Pilates & il suo metodo', '12 min', 'Comprendre'], ['I 6 principi del Mat', '15 min', 'Comprendre'], ['Il centro — powerhouse', '15 min', 'Comprendre'], ['Sentire il tappetino', '12 min', 'Ressentir'], ['Connessione bacino-pavimento', '15 min', 'Ressentir'], ['Il Hundred — iniziazione', '20 min', 'Préparer'], ['Roll-Up consapevole', '22 min', 'Préparer'], ['Single Leg Circle', '20 min', 'Préparer'], ['Rolling Like a Ball', '18 min', 'Préparer'], ['Attivazione del centro', '22 min', 'Préparer'], ['La serie dei 5', '25 min', 'Exécuter'], ['Spine Stretch Forward', '28 min', 'Exécuter'], ['Open Leg Rocker', '30 min', 'Exécuter'], ['Swan & Child', '28 min', 'Exécuter'], ['Side Kick Series', '32 min', 'Exécuter'], ['Sequenza Mat livello 1', '35 min', 'Évoluer'], ['Sequenza Mat livello 2', '38 min', 'Évoluer'], ['Teaser guidato', '40 min', 'Évoluer'], ['Flusso Mat completo', '42 min', 'Évoluer'], ['Maestria del Mat', '45 min', 'Évoluer']],
-
 };
 
 function getSeances(lang) {
@@ -512,22 +620,21 @@ const ETAPE_COLORS = {
   'Évoluer': 'rgba(185,135,255,0.9)',
 };
 
-const PILIERS_DATA = [
-  { key: 'p7', color: 'rgba(255,100,180,0.9)', bg: 'rgba(255,100,180,0.15)', top: 188, left: 188 },
-  { key: 'p3', color: 'rgba(0,200,255,0.9)', bg: 'rgba(0,200,255,0.15)', top: 279, left: 325 },
-  { key: 'p4', color: 'rgba(255,160,50,0.9)', bg: 'rgba(255,160,50,0.15)', top: 427, left: 356 },
-  { key: 'p6', color: 'rgba(235,240,255,0.95)', bg: 'rgba(235,240,255,0.10)', top: 546, left: 264 },
-  { key: 'p5', color: 'rgba(235,240,255,0.95)', bg: 'rgba(235,240,255,0.10)', top: 546, left: 112 },
-  { key: 'p1', color: 'rgba(0,215,168,0.9)', bg: 'rgba(0,215,168,0.15)', top: 427, left: 22 },
-  { key: 'p2', color: 'rgba(255,208,65,0.9)', bg: 'rgba(255,208,65,0.15)', top: 279, left: 51 },
+/** Couleurs saturées + fonds plus opaques pour lisibilité sur dégradé cyan clair (bas d’écran). */
+const PILIERS_BASE = [
+  { key: 'p7', color: 'rgba(255,35,155,1)', bg: 'rgba(255,35,155,0.42)', top: 208, left: 188 },
+  { key: 'p3', color: 'rgba(0,110,255,1)', bg: 'rgba(0,110,255,0.38)', top: 279, left: 325 },
+  { key: 'p4', color: 'rgba(245,75,10,1)', bg: 'rgba(245,75,10,0.40)', top: 427, left: 356 },
+  { key: 'p6', color: 'rgba(185,45,255,1)', bg: 'rgba(185,45,255,0.44)', top: 546, left: 264 },
+  { key: 'p5', color: 'rgba(55,130,255,1)', bg: 'rgba(55,130,255,0.44)', top: 546, left: 112 },
+  { key: 'p1', color: 'rgba(0,170,110,1)', bg: 'rgba(0,170,110,0.40)', top: 427, left: 22 },
+  { key: 'p2', color: 'rgba(255,155,0,1)', bg: 'rgba(255,155,0,0.42)', top: 279, left: 51 },
 ];
-// cx=220 cy=420 r=175 — p1/p4 +30px droite
-// cx=220 cy=460 r=175
-// cx=200 cy=540 r=175 — symétrie ✓
-// cx=215 cy=403 r=188
-// cx=215 cy=403 r=165
-// ← cx=195 cy=403 r=150 — symétrie gauche/droite ✓
-// ← cx=215 cy=403 r=175 — décalé droite
+const PILIERS_DATA = PILIERS_BASE.map(p => ({
+  ...p,
+  top: IS_IPAD ? p.top * 1.0 : p.top,
+  left: IS_IPAD ? (SW / 2 - 30) + (p.left - 188) * 1.5 : p.left,
+}));
 
 const PILIER_LABEL_IDX = { p1: 0, p2: 1, p3: 2, p4: 3, p5: 4, p6: 5, p7: 6 };
 function getPiliers(lang) {
@@ -558,7 +665,6 @@ function tentaclePath(bx, by, angle, length, t, phase, amp) {
   return d;
 }
 
-// ── TENTACULES RÉALISTES — depuis le bord de la cloche ──
 const TENTS2 = [
   { sx:42,  sy:122, angle:Math.PI*0.560, len:300, phase:0.0, amp:16, color:'rgba(220,228,255,0.55)', w:0.9 },
   { sx:68,  sy:135, angle:Math.PI*0.535, len:350, phase:1.4, amp:20, color:'rgba(215,225,255,0.50)', w:0.75},
@@ -575,19 +681,43 @@ const TENTS2 = [
   { sx:225, sy:128, angle:Math.PI*0.452, len:260, phase:0.7, amp:14, color:'rgba(222,230,255,0.45)', w:0.70},
 ];
 
-function IconEpaules({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Path d="M22 62 Q18 46 30 36 Q44 26 44 18 Q44 26 58 36 Q70 46 66 62" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/><Circle cx="44" cy="13" r="6" stroke={color} strokeWidth="2.4" fill="none"/></Svg>; }
-function IconDos({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Line x1="44" y1="10" x2="44" y2="78" stroke={color} strokeWidth="2.4" strokeLinecap="round"/><Rect x="38" y="16" width="12" height="8" rx="2.5" stroke={color} strokeWidth="2.0" fill="none"/><Rect x="38" y="29" width="12" height="8" rx="2.5" stroke={color} strokeWidth="2.0" fill="none"/><Rect x="38" y="42" width="12" height="8" rx="2.5" stroke={color} strokeWidth="2.0" fill="none"/><Rect x="38" y="55" width="12" height="8" rx="2.5" stroke={color} strokeWidth="2.0" fill="none"/></Svg>; }
-function IconMobilite({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Circle cx="44" cy="44" r="16" stroke={color} strokeWidth="2.4" fill="none"/><Path d="M44 28 A16 16 0 0 1 60 44" stroke={color} strokeWidth="3" strokeLinecap="round" fill="none"/><Path d="M60 36 L60 44 L52 44" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" fill="none"/><Path d="M24 44 A20 20 0 0 0 44 64" stroke={color} strokeWidth="1.6" strokeDasharray="4 3" strokeLinecap="round" fill="none" opacity="0.6"/></Svg>; }
-function IconPosture({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Circle cx="44" cy="14" r="6" stroke={color} strokeWidth="2.4" fill="none"/><Line x1="44" y1="20" x2="44" y2="54" stroke={color} strokeWidth="2.4" strokeLinecap="round"/><Path d="M28 30 L44 38 L60 30" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/><Path d="M44 54 L34 72" stroke={color} strokeWidth="2.4" strokeLinecap="round" fill="none"/><Path d="M44 54 L54 72" stroke={color} strokeWidth="2.4" strokeLinecap="round" fill="none"/><Line x1="24" y1="8" x2="24" y2="76" stroke={color} strokeWidth="1.4" strokeDasharray="3 3" opacity="0.45"/></Svg>; }
-function IconRespiration({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Path d="M8 44 Q18 22 28 44 Q38 66 44 44 Q50 22 60 44 Q70 66 80 44" stroke={color} strokeWidth="2.8" strokeLinecap="round" fill="none"/><Path d="M16 54 Q24 44 32 54 Q40 64 48 54 Q56 44 64 54 Q70 50 76 54" stroke={color} strokeWidth="1.4" strokeLinecap="round" fill="none" opacity="0.5"/></Svg>; }
-function IconConscience({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Path d="M14 44 Q28 22 44 44 Q58 66 72 44 Q58 22 44 44 Q28 66 14 44Z" stroke={color} strokeWidth="2.4" strokeLinecap="round" fill="none"/><Circle cx="44" cy="44" r="8" stroke={color} strokeWidth="2.2" fill="none"/><Circle cx="44" cy="44" r="3" fill={color}/></Svg>; }
-function IconMatPilates({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Circle cx="30" cy="28" r="6" stroke={color} strokeWidth="2.4" fill="none"/><Line x1="30" y1="34" x2="30" y2="56" stroke={color} strokeWidth="2.4" strokeLinecap="round"/><Path d="M30 42 L18 36" stroke={color} strokeWidth="2.4" strokeLinecap="round" fill="none"/><Path d="M30 42 L42 36" stroke={color} strokeWidth="2.4" strokeLinecap="round" fill="none"/><Path d="M30 56 L22 70" stroke={color} strokeWidth="2.4" strokeLinecap="round" fill="none"/><Path d="M30 56 L38 70" stroke={color} strokeWidth="2.4" strokeLinecap="round" fill="none"/><Rect x="10" y="72" width="68" height="6" rx="3" stroke={color} strokeWidth="1.8" fill="none" opacity="0.6"/><Path d="M42 36 C54 26 64 20 74 18" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeDasharray="3 3" fill="none" opacity="0.7"/><Circle cx="74" cy="18" r="3.5" fill={color} opacity="0.8"/></Svg>; }
+function IconEpaules({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Path d="M22 62 Q18 46 30 36 Q44 26 44 18 Q44 26 58 36 Q70 46 66 62" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/><Circle cx="44" cy="13" r="6" stroke={color} strokeWidth="3.5" fill="none"/></Svg>; }
+function IconDos({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Line x1="44" y1="10" x2="44" y2="78" stroke={color} strokeWidth="3.5" strokeLinecap="round"/><Rect x="38" y="16" width="12" height="8" rx="2.5" stroke={color} strokeWidth="3.5" fill="none"/><Rect x="38" y="29" width="12" height="8" rx="2.5" stroke={color} strokeWidth="3.5" fill="none"/><Rect x="38" y="42" width="12" height="8" rx="2.5" stroke={color} strokeWidth="3.5" fill="none"/><Rect x="38" y="55" width="12" height="8" rx="2.5" stroke={color} strokeWidth="3.5" fill="none"/></Svg>; }
+function IconMobilite({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Circle cx="44" cy="44" r="16" stroke={color} strokeWidth="3.5" fill="none"/><Path d="M44 28 A16 16 0 0 1 60 44" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Path d="M60 36 L60 44 L52 44" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/><Path d="M24 44 A20 20 0 0 0 44 64" stroke={color} strokeWidth="2.5" strokeDasharray="4 3" strokeLinecap="round" fill="none" opacity="0.6"/></Svg>; }
+function IconPosture({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Circle cx="44" cy="14" r="6" stroke={color} strokeWidth="3.5" fill="none"/><Line x1="44" y1="20" x2="44" y2="54" stroke={color} strokeWidth="3.5" strokeLinecap="round"/><Path d="M28 30 L44 38 L60 30" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/><Path d="M44 54 L34 72" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Path d="M44 54 L54 72" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Line x1="24" y1="8" x2="24" y2="76" stroke={color} strokeWidth="2.5" strokeDasharray="3 3" opacity="0.45"/></Svg>; }
+function IconRespiration({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Path d="M8 44 Q18 22 28 44 Q38 66 44 44 Q50 22 60 44 Q70 66 80 44" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Path d="M16 54 Q24 44 32 54 Q40 64 48 54 Q56 44 64 54 Q70 50 76 54" stroke={color} strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.5"/></Svg>; }
+function IconConscience({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Path d="M14 44 Q28 22 44 44 Q58 66 72 44 Q58 22 44 44 Q28 66 14 44Z" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Circle cx="44" cy="44" r="8" stroke={color} strokeWidth="3.5" fill="none"/><Circle cx="44" cy="44" r="3" fill={color}/></Svg>; }
+function IconMatPilates({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Circle cx="30" cy="28" r="6" stroke={color} strokeWidth="3.5" fill="none"/><Line x1="30" y1="34" x2="30" y2="56" stroke={color} strokeWidth="3.5" strokeLinecap="round"/><Path d="M30 42 L18 36" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Path d="M30 42 L42 36" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Path d="M30 56 L22 70" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Path d="M30 56 L38 70" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Rect x="10" y="72" width="68" height="6" rx="3" stroke={color} strokeWidth="2.5" fill="none" opacity="0.6"/><Path d="M42 36 C54 26 64 20 74 18" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeDasharray="3 3" fill="none" opacity="0.7"/><Circle cx="74" cy="18" r="3.5" fill={color} opacity="0.8"/></Svg>; }
 const ICONS = { p1: IconEpaules, p2: IconDos, p3: IconMobilite, p4: IconPosture, p5: IconRespiration, p6: IconConscience, p7: IconMatPilates };
+
+/** Bulles ancrées en bas ; translateY positif = sous le bord, puis montée jusqu’en hors écran. */
+const BULLE_DEPART_SOUS_BORD = 72;
 
 function Bulle({ delay, x, size, duration }) {
   const a = useRef(new Animated.Value(0)).current;
   useEffect(() => { setTimeout(() => { Animated.loop(Animated.timing(a, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true })).start(); }, delay); }, []);
-  return <Animated.View style={{ position: 'absolute', bottom: 80, left: x, width: size, height: size, borderRadius: size / 2, borderWidth: 1.2, borderColor: 'rgba(0,240,255,0.9)', backgroundColor: 'rgba(0,240,255,0.15)', opacity: a.interpolate({ inputRange: [0, 0.1, 0.88, 1], outputRange: [0, 1, 0.7, 0] }), transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [0, -520] }) }] }} />;
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        bottom: 0,
+        left: x,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: 1.2,
+        borderColor: 'rgba(255,255,255,0.9)',
+        backgroundColor: 'rgba(255,255,255,0.20)',
+        opacity: a.interpolate({ inputRange: [0, 0.04, 0.12, 0.86, 1], outputRange: [0.45, 1, 1, 0.55, 0] }),
+        transform: [{
+          translateY: a.interpolate({
+            inputRange: [0, 1],
+            outputRange: [BULLE_DEPART_SOUS_BORD, -(SH + 120)],
+          }),
+        }],
+      }}
+    />
+  );
 }
 
 function Rayon({ left, width, delay, duration, opacity }) {
@@ -602,12 +732,11 @@ function Meduse() {
   const tickRef = useRef(0);
 
   useEffect(() => {
-    // Une seule valeur 0→1 linéaire — la courbe sinusoïdale est dans l'interpolate
     Animated.loop(
       Animated.timing(anim, {
         toValue: 1,
-        duration: 8000,        // cycle complet : inspiration + expiration
-        easing: Easing.linear, // PAS d'easing ici — le sin est dans l'interpolate
+        duration: 8000,
+        easing: Easing.linear,
         useNativeDriver: true,
       })
     ).start();
@@ -615,12 +744,11 @@ function Meduse() {
     return () => clearInterval(id);
   }, []);
 
-  // Demi-sinusoïde 0→π : montée douce, sommet, redescente douce — 20 points
   const N = 20;
   const pts = Array.from({ length: N + 1 }, (_, i) => i / N);
   const bellScale = anim.interpolate({
     inputRange:  pts,
-    outputRange: pts.map(t => 1.0 + 0.11 * Math.sin(Math.PI * t)),
+    outputRange: pts.map(t => 1.0 + (IS_IPAD ? 0.22 : 0.11) * Math.sin(Math.PI * t)),
   });
   const floatY = anim.interpolate({
     inputRange:  pts,
@@ -637,7 +765,6 @@ function Meduse() {
             <Path key={i} d={d} stroke={TENTS2[i].color} strokeWidth={TENTS2[i].w} fill="none" strokeLinecap="round" />
           ))}
           <Defs>
-            {/* Dégradé radial principal — bleu électrique vers sombre */}
             <RadialGradient id="bellGrad" cx="50%" cy="28%" rx="55%" ry="60%" fx="48%" fy="22%">
               <Stop offset="0%"   stopColor="#ffffff" stopOpacity="0.75" />
               <Stop offset="20%"  stopColor="#f8faff" stopOpacity="0.58" />
@@ -646,79 +773,22 @@ function Meduse() {
               <Stop offset="88%"  stopColor="#d8e4ff" stopOpacity="0.10" />
               <Stop offset="100%" stopColor="#c8d8f8" stopOpacity="0.04" />
             </RadialGradient>
-            {/* Surbrillance — éclat nacré */}
             <RadialGradient id="topGlow" cx="40%" cy="20%" rx="42%" ry="35%">
               <Stop offset="0%"   stopColor="#ffffff" stopOpacity="0.45" />
               <Stop offset="50%"  stopColor="#f8f8ff" stopOpacity="0.12" />
               <Stop offset="100%" stopColor="#ffffff" stopOpacity="0.00" />
             </RadialGradient>
           </Defs>
-
-          {/* ── HALO EXTÉRIEUR — lueur bioluminescente diffuse ── */}
-          <Path
-            d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z"
-            fill="none"
-            stroke="rgba(220,230,255,0.15)"
-            strokeWidth="18"
-          />
-          <Path
-            d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z"
-            fill="none"
-            stroke="rgba(230,235,255,0.20)"
-            strokeWidth="10"
-          />
-          <Path
-            d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z"
-            fill="none"
-            stroke="rgba(240,242,255,0.30)"
-            strokeWidth="5"
-          />
-          {/* ── CONTOUR LUMINEUX NET — le bord électrique ── */}
-          <Path
-            d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z"
-            fill="none"
-            stroke="rgba(255,255,255,0.90)"
-            strokeWidth="1.5"
-          />
-          {/* ── REFLET BRILLANT — arc supérieur ── */}
-          <Path
-            d="M 55 62 C 75 28 115 10 160 14 C 190 17 215 32 232 55"
-            fill="none"
-            stroke="rgba(255,255,255,0.70)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          />
-          <Path
-            d="M 62 58 C 82 26 118 9 158 13"
-            fill="none"
-            stroke="rgba(255,255,255,0.45)"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-          />
-
-          {/* ── BASE BLANCHE SOLIDE — évite que le fond bleu transperce ── */}
-          <Path
-            d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z"
-            fill="rgba(240,245,255,0.28)"
-          />
-          {/* Cloche — dégradé nacré par-dessus */}
-          <Path
-            d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z"
-            fill="url(#bellGrad)"
-          />
-          {/* Surbrillance naturelle */}
-          <Path
-            d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z"
-            fill="url(#topGlow)"
-          />
-          {/* Bord sombre supprimé — méduse plus lumineuse */}
-          {/* ── CONTOUR INTÉRIEUR — ligne lumineuse après le fill ── */}
-          <Path
-            d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z"
-            fill="none"
-            stroke="rgba(255,255,255,0.75)"
-            strokeWidth="1.2"
-          />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke="rgba(220,230,255,0.15)" strokeWidth="18" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke="rgba(230,235,255,0.20)" strokeWidth="10" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke="rgba(240,242,255,0.30)" strokeWidth="5" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke="rgba(255,255,255,0.90)" strokeWidth="1.5" />
+          <Path d="M 55 62 C 75 28 115 10 160 14 C 190 17 215 32 232 55" fill="none" stroke="rgba(255,255,255,0.70)" strokeWidth="2.5" strokeLinecap="round" />
+          <Path d="M 62 58 C 82 26 118 9 158 13" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1.2" strokeLinecap="round" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="rgba(240,245,255,0.28)" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="url(#bellGrad)" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="url(#topGlow)" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="1.2" />
           <Path d="M 140 105 Q 108 88 78  98"  stroke="rgba(200,215,255,0.25)" strokeWidth="1.3" fill="none"/>
           <Path d="M 140 105 Q 115 78 100 52"  stroke="rgba(200,215,255,0.25)" strokeWidth="1.3" fill="none"/>
           <Path d="M 140 105 Q 132 68 130 38"  stroke="rgba(205,218,255,0.22)" strokeWidth="1.2" fill="none"/>
@@ -733,16 +803,6 @@ function Meduse() {
           <Path d="M 140 148 C 134 160 126 172 122 186 C 118 198 124 208 130 218 C 124 228 118 240 122 254 C 118 264 112 274 115 288" stroke="rgba(200,210,255,0.65)" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
           <Path d="M 140 148 C 146 160 154 172 158 186 C 162 198 156 208 150 218 C 156 228 162 240 158 254 C 162 264 168 274 165 288" stroke="rgba(200,210,255,0.65)" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
           <Path d="M 140 148 C 140 164 138 178 136 192 C 134 204 138 215 140 225 C 142 215 146 204 144 192 C 142 178 140 164 140 148" stroke="rgba(210,218,255,0.58)" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
-          <Path d="M 126 178 C 118 182 112 190 110 200" stroke="rgba(215,222,255,0.52)" strokeWidth="1.4" fill="none" strokeLinecap="round"/>
-          <Path d="M 124 192 C 114 196 108 206 106 218" stroke="rgba(215,222,255,0.48)" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-          <Path d="M 122 210 C 112 215 106 226 108 238" stroke="rgba(218,224,255,0.42)" strokeWidth="1.0" fill="none" strokeLinecap="round"/>
-          <Path d="M 154 178 C 162 182 168 190 170 200" stroke="rgba(215,222,255,0.52)" strokeWidth="1.4" fill="none" strokeLinecap="round"/>
-          <Path d="M 156 192 C 166 196 172 206 174 218" stroke="rgba(215,222,255,0.48)" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-          <Path d="M 158 210 C 168 215 174 226 172 238" stroke="rgba(218,224,255,0.42)" strokeWidth="1.0" fill="none" strokeLinecap="round"/>
-          <Path d="M 110 200 C 104 205 100 214 102 224" stroke="rgba(220,226,255,0.35)" strokeWidth="0.8" fill="none" strokeLinecap="round"/>
-          <Path d="M 170 200 C 176 205 180 214 178 224" stroke="rgba(220,226,255,0.35)" strokeWidth="0.8" fill="none" strokeLinecap="round"/>
-          <Path d="M 136 218 C 130 224 126 234 128 244" stroke="rgba(220,226,255,0.32)" strokeWidth="0.8" fill="none" strokeLinecap="round"/>
-          <Path d="M 144 218 C 150 224 154 234 152 244" stroke="rgba(220,226,255,0.32)" strokeWidth="0.8" fill="none" strokeLinecap="round"/>
           <Circle cx="96"  cy="60" r="2.2" fill="rgba(200,235,255,0.72)" />
           <Circle cx="184" cy="60" r="2.2" fill="rgba(200,235,255,0.72)" />
           <Circle cx="68"  cy="95" r="1.8" fill="rgba(180,225,255,0.60)" />
@@ -789,43 +849,24 @@ const BULLES = [
   { x: 144, size: 6, delay: 7019,  duration: 13543 },
   { x: 195, size: 3, delay: 2266,  duration: 15348 },
   { x: 262, size: 2, delay: 771,   duration: 8796  },
-  { x: 88,  size: 7, delay: 2621,  duration: 13916 },
-  { x: 315, size: 2, delay: 6304,  duration: 13252 },
-  { x: 315, size: 5, delay: 8669,  duration: 11119 },
-  { x: 293, size: 2, delay: 11145, duration: 8876  },
-  { x: 359, size: 5, delay: 4371,  duration: 12573 },
-  { x: 67,  size: 3, delay: 7123,  duration: 9591  },
-  { x: 242, size: 2, delay: 11830, duration: 11315 },
-  { x: 266, size: 3, delay: 8317,  duration: 8743  },
-  { x: 330, size: 3, delay: 10468, duration: 15317 },
-  { x: 321, size: 3, delay: 2504,  duration: 13126 },
-  { x: 92,  size: 5, delay: 8689,  duration: 7009  },
-  { x: 316, size: 4, delay: 8005,  duration: 7319  },
-  { x: 67,  size: 4, delay: 5038,  duration: 10923 },
-  { x: 39,  size: 3, delay: 9295,  duration: 8290  },
-  { x: 53,  size: 5, delay: 1133,  duration: 15727 },
-  { x: 74,  size: 3, delay: 10809, duration: 14787 },
-  { x: 291, size: 3, delay: 4342,  duration: 15645 },
-  { x: 320, size: 4, delay: 3470,  duration: 15835 },
-  { x: 363, size: 3, delay: 11680, duration: 12107 },
-  { x: 214, size: 7, delay: 10647, duration: 13118 },
-  { x: 234, size: 5, delay: 7397,  duration: 8982  },
-  { x: 136, size: 3, delay: 1049,  duration: 12539 },
-  { x: 20,  size: 6, delay: 9075,  duration: 10770 },
-  { x: 311, size: 3, delay: 117,   duration: 8163  },
-  { x: 372, size: 7, delay: 964,   duration: 10750 },
-  { x: 44,  size: 2, delay: 5413,  duration: 8160  },
-  { x: 273, size: 3, delay: 4562,  duration: 14953 },
-  { x: 119, size: 5, delay: 2167,  duration: 14744 },
-  { x: 134, size: 5, delay: 6669,  duration: 10119 },
 ];
 
-// ══════════════════════════════════
-// VIDEO PLAYER
-// ══════════════════════════════════
-// ══════════════════════════════════
-// CELEBRATION — confettis 🪼
-// ══════════════════════════════════
+/** Moins dense qu’avant : 24 bulles × 3 décalages (les autres écrans gardent `BULLES` complet). */
+const BULLES_MONCORPS_BASE = BULLES.slice(0, 24);
+const BULLES_MONCORPS = [
+  ...BULLES_MONCORPS_BASE,
+  ...BULLES_MONCORPS_BASE.map((b, i) => ({
+    ...b,
+    x: Math.max(0, Math.min(SW - 8, b.x + Math.round(SW * 0.16))),
+    delay: b.delay + 550 + (i % 6) * 70,
+  })),
+  ...BULLES_MONCORPS_BASE.map((b, i) => ({
+    ...b,
+    x: Math.max(0, Math.min(SW - 8, b.x + Math.round(SW * 0.34))),
+    delay: b.delay + 1300 + (i % 8) * 55,
+  })),
+];
+
 function CelebrationOverlay({ visible, onDone, pilier, lang }) {
   const tr = T[lang] || T['fr'];
   const scaleAnim  = useRef(new Animated.Value(0)).current;
@@ -842,21 +883,15 @@ function CelebrationOverlay({ visible, onDone, pilier, lang }) {
 
   useEffect(() => {
     if (!visible) return;
-
-    // Fond + carte
     Animated.parallel([
       Animated.timing(opacAnim,  { toValue: 1, duration: 300, useNativeDriver: true }),
       Animated.spring(scaleAnim, { toValue: 1, friction: 7, tension: 80, useNativeDriver: true }),
     ]).start();
-
-    // Méduse bounce
     Animated.sequence([
       Animated.timing(medalAnim, { toValue: 1,  duration: 400, easing: Easing.out(Easing.back(2)), useNativeDriver: true }),
       Animated.timing(medalAnim, { toValue: 0.9,duration: 200, easing: Easing.inOut(Easing.sin),  useNativeDriver: true }),
       Animated.timing(medalAnim, { toValue: 1,  duration: 200, easing: Easing.inOut(Easing.sin),  useNativeDriver: true }),
     ]).start();
-
-    // Particules
     particles.forEach((p, i) => {
       setTimeout(() => {
         p.s.setValue(0.4 + Math.random() * 0.6);
@@ -867,70 +902,213 @@ function CelebrationOverlay({ visible, onDone, pilier, lang }) {
         ]).start();
       }, i * 40);
     });
-
-    // Auto-fermer après 3.2s
     setTimeout(onDone, 3200);
   }, [visible]);
 
   if (!visible) return null;
-
   const EMOJIS = ['✨','🌊','💧','⭐','🫧','💫','🌸'];
-
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, alignItems: 'center', justifyContent: 'center' }}>
-      {/* Fond sombre */}
       <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,5,15,0.82)', opacity: opacAnim }} />
-
-      {/* Particules */}
       {particles.map((p, i) => (
-        <Animated.Text key={i} style={{
-          position: 'absolute', fontSize: 18,
-          transform: [{ translateX: p.x }, { translateY: p.y }, { scale: p.s }],
-          opacity: p.o,
-        }}>
+        <Animated.Text key={i} style={{ position: 'absolute', fontSize: 18, transform: [{ translateX: p.x }, { translateY: p.y }, { scale: p.s }], opacity: p.o }}>
           {EMOJIS[i % EMOJIS.length]}
         </Animated.Text>
       ))}
-
-      {/* Carte centrale */}
       <Animated.View style={{
         transform: [{ scale: scaleAnim }],
         opacity: opacAnim,
-        backgroundColor: 'rgba(0,12,28,0.98)',
-        borderRadius: 32, padding: 36,
-        borderWidth: 1.5, borderColor: pilier?.color || 'rgba(0,215,255,0.5)',
-        alignItems: 'center', width: 300,
-        shadowColor: pilier?.color || '#00d7ff',
-        shadowOpacity: 0.6, shadowRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.14)',
+        borderRadius: 32,
+        padding: 36,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.48)',
+        alignItems: 'center',
+        width: 300,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOpacity: 0.45,
+        shadowRadius: 28,
+        shadowOffset: { width: 0, height: 12 },
+        elevation: 16,
       }}>
-        {/* Méduse animée */}
         <Animated.View style={{ transform: [{ scale: medalAnim }], marginBottom: 16 }}>
           <Text style={{ fontSize: 64 }}>🪼</Text>
         </Animated.View>
-        <Text style={{ fontSize: 11, color: pilier?.color || 'rgba(0,215,255,0.8)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 10 }}>
-          {tr.seance_done}
-        </Text>
-        <Text style={{ fontSize: 22, fontWeight: '200', color: 'rgba(215,248,255,0.95)', textAlign: 'center', lineHeight: 32 }}>
-          {pilier?.label}
-        </Text>
-        <View style={{ width: 40, height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginVertical: 16 }} />
-        <Text style={{ fontSize: 14, color: 'rgba(155,215,240,0.6)', textAlign: 'center', lineHeight: 22 }}>
-          {tr.celebration.split('\n')[0]}{'\n'}{tr.celebration.split('\n')[1]}
-        </Text>
+        <Text style={{ fontSize: 11, color: pilier?.color || 'rgba(0,215,255,0.95)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 10 }}>{tr.seance_done}</Text>
+        <Text style={{ fontSize: 22, fontWeight: '200', color: 'rgba(255,255,255,0.96)', textAlign: 'center', lineHeight: 32 }}>{pilier?.label}</Text>
+        <View style={{ width: 40, height: 1, backgroundColor: 'rgba(255,255,255,0.28)', marginVertical: 16 }} />
+        <Text style={{ fontSize: 14, color: 'rgba(230,248,255,0.78)', textAlign: 'center', lineHeight: 22 }}>{tr.celebration.split('\n')[0]}{'\n'}{tr.celebration.split('\n')[1]}</Text>
       </Animated.View>
     </View>
   );
 }
 
-function VideoPlayer({ seance, pilier, onClose, onComplete, lang }) {
+/** Saut ±10 s — verre + doubles chevrons + « 10 » (sans arc ni allure +10 / −10). */
+const SKIP_BTN = 56;
+
+function VideoSkipChevrons({ reverse, size = 22 }) {
+  const c = '#fff';
+  if (reverse) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 28 28">
+        <Path d="M15 6 L9 14 L15 22 V6Z" fill={c} />
+        <Path d="M23 6 L17 14 L23 22 V6Z" fill={c} />
+      </Svg>
+    );
+  }
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28">
+      <Path d="M7 6 L13 14 L7 22 V6Z" fill={c} />
+      <Path d="M15 6 L21 14 L15 22 V6Z" fill={c} />
+    </Svg>
+  );
+}
+
+function VideoSkip10Icon({ reverse, onPress, bumpTimer }) {
+  const a11y = reverse ? 'Revenir de 10 secondes' : 'Avancer de 10 secondes';
+  return (
+    <Pressable
+      accessibilityLabel={a11y}
+      accessibilityRole="button"
+      onPress={async () => {
+        bumpTimer();
+        await onPress?.();
+      }}
+      hitSlop={14}
+      style={{ width: 72, height: 72, alignItems: 'center', justifyContent: 'center' }}
+    >
+      <View
+        style={{
+          width: SKIP_BTN,
+          height: SKIP_BTN,
+          borderRadius: SKIP_BTN / 2,
+          backgroundColor: 'rgba(255,255,255,0.2)',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.45)',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: reverse ? 4 : 4,
+          paddingHorizontal: 6,
+          shadowColor: '#000',
+          shadowOpacity: 0.42,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 5 },
+          elevation: 12,
+        }}
+      >
+        {reverse ? (
+          <>
+            <VideoSkipChevrons reverse />
+            <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: -0.3 }}>10</Text>
+          </>
+        ) : (
+          <>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: -0.3 }}>10</Text>
+            <VideoSkipChevrons reverse={false} />
+          </>
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
+/** Icônes lecture / pause vectorielles (style apps vidéo récentes). */
+function VideoPlayPauseIcon({ playing, size = 36 }) {
+  const c = '#fff';
+  if (playing) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 40 40" accessibilityLabel="Pause">
+        <Rect x="9" y="8" width="9" height="24" rx="2.5" fill={c} />
+        <Rect x="22" y="8" width="9" height="24" rx="2.5" fill={c} />
+      </Svg>
+    );
+  }
+  return (
+    <View style={{ marginLeft: 4 }}>
+      <Svg width={size} height={size} viewBox="0 0 40 40" accessibilityLabel="Lecture">
+        <Path d="M12 8 L12 32 L34 20 L12 8 Z" fill={c} />
+      </Svg>
+    </View>
+  );
+}
+
+function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex }) {
   const tr = T[lang] || T['fr'];
   const videoRef = useRef(null);
+  const lastStatusRef = useRef({});
+  const hasRestoredRef = useRef(false);
+  const completedRef = useRef(false);
   const [status, setStatus] = useState({});
-  const [showControls, setShowControls] = useState(true);
+  const [resumeHint, setResumeHint] = useState(null);
+  const [showControls, setShowControls] = useState(false);
   const controlsTimer = useRef(null);
   const [dims, setDims] = useState(Dimensions.get('window'));
-  const [titre, duree, etape] = seance;
+  const playScale = useRef(new Animated.Value(1)).current;
+  const doneScale = useRef(new Animated.Value(1)).current;
+  const [videoLoadFailed, setVideoLoadFailed] = useState(false);
+  const [videoResetKey, setVideoResetKey] = useState(0);
+  const [titre, duree, etape, videoUrl] = seance;
+  const uri = videoUrl || VIDEO_DEMO;
+  const uriRef = useRef(uri);
+  uriRef.current = uri;
+  const lastPersistAtRef = useRef(0);
+
+  function maybePersistProgress(s) {
+    if (completedRef.current || pilier?.key == null || seanceIndex == null) return;
+    if (!s?.isLoaded || !s.durationMillis || s.positionMillis == null) return;
+    if (s.positionMillis < 2500 || s.durationMillis - s.positionMillis < 5000) return;
+    const now = Date.now();
+    if (now - lastPersistAtRef.current < 2800) return;
+    lastPersistAtRef.current = now;
+    saveVideoResume(pilier.key, seanceIndex, uriRef.current, s.positionMillis, s.durationMillis);
+  }
+
+  async function handleCloseVideo() {
+    bumpTimer();
+    const s = lastStatusRef.current;
+    if (!completedRef.current && pilier?.key != null && seanceIndex != null && s?.durationMillis && s.positionMillis != null) {
+      await saveVideoResume(pilier.key, seanceIndex, uriRef.current, s.positionMillis, s.durationMillis);
+    }
+    onClose();
+  }
+
+  function retryVideoLoad() {
+    setVideoLoadFailed(false);
+    hasRestoredRef.current = false;
+    setVideoResetKey((k) => k + 1);
+  }
+
+  function scheduleHide() {
+    if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    controlsTimer.current = setTimeout(() => setShowControls(false), 4500);
+  }
+
+  function revealControls() {
+    setShowControls(true);
+    scheduleHide();
+  }
+
+  function hideControls() {
+    if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    setShowControls(false);
+  }
+
+  function bumpTimer() {
+    scheduleHide();
+  }
+
   useEffect(() => {
+    (async () => {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+    })();
     ScreenOrientation.unlockAsync();
     const sub = Dimensions.addEventListener('change', ({ window }) => setDims(window));
     return () => {
@@ -939,102 +1117,373 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang }) {
       sub?.remove();
     };
   }, []);
-  function togglePlay() { if (status.isPlaying) { videoRef.current?.pauseAsync(); } else { videoRef.current?.playAsync(); } showControlsTemp(); }
-  function showControlsTemp() { setShowControls(true); if (controlsTimer.current) clearTimeout(controlsTimer.current); controlsTimer.current = setTimeout(() => setShowControls(false), 3000); }
-  function formatTime(ms) { if (!ms) return '0:00'; const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+
+  useEffect(() => {
+    return () => {
+      if (completedRef.current || pilier?.key == null || seanceIndex == null) return;
+      const s = lastStatusRef.current;
+      if (!s?.durationMillis || s.positionMillis == null) return;
+      void saveVideoResume(pilier.key, seanceIndex, uriRef.current, s.positionMillis, s.durationMillis);
+    };
+  }, [pilier?.key, seanceIndex]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'background' && next !== 'inactive') return;
+      if (completedRef.current || pilier?.key == null || seanceIndex == null) return;
+      const s = lastStatusRef.current;
+      if (!s?.durationMillis || s.positionMillis == null) return;
+      void saveVideoResume(pilier.key, seanceIndex, uriRef.current, s.positionMillis, s.durationMillis);
+    });
+    return () => sub.remove();
+  }, [pilier?.key, seanceIndex]);
+
+  function onPlaybackStatusUpdate(s) {
+    lastStatusRef.current = s;
+    if (!s.isLoaded && s.error) {
+      setStatus(s);
+      if (__DEV__) devWarn('Video playback error', s.error);
+      setVideoLoadFailed(true);
+      return;
+    }
+    if (s.isLoaded) setVideoLoadFailed(false);
+    setStatus(s);
+    maybePersistProgress(s);
+    if (!hasRestoredRef.current && s.isLoaded && s.durationMillis && pilier?.key != null && seanceIndex != null) {
+      hasRestoredRef.current = true;
+      loadVideoResume(pilier.key, seanceIndex, uriRef.current, s.durationMillis).then((pos) => {
+        if (pos != null && videoRef.current) {
+          videoRef.current.setPositionAsync(pos).then(() => {
+            setResumeHint(pos);
+            revealControls();
+            setTimeout(() => setResumeHint(null), 2800);
+          });
+        }
+      });
+    }
+  }
+
+  function togglePlay() {
+    Animated.sequence([
+      Animated.timing(playScale, { toValue: 0.94, duration: 70, useNativeDriver: true }),
+      Animated.spring(playScale, { toValue: 1, friction: 4, tension: 280, useNativeDriver: true }),
+    ]).start();
+    if (status.isPlaying) { videoRef.current?.pauseAsync(); } else { videoRef.current?.playAsync(); }
+    bumpTimer();
+  }
+
+  function formatTimeCode(ms) {
+    if (ms == null || !Number.isFinite(ms)) return '00:00';
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  }
+
+  function formatRemaining(msPos, msDur) {
+    if (!msDur) return '−00:00';
+    const rem = Math.max(0, msDur - (msPos || 0));
+    const s = Math.floor(rem / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return `−${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    return `−${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  }
+
   const progress = status.durationMillis ? status.positionMillis / status.durationMillis : 0;
+  const barW = Math.max(40, dims.width - 40);
+  const thumbSize = 16;
+  const thumbLeft = Math.max(0, Math.min(barW - thumbSize, progress * barW - thumbSize / 2));
+
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, backgroundColor: '#000', width: dims.width, height: dims.height }}>
-      <TouchableOpacity activeOpacity={1} onPress={showControlsTemp} style={{ flex: 1, backgroundColor: '#000' }}>
-        <Video ref={videoRef} source={{ uri: VIDEO_DEMO }} style={{ position: 'absolute', top: 0, left: 0, width: dims.width, height: dims.height }} resizeMode={ResizeMode.CONTAIN} shouldPlay onPlaybackStatusUpdate={s => setStatus(s)} />
-      </TouchableOpacity>
-      {showControls && (
-        <View style={{ position: 'absolute', top: 0, left: 0, width: dims.width, height: dims.height, justifyContent: 'space-between' }}>
-          <LinearGradient colors={['rgba(0,0,0,0.85)', 'transparent']} style={{ paddingTop: 54, paddingHorizontal: 20, paddingBottom: 30 }}>
-            <TouchableOpacity onPress={onClose} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14, paddingVertical: 10, paddingHorizontal: 16, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 24, alignSelf: 'flex-start', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.25)' }}>
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', letterSpacing: 1 }}>{tr.retour_video}</Text>
-            </TouchableOpacity>
-            <Text style={{ fontSize: 18, fontWeight: '200', color: 'rgba(255,255,255,0.95)' }}>{titre}</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
-              <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 0.5, borderColor: ETAPE_COLORS[etape] }}>
-                <Text style={{ fontSize: 10, color: ETAPE_COLORS[etape] }}>{tr.etapes[etape] || etape}</Text>
-              </View>
-              <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 0.5, borderColor: pilier.color }}>
-                <Text style={{ fontSize: 10, color: pilier.color }}>{pilier.label} · {duree}</Text>
-              </View>
-            </View>
-          </LinearGradient>
-          <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={{ paddingBottom: 28, paddingHorizontal: 24, paddingTop: 30 }}>
-            {/* Temps */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{formatTime(status.positionMillis)}</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{formatTime(status.durationMillis)}</Text>
-            </View>
-            {/* Barre de progression interactive */}
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={async (e) => {
-                if (!status.durationMillis) return;
-                const { locationX } = e.nativeEvent;
-                const barWidth = dims.width - 48;
-                const ratio = Math.max(0, Math.min(1, locationX / barWidth));
-                await videoRef.current?.setPositionAsync(ratio * status.durationMillis);
-                showControlsTemp();
-              }}
-              style={{ height: 28, justifyContent: 'center', marginBottom: 16 }}
-            >
-              <View style={{ height: 5, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, overflow: 'hidden', flexDirection: 'row' }}>
-                <View style={{ height: 5, flex: progress, backgroundColor: pilier.color, borderRadius: 3 }} />
-              </View>
-            </TouchableOpacity>
-            {/* Boutons -15s / +15s */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 32, marginBottom: 16 }}>
-              <TouchableOpacity onPress={async () => {
-                const pos = Math.max(0, (status.positionMillis || 0) - 15000);
-                await videoRef.current?.setPositionAsync(pos);
-                showControlsTemp();
-              }} style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 22, color: 'rgba(255,255,255,0.8)' }}>⏪</Text>
-                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>-15s</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={togglePlay} style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 24, color: 'white' }}>{status.isPlaying ? '⏸' : '▶'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={async () => {
-                const pos = Math.min(status.durationMillis || 0, (status.positionMillis || 0) + 15000);
-                await videoRef.current?.setPositionAsync(pos);
-                showControlsTemp();
-              }} style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 22, color: 'rgba(255,255,255,0.8)' }}>⏩</Text>
-                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>+15s</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity onPress={onComplete} style={{ height: 50, borderRadius: 25, backgroundColor: 'rgba(0,215,168,0.25)', borderWidth: 1.5, borderColor: 'rgba(0,215,168,0.8)', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(0,240,190,0.95)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.seance_done}</Text>
-            </TouchableOpacity>
-          </LinearGradient>
+      <Video
+        key={videoResetKey}
+        ref={videoRef}
+        source={{ uri }}
+        style={{ position: 'absolute', top: 0, left: 0, width: dims.width, height: dims.height }}
+        resizeMode={ResizeMode.CONTAIN}
+        shouldPlay
+        onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+      />
+
+      {videoLoadFailed && (
+        <View
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: 'rgba(0,0,0,0.94)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 28,
+            zIndex: 400,
+          }}
+          pointerEvents="box-none"
+        >
+          <Text style={{ fontSize: 16, fontWeight: '500', color: 'rgba(230,248,255,0.92)', textAlign: 'center', marginBottom: 20, lineHeight: 24 }}>
+            {tr.video_load_error}
+          </Text>
+          <TouchableOpacity
+            onPress={retryVideoLoad}
+            style={{ paddingVertical: 14, paddingHorizontal: 28, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(0,235,255,0.55)', backgroundColor: 'rgba(0,100,140,0.35)' }}
+            accessibilityRole="button"
+            accessibilityLabel={tr.video_retry}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(230,250,255,0.95)', letterSpacing: 0.5 }}>{tr.video_retry}</Text>
+          </TouchableOpacity>
         </View>
+      )}
+
+      {!videoLoadFailed && !showControls && (
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={revealControls} android_ripple={null} />
+      )}
+
+      {!videoLoadFailed && showControls && (
+        <>
+          <Pressable style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)' }]} onPress={hideControls} android_ripple={null} />
+          <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
+            <View style={{ paddingTop: 50, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }} pointerEvents="box-none">
+              <View style={{ flex: 1, paddingRight: 12 }} pointerEvents="box-none">
+                <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={10} style={{ alignSelf: 'flex-start', marginBottom: 10 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.9)' }}>{tr.retour_video}</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 17, fontWeight: '700', color: '#fff', letterSpacing: 0.3 }} numberOfLines={2}>{titre.toUpperCase()}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '300', color: 'rgba(255,255,255,0.65)', marginTop: 4 }}>
+                  {tr.etapes[etape] || etape} · {pilier.label} · {duree}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={14} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 22, color: '#fff', fontWeight: '300' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View pointerEvents="box-none" style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 28 }}>
+                <VideoSkip10Icon
+                  reverse
+                  bumpTimer={bumpTimer}
+                  onPress={async () => {
+                    const pos = Math.max(0, (status.positionMillis || 0) - 10000);
+                    await videoRef.current?.setPositionAsync(pos);
+                  }}
+                />
+                <Pressable
+                  onPress={togglePlay}
+                  hitSlop={12}
+                  accessibilityLabel={status.isPlaying ? 'Pause' : 'Lecture'}
+                  accessibilityRole="button"
+                >
+                  <Animated.View style={{
+                    width: 76,
+                    height: 76,
+                    borderRadius: 38,
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.45)',
+                    shadowColor: '#000',
+                    shadowOpacity: 0.5,
+                    shadowRadius: 18,
+                    shadowOffset: { width: 0, height: 6 },
+                    elevation: 14,
+                    transform: [{ scale: playScale }],
+                  }}>
+                    <VideoPlayPauseIcon playing={!!status.isPlaying} size={36} />
+                  </Animated.View>
+                </Pressable>
+                <VideoSkip10Icon
+                  bumpTimer={bumpTimer}
+                  onPress={async () => {
+                    const pos = Math.min(status.durationMillis || 0, (status.positionMillis || 0) + 10000);
+                    await videoRef.current?.setPositionAsync(pos);
+                  }}
+                />
+              </View>
+            </View>
+
+            <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingBottom: 32, paddingHorizontal: 20 }} pointerEvents="box-none">
+              {resumeHint != null && (
+                <View
+                  style={{
+                    alignSelf: 'center',
+                    marginBottom: 8,
+                    paddingHorizontal: 14,
+                    paddingVertical: 5,
+                    borderRadius: 14,
+                    backgroundColor: 'rgba(0,0,0,0.42)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.14)',
+                  }}
+                  accessibilityLiveRegion="polite"
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.92)', letterSpacing: 0.4 }}>
+                    {typeof tr.video_resume === 'function' ? tr.video_resume(formatTimeCode(resumeHint)) : ''}
+                  </Text>
+                </View>
+              )}
+              <Pressable
+                accessibilityLabel="Barre de progression de la vidéo"
+                accessibilityRole="adjustable"
+                onPress={async (e) => {
+                  bumpTimer();
+                  if (!status.durationMillis) return;
+                  const { locationX } = e.nativeEvent;
+                  const ratio = Math.max(0, Math.min(1, locationX / barW));
+                  await videoRef.current?.setPositionAsync(ratio * status.durationMillis);
+                }}
+                style={{ width: barW, height: 28, alignSelf: 'center', justifyContent: 'center', marginBottom: 8 }}
+              >
+                <View style={{ width: barW, height: 28, justifyContent: 'center' }}>
+                  <View style={{ height: 4, width: barW, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.22)' }}>
+                    <View style={{ width: barW * progress, height: 4, borderRadius: 2, backgroundColor: '#fff' }} />
+                  </View>
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      left: thumbLeft,
+                      top: (28 - thumbSize) / 2,
+                      width: thumbSize,
+                      height: thumbSize,
+                      borderRadius: thumbSize / 2,
+                      backgroundColor: '#fff',
+                      borderWidth: 1,
+                      borderColor: 'rgba(0,0,0,0.12)',
+                      shadowColor: '#000',
+                      shadowOpacity: 0.35,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 2 },
+                      elevation: 4,
+                    }}
+                  />
+                </View>
+              </Pressable>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: barW, alignSelf: 'center', marginBottom: 16 }}>
+                <Text style={{ fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.85)' }}>{formatTimeCode(status.positionMillis)}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.85)' }}>{formatRemaining(status.positionMillis, status.durationMillis)}</Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  bumpTimer();
+                  hapticSuccess();
+                  Animated.sequence([
+                    Animated.timing(doneScale, { toValue: 0.97, duration: 60, useNativeDriver: true }),
+                    Animated.spring(doneScale, { toValue: 1, friction: 4, tension: 280, useNativeDriver: true }),
+                  ]).start();
+                  completedRef.current = true;
+                  if (pilier?.key != null && seanceIndex != null) clearVideoResume(pilier.key, seanceIndex);
+                  onComplete();
+                }}
+                style={{ alignSelf: 'stretch' }}
+              >
+                <Animated.View style={{
+                  borderRadius: 24,
+                  overflow: 'hidden',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.26)',
+                  transform: [{ scale: doneScale }],
+                  shadowColor: '#000',
+                  shadowOpacity: Platform.OS === 'ios' ? 0.18 : 0.12,
+                  shadowRadius: 10,
+                  shadowOffset: { width: 0, height: 3 },
+                  elevation: Platform.OS === 'android' ? 5 : 0,
+                }}>
+                  {Platform.OS === 'web' ? (
+                    <View style={{
+                      height: 48,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      paddingHorizontal: 16,
+                      backgroundColor: 'rgba(255,255,255,0.06)',
+                    }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff', letterSpacing: 2, textTransform: 'uppercase' }}>
+                        {tr.seance_done}
+                      </Text>
+                    </View>
+                  ) : (
+                    <BlurView
+                      intensity={Platform.OS === 'ios' ? 14 : 10}
+                      tint="dark"
+                      style={{
+                        height: 48,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        paddingHorizontal: 16,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: '700',
+                          color: '#fff',
+                          letterSpacing: 2,
+                          textTransform: 'uppercase',
+                          textShadowColor: 'rgba(0,0,0,0.55)',
+                          textShadowOffset: { width: 0, height: 1 },
+                          textShadowRadius: 5,
+                        }}
+                      >
+                        {tr.seance_done}
+                      </Text>
+                    </BlurView>
+                  )}
+                </Animated.View>
+              </Pressable>
+            </View>
+          </View>
+        </>
       )}
     </View>
   );
 }
 
-// ══════════════════════════════════
-// PILIER PANEL — simplifié, toutes les séances visibles
-// ══════════════════════════════════
-function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended }) {
+function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isSubscriber, onActivateSubscription }) {
   const tr = T[lang] || T['fr'];
   const seances = getSeances(lang)[pilier.key] || [];
   const doneCount = done.filter(Boolean).length;
   const [activeVideo, setActiveVideo] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [resumeIndices, setResumeIndices] = useState(() => new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const next = await getResumeIndicesForPilier(pilier.key);
+      if (!cancelled) setResumeIndices(next);
+    })();
+    return () => { cancelled = true; };
+  }, [pilier.key, activeVideo]);
+
+  function tryOpenSeance(i) {
+    if (!canAccessSeanceIndex(i, isSubscriber)) {
+      onActivateSubscription?.();
+      return;
+    }
+    hapticLight();
+    setActiveVideo(i);
+  }
 
   if (activeVideo !== null) {
-    return <VideoPlayer seance={seances[activeVideo]} pilier={pilier} lang={lang} onClose={() => setActiveVideo(null)} onComplete={() => {
-      onToggle(activeVideo);
-      setActiveVideo(null);
-      setShowCelebration(true);
-    }} />;
+    return (
+      <Modal
+        visible
+        animationType="fade"
+        presentationStyle="fullScreen"
+        statusBarTranslucent
+        supportedOrientations={['portrait', 'landscape-left', 'landscape-right']}
+        onRequestClose={() => setActiveVideo(null)}
+      >
+        <VideoPlayer
+          seance={seances[activeVideo]}
+          pilier={pilier}
+          lang={lang}
+          seanceIndex={activeVideo}
+          onClose={() => setActiveVideo(null)}
+          onComplete={() => { onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
+        />
+      </Modal>
+    );
   }
 
   return (
@@ -1042,7 +1491,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended }) {
       <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
       <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
       <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
-      {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
+      {BULLES.map((b, i) => <Bulle key={i} {...b} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r'+i} delay={b.delay + 2000} x={b.x + SW * 0.35} size={b.size} duration={b.duration} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r2'+i} delay={b.delay + 5000} x={b.x + SW * 0.65} size={b.size} duration={b.duration} />)}
       <View style={{ paddingTop: 60, paddingHorizontal: 22, paddingBottom: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <TouchableOpacity onPress={onClose}>
@@ -1070,20 +1519,23 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended }) {
           ))}
         </ScrollView>
       </View>
-
       <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
         {seances.map(([titre, duree, etape], i) => {
           const isDone = done[i] === true || done[i] === 'true';
+          const locked = !canAccessSeanceIndex(i, isSubscriber);
           return (
-            <TouchableOpacity key={i} onPress={() => setActiveVideo(i)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDone ? 'rgba(0,30,22,0.7)' : 'rgba(0,18,32,0.7)', borderWidth: 0.5, borderColor: isDone ? 'rgba(0,220,150,0.35)' : 'rgba(0,195,240,0.12)', borderRadius: 18, marginBottom: 10, padding: 14 }}>
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: isDone ? 'rgba(0,200,130,0.2)' : 'rgba(0,180,235,0.1)', borderWidth: 1, borderColor: isDone ? 'rgba(0,220,150,0.5)' : 'rgba(0,195,240,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                <Text style={{ fontSize: 12, color: isDone ? 'rgba(0,230,160,0.9)' : 'rgba(0,210,250,0.7)' }}>{isDone ? '✓' : '▶'}</Text>
+            <TouchableOpacity key={i} onPress={() => tryOpenSeance(i)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDone ? 'rgba(0,30,22,0.7)' : 'rgba(0,18,32,0.7)', borderWidth: 0.5, borderColor: isDone ? 'rgba(0,220,150,0.35)' : locked ? 'rgba(255,200,80,0.25)' : 'rgba(0,195,240,0.12)', borderRadius: 18, marginBottom: 10, padding: 14, opacity: locked ? 0.72 : 1 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: isDone ? 'rgba(0,200,130,0.2)' : locked ? 'rgba(255,200,80,0.12)' : 'rgba(0,180,235,0.1)', borderWidth: 1, borderColor: isDone ? 'rgba(0,220,150,0.5)' : locked ? 'rgba(255,200,80,0.35)' : 'rgba(0,195,240,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Text style={{ fontSize: 12, color: isDone ? 'rgba(0,230,160,0.9)' : locked ? 'rgba(255,210,100,0.95)' : 'rgba(0,210,250,0.7)' }}>{isDone ? '✓' : locked ? '🔒' : '▶'}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '300', color: isDone ? 'rgba(0,220,150,0.8)' : 'rgba(195,240,255,0.9)', marginBottom: 4 }}>{titre}</Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Text style={{ fontSize: 15, fontWeight: '300', color: isDone ? 'rgba(0,220,150,0.8)' : locked ? 'rgba(155,215,240,0.55)' : 'rgba(195,240,255,0.9)', marginBottom: 4 }}>{titre}</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   <Text style={{ fontSize: 9, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(0,195,240,0.1)', color: ETAPE_COLORS[etape], borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.2)', letterSpacing: 0.5 }}>{tr.etapes[etape] || etape}</Text>
                   <Text style={{ fontSize: 9, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(0,195,240,0.1)', color: 'rgba(0,212,248,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.2)' }}>{duree}</Text>
+                  {resumeIndices.has(i) && !locked ? (
+                    <Text style={{ fontSize: 8, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(0,235,200,0.16)', color: 'rgba(0,245,220,0.95)', borderWidth: 0.5, borderColor: 'rgba(0,235,200,0.38)', letterSpacing: 0.4, fontWeight: '600', overflow: 'hidden' }}>{tr.reprise_badge}</Text>
+                  ) : null}
                 </View>
               </View>
               <Text style={{ fontSize: 11, color: 'rgba(0,195,240,0.3)', fontWeight: '300' }}>{String(i + 1).padStart(2, '0')}</Text>
@@ -1097,61 +1549,110 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended }) {
   );
 }
 
-// ══════════════════════════════════
-// ORBE — avec badge recommandé
-// ══════════════════════════════════
+/** Même langage visuel que le bouton lecture (verre + ombre noire), avec teinte pilier à l’intérieur. */
+const ORBE_OUTER = 76;
+const ORBE_INNER = 66;
+
 function Orbe({ pilier, onPress, recommended, lang }) {
   const tr = T[lang] || T['fr'];
   const pulse = useRef(new Animated.Value(1)).current;
   const IconComp = ICONS[pilier.key];
   useEffect(() => {
     Animated.loop(Animated.sequence([
-      Animated.timing(pulse, { toValue: recommended ? 1.28 : 1.18, duration: 2800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse, { toValue: 1.0, duration: 2800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: recommended ? 1.22 : 1.12, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 1.0, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ])).start();
   }, [recommended]);
   const pos = {};
   if (pilier.left !== undefined) pos.left = pilier.left;
   if (pilier.right !== undefined) pos.right = pilier.right;
+  const innerR = ORBE_INNER / 2;
+  const tintGrad = ['rgba(255,255,255,0.38)', pilier.bg, 'rgba(0,0,0,0.12)'];
   return (
-    <TouchableOpacity onPress={() => onPress(pilier)} style={{ position: 'absolute', top: pilier.top, ...pos, alignItems: 'center', zIndex: 20, width: 96, marginLeft: -16 }}>
-      <Animated.View style={{
-        transform: [{ scale: pulse }],
-        width: 74, height: 74, borderRadius: 37,
-        backgroundColor: pilier.bg,
-        borderWidth: recommended ? 2.5 : 2,
-        borderColor: pilier.color,
-        alignItems: 'center', justifyContent: 'center',
-        shadowColor: pilier.color,
-        shadowOpacity: recommended ? 0.95 : 0.65,
-        shadowRadius: recommended ? 16 : 10,
-        elevation: recommended ? 12 : 6,
-      }}>
-        <IconComp color={pilier.color} />
-        {/* Badge étoile recommandé */}
+    <TouchableOpacity
+      activeOpacity={0.88}
+      accessibilityLabel={pilier.label}
+      accessibilityRole="button"
+      onPress={() => { hapticLight(); onPress(pilier); }}
+      style={{ position: 'absolute', top: pilier.top, ...pos, alignItems: 'center', zIndex: 20, width: 96, marginLeft: -16 }}
+    >
+      <Animated.View
+        style={{
+          transform: [{ scale: pulse }],
+          width: ORBE_OUTER,
+          height: ORBE_OUTER,
+          borderRadius: ORBE_OUTER / 2,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(255,255,255,0.2)',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.45)',
+          shadowColor: '#000',
+          shadowOpacity: recommended ? 0.48 : 0.36,
+          shadowRadius: recommended ? 20 : 16,
+          shadowOffset: { width: 0, height: 6 },
+          elevation: recommended ? 14 : 10,
+        }}
+      >
+        <LinearGradient
+          colors={tintGrad}
+          locations={[0.05, 0.48, 1]}
+          start={{ x: 0.15, y: 0.1 }}
+          end={{ x: 0.88, y: 0.95 }}
+          style={{
+            width: ORBE_INNER,
+            height: ORBE_INNER,
+            borderRadius: innerR,
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: pilier.color,
+          }}
+        >
+          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+            <IconComp color={pilier.color} />
+          </View>
+        </LinearGradient>
         {recommended && (
-          <View style={{ position: 'absolute', top: -5, right: -5, width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(0,215,255,0.95)', borderWidth: 1, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 9, color: '#000', fontWeight: '700' }}>★</Text>
+          <View
+            style={{
+              position: 'absolute',
+              top: -2,
+              right: -2,
+              width: 18,
+              height: 18,
+              borderRadius: 9,
+              backgroundColor: 'rgba(0,200,255,0.96)',
+              borderWidth: 1.5,
+              borderColor: 'rgba(255,255,255,0.95)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOpacity: 0.35,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 8,
+            }}
+          >
+            <Text style={{ fontSize: 9, color: '#000', fontWeight: '800' }}>★</Text>
           </View>
         )}
       </Animated.View>
-      <Text style={{ fontSize: 11, fontWeight: '500', letterSpacing: 0.8, color: pilier.color, marginTop: 6, textTransform: 'uppercase', textAlign: 'center', width: 90 }}>{pilier.label}</Text>
+      <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 0.75, color: pilier.color, marginTop: 8, textTransform: 'uppercase', textAlign: 'center', width: 92, textShadowColor: 'rgba(0,8,24,0.45)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>{pilier.label}</Text>
       {recommended && (
-        <Text style={{ fontSize: 8, color: 'rgba(0,215,255,0.8)', letterSpacing: 0.5, textTransform: 'uppercase' }}>{tr.recommande_pour_toi}</Text>
+        <Text style={{ fontSize: 8, color: 'rgba(0,215,255,0.88)', letterSpacing: 0.5, textTransform: 'uppercase' }}>{tr.recommande_pour_toi}</Text>
       )}
     </TouchableOpacity>
   );
 }
 
-// ══════════════════════════════════
-// MON CORPS
-// ══════════════════════════════════
 function EmojiMeduse() {
   const scale = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     Animated.loop(Animated.sequence([
-      Animated.timing(scale, { toValue: 1.45, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 1.0,  duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(scale, { toValue: IS_IPAD ? 1.8 : 1.45, duration: 3500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1.0,  duration: 3500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ])).start();
   }, []);
   return (
@@ -1159,344 +1660,363 @@ function EmojiMeduse() {
   );
 }
 
-function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak }) {
+/** Tuiles SÉANCES / STREAK / PROGRESSION — verre (BlurView) comme les contrôles vidéo. */
+function MetricTile({ children }) {
+  if (Platform.OS === 'web') {
+    return (
+      <View style={[styles.metricShell, styles.metricWebFallback]}>
+        <View style={styles.metricBlurInner}>{children}</View>
+      </View>
+    );
+  }
+  return (
+    <View style={styles.metricShell}>
+      <BlurView intensity={Platform.OS === 'ios' ? 34 : 26} tint="dark" style={styles.metricBlurInner}>
+        {children}
+      </BlurView>
+    </View>
+  );
+}
+
+function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubscriber, onActivateSubscription }) {
   const tr = T[lang] || T['fr'];
   const [openPilier, setOpenPilier] = useState(null);
   const totalDone = Object.values(done).flat().filter(Boolean).length;
   const piliers = getPiliers(lang);
-
-  // Piliers recommandés en fonction des tensions choisies à l'onboarding
   const recommendedPiliers = tensionIdxs.map(i => ZONE_TO_PILIER[i]);
-
-  // Si aucune tension sélectionnée → on recommande p1 (épaules) par défaut
   const effectiveRecommended = recommendedPiliers.length > 0 ? recommendedPiliers : [];
 
   return (
     <View style={styles.screen}>
-      <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#000e18', '#001828', '#002d48', '#005878', '#00bdd0']} locations={[0, 0.2, 0.45, 0.70, 1]} style={StyleSheet.absoluteFill} />
       <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
       <Rayon left={140} width={55} delay={2000} duration={11000} opacity={0.15} />
       <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
-      {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 2, pointerEvents: 'none', overflow: 'visible' }}>
+        {BULLES_MONCORPS.map((b, i) => <Bulle key={`mc-${i}`} {...b} />)}
+        {IS_IPAD && BULLES_MONCORPS.map((b, i) => <Bulle key={`mc-ipad1-${i}`} delay={b.delay + 2000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.35))} size={b.size} duration={b.duration} />)}
+        {IS_IPAD && BULLES_MONCORPS.map((b, i) => <Bulle key={`mc-ipad2-${i}`} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />)}
+      </View>
       <Text style={styles.logoTitle}>FluidBody</Text>
-      <View style={{ position: 'absolute', top: 104, flexDirection: 'row', alignItems: 'center', zIndex: 10 }}><EmojiMeduse /><Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.85)', letterSpacing: 3, textTransform: 'uppercase', marginLeft: 8 }}>{tr.logoSub.replace('🪼  ','')}</Text></View>
-      {prenom ? <Text style={{ position: 'absolute', top: 138, fontSize: 13, color: 'rgba(0,210,250,0.5)', letterSpacing: 2 }}>{tr.bonjour(prenom)}</Text> : null}
+      <View style={{ position: 'absolute', top: 118, left: 0, right: 0, zIndex: 10 }} pointerEvents="box-none">
+        <Text
+          style={{
+            width: '100%',
+            textAlign: 'center',
+            fontSize: 21,
+            fontWeight: '300',
+            color: 'rgba(0,235,255,0.96)',
+            letterSpacing: 4,
+            textTransform: 'uppercase',
+          }}
+        >
+          Pilates
+        </Text>
+        {prenom ? (
+          <Text
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 16,
+              maxWidth: '44%',
+              textAlign: 'right',
+            }}
+            numberOfLines={1}
+          >
+            <Text style={{ fontSize: 17, fontWeight: '300', color: 'rgba(0,210,250,0.78)' }}>{tr.bonjour_mot} </Text>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: 'rgba(0,235,255,0.96)' }}>{prenom}</Text>
+          </Text>
+        ) : null}
+      </View>
+      <View style={{ position: 'absolute', top: 142, left: 10, right: 10, zIndex: 10, alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+          <EmojiMeduse />
+          <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.85)', letterSpacing: 3, textTransform: 'uppercase', marginLeft: 8 }}>{tr.logoSub.replace('🪼  ', '')}</Text>
+        </View>
+      </View>
       {piliers.map(p => (
-        <Orbe
-          key={p.key}
-          pilier={p}
-          onPress={setOpenPilier}
-          recommended={effectiveRecommended.includes(p.key)}
-          lang={lang}
-        />
+        <Orbe key={p.key} pilier={p} onPress={setOpenPilier} recommended={effectiveRecommended.includes(p.key)} lang={lang} />
       ))}
-      <View style={{ marginTop: 290 }}><Meduse /></View>
-      {/* ── SÉANCE DU JOUR ── bannière fine */}
+      <View style={{ marginTop: IS_IPAD ? 228 : 302 }}><Meduse /></View>
       {(() => {
         const sdj = getSeanceDuJour(done, tensionIdxs, lang);
         if (!sdj) return null;
         const [titre, duree] = sdj.seance;
         const alreadyDone = done[sdj.key]?.[sdj.idx] === true || done[sdj.key]?.[sdj.idx] === 'true';
+        const sdjLocked = !alreadyDone && !canAccessSeanceIndex(sdj.idx, isSubscriber);
         const IconComp = ICONS[sdj.key];
-        return (
-          <TouchableOpacity
-            onPress={() => !alreadyDone && setOpenPilier(sdj.pilier)}
-            style={{
-              position: 'absolute', bottom: 162, left: 16, right: 16,
-              backgroundColor: 'rgba(0,8,20,0.95)',
-              borderRadius: 14, paddingVertical: 9, paddingHorizontal: 12,
-              borderWidth: 1, borderColor: alreadyDone ? 'rgba(0,220,150,0.5)' : sdj.pilier.color,
-              flexDirection: 'row', alignItems: 'center', gap: 10,
-              zIndex: 5,
-            }}
-          >
-            <Text style={{ fontSize: 10 }}>🌅</Text>
-            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: sdj.pilier.bg, borderWidth: 1, borderColor: sdj.pilier.color, alignItems: 'center', justifyContent: 'center' }}>
+        const sdjShellBorder = alreadyDone ? 'rgba(0,235,165,0.7)' : sdjLocked ? 'rgba(255,210,100,0.65)' : 'rgba(255,255,255,0.6)';
+        const sdjRow = { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 12 };
+        const sdjTitleStyle = { fontSize: 14, fontWeight: '600', color: '#fff', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 };
+        const sdjSubStyle = { fontSize: 11, marginTop: 3, color: 'rgba(235,250,255,0.94)', fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 };
+        const sdjInner = Platform.OS === 'web' ? (
+          <View style={[sdjRow, { backgroundColor: 'rgba(0,14,30,0.52)' }]}>
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: sdj.pilier.bg, borderWidth: 1.5, borderColor: sdj.pilier.color, alignItems: 'center', justifyContent: 'center' }}>
               <IconComp color={sdj.pilier.color} />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 12, fontWeight: '300', color: 'rgba(215,248,255,0.95)' }} numberOfLines={1}>{titre}</Text>
-              <Text style={{ fontSize: 9, color: sdj.pilier.color }}>{tr.seance_du_jour} · {duree} min</Text>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={sdjTitleStyle} numberOfLines={2}>{titre}</Text>
+              <Text style={sdjSubStyle}><Text style={{ color: sdj.pilier.color }}>{tr.seance_du_jour}</Text>{' · '}{duree}{typeof duree === 'string' && duree.includes('min') ? '' : ' min'}</Text>
             </View>
-            <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: alreadyDone ? 'rgba(0,200,130,0.2)' : sdj.pilier.color.replace('0.9)', '0.25)'), borderWidth: 1, borderColor: alreadyDone ? 'rgba(0,220,150,0.6)' : sdj.pilier.color }}>
-              <Text style={{ fontSize: 10, fontWeight: '500', color: alreadyDone ? 'rgba(0,230,160,0.9)' : 'rgba(215,248,255,0.95)' }}>
-                {alreadyDone ? '✓' : tr.commencer_seance}
-              </Text>
+            <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: alreadyDone ? 'rgba(0,210,140,0.35)' : sdjLocked ? 'rgba(255,200,80,0.28)' : sdj.pilier.bg, borderWidth: 1, borderColor: alreadyDone ? 'rgba(0,235,165,0.85)' : sdjLocked ? 'rgba(255,215,120,0.75)' : sdj.pilier.color }}>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: alreadyDone ? '#fff' : sdjLocked ? 'rgba(40,30,10,0.95)' : 'rgba(255,255,255,0.98)' }}>{alreadyDone ? '✓' : sdjLocked ? '🔒' : tr.commencer_seance}</Text>
             </View>
+          </View>
+        ) : (
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 22 : 18}
+            tint="dark"
+            style={[sdjRow, { backgroundColor: 'rgba(0,12,26,0.2)' }]}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: sdj.pilier.bg, borderWidth: 1.5, borderColor: sdj.pilier.color, alignItems: 'center', justifyContent: 'center' }}>
+              <IconComp color={sdj.pilier.color} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={sdjTitleStyle} numberOfLines={2}>{titre}</Text>
+              <Text style={sdjSubStyle}><Text style={{ color: sdj.pilier.color }}>{tr.seance_du_jour}</Text>{' · '}{duree}{typeof duree === 'string' && duree.includes('min') ? '' : ' min'}</Text>
+            </View>
+            <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: alreadyDone ? 'rgba(0,210,140,0.35)' : sdjLocked ? 'rgba(255,200,80,0.28)' : sdj.pilier.bg, borderWidth: 1, borderColor: alreadyDone ? 'rgba(0,235,165,0.85)' : sdjLocked ? 'rgba(255,215,120,0.75)' : sdj.pilier.color }}>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: alreadyDone ? '#fff' : sdjLocked ? 'rgba(40,30,10,0.95)' : 'rgba(255,255,255,0.98)' }}>{alreadyDone ? '✓' : sdjLocked ? '🔒' : tr.commencer_seance}</Text>
+            </View>
+          </BlurView>
+        );
+        return (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => {
+              if (alreadyDone) return;
+              if (sdjLocked) {
+                onActivateSubscription?.();
+                return;
+              }
+              hapticLight();
+              setOpenPilier(sdj.pilier);
+            }}
+            style={{
+              position: 'absolute',
+              bottom: 100,
+              left: 14,
+              right: 14,
+              borderRadius: 16,
+              overflow: 'hidden',
+              borderWidth: 1.5,
+              borderColor: sdjShellBorder,
+              zIndex: 5,
+              opacity: sdjLocked ? 0.92 : 1,
+              shadowColor: '#000',
+              shadowOpacity: 0.24,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 9,
+            }}
+          >
+            {sdjInner}
           </TouchableOpacity>
         );
       })()}
       <View style={styles.metrics}>
-        <View style={styles.metric}><Text style={styles.mval}>{totalDone}</Text><Text style={styles.mlbl}>{tr.m_seances}</Text></View>
-        <View style={styles.metric}><Text style={styles.mval}>{streak > 0 ? `${streak}🔥` : '0🔥'}</Text><Text style={styles.mlbl}>{tr.m_streak}</Text></View>
-        <View style={styles.metric}><Text style={styles.mval}>{Math.round(totalDone / 140 * 100)}%</Text><Text style={styles.mlbl}>{tr.m_progress}</Text></View>
+        <MetricTile><Text style={styles.mval}>{totalDone}</Text><Text style={styles.mlbl}>{tr.m_seances}</Text></MetricTile>
+        <MetricTile><Text style={styles.mval}>{streak > 0 ? `${streak}🔥` : '0🔥'}</Text><Text style={styles.mlbl}>{tr.m_streak}</Text></MetricTile>
+        <MetricTile><Text style={styles.mval}>{Math.round(totalDone / 140 * 100)}%</Text><Text style={styles.mlbl}>{tr.m_progress}</Text></MetricTile>
       </View>
       {openPilier && (
-        <PilierPanel
-          pilier={openPilier}
-          done={done[openPilier.key]}
-          onToggle={(idx) => toggleDone(openPilier.key, idx)}
-          onClose={() => setOpenPilier(null)}
-          lang={lang}
-          isRecommended={effectiveRecommended.includes(openPilier.key)}
-        />
+        <PilierPanel pilier={openPilier} done={done[openPilier.key]} onToggle={(idx) => toggleDone(openPilier.key, idx)} onClose={() => setOpenPilier(null)} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} />
       )}
     </View>
   );
 }
 
-// ══════════════════════════════════
-// SABRINA — freemium (3 msg/jour gratuits)
-// ══════════════════════════════════
-const FREE_LIMIT = 3;
-const STORAGE_KEY_COUNT = 'sabrina_msg_count';
-const STORAGE_KEY_DATE  = 'sabrina_msg_date';
-const STORAGE_KEY_PREMIUM = 'sabrina_premium';
+/** Abonnement vidéos simulé — pas de module IAP dans l’app. */
+const FLUID_SUB_KEY = 'fluid_sub';
+const DONE_KEY = 'fluidbody_done';
+const STREAK_KEY = 'fluidbody_streak';
+const STREAK_DATE_KEY = 'fluidbody_streak_date';
+/** Dernière demande OTP email — évite un 2ᵉ envoi si l’utilisateur repasse par « J’ai déjà un compte » ou rouvre l’écran. */
+const AUTH_OTP_PENDING_KEY = 'fluid_auth_otp_pending_v1';
+const AUTH_OTP_RESEND_COOLDOWN_MS = 90 * 1000;
+const AUTH_OTP_STEP_RESTORE_MS = 25 * 60 * 1000;
 
-function PaywallModal({ visible, onClose, onUnlock, onRestore, lang }) {
+function getPriceString(p) {
+  if (!p) return '';
+  if (typeof p.priceString === 'string' && p.priceString.trim()) return p.priceString.trim();
+  if (typeof p.localizedPrice === 'string' && p.localizedPrice.trim()) return p.localizedPrice.trim();
+  if (p.price != null && p.currencyCode) return `${p.price} ${p.currencyCode}`;
+  if (p.price != null) return String(p.price);
+  return '';
+}
+
+function PaywallModal({ visible, onClose, lang, products, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore }) {
   const tr = T[lang] || T['fr'];
-  const scaleAnim = useRef(new Animated.Value(0.92)).current;
-  useEffect(() => {
-    if (visible) Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 8 }).start();
-    else scaleAnim.setValue(0.92);
-  }, [visible]);
+  const monthly = products?.[PRODUCT_IDS.monthly];
+  const yearly = products?.[PRODUCT_IDS.yearly];
+  const monthlyPrice = getPriceString(monthly);
+  const yearlyPrice = getPriceString(yearly);
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,5,15,0.88)', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <Animated.View style={{ transform: [{ scale: scaleAnim }], width: 300, backgroundColor: 'rgba(0,12,28,0.98)', borderRadius: 28, borderWidth: 1, borderColor: 'rgba(0,215,255,0.25)', overflow: 'hidden' }}>
-          <LinearGradient colors={['rgba(0,60,100,0.6)', 'rgba(0,12,28,0)']} style={{ padding: 32, alignItems: 'center' }}>
-            <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(0,180,235,0.15)', borderWidth: 2, borderColor: 'rgba(0,220,255,0.5)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-              <EmojiMeduse />
+    <Modal visible={!!visible} animationType="fade" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
+      <View style={{ flex: 1 }}>
+        <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
+        <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
+        <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
+        {BULLES.map((b, i) => <Bulle key={`pay-b-${i}`} {...b} />)}
+        <View style={{ paddingTop: 62, paddingHorizontal: 22, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <TouchableOpacity onPress={onClose} activeOpacity={0.8}>
+            <Text style={{ fontSize: 10, color: 'rgba(0,205,248,0.44)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.paywall_close}</Text>
+          </TouchableOpacity>
+          <EmojiMeduse />
+          <View style={{ width: 40 }} />
+        </View>
+
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}>
+          <Text style={{ fontSize: 26, fontWeight: '200', color: 'rgba(215,248,255,0.97)', letterSpacing: 1, marginBottom: 8 }}>{tr.paywall_title}</Text>
+          <Text style={{ fontSize: 14, fontWeight: '200', color: 'rgba(0,210,250,0.6)', lineHeight: 22, marginBottom: 18 }}>{tr.paywall_sub}</Text>
+
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+            {[
+              { key: 'm', title: tr.paywall_monthly, price: loadingPrices ? tr.paywall_prices_loading : (monthlyPrice || '—'), border: 'rgba(0,215,255,0.28)', glow: 'rgba(0,235,255,0.12)', titleColor: 'rgba(0,210,250,0.70)' },
+              { key: 'y', title: tr.paywall_yearly, price: loadingPrices ? tr.paywall_prices_loading : (yearlyPrice || '—'), border: 'rgba(255,210,90,0.30)', glow: 'rgba(255,210,90,0.10)', titleColor: 'rgba(255,210,90,0.80)' },
+            ].map((card) => (
+              <View
+                key={card.key}
+                style={{
+                  flex: 1,
+                  borderRadius: 18,
+                  overflow: 'hidden',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.14)',
+                  shadowColor: card.glow,
+                  shadowOpacity: 1,
+                  shadowRadius: 26,
+                  shadowOffset: { width: 0, height: 14 },
+                  elevation: 14,
+                }}
+              >
+                {Platform.OS === 'web' ? (
+                  <View style={{ padding: 16, backgroundColor: 'rgba(0,18,38,0.30)' }}>
+                    <Text style={{ fontSize: 11, color: card.titleColor, letterSpacing: 2, textTransform: 'uppercase' }}>{card.title}</Text>
+                    <Text style={{ fontSize: 22, fontWeight: '200', color: 'rgba(215,248,255,0.95)', marginTop: 10 }}>{card.price}</Text>
+                  </View>
+                ) : (
+                  <View style={{ position: 'relative' }}>
+                    <BlurView
+                      intensity={Platform.OS === 'ios' ? 42 : 28}
+                      tint="dark"
+                      style={{ padding: 16, backgroundColor: 'rgba(0,18,38,0.10)' }}
+                    >
+                      <Text style={{ fontSize: 11, color: card.titleColor, letterSpacing: 2, textTransform: 'uppercase' }}>{card.title}</Text>
+                      <Text style={{ fontSize: 22, fontWeight: '200', color: 'rgba(215,248,255,0.98)', marginTop: 10 }}>{card.price}</Text>
+                    </BlurView>
+
+                    {/* Reflets "glassy" */}
+                    <LinearGradient
+                      colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0)']}
+                      locations={[0, 0.35, 1]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 44 }}
+                      pointerEvents="none"
+                    />
+                    <LinearGradient
+                      colors={['rgba(0,235,255,0.16)', 'rgba(0,235,255,0)', 'rgba(255,210,90,0.12)']}
+                      locations={[0, 0.55, 1]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                      pointerEvents="none"
+                    />
+                    <View
+                      pointerEvents="none"
+                      style={{
+                        position: 'absolute',
+                        top: 1,
+                        left: 1,
+                        right: 1,
+                        bottom: 1,
+                        borderRadius: 17,
+                        borderWidth: 1,
+                        borderColor: card.border,
+                      }}
+                    />
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+
+          {disabled && (
+            <View style={{ marginBottom: 14, backgroundColor: 'rgba(255,200,80,0.10)', borderWidth: 1, borderColor: 'rgba(255,200,80,0.25)', borderRadius: 16, padding: 14 }}>
+              <Text style={{ color: 'rgba(255,220,140,0.9)', fontSize: 12, lineHeight: 18 }}>{tr.paywall_not_available}</Text>
             </View>
-            <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(255,200,50,0.15)', borderWidth: 1, borderColor: 'rgba(255,200,50,0.5)', marginBottom: 14 }}>
-              <Text style={{ fontSize: 10, color: 'rgba(255,210,60,0.9)', letterSpacing: 2, fontWeight: '600' }}>{tr.premium_badge}</Text>
-            </View>
-            <Text style={{ fontSize: 22, fontWeight: '300', color: 'rgba(215,248,255,0.95)', textAlign: 'center', marginBottom: 10, letterSpacing: 0.5 }}>{tr.free_limit_title}</Text>
-            <Text style={{ fontSize: 14, fontWeight: '200', color: 'rgba(155,215,240,0.6)', textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>{tr.free_limit_sub}</Text>
-            <View style={{ alignSelf: 'stretch', gap: 10 }}>
-              <TouchableOpacity onPress={onUnlock} style={{ height: 56, borderRadius: 28, backgroundColor: 'rgba(0,180,235,0.3)', borderWidth: 1.5, borderColor: 'rgba(0,235,255,0.8)', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 15, fontWeight: '500', color: 'rgba(230,250,255,1)', letterSpacing: 1 }}>{tr.free_limit_cta}</Text>
-              </TouchableOpacity>
-              <Text style={{ fontSize: 11, color: 'rgba(0,195,240,0.35)', textAlign: 'center' }}>{tr.free_limit_price}</Text>
-              <TouchableOpacity onPress={onRestore} style={{ height: 36, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 12, color: 'rgba(0,195,240,0.5)', letterSpacing: 1 }}>{tr.free_limit_restore}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={onClose} style={{ height: 40, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 13, color: 'rgba(0,180,220,0.4)', letterSpacing: 1 }}>{tr.free_limit_later}</Text>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </Animated.View>
+          )}
+
+          <TouchableOpacity
+            onPress={onBuyMonthly}
+            disabled={disabled || loadingPrices}
+            activeOpacity={0.85}
+            style={[
+              styles.btnCtaLarge,
+              (disabled || loadingPrices) && styles.btnCtaOff,
+              { borderColor: 'rgba(0,235,255,0.9)', backgroundColor: 'rgba(0,180,235,0.28)', marginBottom: 10 },
+            ]}
+          >
+            <Text style={styles.btnCtaLargeTxt}>{tr.paywall_buy_monthly}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={onBuyYearly}
+            disabled={disabled || loadingPrices}
+            activeOpacity={0.85}
+            style={[
+              styles.btnCtaLarge,
+              (disabled || loadingPrices) && styles.btnCtaOff,
+              { borderColor: 'rgba(255,210,90,0.9)', backgroundColor: 'rgba(255,200,80,0.20)', marginBottom: 14 },
+            ]}
+          >
+            <Text style={[styles.btnCtaLargeTxt, { color: 'rgba(255,245,220,1)' }]}>{tr.paywall_buy_yearly}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={onRestore}
+            disabled={disabled}
+            activeOpacity={0.85}
+            style={{
+              height: 54,
+              borderRadius: 27,
+              borderWidth: 1,
+              borderColor: 'rgba(0,215,255,0.28)',
+              backgroundColor: 'rgba(0,18,38,0.55)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(0,230,255,0.92)', letterSpacing: 1 }}>{tr.paywall_restore}</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
     </Modal>
   );
 }
 
-// Suggestions dynamiques selon les zones de tension
-const SUGGESTIONS_PAR_ZONE = {
-  fr: {
-    0: ["Mon dos est tendu ce matin", "Mal à la nuque", "Séance pour le dos"],
-    1: ["Mes épaules sont bloquées", "Libérer mes épaules", "Exercice épaules"],
-    2: ["Mes hanches sont raides", "Mobiliser mes hanches", "Séance mobilité"],
-    3: ["Ma posture me préoccupe", "Comment corriger ma posture", "Exercice de posture"],
-    4: ["Je veux mieux respirer", "Respiration profonde", "Gérer le stress par le souffle"],
-    5: ["Je me sens stressé", "Aide-moi à me recentrer", "Séance de pleine conscience"],
-  },
-  en: {
-    0: ["My back is tense", "Neck pain relief", "Back session today"],
-    1: ["My shoulders are locked", "Free my shoulders", "Shoulder exercise"],
-    2: ["My hips are stiff", "Hip mobility today", "Mobility session"],
-    3: ["My posture concerns me", "How to fix my posture", "Posture exercise"],
-    4: ["I want to breathe better", "Deep breathing exercise", "Stress relief through breath"],
-    5: ["I feel stressed", "Help me recenter", "Mindfulness session"],
-  },
-  es: {
-    0: ["Mi espalda está tensa", "Dolor de cuello", "Sesión para la espalda"],
-    1: ["Mis hombros están bloqueados", "Liberar mis hombros", "Ejercicio de hombros"],
-    2: ["Mis caderas están rígidas", "Movilidad de caderas", "Sesión de movilidad"],
-    3: ["Mi postura me preocupa", "Corregir mi postura", "Ejercicio de postura"],
-    4: ["Quiero respirar mejor", "Ejercicio de respiración", "Alivio del estrés"],
-    5: ["Me siento estresado", "Ayudame a centrarme", "Sesión de consciencia"],
-  },
-  it: {
-    0: ["La mia schiena è tesa", "Dolore al collo", "Sessione per la schiena"],
-    1: ["Le mie spalle sono bloccate", "Liberare le spalle", "Esercizio per le spalle"],
-    2: ["I miei fianchi sono rigidi", "Mobilità anca oggi", "Sessione mobilità"],
-    3: ["La mia postura mi preoccupa", "Come correggere la postura", "Esercizio di postura"],
-    4: ["Voglio respirare meglio", "Esercizio di respirazione", "Sollievo dallo stress"],
-    5: ["Mi sento stressato", "Aiutami a ricentrarmi", "Sessione di consapevolezza"],
-  },
-};
-
-function SabrinaScreen({ prenom, lang, tensionIdxs = [] }) {
-  const tr = T[lang] || T['fr'];
-  const [messages, setMessages] = useState([{ role: 'assistant', content: tr.sabrina_hello(prenom) }]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [msgCount, setMsgCount] = useState(0);
-  const [isPremium, setIsPremium] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
-  const scrollRef = useRef(null);
-
-  useEffect(() => {
-    async function loadState() {
-      try {
-        const premium = await AsyncStorage.getItem(STORAGE_KEY_PREMIUM);
-        if (premium === 'true') { setIsPremium(true); return; }
-        const today = new Date().toDateString();
-        const savedDate = await AsyncStorage.getItem(STORAGE_KEY_DATE);
-        if (savedDate === today) {
-          const count = parseInt(await AsyncStorage.getItem(STORAGE_KEY_COUNT) || '0');
-          setMsgCount(count);
-        } else {
-          await AsyncStorage.setItem(STORAGE_KEY_DATE, today);
-          await AsyncStorage.setItem(STORAGE_KEY_COUNT, '0');
-          setMsgCount(0);
-        }
-      } catch (e) {}
-    }
-    loadState();
-  }, []);
-
-  const messagesLeft = Math.max(0, FREE_LIMIT - msgCount);
-  const canSend = isPremium || msgCount < FREE_LIMIT;
-
-  // Suggestions personnalisées selon les zones de tension
-  const dynamicSuggestions = (() => {
-    const langSugg = SUGGESTIONS_PAR_ZONE[lang] || SUGGESTIONS_PAR_ZONE['fr'];
-    const base = [...tr.sabrina_suggestions];
-    if (tensionIdxs.length === 0) return base;
-    const personal = tensionIdxs.flatMap(idx => langSugg[idx] || []).slice(0, 3);
-    return [...personal, base[base.length - 1]]; // garder "Propose-moi une séance"
-  })();
-
-  async function handleUnlock() {
-    try { await AsyncStorage.setItem(STORAGE_KEY_PREMIUM, 'true'); } catch (e) {}
-    setIsPremium(true);
-    setShowPaywall(false);
+async function readAuthOtpPending() {
+  try {
+    const raw = await AsyncStorage.getItem(AUTH_OTP_PENDING_KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (!o?.email || typeof o.sentAt !== 'number') return null;
+    return o;
+  } catch {
+    return null;
   }
-
-  async function handleRestore() {
-    try {
-      const premium = await AsyncStorage.getItem(STORAGE_KEY_PREMIUM);
-      if (premium === 'true') {
-        setIsPremium(true);
-        setShowPaywall(false);
-      }
-    } catch (e) {}
-  }
-
-  async function sendMessage(text) {
-    const msg = text || input.trim();
-    if (!msg) return;
-    if (!canSend) { setShowPaywall(true); return; }
-    setInput('');
-    const newMessages = [...messages, { role: 'user', content: msg }];
-    setMessages(newMessages);
-    setLoading(true);
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-    // Incrémente le compteur
-    if (!isPremium) {
-      const newCount = msgCount + 1;
-      setMsgCount(newCount);
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY_COUNT, String(newCount));
-      } catch (e) {}
-    }
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, system: tr.sabrina_system, messages: newMessages.map(m => ({ role: m.role, content: m.content })) }),
-      });
-      const data = await response.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.content?.[0]?.text || '🪼' }]);
-    } catch (e) {
-      setMessages(prev => [...prev, { role: 'assistant', content: '🪼' }]);
-    }
-    setLoading(false);
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-  }
-
-
-  return (
-    <View style={{ flex: 1 }}>
-      <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-      <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
-      <View style={{ paddingTop: 58, paddingHorizontal: 22, paddingBottom: 12, alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,210,255,0.1)' }}>
-        <View style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: 'rgba(0,180,235,0.15)', borderWidth: 1.5, borderColor: 'rgba(0,220,255,0.4)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-          <EmojiMeduse />
-        </View>
-        <Text style={{ fontSize: 20, fontWeight: '200', color: 'rgba(215,248,255,0.95)', letterSpacing: 3 }}>Sabrina</Text>
-        {isPremium
-          ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-              <Text style={{ fontSize: 9, color: 'rgba(255,210,60,0.8)', letterSpacing: 2 }}>{tr.premium_active}</Text>
-            </View>
-          : <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-              <Text style={{ fontSize: 9, color: 'rgba(0,210,250,0.42)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.sabrina_sub}</Text>
-              {messagesLeft > 0 && (
-                <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(0,180,235,0.15)', borderWidth: 0.5, borderColor: 'rgba(0,210,255,0.3)' }}>
-                  <Text style={{ fontSize: 9, color: 'rgba(0,215,255,0.7)' }}>{tr.free_messages_left(messagesLeft)}</Text>
-                </View>
-              )}
-            </View>
-        }
-      </View>
-      <ScrollView ref={scrollRef} style={{ flex: 1, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 16 }}>
-        {messages.map((m, i) => (
-          <View key={i} style={{ alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 12 }}>
-            <View style={{ maxWidth: '85%', backgroundColor: m.role === 'user' ? 'rgba(0,180,235,0.18)' : 'rgba(0,30,55,0.85)', borderWidth: 0.5, borderColor: m.role === 'user' ? 'rgba(0,210,255,0.35)' : 'rgba(0,195,240,0.18)', borderRadius: 18, borderBottomRightRadius: m.role === 'user' ? 4 : 18, borderBottomLeftRadius: m.role === 'assistant' ? 4 : 18, padding: 14 }}>
-              <Text style={{ fontSize: 15, fontWeight: '200', color: 'rgba(215,248,255,0.92)', lineHeight: 24 }}>{m.content}</Text>
-              {m.role === 'assistant' && <Text style={{ fontSize: 9, color: 'rgba(0,210,250,0.35)', marginTop: 6, letterSpacing: 1 }}>{tr.sabrina_label}</Text>}
-            </View>
-          </View>
-        ))}
-        {loading && <View style={{ alignItems: 'flex-start', marginBottom: 12 }}><View style={{ backgroundColor: 'rgba(0,30,55,0.85)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.18)', borderRadius: 18, borderBottomLeftRadius: 4, padding: 14 }}><Text style={{ fontSize: 14, color: 'rgba(0,210,250,0.55)', fontWeight: '200' }}>{tr.sabrina_thinking}</Text></View></View>}
-        {!isPremium && messagesLeft === 0 && (
-          <TouchableOpacity onPress={() => setShowPaywall(true)} style={{ margin: 8, padding: 18, borderRadius: 20, backgroundColor: 'rgba(0,18,38,0.9)', borderWidth: 1, borderColor: 'rgba(0,215,255,0.3)', alignItems: 'center' }}>
-            <EmojiMeduse />
-            <Text style={{ fontSize: 15, fontWeight: '300', color: 'rgba(215,248,255,0.9)', textAlign: 'center', marginBottom: 4 }}>{tr.free_limit_title}</Text>
-            <Text style={{ fontSize: 12, color: 'rgba(0,215,255,0.6)', textAlign: 'center' }}>{tr.free_limit_cta} →</Text>
-          </TouchableOpacity>
-        )}
-        <View style={{ height: 20 }} />
-      </ScrollView>
-      {canSend && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingHorizontal: 16, paddingVertical: 10, maxHeight: 52 }}>
-          {dynamicSuggestions.map((s, i) => (
-            <TouchableOpacity key={i} onPress={() => sendMessage(s)} style={{ marginRight: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: 'rgba(0,30,55,0.8)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.2)' }}>
-              <Text style={{ fontSize: 11, color: 'rgba(0,210,250,0.7)' }}>{s}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 30, paddingTop: 8, gap: 10 }}>
-          <TouchableOpacity onPress={() => !canSend && setShowPaywall(true)} style={{ flex: 1 }} activeOpacity={canSend ? 1 : 0.7}>
-            <TextInput
-              value={input}
-              onChangeText={setInput}
-              placeholder={canSend ? tr.sabrina_placeholder : tr.free_limit_cta}
-              placeholderTextColor={canSend ? 'rgba(0,180,220,0.3)' : 'rgba(0,180,220,0.5)'}
-              style={{ height: 50, backgroundColor: 'rgba(0,18,38,0.8)', borderWidth: 0.5, borderColor: canSend ? 'rgba(0,195,240,0.25)' : 'rgba(0,215,255,0.35)', borderRadius: 25, color: 'rgba(215,248,255,0.9)', fontSize: 14, fontWeight: '200', paddingHorizontal: 18 }}
-              editable={canSend}
-              onSubmitEditing={() => sendMessage()}
-              returnKeyType="send"
-            />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => canSend ? sendMessage() : setShowPaywall(true)} style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: canSend ? 'rgba(0,180,235,0.25)' : 'rgba(255,200,50,0.2)', borderWidth: 1, borderColor: canSend ? 'rgba(0,220,255,0.5)' : 'rgba(255,200,50,0.5)', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 20, color: canSend ? 'rgba(0,220,255,0.9)' : 'rgba(255,210,60,0.8)' }}>{canSend ? '↑' : '🔒'}</Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-      <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} onUnlock={handleUnlock} onRestore={handleRestore} lang={lang} />
-    </View>
-  );
 }
 
-// ══════════════════════════════════
-// ARTICLE DETAIL
-// ══════════════════════════════════
+async function writeAuthOtpPending(email) {
+  await AsyncStorage.setItem(AUTH_OTP_PENDING_KEY, JSON.stringify({ email: String(email).trim().toLowerCase(), sentAt: Date.now() }));
+}
+
+async function clearAuthOtpPending() {
+  await AsyncStorage.removeItem(AUTH_OTP_PENDING_KEY);
+}
+
 function ArticleDetail({ article, onClose, lang }) {
   const tr = T[lang] || T['fr'];
   return (
@@ -1516,7 +2036,7 @@ function ArticleDetail({ article, onClose, lang }) {
           <Text style={{ fontSize: 15, fontWeight: '200', color: 'rgba(195,235,255,0.82)', lineHeight: 26, marginBottom: 32 }}>{article.corps}</Text>
           <View style={{ borderLeftWidth: 2, borderLeftColor: article.color, paddingLeft: 16, marginBottom: 32 }}>
             <Text style={{ fontSize: 16, fontWeight: '200', color: 'rgba(215,248,255,0.9)', lineHeight: 26, fontStyle: 'italic' }}>{article.citation}</Text>
-            <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.4)', marginTop: 8, letterSpacing: 1, textTransform: 'uppercase' }}>— Sabrina · FluidBody</Text>
+            <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.4)', marginTop: 8, letterSpacing: 1, textTransform: 'uppercase' }}>{tr.biblio_signature}</Text>
           </View>
         </View>
       </ScrollView>
@@ -1524,9 +2044,6 @@ function ArticleDetail({ article, onClose, lang }) {
   );
 }
 
-// ══════════════════════════════════
-// FICHE DETAIL
-// ══════════════════════════════════
 function FicheDetail({ fiche, onClose, lang }) {
   const tr = T[lang] || T['fr'];
   return (
@@ -1557,141 +2074,10 @@ function FicheDetail({ fiche, onClose, lang }) {
   );
 }
 
+
 // ══════════════════════════════════
-// BIBLIOTHEQUE
+// BIBLIOTHEQUE — sans player podcast
 // ══════════════════════════════════
-// ══════════════════════════════════
-// PODCAST PLAYER
-// ══════════════════════════════════
-// URL audio de démonstration (remplacer par vraies narrations)
-const PODCAST_URLS = {
-  p1: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-  p2: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-  p3: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-  p4: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
-  p5: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
-  p6: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',
-  p7: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3',
-};
-
-function PodcastPlayer({ article, color }) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const soundRef = useRef(null);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    // Initialiser le mode audio iOS — indispensable pour le son
-    Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      staysActiveInBackground: false,
-      playsInSilentModeIOS: true,
-      shouldDuckAndroid: true,
-      playThroughEarpieceAndroid: false,
-    });
-    return () => { soundRef.current?.unloadAsync(); };
-  }, []);
-
-  useEffect(() => {
-    if (isPlaying) {
-      Animated.loop(Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.15, duration: 600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1.0,  duration: 600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])).start();
-    } else {
-      pulseAnim.stopAnimation();
-      pulseAnim.setValue(1);
-    }
-  }, [isPlaying]);
-
-  async function togglePlay() {
-    try {
-      if (!soundRef.current) {
-        setLoading(true);
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: PODCAST_URLS[article.key] || PODCAST_URLS.p1 },
-          { shouldPlay: true },
-          (status) => {
-            if (status.isLoaded) {
-              setProgress(status.positionMillis / (status.durationMillis || 1));
-              setDuration(status.durationMillis || 0);
-              if (status.didJustFinish) { setIsPlaying(false); setProgress(0); }
-            }
-          }
-        );
-        soundRef.current = sound;
-        setIsPlaying(true);
-        setLoading(false);
-      } else {
-        const status = await soundRef.current.getStatusAsync();
-        if (status.isPlaying) {
-          await soundRef.current.pauseAsync();
-          setIsPlaying(false);
-        } else {
-          await soundRef.current.playAsync();
-          setIsPlaying(true);
-        }
-      }
-    } catch (e) { setLoading(false); }
-  }
-
-  const mins = Math.floor((duration * progress) / 60000);
-  const secs = Math.floor(((duration * progress) % 60000) / 1000);
-  const durMins = Math.floor(duration / 60000);
-  const durSecs = Math.floor((duration % 60000) / 1000);
-
-  return (
-    <View style={{ marginTop: 12, backgroundColor: 'rgba(0,10,24,0.8)', borderRadius: 16, padding: 14, borderWidth: 0.5, borderColor: color + '44' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        {/* Bouton play */}
-        <TouchableOpacity onPress={togglePlay} disabled={loading}>
-          <Animated.View style={{
-            transform: [{ scale: pulseAnim }],
-            width: 44, height: 44, borderRadius: 22,
-            backgroundColor: isPlaying ? color.replace('0.9)', '0.25)') : 'rgba(0,18,38,0.9)',
-            borderWidth: 1.5, borderColor: color,
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            {loading
-              ? <Text style={{ fontSize: 12, color }}>...</Text>
-              : <Text style={{ fontSize: 16, color, marginLeft: isPlaying ? 0 : 2 }}>{isPlaying ? '⏸' : '▶'}</Text>
-            }
-          </Animated.View>
-        </TouchableOpacity>
-
-        <View style={{ flex: 1 }}>
-          {/* Label */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-            <Text style={{ fontSize: 10, color: color, letterSpacing: 1.5, textTransform: 'uppercase' }}>🎧  Écouter</Text>
-            <Text style={{ fontSize: 10, color: 'rgba(155,215,240,0.4)' }}>
-              {duration > 0 ? `${mins}:${secs.toString().padStart(2,'0')} / ${durMins}:${durSecs.toString().padStart(2,'0')}` : article.duree + ' min'}
-            </Text>
-          </View>
-          {/* Barre de progression */}
-          <View style={{ height: 4, backgroundColor: 'rgba(0,195,240,0.12)', borderRadius: 2, overflow: 'hidden', flexDirection: 'row' }}>
-            <View style={{ height: 4, flex: progress || 0, backgroundColor: color, borderRadius: 2, opacity: 0.8 }} />
-          </View>
-          {/* Ondes animées quand lecture */}
-          {isPlaying && (
-            <View style={{ flexDirection: 'row', gap: 3, marginTop: 6, alignItems: 'flex-end', height: 16 }}>
-              {[1,2,3,4,5,6,7,8].map((_, i) => (
-                <Animated.View key={i} style={{
-                  width: 3, borderRadius: 2,
-                  backgroundColor: color,
-                  height: 4 + (i % 3) * 4,
-                  opacity: 0.6 + (i % 2) * 0.3,
-                }} />
-              ))}
-            </View>
-          )}
-        </View>
-      </View>
-    </View>
-  );
-}
-
 function Biblio({ lang }) {
   const tr = T[lang] || T['fr'];
   const [tab, setTab] = useState('piliers');
@@ -1715,12 +2101,11 @@ function Biblio({ lang }) {
         </View>
         <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.42)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.biblio_sub}</Text>
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
-          <TouchableOpacity onPress={() => setTab('piliers')} style={{ paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: tab === 'piliers' ? 'rgba(0,220,255,0.7)' : 'rgba(0,195,240,0.2)', backgroundColor: tab === 'piliers' ? 'rgba(0,180,230,0.18)' : 'rgba(0,18,32,0.5)' }}>
-            <Text style={{ fontSize: 12, fontWeight: '300', color: tab === 'piliers' ? 'rgba(0,230,255,0.9)' : 'rgba(0,180,220,0.5)' }}>{tr.tab_piliers}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setTab('methode')} style={{ paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: tab === 'methode' ? 'rgba(0,220,255,0.7)' : 'rgba(0,195,240,0.2)', backgroundColor: tab === 'methode' ? 'rgba(0,180,230,0.18)' : 'rgba(0,18,32,0.5)' }}>
-            <Text style={{ fontSize: 12, fontWeight: '300', color: tab === 'methode' ? 'rgba(0,230,255,0.9)' : 'rgba(0,180,220,0.5)' }}>{tr.tab_methode}</Text>
-          </TouchableOpacity>
+          {['piliers', 'methode'].map(t => (
+            <TouchableOpacity key={t} onPress={() => setTab(t)} style={{ paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: tab === t ? 'rgba(0,220,255,0.7)' : 'rgba(0,195,240,0.2)', backgroundColor: tab === t ? 'rgba(0,180,230,0.18)' : 'rgba(0,18,32,0.5)' }}>
+              <Text style={{ fontSize: 12, fontWeight: '300', color: tab === t ? 'rgba(0,230,255,0.9)' : 'rgba(0,180,220,0.5)' }}>{t === 'piliers' ? tr.tab_piliers : tr.tab_methode}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
       <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
@@ -1741,7 +2126,6 @@ function Biblio({ lang }) {
                     <Text style={{ fontSize: 18, color: 'rgba(0,195,240,0.3)' }}>›</Text>
                   </View>
                   <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(155,215,240,0.55)', lineHeight: 20 }} numberOfLines={2}>{a.intro}</Text>
-                  <PodcastPlayer article={a} color={a.color} />
                 </TouchableOpacity>
               );
             })}
@@ -1775,185 +2159,16 @@ function Biblio({ lang }) {
 }
 
 // ══════════════════════════════════
-// PARCOURS
-// ══════════════════════════════════
-function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak, supabase, supaUser, onLogout }) {
-  const tr = T[lang] || T['fr'];
-  const totalDone = Object.values(done).flat().filter(Boolean).length;
-  const pct = Math.round(totalDone / 140 * 100);
-  const animPct = useRef(new Animated.Value(0)).current;
-  const piliers = getPiliers(lang);
-  const recommendedPiliers = tensionIdxs.map(i => ZONE_TO_PILIER[i]);
-
-  useEffect(() => {
-    Animated.timing(animPct, { toValue: pct, duration: 1200, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
-  }, [pct]);
-
-  return (
-    <View style={{ flex: 1 }}>
-      <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-      <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.15} />
-      <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
-      {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
-
-        {/* ── HEADER — profil ── */}
-        <View style={{ paddingTop: 62, paddingHorizontal: 24, alignItems: 'center', marginBottom: 28 }}>
-          <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: 'rgba(0,180,235,0.12)', borderWidth: 2, borderColor: 'rgba(0,220,255,0.35)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-            <EmojiMeduse />
-          </View>
-          <Text style={{ fontSize: 22, fontWeight: '200', color: 'rgba(215,248,255,0.97)', letterSpacing: 2 }}>{prenom || 'FluidBody'}</Text>
-          <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.45)', letterSpacing: 3, textTransform: 'uppercase', marginTop: 5 }}>{tr.mon_parcours}</Text>
-        </View>
-
-        {/* ── 3 STATS GRANDES ── */}
-        <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 24 }}>
-          <View style={[styles.statCard, { flex: 1 }]}>
-            <Text style={{ fontSize: 32, fontWeight: '200', color: 'rgba(0,238,255,0.95)' }}>{totalDone}</Text>
-            <Text style={styles.statLbl}>{tr.m_seances}</Text>
-          </View>
-          <View style={[styles.statCard, { flex: 1, borderColor: streak > 6 ? 'rgba(255,160,30,0.5)' : 'rgba(0,195,240,0.15)' }]}>
-            <Text style={{ fontSize: 32, fontWeight: '200', color: streak > 0 ? 'rgba(255,180,40,0.95)' : 'rgba(0,238,255,0.95)' }}>{streak > 0 ? streak : 0}</Text>
-            <Text style={{ fontSize: 18 }}>🔥</Text>
-            <Text style={styles.statLbl}>{tr.m_streak}</Text>
-          </View>
-          <View style={[styles.statCard, { flex: 1 }]}>
-            <Text style={{ fontSize: 32, fontWeight: '200', color: 'rgba(0,238,255,0.95)' }}>{pct}%</Text>
-            <Text style={styles.statLbl}>{tr.m_progress}</Text>
-          </View>
-        </View>
-
-        {/* ── PROGRESSION GLOBALE — barre circulaire simulée ── */}
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22, marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.65)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.prog_globale}</Text>
-            <Text style={{ fontSize: 13, color: 'rgba(0,215,255,0.5)' }}>{totalDone} / 140</Text>
-          </View>
-          <View style={{ height: 10, backgroundColor: 'rgba(0,195,240,0.1)', borderRadius: 5, overflow: 'hidden', marginBottom: 6 }}>
-            <Animated.View style={{ height: 10, width: animPct.interpolate({ inputRange: [0, 100], outputRange: [0, 300] }), backgroundColor: 'rgba(0,215,255,0.8)', borderRadius: 5 }} />
-          </View>
-          <Text style={{ fontSize: 11, color: 'rgba(0,195,240,0.35)', textAlign: 'right' }}>
-            {pct < 10 ? '🌱 Début du voyage' : pct < 30 ? '🌊 En route' : pct < 60 ? '💧 Bonne progression' : pct < 90 ? '⭐ Presque là' : '🪼 Maîtrise totale'}
-          </Text>
-        </View>
-
-        {/* ── PAR PILIER — barres animées ── */}
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22, marginBottom: 16 }}>
-          <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.65)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 }}>{tr.par_pilier}</Text>
-          {piliers.map((p, i) => {
-            const count = done[p.key].filter(v => v === true || v === 'true').length;
-            const pct2 = (count / 20) * 100;
-            const IconComp = ICONS[p.key];
-            const isRec = recommendedPiliers.includes(p.key);
-            return (
-              <View key={i} style={{ marginBottom: 16 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 7 }}>
-                  <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: p.bg, borderWidth: 1, borderColor: p.color, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                    <IconComp color={p.color} />
-                  </View>
-                  <Text style={{ flex: 1, fontSize: 13, fontWeight: '300', color: isRec ? 'rgba(215,248,255,0.95)' : 'rgba(155,215,240,0.65)' }}>{p.label}{isRec ? ' ★' : ''}</Text>
-                  <Text style={{ fontSize: 12, color: count === 20 ? p.color : 'rgba(0,195,240,0.4)' }}>{count}/20{count === 20 ? ' ✓' : ''}</Text>
-                </View>
-                <View style={{ height: 6, backgroundColor: 'rgba(0,195,240,0.08)', borderRadius: 3, overflow: 'hidden', flexDirection: 'row' }}>
-                  <View style={{ height: 6, flex: pct2 / 100, backgroundColor: p.color, borderRadius: 3, opacity: count === 20 ? 1 : 0.7 }} />
-                </View>
-              </View>
-            );
-          })}
-        </View>
-
-        {/* ── MESSAGE MOTIVANT ── */}
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,215,255,0.2)', borderRadius: 24, padding: 22, marginBottom: 16, alignItems: 'center' }}>
-          <Text style={{ fontSize: 32, marginBottom: 10 }}>🪼</Text>
-          <Text style={{ fontSize: 15, fontWeight: '200', color: 'rgba(215,248,255,0.85)', textAlign: 'center', lineHeight: 24, fontStyle: 'italic' }}>
-{tr.motivation(streak)}
-          </Text>
-        </View>
-
-        {/* ── ZONES RECOMMANDÉES ── */}
-        {recommendedPiliers.length > 0 && (
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,215,168,0.3)', borderRadius: 24, padding: 22, marginBottom: 16 }}>
-            <Text style={{ fontSize: 13, color: 'rgba(0,215,168,0.7)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>★ {tr.recommande_pour_toi}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {recommendedPiliers.map(pk => {
-                const p = piliers.find(x => x.key === pk);
-                if (!p) return null;
-                const IconComp = ICONS[pk];
-                return (
-                  <View key={pk} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: p.color, backgroundColor: p.bg }}>
-                    <IconComp color={p.color} />
-                    <Text style={{ fontSize: 12, color: p.color }}>{p.label}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
-        {/* ── LANGUE + COMPTE ── */}
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22, marginBottom: 16 }}>
-          <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.55)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>🌐 Langue</Text>
-          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-            {Object.values(T).map(l => (
-              <TouchableOpacity key={l.lang} onPress={() => onChangeLang(l.lang)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: lang === l.lang ? 'rgba(0,220,255,0.7)' : 'rgba(0,195,240,0.2)', backgroundColor: lang === l.lang ? 'rgba(0,180,230,0.18)' : 'rgba(0,18,32,0.5)' }}>
-                <Text style={{ fontSize: 13, color: lang === l.lang ? 'rgba(0,230,255,0.9)' : 'rgba(0,180,220,0.5)' }}>{l.flag} {l.nom}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22 }}>
-          <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.55)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>{tr.mon_compte}</Text>
-          {/* Email si connecté */}
-          {supaUser && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,195,240,0.08)' }}>
-              <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(155,215,240,0.5)' }}>Email</Text>
-              <Text style={{ fontSize: 12, fontWeight: '300', color: 'rgba(0,215,255,0.7)' }} numberOfLines={1}>{supaUser.email}</Text>
-            </View>
-          )}
-          {tr.compte_info.map(([label, val], i) => (
-            <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: i < 2 ? 0.5 : 0, borderBottomColor: 'rgba(0,195,240,0.08)' }}>
-              <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(155,215,240,0.5)' }}>{label}</Text>
-              <Text style={{ fontSize: 13, fontWeight: '300', color: 'rgba(0,215,255,0.7)' }}>{val}</Text>
-            </View>
-          ))}
-          {/* Bouton déconnexion */}
-          {supaUser && onLogout && (
-            <TouchableOpacity onPress={onLogout} style={{ marginTop: 16, paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,80,80,0.35)', backgroundColor: 'rgba(255,50,50,0.08)', alignItems: 'center' }}>
-              <Text style={{ fontSize: 13, color: 'rgba(255,120,120,0.85)', letterSpacing: 1 }}>Se déconnecter</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-      </ScrollView>
-    </View>
-  );
-}
-
-// ══════════════════════════════════
 // PROGRESSER
 // ══════════════════════════════════
 function AnimatedBar({ value, max, color, delay = 0 }) {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    setTimeout(() => {
-      Animated.timing(anim, {
-        toValue: value / max,
-        duration: 900,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      }).start();
-    }, delay);
+    setTimeout(() => { Animated.timing(anim, { toValue: value / max, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(); }, delay);
   }, [value]);
   return (
     <View style={{ height: 7, backgroundColor: 'rgba(0,195,240,0.08)', borderRadius: 4, overflow: 'hidden' }}>
-      <Animated.View style={{
-        height: 7,
-        width: anim.interpolate({ inputRange: [0, 1], outputRange: [0, 300] }),
-        backgroundColor: color,
-        borderRadius: 4,
-        opacity: value === max ? 1 : 0.85,
-      }} />
+      <Animated.View style={{ height: 7, width: anim.interpolate({ inputRange: [0, 1], outputRange: [0, 300] }), backgroundColor: color, borderRadius: 4, opacity: value === max ? 1 : 0.85 }} />
     </View>
   );
 }
@@ -1965,27 +2180,13 @@ function Progresser({ done, lang, tensionIdxs }) {
   const piliers = getPiliers(lang);
   const recommendedPiliers = tensionIdxs.map(i => ZONE_TO_PILIER[i]);
   const globalAnim = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
-    Animated.timing(globalAnim, {
-      toValue: pct / 100,
-      duration: 1200,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
+    Animated.timing(globalAnim, { toValue: pct / 100, duration: 1200, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
   }, [pct]);
-
-  // Trier les piliers : recommandés en premier
-  const sortedPiliers = [...piliers].sort((a, b) => {
-    const aRec = recommendedPiliers.includes(a.key) ? 0 : 1;
-    const bRec = recommendedPiliers.includes(b.key) ? 0 : 1;
-    return aRec - bRec;
-  });
-
+  const sortedPiliers = [...piliers].sort((a, b) => (recommendedPiliers.includes(a.key) ? 0 : 1) - (recommendedPiliers.includes(b.key) ? 0 : 1));
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-      <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.15} />
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={{ paddingTop: 65, paddingHorizontal: 24, marginBottom: 24 }}>
@@ -1994,14 +2195,8 @@ function Progresser({ done, lang, tensionIdxs }) {
             <EmojiMeduse />
           </View>
           <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.42)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.progresser_sub(pct)}</Text>
-          {/* Barre globale animée */}
           <View style={{ height: 6, backgroundColor: 'rgba(0,195,240,0.1)', borderRadius: 3, marginTop: 14, overflow: 'hidden' }}>
-            <Animated.View style={{
-              height: 6,
-              width: globalAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 300] }),
-              backgroundColor: 'rgba(0,215,255,0.8)',
-              borderRadius: 3,
-            }} />
+            <Animated.View style={{ height: 6, width: globalAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 300] }), backgroundColor: 'rgba(0,215,255,0.8)', borderRadius: 3 }} />
           </View>
           <Text style={{ fontSize: 10, color: 'rgba(0,195,240,0.35)', textAlign: 'right', marginTop: 4 }}>{totalDone} / 140</Text>
         </View>
@@ -2012,15 +2207,7 @@ function Progresser({ done, lang, tensionIdxs }) {
             const isRec = recommendedPiliers.includes(p.key);
             const pct2 = Math.round(count / 20 * 100);
             return (
-              <View key={p.key} style={{
-                backgroundColor: 'rgba(0,18,38,0.75)',
-                borderWidth: isRec ? 1.5 : 0.5,
-                borderColor: isRec ? p.color : 'rgba(0,195,240,0.12)',
-                borderRadius: 22, padding: 18,
-                shadowColor: isRec ? p.color : 'transparent',
-                shadowOpacity: isRec ? 0.3 : 0,
-                shadowRadius: 8,
-              }}>
+              <View key={p.key} style={{ backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: isRec ? 1.5 : 0.5, borderColor: isRec ? p.color : 'rgba(0,195,240,0.12)', borderRadius: 22, padding: 18, shadowColor: isRec ? p.color : 'transparent', shadowOpacity: isRec ? 0.3 : 0, shadowRadius: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
                   <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: p.bg, borderWidth: 1.5, borderColor: p.color, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
                     <IconComp color={p.color} />
@@ -2028,22 +2215,12 @@ function Progresser({ done, lang, tensionIdxs }) {
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <Text style={{ fontSize: 16, fontWeight: '300', color: 'rgba(215,248,255,0.95)' }}>{p.label}</Text>
-                      {isRec && (
-                        <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(0,215,255,0.15)', borderWidth: 0.5, borderColor: 'rgba(0,215,255,0.5)' }}>
-                          <Text style={{ fontSize: 8, color: 'rgba(0,215,255,0.9)', letterSpacing: 1 }}>★ {tr.recommande_pour_toi}</Text>
-                        </View>
-                      )}
+                      {isRec && <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(0,215,255,0.15)', borderWidth: 0.5, borderColor: 'rgba(0,215,255,0.5)' }}><Text style={{ fontSize: 8, color: 'rgba(0,215,255,0.9)', letterSpacing: 1 }}>★ {tr.recommande_pour_toi}</Text></View>}
                     </View>
-                    <Text style={{ fontSize: 11, color: p.color, letterSpacing: 1, marginTop: 3 }}>
-                      {count}/20 séances{count === 20 ? ' ✓' : ''}
-                    </Text>
+                    <Text style={{ fontSize: 11, color: p.color, letterSpacing: 1, marginTop: 3 }}>{count}/20{count === 20 ? ' ✓' : ''}</Text>
                   </View>
-                  {/* Pourcentage animé */}
-                  <Text style={{ fontSize: 22, fontWeight: '200', color: count === 20 ? p.color : 'rgba(155,215,240,0.6)' }}>
-                    {pct2}%
-                  </Text>
+                  <Text style={{ fontSize: 22, fontWeight: '200', color: count === 20 ? p.color : 'rgba(155,215,240,0.6)' }}>{pct2}%</Text>
                 </View>
-                {/* Barre animée avec délai décalé */}
                 <AnimatedBar value={count} max={20} color={p.color} delay={idx * 100} />
               </View>
             );
@@ -2055,7 +2232,292 @@ function Progresser({ done, lang, tensionIdxs }) {
 }
 
 // ══════════════════════════════════
-// ONBOARDING — 3 étapes : intro → tensions → prénom
+// PARCOURS — Stats + Calendrier
+// ══════════════════════════════════
+function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak, supabase, supaUser, onLogout, isSubscriber, onRestorePurchases }) {
+  const tr = T[lang] || T['fr'];
+  const totalDone = Object.values(done).flat().filter(Boolean).length;
+  const pct = Math.round(totalDone / 140 * 100);
+  const animPct = useRef(new Animated.Value(0)).current;
+  const piliers = getPiliers(lang);
+  const recommendedPiliers = tensionIdxs.map(i => ZONE_TO_PILIER[i]);
+  useEffect(() => { Animated.timing(animPct, { toValue: pct, duration: 1200, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(); }, [pct]);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
+      {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
+
+      <View style={{ paddingTop: 62, paddingHorizontal: 24, paddingBottom: 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <View>
+            <Text style={{ fontSize: 26, fontWeight: '200', color: 'rgba(215,248,255,0.97)', letterSpacing: 2 }}>{prenom || 'FluidBody'}</Text>
+            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.45)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>{tr.mon_parcours}</Text>
+          </View>
+          <EmojiMeduse />
+        </View>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+          <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 16 }}>
+            <View style={[styles.statCard, { flex: 1 }]}>
+              <Text style={{ fontSize: 28, fontWeight: '200', color: 'rgba(0,238,255,0.95)' }}>{totalDone}</Text>
+              <Text style={styles.statLbl}>{tr.m_seances}</Text>
+            </View>
+            <View style={[styles.statCard, { flex: 1, borderColor: streak > 6 ? 'rgba(255,160,30,0.5)' : 'rgba(0,195,240,0.15)' }]}>
+              <Text style={{ fontSize: 28, fontWeight: '200', color: streak > 0 ? 'rgba(255,180,40,0.95)' : 'rgba(0,238,255,0.95)' }}>{streak > 0 ? streak : 0}</Text>
+              <Text style={{ fontSize: 16 }}>🔥</Text>
+              <Text style={styles.statLbl}>{tr.m_streak}</Text>
+            </View>
+            <View style={[styles.statCard, { flex: 1 }]}>
+              <Text style={{ fontSize: 28, fontWeight: '200', color: 'rgba(0,238,255,0.95)' }}>{pct}%</Text>
+              <Text style={styles.statLbl}>{tr.m_progress}</Text>
+            </View>
+          </View>
+
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22, marginBottom: 14 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.65)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.prog_globale}</Text>
+              <Text style={{ fontSize: 13, color: 'rgba(0,215,255,0.5)' }}>{totalDone} / 140</Text>
+            </View>
+            <View style={{ height: 10, backgroundColor: 'rgba(0,195,240,0.1)', borderRadius: 5, overflow: 'hidden', marginBottom: 6 }}>
+              <Animated.View style={{ height: 10, width: animPct.interpolate({ inputRange: [0, 100], outputRange: [0, 300] }), backgroundColor: 'rgba(0,215,255,0.8)', borderRadius: 5 }} />
+            </View>
+            <Text style={{ fontSize: 11, color: 'rgba(0,195,240,0.35)', textAlign: 'right' }}>
+              {pct < 10 ? '🌱 Début du voyage' : pct < 30 ? '🌊 En route' : pct < 60 ? '💧 Bonne progression' : pct < 90 ? '⭐ Presque là' : '🪼 Maîtrise totale'}
+            </Text>
+          </View>
+
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22, marginBottom: 14 }}>
+            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.65)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 }}>{tr.par_pilier}</Text>
+            {piliers.map((p, i) => {
+              const count = done[p.key].filter(v => v === true || v === 'true').length;
+              const pct2 = (count / 20) * 100;
+              const IconComp = ICONS[p.key];
+              const isRec = recommendedPiliers.includes(p.key);
+              return (
+                <View key={i} style={{ marginBottom: 16 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 7 }}>
+                    <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: p.bg, borderWidth: 1, borderColor: p.color, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}><IconComp color={p.color} /></View>
+                    <Text style={{ flex: 1, fontSize: 13, fontWeight: '300', color: isRec ? 'rgba(215,248,255,0.95)' : 'rgba(155,215,240,0.65)' }}>{p.label}{isRec ? ' ★' : ''}</Text>
+                    <Text style={{ fontSize: 12, color: count === 20 ? p.color : 'rgba(0,195,240,0.4)' }}>{count}/20{count === 20 ? ' ✓' : ''}</Text>
+                  </View>
+                  <View style={{ height: 6, backgroundColor: 'rgba(0,195,240,0.08)', borderRadius: 3, overflow: 'hidden', flexDirection: 'row' }}>
+                    <View style={{ height: 6, flex: pct2 / 100, backgroundColor: p.color, borderRadius: 3, opacity: count === 20 ? 1 : 0.7 }} />
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,215,255,0.2)', borderRadius: 24, padding: 22, marginBottom: 14, alignItems: 'center' }}>
+            <Text style={{ fontSize: 32, marginBottom: 10 }}>🪼</Text>
+            <Text style={{ fontSize: 15, fontWeight: '200', color: 'rgba(215,248,255,0.85)', textAlign: 'center', lineHeight: 24, fontStyle: 'italic' }}>{tr.motivation(streak)}</Text>
+          </View>
+
+          {recommendedPiliers.length > 0 && (
+            <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,215,168,0.3)', borderRadius: 24, padding: 22, marginBottom: 14 }}>
+              <Text style={{ fontSize: 13, color: 'rgba(0,215,168,0.7)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>★ {tr.recommande_pour_toi}</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {recommendedPiliers.map(pk => {
+                  const p = piliers.find(x => x.key === pk);
+                  if (!p) return null;
+                  const IconComp = ICONS[pk];
+                  return (
+                    <View key={pk} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: p.color, backgroundColor: p.bg }}>
+                      <IconComp color={p.color} />
+                      <Text style={{ fontSize: 12, color: p.color }}>{p.label}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22, marginBottom: 14 }}>
+            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.65)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>{tr.subscription_status_label}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '300', color: isSubscriber ? 'rgba(0,230,255,0.95)' : 'rgba(155,215,240,0.85)', marginBottom: 16 }}>{isSubscriber ? tr.subscription_status_active : tr.subscription_status_free}</Text>
+            <TouchableOpacity onPress={onRestorePurchases} style={{ paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,215,255,0.35)', backgroundColor: 'rgba(0,180,235,0.10)', alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, color: 'rgba(0,230,255,0.9)' }}>{tr.subscription_reset}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22, marginBottom: 14 }}>
+            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.55)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>🌐 Langue</Text>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              {Object.values(T).map(l => (
+                <TouchableOpacity key={l.lang} onPress={() => onChangeLang(l.lang)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: lang === l.lang ? 'rgba(0,220,255,0.7)' : 'rgba(0,195,240,0.2)', backgroundColor: lang === l.lang ? 'rgba(0,180,230,0.18)' : 'rgba(0,18,32,0.5)' }}>
+                  <Text style={{ fontSize: 13, color: lang === l.lang ? 'rgba(0,230,255,0.9)' : 'rgba(0,180,220,0.5)' }}>{l.flag} {l.nom}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22 }}>
+            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.55)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>{tr.mon_compte}</Text>
+            {supaUser && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,195,240,0.08)' }}>
+                <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(155,215,240,0.5)' }}>Email</Text>
+                <Text style={{ fontSize: 12, fontWeight: '300', color: 'rgba(0,215,255,0.7)' }} numberOfLines={1}>{supaUser.email}</Text>
+              </View>
+            )}
+            {tr.compte_info.map(([label, val], i) => (
+              <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: i < 2 ? 0.5 : 0, borderBottomColor: 'rgba(0,195,240,0.08)' }}>
+                <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(155,215,240,0.5)' }}>{label}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '300', color: 'rgba(0,215,255,0.7)' }}>{val}</Text>
+              </View>
+            ))}
+            {supaUser && onLogout && (
+              <TouchableOpacity onPress={onLogout} style={{ marginTop: 16, paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,80,80,0.35)', backgroundColor: 'rgba(255,50,50,0.08)', alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: 'rgba(255,120,120,0.85)', letterSpacing: 1 }}>Se déconnecter</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
+    </View>
+  );
+}
+
+
+// ══════════════════════════════════
+// AUTH SCREEN — Magic Link
+// ══════════════════════════════════
+function AuthScreen({ onSkip, lang = 'fr', prenomHint = '' }) {
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const p = await readAuthOtpPending();
+      if (cancelled || !p) return;
+      const age = Date.now() - p.sentAt;
+      if (age < AUTH_OTP_STEP_RESTORE_MS) {
+        setEmail(p.email);
+        setSent(true);
+        setInfo('Utilise le code déjà envoyé à cette adresse. Pas besoin d’en demander un nouveau tout de suite.');
+      } else {
+        await clearAuthOtpPending();
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  async function sendOtp(forceResend = false) {
+    if (!email.trim()) return;
+    setLoading(true); setError(''); setInfo('');
+    const normalized = email.trim().toLowerCase();
+    try {
+      const p = await readAuthOtpPending();
+      if (!forceResend && p?.email === normalized && Date.now() - p.sentAt < AUTH_OTP_RESEND_COOLDOWN_MS) {
+        setSent(true);
+        setInfo('Un code vient d’être envoyé : utilise celui-ci. Tu pourras en demander un autre dans environ une minute si besoin.');
+        setLoading(false);
+        return;
+      }
+      const { error: err } = await supabase.auth.signInWithOtp({ email: normalized, options: { shouldCreateUser: true } });
+      if (err) {
+        setError(err.message);
+      } else {
+        setSent(true);
+        await writeAuthOtpPending(normalized);
+        if (forceResend) setInfo('Nouveau code envoyé.');
+      }
+    } catch (e) { setError('Erreur réseau'); }
+    setLoading(false);
+  }
+
+  async function verifyOtp() {
+    if (otp.length !== 8) return;
+    setLoading(true); setError('');
+    try {
+      let { error: err } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: otp.trim(), type: 'email' });
+      let ok = !err;
+      if (err) {
+        const { error: err2 } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: otp.trim(), type: 'magiclink' });
+        if (err2) setError('Code incorrect ou expiré');
+        else ok = true;
+      }
+      if (ok) {
+        await clearAuthOtpPending();
+        const hint = prenomHint && String(prenomHint).trim();
+        if (hint && supabase) {
+          const { error: ue } = await supabase.auth.updateUser({ data: { prenom: hint } });
+          if (ue) devWarn('updateUser metadata prenom', ue);
+        }
+      }
+    } catch (e) { setError('Vérification impossible — réessaie'); }
+    setLoading(false);
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
+      {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
+      <ScrollView contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingVertical: 60 }}>
+        <EmojiMeduse />
+        <Text style={{ fontSize: 36, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 6, textTransform: 'uppercase', marginTop: 16, marginBottom: 2 }}>FluidBody</Text>
+        <Text style={{ fontSize: 11, color: 'rgba(0,210,250,0.6)', letterSpacing: 6, textTransform: 'uppercase', marginBottom: 4 }}>Pilates</Text>
+        <Text style={{ fontSize: 11, color: 'rgba(0,210,250,0.6)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 36 }}>Ton espace personnel</Text>
+
+        {!sent ? (
+          <>
+            <Text style={{ fontSize: 15, color: 'rgba(215,248,255,0.75)', textAlign: 'center', marginBottom: 24, lineHeight: 24 }}>
+              Entre ton email pour sauvegarder ta progression dans le cloud 🌊{'\n\n'}
+              <Text style={{ fontSize: 13, color: 'rgba(155,215,240,0.55)', lineHeight: 20 }}>
+                Après cette première connexion, tu restes connecté·e sur cet appareil (session enregistrée). Un nouveau code n’est nécessaire qu’après déconnexion ou sur un autre téléphone.
+              </Text>
+            </Text>
+            <TextInput value={email} onChangeText={setEmail} placeholder="ton@email.com" placeholderTextColor="rgba(0,180,220,0.35)" keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
+              style={{ width: '100%', height: 56, backgroundColor: 'rgba(0,18,32,0.8)', borderWidth: 1, borderColor: email ? 'rgba(0,220,255,0.6)' : 'rgba(0,200,240,0.2)', borderRadius: 16, color: 'rgba(200,245,255,0.95)', fontSize: 17, paddingHorizontal: 20, marginBottom: 12 }}
+            />
+            {error ? <Text style={{ color: 'rgba(255,100,100,0.8)', fontSize: 12, marginBottom: 10 }}>{error}</Text> : null}
+            {info ? <Text style={{ color: 'rgba(120,220,255,0.7)', fontSize: 12, marginBottom: 10, textAlign: 'center', lineHeight: 18 }}>{info}</Text> : null}
+            <TouchableOpacity onPress={() => sendOtp(false)} disabled={!email.trim() || loading} style={{ width: '100%', height: 56, borderRadius: 28, backgroundColor: email.trim() ? 'rgba(0,180,235,0.3)' : 'rgba(0,100,140,0.1)', borderWidth: 1.5, borderColor: email.trim() ? 'rgba(0,235,255,0.8)' : 'rgba(0,150,190,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 15, fontWeight: '500', color: 'rgba(215,248,255,0.9)', letterSpacing: 1 }}>{loading ? '...' : '✉️  Recevoir un code'}</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <View style={{ alignItems: 'center', marginBottom: 24 }}>
+              <Text style={{ fontSize: 32, marginBottom: 10 }}>📬</Text>
+              <Text style={{ fontSize: 16, fontWeight: '300', color: 'rgba(215,248,255,0.9)', textAlign: 'center', marginBottom: 6 }}>Code envoyé à</Text>
+              <Text style={{ fontSize: 14, color: 'rgba(0,220,255,0.8)', marginBottom: 4 }}>{email}</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(155,215,240,0.5)', textAlign: 'center' }}>Vérifie ton email et entre le code à 8 chiffres</Text>
+            </View>
+            <TextInput value={otp} onChangeText={t => setOtp(t.replace(/\D/g,'').slice(0,8))} placeholder="00000000" placeholderTextColor="rgba(0,180,220,0.35)" keyboardType="number-pad" maxLength={8}
+              style={{ width: '100%', height: 64, backgroundColor: 'rgba(0,18,32,0.8)', borderWidth: 1.5, borderColor: otp.length === 8 ? 'rgba(0,220,255,0.8)' : 'rgba(0,200,240,0.2)', borderRadius: 16, color: 'rgba(200,245,255,0.95)', fontSize: 22, fontWeight: '300', textAlign: 'center', letterSpacing: 12, marginBottom: 12 }}
+            />
+            {error ? <Text style={{ color: 'rgba(255,100,100,0.8)', fontSize: 12, marginBottom: 10 }}>{error}</Text> : null}
+            {info ? <Text style={{ color: 'rgba(120,220,255,0.75)', fontSize: 12, marginBottom: 10, textAlign: 'center', lineHeight: 18 }}>{info}</Text> : null}
+            <TouchableOpacity onPress={verifyOtp} disabled={otp.length !== 8 || loading} style={{ width: '100%', height: 56, borderRadius: 28, backgroundColor: otp.length === 8 ? 'rgba(0,180,235,0.3)' : 'rgba(0,100,140,0.1)', borderWidth: 1.5, borderColor: otp.length === 8 ? 'rgba(0,235,255,0.8)' : 'rgba(0,150,190,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+              <Text style={{ fontSize: 15, fontWeight: '500', color: 'rgba(215,248,255,0.9)', letterSpacing: 1 }}>{loading ? '...' : '✓  Confirmer'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => sendOtp(true)} disabled={loading} style={{ marginBottom: 14, paddingVertical: 10 }}>
+              <Text style={{ fontSize: 12, color: 'rgba(0,210,250,0.65)', letterSpacing: 1, textAlign: 'center' }}>{loading ? '…' : 'Renvoyer un nouveau code'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setSent(false); setOtp(''); setError(''); setInfo(''); clearAuthOtpPending(); }}>
+              <Text style={{ fontSize: 12, color: 'rgba(0,190,230,0.5)', letterSpacing: 1 }}>Changer d'email</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        <View style={{ width: '100%', borderTopWidth: 0.5, borderTopColor: 'rgba(0,195,240,0.15)', paddingTop: 20, alignItems: 'center', marginTop: 20 }}>
+          <TouchableOpacity onPress={() => { clearAuthOtpPending(); onSkip(); }} style={{ paddingVertical: 14, paddingHorizontal: 32, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(0,195,240,0.3)', backgroundColor: 'rgba(0,18,32,0.5)' }}>
+            <Text style={{ fontSize: 14, color: 'rgba(0,210,250,0.7)', letterSpacing: 2, textTransform: 'uppercase' }}>Continuer sans compte →</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+// ══════════════════════════════════
+// ONBOARDING
 // ══════════════════════════════════
 function OnboardingScreen({ onDone }) {
   const [langStep, setLangStep] = useState(true);
@@ -2081,41 +2543,29 @@ function OnboardingScreen({ onDone }) {
     return (
       <View style={{ flex: 1 }}>
         <LinearGradient colors={['#000e18', '#002d48', '#00bdd0', '#005878', '#001828']} locations={[0, 0.3, 0.52, 0.72, 1]} style={StyleSheet.absoluteFill} />
-        <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
-        <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
         {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
-
-        {/* Méduse en arrière-plan */}
-        <View style={{ position: 'absolute', top: 200, left: 0, right: 0, alignItems: 'center', opacity: 0.75 }}><Meduse /></View>
-
-        {/* Logo en haut */}
+        <View style={{ position: 'absolute', top: 270, left: 0, right: 0, alignItems: 'center', opacity: 0.75 }}><Meduse /></View>
         <View style={{ position: 'absolute', top: 64, left: 0, right: 0, alignItems: 'center', zIndex: 10 }}>
           <Text style={{ fontSize: 48, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 7, textTransform: 'uppercase' }}>FluidBody</Text>
+          <Text style={{ fontSize: 12, color: 'rgba(0,210,250,0.7)', letterSpacing: 6, textTransform: 'uppercase', marginTop: 2 }}>Pilates</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 }}>
             <EmojiMeduse />
             <Text style={{ fontSize: 12, color: 'rgba(0,210,250,0.75)', letterSpacing: 4, textTransform: 'uppercase' }}>Sentir · Préparer · Transformer</Text>
           </View>
         </View>
-
-        {/* Texte de description — centré verticalement */}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 180, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 36, zIndex: 10 }}>
           <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.75)', letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 22 }}>Une nouvelle façon d'habiter son corps</Text>
           <Text style={{ fontSize: 30, fontWeight: '200', color: 'rgba(255,255,255,0.96)', textAlign: 'center', lineHeight: 44, marginBottom: 24 }}>
             FluidBody t'apprend à{'\n'}<Text style={{ fontWeight: '400' }}>ressentir ton corps.</Text>
           </Text>
           <View style={{ width: 40, height: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginBottom: 22 }} />
-          <Text style={{ fontSize: 17, color: 'rgba(255,255,255,0.72)', textAlign: 'center', lineHeight: 28 }}>
-            Pas juste bouger —{'\n'}comprendre, préparer, transformer.
-          </Text>
+          <Text style={{ fontSize: 17, color: 'rgba(255,255,255,0.72)', textAlign: 'center', lineHeight: 28 }}>Pas juste bouger —{'\n'}comprendre, préparer, transformer.</Text>
         </View>
-
-        {/* Choix de langue — tout en bas */}
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingBottom: 40, paddingHorizontal: 24, zIndex: 10 }}>
           <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.35)', letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 12 }}>Choisir la langue · Choose language</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
             {Object.values(T).map(l => (
-              <TouchableOpacity key={l.lang} onPress={() => { setLang(l.lang); setLangStep(false); }}
-                style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(0,180,235,0.15)', borderWidth: 1, borderColor: 'rgba(0,235,255,0.5)', alignItems: 'center' }}>
+              <TouchableOpacity key={l.lang} onPress={() => { setLang(l.lang); setLangStep(false); }} style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(0,180,235,0.15)', borderWidth: 1, borderColor: 'rgba(0,235,255,0.5)', alignItems: 'center' }}>
                 <Text style={{ fontSize: 18, marginBottom: 2 }}>{l.flag}</Text>
                 <Text style={{ fontSize: 10, color: 'rgba(0,220,255,0.8)', letterSpacing: 1 }}>{l.nom}</Text>
               </TouchableOpacity>
@@ -2130,28 +2580,18 @@ function OnboardingScreen({ onDone }) {
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient colors={['#000e18', '#002d48', '#00bdd0', '#005878', '#001828']} locations={[0, 0.3, 0.52, 0.72, 1]} style={StyleSheet.absoluteFill} />
-      <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
-      <Rayon left={140} width={55} delay={2000} duration={11000} opacity={0.15} />
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
       <View style={{ position: 'absolute', top: 130, left: 0, right: 0, alignItems: 'center', opacity: 0.9 }}><Meduse /></View>
-      {/* Méduse haut droite */}
       <View style={{ position: 'absolute', top: 100, right: 22, zIndex: 20 }}><EmojiMeduse /></View>
-      {/* Barre navigation — bouton retour + indicateurs */}
       <View style={{ position: 'absolute', top: 54, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', zIndex: 10, paddingHorizontal: 24 }}>
-        {/* Bouton retour */}
-        <TouchableOpacity
-          onPress={() => step === 0 ? setLangStep(true) : nextStep(step - 1)}
-          style={{ position: 'absolute', left: 24, padding: 8 }}>
+        <TouchableOpacity onPress={() => step === 0 ? setLangStep(true) : nextStep(step - 1)} style={{ position: 'absolute', left: 24, padding: 8 }}>
           <Text style={{ fontSize: 22, color: 'rgba(255,255,255,0.6)' }}>←</Text>
         </TouchableOpacity>
-        {/* Points indicateurs */}
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {[0, 1, 2].map(i => <View key={i} style={{ width: step === i ? 20 : 6, height: 6, borderRadius: 3, backgroundColor: step === i ? 'rgba(0,225,255,0.9)' : 'rgba(0,200,240,0.25)' }} />)}
         </View>
       </View>
       <Animated.View style={{ flex: 1, opacity: fadeAnim, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 60, zIndex: 5 }}>
-
-        {/* STEP 0 : intro */}
         {step === 0 && (
           <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }}>
             <Text style={{ fontSize: 17, color: 'rgba(255,255,255,0.80)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 18, textAlign: 'center' }}>{tr.ob_tag}</Text>
@@ -2166,8 +2606,6 @@ function OnboardingScreen({ onDone }) {
             </TouchableOpacity>
           </View>
         )}
-
-        {/* STEP 1 : tensions */}
         {step === 1 && (
           <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }}>
             <Text style={{ fontSize: 12, color: 'rgba(0,225,255,0.6)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12 }}>{tr.ob_bilan}</Text>
@@ -2188,8 +2626,6 @@ function OnboardingScreen({ onDone }) {
             </TouchableOpacity>
           </View>
         )}
-
-        {/* STEP 2 : prénom */}
         {step === 2 && (
           <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }}>
             <Text style={{ fontSize: 12, color: 'rgba(0,225,255,0.6)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12 }}>{tr.ob_prenom_tag}</Text>
@@ -2199,32 +2635,12 @@ function OnboardingScreen({ onDone }) {
               value={prenom} onChangeText={setPrenom}
               placeholder={tr.ob_placeholder}
               placeholderTextColor="rgba(0,180,220,0.3)"
-              autoFocus={true}
-              autoCapitalize="words"
-              returnKeyType="done"
+              autoFocus autoCapitalize="words" returnKeyType="done"
               onSubmitEditing={() => prenom.trim() && onDone(prenom.trim(), lang, tensionIdxs)}
-              style={{
-                alignSelf: 'stretch', height: 62,
-                backgroundColor: prenom.trim() ? 'rgba(0,30,50,0.85)' : 'rgba(0,18,32,0.6)',
-                borderWidth: prenom.trim() ? 1.5 : 0.5,
-                borderColor: prenom.trim() ? 'rgba(0,220,255,0.6)' : 'rgba(0,200,240,0.22)',
-                borderRadius: 16,
-                color: 'rgba(200,245,255,0.95)',
-                fontSize: 20, fontWeight: '300',
-                textAlign: 'center', marginBottom: 22
-              }}
+              style={{ alignSelf: 'stretch', height: 62, backgroundColor: prenom.trim() ? 'rgba(0,30,50,0.85)' : 'rgba(0,18,32,0.6)', borderWidth: prenom.trim() ? 1.5 : 0.5, borderColor: prenom.trim() ? 'rgba(0,220,255,0.6)' : 'rgba(0,200,240,0.22)', borderRadius: 16, color: 'rgba(200,245,255,0.95)', fontSize: 20, fontWeight: '300', textAlign: 'center', marginBottom: 22 }}
             />
-            {/* Indicateur de saisie */}
-            {prenom.trim().length > 0 && (
-              <Text style={{ fontSize: 13, color: 'rgba(0,220,255,0.6)', marginBottom: 12, marginTop: -14 }}>
-                Bonjour {prenom.trim()} 🪼
-              </Text>
-            )}
-            <TouchableOpacity
-              onPress={() => prenom.trim() ? onDone(prenom.trim(), lang, tensionIdxs) : null}
-              style={[styles.btnCtaLarge, prenom.trim() === '' && styles.btnCtaOff]}
-              disabled={prenom.trim() === ''}
-            >
+            {prenom.trim().length > 0 && <Text style={{ fontSize: 13, color: 'rgba(0,220,255,0.6)', marginBottom: 12, marginTop: -14 }}>Bonjour {prenom.trim()} 🪼</Text>}
+            <TouchableOpacity onPress={() => prenom.trim() ? onDone(prenom.trim(), lang, tensionIdxs) : null} style={[styles.btnCtaLarge, prenom.trim() === '' && styles.btnCtaOff]} disabled={prenom.trim() === ''}>
               <Text style={styles.btnCtaLargeTxt}>{tr.ob_demarrer}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => onDone('', lang, tensionIdxs)} style={{ marginTop: 18 }}>
@@ -2238,23 +2654,11 @@ function OnboardingScreen({ onDone }) {
 }
 
 // ══════════════════════════════════
-// MAIN APP
+// NOTIFICATIONS
 // ══════════════════════════════════
-const STREAK_KEY       = 'fluidbody_streak';
-const STREAK_DATE_KEY  = 'fluidbody_streak_date';
-const DONE_KEY         = 'fluidbody_done';
-
-// ── NOTIFICATIONS ────────────────────────────────────────────
-// Notifications — optionnelles
 if (Notifications) {
   try {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
-    });
+    Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false }) });
   } catch(e) {}
 }
 
@@ -2266,131 +2670,10 @@ async function setupNotifications(lang = 'fr') {
     if (status !== 'granted') return;
     await Notifications.cancelAllScheduledNotificationsAsync();
     const tr = T[lang] || T['fr'];
-    await Notifications.scheduleNotificationAsync({
-      content: { title: tr.notif_title, body: tr.notif_body, sound: true },
-      trigger: { hour: 9, minute: 0, repeats: true },
-    });
+    await Notifications.scheduleNotificationAsync({ content: { title: tr.notif_title, body: tr.notif_body, sound: true }, trigger: { hour: 9, minute: 0, repeats: true } });
   } catch(e) {}
 }
 
-function MainApp({ prenom, lang, onChangeLang, tensionIdxs, supabase, supaUser }) {
-  const tr = T[lang] || T['fr'];
-  const [done, setDone] = useState({
-    p1: Array(20).fill(false), p2: Array(20).fill(false),
-    p3: Array(20).fill(false), p4: Array(20).fill(false),
-    p5: Array(20).fill(false), p6: Array(20).fill(false),
-    p7: Array(20).fill(false),
-  });
-  const [streak, setStreak] = useState(0);
-
-  // Charger la progression et le streak au démarrage
-  useEffect(() => {
-    async function loadData() {
-      try {
-        // Charger done
-        const savedDone = await AsyncStorage.getItem(DONE_KEY);
-        if (savedDone) {
-          const parsed = JSON.parse(savedDone);
-          // Force boolean values — AsyncStorage peut retourner des strings
-          const fixed = {};
-          Object.keys(parsed).forEach(k => {
-            fixed[k] = parsed[k].map(v => v === true || v === 'true');
-          });
-          setDone(fixed);
-        }
-
-        // Charger depuis Supabase si connecté (priorité sur local)
-        if (supabase && supaUser) {
-          try {
-            const { data } = await supabase
-              .from('progression')
-              .select('done')
-              .eq('user_id', supaUser.id)
-              .single();
-            if (data?.done) {
-              const fixed = {};
-              Object.keys(data.done).forEach(k => {
-                fixed[k] = (data.done[k] || []).map(v => v === true || v === 'true');
-              });
-              setDone(fixed);
-            }
-          } catch(e) {}
-        }
-
-        // Calculer le streak
-        const savedStreak = parseInt(await AsyncStorage.getItem(STREAK_KEY) || '0');
-        const lastDate    = await AsyncStorage.getItem(STREAK_DATE_KEY);
-        const today       = new Date().toDateString();
-        const yesterday   = new Date(Date.now() - 86400000).toDateString();
-
-        if (lastDate === today) {
-          setStreak(savedStreak); // déjà actif aujourd'hui
-        } else if (lastDate === yesterday) {
-          setStreak(savedStreak); // hier → streak maintenu
-        } else if (lastDate) {
-          // Plus d'un jour manqué → streak cassé
-          await AsyncStorage.setItem(STREAK_KEY, '0');
-          setStreak(0);
-        }
-      } catch (e) {}
-    }
-    loadData();
-    setupNotifications(lang);
-  }, []);
-
-  async function toggleDone(key, idx) {
-    const next = { ...done, [key]: [...done[key]] };
-    next[key][idx] = !next[key][idx];
-    setDone(next);
-
-    // Sauvegarder la progression localement
-    try {
-      await AsyncStorage.setItem(DONE_KEY, JSON.stringify(next));
-    } catch (e) {}
-
-    // Sync Supabase si connecté
-    if (supabase && supaUser) {
-      try {
-        await supabase.from('progression').upsert({
-          user_id: supaUser.id,
-          done: next,
-          updated_at: new Date().toISOString()
-        });
-      } catch(e) {}
-    }
-
-    // Mettre à jour le streak si on coche une séance
-    if (!done[key][idx]) {
-      try {
-        const today    = new Date().toDateString();
-        const lastDate = await AsyncStorage.getItem(STREAK_DATE_KEY);
-        if (lastDate !== today) {
-          const yesterday = new Date(Date.now() - 86400000).toDateString();
-          const current   = parseInt(await AsyncStorage.getItem(STREAK_KEY) || '0');
-          const newStreak = lastDate === yesterday ? current + 1 : 1;
-          await AsyncStorage.setItem(STREAK_KEY, String(newStreak));
-          await AsyncStorage.setItem(STREAK_DATE_KEY, today);
-          setStreak(newStreak);
-        }
-      } catch (e) {}
-    }
-  }
-  return (
-    <NavigationContainer>
-      <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { backgroundColor: 'rgba(0,10,20,0.95)', borderTopColor: 'rgba(0,215,255,0.14)', height: 90, paddingBottom: 14, paddingTop: 8 }, tabBarActiveTintColor: 'rgba(0,220,255,0.9)', tabBarInactiveTintColor: 'rgba(0,195,240,0.36)', tabBarLabelStyle: { fontSize: 14, fontWeight: '400', letterSpacing: 0.3 }, tabBarIconStyle: { marginBottom: -2 } }}>
-        <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Path d="M12 2C8 2 5 6 5 10c0 3 2 5 5 6v6" stroke={color} strokeWidth="1.6" strokeLinecap="round"/><Path d="M12 16c3-1 7-3 7-6 0-4-3-8-7-8" stroke={color} strokeWidth="1.6" strokeLinecap="round" opacity="0.5"/></Svg> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} />}</Tab.Screen>
-        <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Path d="M3 20h18M3 14h12M3 8h8" stroke={color} strokeWidth="1.8" strokeLinecap="round"/><Circle cx="19" cy="8" r="3" stroke={color} strokeWidth="1.6" fill="none"/></Svg> }}>{() => <Progresser done={done} lang={lang} tensionIdxs={tensionIdxs} />}</Tab.Screen>
-        <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="8" r="5" stroke={color} strokeWidth="1.6" fill="none"/><Path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={color} strokeWidth="1.6" strokeLinecap="round" fill="none"/></Svg> }}>{() => <SabrinaScreen prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} />}</Tab.Screen>
-        <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Path d="M4 4h16v16H4z" stroke={color} strokeWidth="1.6" strokeLinejoin="round" fill="none" rx="2"/><Path d="M8 8h8M8 12h8M8 16h5" stroke={color} strokeWidth="1.6" strokeLinecap="round"/></Svg> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
-        <Tab.Screen name={tr.tabs[4]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.6" fill="none"/><Path d="M12 7v5l3 3" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></Svg> }}>{() => <ParcoursScreen prenom={prenom} done={done} lang={lang} onChangeLang={onChangeLang} tensionIdxs={tensionIdxs} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} />}</Tab.Screen>
-      </Tab.Navigator>
-    </NavigationContainer>
-  );
-}
-
-// ══════════════════════════════════
-// APP ROOT
-// ══════════════════════════════════
 // ══════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════
@@ -2401,13 +2684,222 @@ try {
     'https://ctvtjeidkqpdsmhsjsij.supabase.co',
     'sb_publishable_QQH0CO0MPWqK6fNDFrUBUA_YNsORhmY',
     {
-      auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
-      realtime: { transport: () => null }, // Désactive le WebSocket realtime
+      auth: {
+        storage: AsyncStorage,
+        storageKey: 'fluidbody.supabase.auth.v1',
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+      },
+      realtime: { transport: () => null },
     }
   );
-} catch(e) { console.log('Supabase non disponible:', e.message); }
+} catch(e) {}
 
-export default function App() {
+// ══════════════════════════════════
+// MAIN APP
+// ══════════════════════════════════
+function MainApp({ prenom, lang, onChangeLang, tensionIdxs, supabase, supaUser }) {
+  const tr = T[lang] || T['fr'];
+  const [done, setDone] = useState({
+    p1: Array(20).fill(false), p2: Array(20).fill(false), p3: Array(20).fill(false),
+    p4: Array(20).fill(false), p5: Array(20).fill(false), p6: Array(20).fill(false), p7: Array(20).fill(false),
+  });
+  const [streak, setStreak] = useState(0);
+  const [isSubscriber, setIsSubscriber] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [iapProducts, setIapProducts] = useState({});
+  const [iapLoadingPrices, setIapLoadingPrices] = useState(false);
+
+  const iapSupported = Platform.OS === 'ios';
+  const iapDisabled = !InAppPurchases || !iapSupported || (Device && Device.isDevice === false);
+
+  function openPaywall() {
+    setPaywallVisible(true);
+  }
+
+  async function markSubscribed() {
+    setIsSubscriber(true);
+    try { await AsyncStorage.setItem(FLUID_SUB_KEY, 'true'); } catch (e) {}
+  }
+
+  async function purchaseSubscription(productId) {
+    if (iapDisabled) return;
+    try {
+      await InAppPurchases.purchaseItemAsync(productId);
+    } catch (e) {
+      devWarn('purchaseItemAsync', e);
+    }
+  }
+
+  async function restoreSubscription() {
+    if (iapDisabled) return;
+    try {
+      const history = await InAppPurchases.getPurchaseHistoryAsync();
+      const results = history?.results || [];
+      const found = results.some(r => ALL_PRODUCT_IDS.includes(r.productId));
+      if (found) await markSubscribed();
+    } catch (e) {
+      devWarn('restoreSubscription', e);
+    }
+  }
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        let sub = await AsyncStorage.getItem(FLUID_SUB_KEY);
+        if (sub === null) {
+          const legacyA = await AsyncStorage.getItem('fluid_subscription_active');
+          const legacyB = await AsyncStorage.getItem('fluidbody_is_subscriber');
+          if (legacyA === 'true' || legacyB === 'true') {
+            try {
+              await AsyncStorage.setItem(FLUID_SUB_KEY, 'true');
+              await AsyncStorage.multiRemove(['fluid_subscription_active', 'fluidbody_is_subscriber']);
+            } catch (e2) {}
+            sub = 'true';
+          }
+        }
+        if (sub === 'true') setIsSubscriber(true);
+        const savedDone = await AsyncStorage.getItem(DONE_KEY);
+        if (savedDone) {
+          const parsed = JSON.parse(savedDone);
+          const fixed = {};
+          Object.keys(parsed).forEach(k => { fixed[k] = parsed[k].map(v => v === true || v === 'true'); });
+          setDone(fixed);
+        }
+        if (supabase && supaUser) {
+          try {
+            const { data } = await supabase.from('progression').select('done').eq('user_id', supaUser.id).single();
+            if (data?.done) {
+              const fixed = {};
+              Object.keys(data.done).forEach(k => { fixed[k] = (data.done[k] || []).map(v => v === true || v === 'true'); });
+              setDone(fixed);
+            }
+          } catch (e) { devWarn('Supabase progression', e); }
+        }
+        const savedStreak = parseInt(await AsyncStorage.getItem(STREAK_KEY) || '0');
+        const lastDate = await AsyncStorage.getItem(STREAK_DATE_KEY);
+        const today = new Date().toDateString();
+        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        if (lastDate === today) { setStreak(savedStreak); }
+        else if (lastDate === yesterday) { setStreak(savedStreak); }
+        else if (lastDate) { await AsyncStorage.setItem(STREAK_KEY, '0'); setStreak(0); }
+      } catch (e) {}
+    }
+    loadData();
+    setupNotifications(lang);
+  }, []);
+
+  useEffect(() => {
+    if (iapDisabled) return;
+    let mounted = true;
+
+    async function initIap() {
+      try {
+        await InAppPurchases.connectAsync();
+      } catch (e) {
+        console.log('IAP Error:', e);
+        devWarn('IAP connectAsync', e);
+        return;
+      }
+
+      try {
+        console.log('Loading products...', PRODUCT_IDS);
+        setIapLoadingPrices(true);
+        const { results } = await InAppPurchases.getProductsAsync(ALL_PRODUCT_IDS);
+        if (mounted) {
+          const map = {};
+          (results || []).forEach(p => { if (p?.productId) map[p.productId] = p; });
+          setIapProducts(map);
+          console.log('Products loaded:', map);
+        }
+      } catch (e) {
+        console.log('IAP Error:', e);
+        devWarn('IAP getProductsAsync', e);
+      } finally {
+        if (mounted) setIapLoadingPrices(false);
+      }
+
+      InAppPurchases.setPurchaseListener(async ({ responseCode, results }) => {
+        try {
+          if (responseCode !== InAppPurchases.IAPResponseCode.OK) return;
+          for (const purchase of (results || [])) {
+            if (!purchase?.productId) continue;
+            if (!ALL_PRODUCT_IDS.includes(purchase.productId)) continue;
+            if (purchase.purchaseState !== InAppPurchases.IAPPurchaseState.PURCHASED) continue;
+            try { await InAppPurchases.finishTransactionAsync(purchase, false); } catch (e) {}
+            await markSubscribed();
+            if (mounted) setPaywallVisible(false);
+          }
+        } catch (e) {
+          console.log('IAP Error:', e);
+          devWarn('IAP listener', e);
+        }
+      });
+    }
+
+    initIap();
+    return () => {
+      mounted = false;
+      try { InAppPurchases.setPurchaseListener(() => {}); } catch (e) {}
+      try { void InAppPurchases.disconnectAsync(); } catch (e) {}
+    };
+  }, []);
+
+  async function toggleDone(key, idx) {
+    const next = { ...done, [key]: [...done[key]] };
+    next[key][idx] = !next[key][idx];
+    setDone(next);
+    try { await AsyncStorage.setItem(DONE_KEY, JSON.stringify(next)); } catch (e) {}
+    if (supabase && supaUser) {
+      try { await supabase.from('progression').upsert({ user_id: supaUser.id, done: next, updated_at: new Date().toISOString() }); } catch (e) { devWarn('Supabase progression upsert', e); }
+    }
+    // Streak
+    if (!done[key][idx]) {
+      try {
+        const today = new Date().toDateString();
+        const lastDate = await AsyncStorage.getItem(STREAK_DATE_KEY);
+        if (lastDate !== today) {
+          const yesterday = new Date(Date.now() - 86400000).toDateString();
+          const current = parseInt(await AsyncStorage.getItem(STREAK_KEY) || '0');
+          const newStreak = lastDate === yesterday ? current + 1 : 1;
+          await AsyncStorage.setItem(STREAK_KEY, String(newStreak));
+          await AsyncStorage.setItem(STREAK_DATE_KEY, today);
+          setStreak(newStreak);
+        }
+      } catch (e) {}
+    }
+  }
+
+  return (
+    <>
+      <PaywallModal
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        lang={lang}
+        products={iapProducts}
+        loadingPrices={iapLoadingPrices}
+        disabled={iapDisabled}
+        onBuyMonthly={() => purchaseSubscription(PRODUCT_IDS.monthly)}
+        onBuyYearly={() => purchaseSubscription(PRODUCT_IDS.yearly)}
+        onRestore={() => restoreSubscription()}
+      />
+      <NavigationContainer>
+        <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { backgroundColor: 'rgba(0,10,20,0.95)', borderTopColor: 'rgba(0,215,255,0.14)', height: 90, paddingBottom: 14, paddingTop: 8 }, tabBarActiveTintColor: 'rgba(0,220,255,0.9)', tabBarInactiveTintColor: 'rgba(0,195,240,0.36)', tabBarLabelStyle: { fontSize: 14, fontWeight: '400', letterSpacing: 0.3 } }}>
+          <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Path d="M12 2C8 2 5 6 5 10c0 3 2 5 5 6v6" stroke={color} strokeWidth="1.6" strokeLinecap="round"/><Path d="M12 16c3-1 7-3 7-6 0-4-3-8-7-8" stroke={color} strokeWidth="1.6" strokeLinecap="round" opacity="0.5"/></Svg> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={isSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Path d="M3 20h18M3 14h12M3 8h8" stroke={color} strokeWidth="1.8" strokeLinecap="round"/><Circle cx="19" cy="8" r="3" stroke={color} strokeWidth="1.6" fill="none"/></Svg> }}>{() => <Progresser done={done} lang={lang} tensionIdxs={tensionIdxs} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Path d="M4 4h16v16H4z" stroke={color} strokeWidth="1.6" strokeLinejoin="round" fill="none"/><Path d="M8 8h8M8 12h8M8 16h5" stroke={color} strokeWidth="1.6" strokeLinecap="round"/></Svg> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.6" fill="none"/><Path d="M12 7v5l3 3" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></Svg> }}>{() => <ParcoursScreen prenom={prenom} done={done} lang={lang} onChangeLang={onChangeLang} tensionIdxs={tensionIdxs} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} />}</Tab.Screen>
+        </Tab.Navigator>
+      </NavigationContainer>
+    </>
+  );
+}
+
+// ══════════════════════════════════
+// APP ROOT
+// ══════════════════════════════════
+function App() {
   const [onboardingDone, setOnboardingDone] = useState(false);
   const [prenom, setPrenom] = useState('');
   const [lang, setLang] = useState('fr');
@@ -2415,210 +2907,146 @@ export default function App() {
   const [supaUser, setSupaUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAuth, setShowAuth] = useState(false);
+  const profileLocalRef = useRef({ prenom: '', lang: 'fr', tensionIdxs: [] });
+  profileLocalRef.current = { prenom, lang, tensionIdxs };
 
   useEffect(() => {
-    // Vérifier session existante
+    function friendlyFromEmail(email) {
+      if (!email || typeof email !== 'string') return '';
+      const local = email.split('@')[0] || '';
+      const word = local.replace(/[.+_-]+/g, ' ').trim().split(/\s+/)[0] || '';
+      if (!word) return '';
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    }
+
+    async function fetchAndMergeProfile(user) {
+      if (!user?.id || !supabase) return;
+      const { data: profile, error: pe } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      if (pe) devWarn('profiles lecture', pe);
+
+      const meta = user.user_metadata || {};
+      const metaKeys = ['prenom', 'first_name', 'firstName', 'given_name', 'name', 'full_name'];
+      let metaName = '';
+      for (const k of metaKeys) {
+        const v = meta[k];
+        if (v != null && String(v).trim()) {
+          metaName = String(v).trim();
+          break;
+        }
+      }
+
+      const dbPrenom = profile?.prenom != null && String(profile.prenom).trim();
+      const localPrenom = profileLocalRef.current.prenom != null && String(profileLocalRef.current.prenom).trim();
+      const resolved = dbPrenom || metaName || localPrenom || '';
+      const displayPrenom = resolved || friendlyFromEmail(user.email);
+
+      setPrenom(prev => displayPrenom || prev);
+      if (profile?.lang) setLang(profile.lang);
+      if (Array.isArray(profile?.tension_idxs)) setTensionIdxs(profile.tension_idxs);
+
+      if (!dbPrenom && (metaName || localPrenom)) {
+        const prenomToStore = metaName || localPrenom;
+        const pl = profileLocalRef.current;
+        const { error: upErr } = await supabase.from('profiles').upsert({
+          id: user.id,
+          prenom: prenomToStore,
+          lang: profile?.lang || pl.lang || 'fr',
+          tension_idxs: Array.isArray(profile?.tension_idxs) ? profile.tension_idxs : (Array.isArray(pl.tensionIdxs) ? pl.tensionIdxs : []),
+          updated_at: new Date().toISOString(),
+        });
+        if (upErr) devWarn('profiles upsert hydrate', upErr);
+        else setPrenom(prenomToStore);
+      }
+    }
+
     async function checkSession() {
       try {
         if (!supabase) { setLoading(false); return; }
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: se } = await supabase.auth.getSession();
+        if (se) devWarn('getSession', se);
         if (session?.user) {
           setSupaUser(session.user);
-          // Charger le profil
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          if (profile) {
-            setPrenom(profile.prenom || '');
-            setLang(profile.lang || 'fr');
-            setTensionIdxs(profile.tension_idxs || []);
-            setOnboardingDone(true);
-          }
+          await fetchAndMergeProfile(session.user);
+          setShowAuth(false);
+          setOnboardingDone(true);
         }
-      } catch(e) {}
+      } catch (e) { devWarn('Session / profil', e); }
       setLoading(false);
     }
     checkSession();
-
-    // Écouter les changements d'auth
-    if (supabase) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setSupaUser(session?.user || null);
-      });
-      return () => subscription?.unsubscribe();
-    }
+    if (!supabase) return undefined;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSupaUser(session?.user || null);
+      if (session?.user) {
+        try {
+          await fetchAndMergeProfile(session.user);
+          setShowAuth(false);
+          setOnboardingDone(true);
+        } catch (e) { devWarn('Profil après connexion', e); }
+      }
+    });
+    return () => subscription?.unsubscribe();
   }, []);
+
+  async function handleOnboardingDone(p, l, t) {
+    setPrenom(p); setLang(l); setTensionIdxs(t); setOnboardingDone(true);
+    if (supabase && supaUser) {
+      try { await supabase.from('profiles').upsert({ id: supaUser.id, prenom: p, lang: l, tension_idxs: t, updated_at: new Date().toISOString() }); } catch (e) { devWarn('Supabase profiles upsert', e); }
+    }
+  }
 
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000e18', alignItems: 'center', justifyContent: 'center' }}>
         <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
         <EmojiMeduse />
-        <Text style={{ color: 'rgba(0,210,250,0.6)', fontSize: 12, letterSpacing: 3, textTransform: 'uppercase', marginTop: 20 }}>FluidBody</Text>
+        <Text style={{ color: 'rgba(0,210,250,0.6)', fontSize: 12, letterSpacing: 3, textTransform: 'uppercase', marginTop: 20 }}>FluidBody Pilates</Text>
       </View>
     );
   }
-
-  async function handleOnboardingDone(p, l, t) {
-    setPrenom(p); setLang(l); setTensionIdxs(t); setOnboardingDone(true);
-    // Sauvegarder le profil dans Supabase si connecté
-    if (supabase && supaUser) {
-      try {
-        await supabase.from('profiles').upsert({
-          id: supaUser.id, prenom: p, lang: l, tension_idxs: t, updated_at: new Date().toISOString()
-        });
-      } catch(e) {}
-    }
-  }
-
-// ══════════════════════════════════
-// ECRAN AUTH — Magic Link
-// ══════════════════════════════════
-function AuthScreen({ onSkip, lang = 'fr' }) {
-  const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [sent, setSent] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  async function sendOtp() {
-    if (!email.trim()) return;
-    setLoading(true); setError('');
-    try {
-      const { error: err } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: { shouldCreateUser: true }
-      });
-      if (err) { setError(err.message); } else { setSent(true); }
-    } catch(e) { setError('Erreur réseau'); }
-    setLoading(false);
-  }
-
-  async function verifyOtp() {
-    if (otp.length !== 8) return;
-    setLoading(true); setError('');
-    try {
-      // Essayer d'abord avec 'email', puis 'magiclink' si ça échoue
-      let { error: err } = await supabase.auth.verifyOtp({
-        email: email.trim().toLowerCase(),
-        token: otp.trim(),
-        type: 'email'
-      });
-      if (err) {
-        // Fallback avec magiclink
-        const { error: err2 } = await supabase.auth.verifyOtp({
-          email: email.trim().toLowerCase(),
-          token: otp.trim(),
-          type: 'magiclink'
-        });
-        if (err2) { setError('Code incorrect ou expiré'); }
-      }
-    } catch(e) { setError('Vérification impossible — réessaie'); }
-    setLoading(false);
-  }
-
-  return (
-    <View style={{ flex: 1 }}>
-      <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-      {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
-      <ScrollView contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingVertical: 60 }}>
-        <EmojiMeduse />
-        <Text style={{ fontSize: 36, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 6, textTransform: 'uppercase', marginTop: 16, marginBottom: 4 }}>FluidBody</Text>
-        <Text style={{ fontSize: 11, color: 'rgba(0,210,250,0.6)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 36 }}>Ton espace personnel</Text>
-
-        {!sent ? (
-          <>
-            <Text style={{ fontSize: 15, color: 'rgba(215,248,255,0.75)', textAlign: 'center', marginBottom: 24, lineHeight: 24 }}>
-              Entre ton email pour sauvegarder ta progression dans le cloud 🌊
-            </Text>
-            <TextInput
-              value={email} onChangeText={setEmail}
-              placeholder="ton@email.com"
-              placeholderTextColor="rgba(0,180,220,0.35)"
-              keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
-              style={{ width: '100%', height: 56, backgroundColor: 'rgba(0,18,32,0.8)', borderWidth: 1, borderColor: email ? 'rgba(0,220,255,0.6)' : 'rgba(0,200,240,0.2)', borderRadius: 16, color: 'rgba(200,245,255,0.95)', fontSize: 17, paddingHorizontal: 20, marginBottom: 12 }}
-            />
-            {error ? <Text style={{ color: 'rgba(255,100,100,0.8)', fontSize: 12, marginBottom: 10 }}>{error}</Text> : null}
-            <TouchableOpacity onPress={sendOtp} disabled={!email.trim() || loading}
-              style={{ width: '100%', height: 56, borderRadius: 28, backgroundColor: email.trim() ? 'rgba(0,180,235,0.3)' : 'rgba(0,100,140,0.1)', borderWidth: 1.5, borderColor: email.trim() ? 'rgba(0,235,255,0.8)' : 'rgba(0,150,190,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-              <Text style={{ fontSize: 15, fontWeight: '500', color: 'rgba(215,248,255,0.9)', letterSpacing: 1 }}>
-                {loading ? '...' : '✉️  Recevoir un code'}
-              </Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <View style={{ alignItems: 'center', marginBottom: 24 }}>
-              <Text style={{ fontSize: 32, marginBottom: 10 }}>📬</Text>
-              <Text style={{ fontSize: 16, fontWeight: '300', color: 'rgba(215,248,255,0.9)', textAlign: 'center', marginBottom: 6 }}>Code envoyé à</Text>
-              <Text style={{ fontSize: 14, color: 'rgba(0,220,255,0.8)', marginBottom: 4 }}>{email}</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(155,215,240,0.5)', textAlign: 'center' }}>Vérifie ton email et entre le code à 8 chiffres</Text>
-            </View>
-            <TextInput
-              value={otp} onChangeText={t => setOtp(t.replace(/\D/g,'').slice(0,8))}
-              placeholder="00000000"
-              placeholderTextColor="rgba(0,180,220,0.35)"
-              keyboardType="number-pad" maxLength={8}
-              style={{ width: '100%', height: 64, backgroundColor: 'rgba(0,18,32,0.8)', borderWidth: 1.5, borderColor: otp.length === 8 ? 'rgba(0,220,255,0.8)' : 'rgba(0,200,240,0.2)', borderRadius: 16, color: 'rgba(200,245,255,0.95)', fontSize: 22, fontWeight: '300', textAlign: 'center', letterSpacing: 12, marginBottom: 12 }}
-            />
-            {error ? <Text style={{ color: 'rgba(255,100,100,0.8)', fontSize: 12, marginBottom: 10 }}>{error}</Text> : null}
-            <TouchableOpacity onPress={verifyOtp} disabled={otp.length !== 8 || loading}
-              style={{ width: '100%', height: 56, borderRadius: 28, backgroundColor: otp.length === 8 ? 'rgba(0,180,235,0.3)' : 'rgba(0,100,140,0.1)', borderWidth: 1.5, borderColor: otp.length === 8 ? 'rgba(0,235,255,0.8)' : 'rgba(0,150,190,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-              <Text style={{ fontSize: 15, fontWeight: '500', color: 'rgba(215,248,255,0.9)', letterSpacing: 1 }}>
-                {loading ? '...' : '✓  Confirmer'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setSent(false); setOtp(''); setError(''); }}>
-              <Text style={{ fontSize: 12, color: 'rgba(0,190,230,0.5)', letterSpacing: 1 }}>Changer d'email</Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        <View style={{ width: '100%', borderTopWidth: 0.5, borderTopColor: 'rgba(0,195,240,0.15)', paddingTop: 20, alignItems: 'center', marginTop: 20 }}>
-          <TouchableOpacity onPress={onSkip} style={{ paddingVertical: 14, paddingHorizontal: 32, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(0,195,240,0.3)', backgroundColor: 'rgba(0,18,32,0.5)' }}>
-            <Text style={{ fontSize: 14, color: 'rgba(0,210,250,0.7)', letterSpacing: 2, textTransform: 'uppercase' }}>Continuer sans compte →</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
 
   if (!onboardingDone) {
     return <OnboardingScreen onDone={(p, l, t) => { handleOnboardingDone(p, l, t); if (!supaUser && supabase) setShowAuth(true); }} />;
   }
 
   if (showAuth && !supaUser) {
-    return <AuthScreen onSkip={() => setShowAuth(false)} lang={lang} />;
+    return <AuthScreen onSkip={() => setShowAuth(false)} lang={lang} prenomHint={prenom} />;
   }
 
+  return <MainApp prenom={prenom} lang={lang} onChangeLang={setLang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} />;
+}
+
+export default function AppWithBoundary() {
   return (
-    <MainApp
-      prenom={prenom}
-      lang={lang}
-      onChangeLang={setLang}
-      tensionIdxs={tensionIdxs}
-      supabase={supabase}
-      supaUser={supaUser}
-    />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   logoTitle: { position: 'absolute', top: 58, fontSize: 44, color: 'rgba(215,248,255,0.96)', fontWeight: '200', letterSpacing: 7, textTransform: 'uppercase', zIndex: 10 },
-  logoSub: { position: 'absolute', top: 108, fontSize: 15, color: 'rgba(0,210,250,0.85)', letterSpacing: 4, textTransform: 'uppercase', zIndex: 10 },
-  metrics: { position: 'absolute', bottom: 96, left: 16, right: 16, flexDirection: 'row', gap: 8 },
-  metric: { flex: 1, backgroundColor: 'rgba(0,18,32,0.72)', borderWidth: 0.5, borderColor: 'rgba(0,210,255,0.2)', borderRadius: 16, padding: 10, alignItems: 'center' },
-  mval: { fontSize: 20, fontWeight: '500', color: 'rgba(0,238,255,0.95)' },
-  mlbl: { fontSize: 9, fontWeight: '200', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(0,175,215,0.55)', marginTop: 3 },
-  text: { fontSize: 20, color: 'rgba(215,248,255,0.7)', fontWeight: '200' },
+  metrics: { position: 'absolute', bottom: 30, left: 16, right: 16, flexDirection: 'row', gap: 8 },
+  metricShell: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    shadowColor: '#000',
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  metricBlurInner: { padding: 10, alignItems: 'center', justifyContent: 'center', minHeight: 64 },
+  metricWebFallback: { backgroundColor: 'rgba(255,255,255,0.14)' },
+  mval: { fontSize: 20, fontWeight: '500', color: '#fff' },
+  mlbl: { fontSize: 9, fontWeight: '200', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(255,255,255,0.92)', marginTop: 3 },
   btnCtaLarge: { alignSelf: 'stretch', height: 66, borderRadius: 33, backgroundColor: 'rgba(0,180,235,0.3)', borderWidth: 2, borderColor: 'rgba(0,235,255,0.9)', alignItems: 'center', justifyContent: 'center' },
   btnCtaOff: { opacity: 0.3 },
   btnCtaLargeTxt: { fontSize: 17, fontWeight: '600', color: 'rgba(230,250,255,1)', letterSpacing: 3, textTransform: 'uppercase' },
   statCard: { flex: 1, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 16, padding: 14, alignItems: 'center' },
-  statVal: { fontSize: 22, fontWeight: '500', color: 'rgba(0,238,255,0.9)', marginBottom: 4 },
   statLbl: { fontSize: 9, fontWeight: '200', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(0,175,215,0.42)' },
 });
