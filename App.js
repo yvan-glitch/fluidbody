@@ -5,9 +5,12 @@ import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, 
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { ErrorBoundary } from './components/ErrorBoundary';
-// IAP (achats Apple) — indisponible dans Expo Go, donc import "safe"
-let InAppPurchases = null;
-try { InAppPurchases = require('expo-in-app-purchases'); } catch (e) {}
+// RevenueCat (achats Apple) — indisponible dans Expo Go, donc import "safe"
+let Purchases = null;
+try {
+  const M = require('react-native-purchases');
+  Purchases = M?.default || M;
+} catch (e) {}
 // Notifications optionnelles — package peut ne pas être installé
 let Notifications = null;
 let Device = null;
@@ -48,6 +51,8 @@ const PRODUCT_IDS = {
   yearly: 'com.fluidbody.app.premium.yearly',
 };
 const ALL_PRODUCT_IDS = Object.values(PRODUCT_IDS);
+const RC_ENTITLEMENT_ID = 'Fluidbody Pilates Pro';
+const RC_API_KEY_IOS = 'appl_hqCGakwrJAfotXKNQtMBAgLnqcX';
 
 const VIDEO_RESUME_PREFIX = 'fluid_video_resume_v1_';
 function videoResumeStorageKey(pilierKey, seanceIndex) {
@@ -622,19 +627,38 @@ const ETAPE_COLORS = {
 
 /** Couleurs saturées + fonds plus opaques pour lisibilité sur dégradé cyan clair (bas d’écran). */
 const PILIERS_BASE = [
-  { key: 'p7', color: 'rgba(255,35,155,1)', bg: 'rgba(255,35,155,0.42)', top: 208, left: 188 },
-  { key: 'p3', color: 'rgba(0,110,255,1)', bg: 'rgba(0,110,255,0.38)', top: 279, left: 325 },
-  { key: 'p4', color: 'rgba(245,75,10,1)', bg: 'rgba(245,75,10,0.40)', top: 427, left: 356 },
-  { key: 'p6', color: 'rgba(185,45,255,1)', bg: 'rgba(185,45,255,0.44)', top: 546, left: 264 },
-  { key: 'p5', color: 'rgba(55,130,255,1)', bg: 'rgba(55,130,255,0.44)', top: 546, left: 112 },
-  { key: 'p1', color: 'rgba(0,170,110,1)', bg: 'rgba(0,170,110,0.40)', top: 427, left: 22 },
-  { key: 'p2', color: 'rgba(255,155,0,1)', bg: 'rgba(255,155,0,0.42)', top: 279, left: 51 },
+  // Ordre = placement autour du cercle (uniforme).
+  { key: 'p7', color: 'rgba(255,35,155,1)', bg: 'rgba(255,35,155,0.42)' },
+  { key: 'p3', color: 'rgba(0,110,255,1)', bg: 'rgba(0,110,255,0.38)' },
+  { key: 'p4', color: 'rgba(245,75,10,1)', bg: 'rgba(245,75,10,0.40)' },
+  { key: 'p6', color: 'rgba(185,45,255,1)', bg: 'rgba(185,45,255,0.44)' },
+  { key: 'p5', color: 'rgba(55,130,255,1)', bg: 'rgba(55,130,255,0.44)' },
+  { key: 'p1', color: 'rgba(0,170,110,1)', bg: 'rgba(0,170,110,0.40)' },
+  { key: 'p2', color: 'rgba(255,155,0,1)', bg: 'rgba(255,155,0,0.42)' },
 ];
-const PILIERS_DATA = PILIERS_BASE.map(p => ({
-  ...p,
-  top: IS_IPAD ? p.top * 1.0 : p.top,
-  left: IS_IPAD ? (SW / 2 - 30) + (p.left - 188) * 1.5 : p.left,
-}));
+
+function computePilierPositions() {
+  const totalOrbes = PILIERS_BASE.length;
+  const centerX = SW / 2;
+  // Centre visuel proche de la méduse dans l'écran Home (évite l'entête + tab bar)
+  const safeTop = 180;
+  const safeBottom = 200;
+  const usableH = Math.max(320, SH - safeTop - safeBottom);
+  // Remonte l'ensemble des orbes (cercle plus haut)
+  const centerY = safeTop + usableH * 0.42;
+  const baseR = Math.min(SW, usableH) * (IS_IPAD ? 0.35 : 0.33);
+  const radius = Math.max(155, Math.min(baseR + 14, 255));
+  const startAngle = -Math.PI / 2; // commence en haut
+
+  return PILIERS_BASE.map((p, index) => {
+    const angle = (index / totalOrbes) * 2 * Math.PI + startAngle;
+    const cx = centerX + radius * Math.cos(angle);
+    const cy = centerY + radius * Math.sin(angle);
+    return { ...p, cx, cy };
+  });
+}
+
+const PILIERS_DATA = computePilierPositions();
 
 const PILIER_LABEL_IDX = { p1: 0, p2: 1, p3: 2, p4: 3, p5: 4, p6: 5, p7: 6 };
 function getPiliers(lang) {
@@ -1050,7 +1074,7 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
   const [videoLoadFailed, setVideoLoadFailed] = useState(false);
   const [videoResetKey, setVideoResetKey] = useState(0);
   const [titre, duree, etape, videoUrl] = seance;
-  const uri = videoUrl || VIDEO_DEMO;
+  const [uri, setUri] = useState(videoUrl || VIDEO_DEMO);
   const uriRef = useRef(uri);
   uriRef.current = uri;
   const lastPersistAtRef = useRef(0);
@@ -1142,7 +1166,15 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
     lastStatusRef.current = s;
     if (!s.isLoaded && s.error) {
       setStatus(s);
+      console.log('Video playback error:', { uri: uriRef.current, error: s.error });
       if (__DEV__) devWarn('Video playback error', s.error);
+      // Fallback: si l’URL spécifique échoue, basculer sur la démo pour éviter un écran bloqué
+      if (uriRef.current !== VIDEO_DEMO) {
+        setUri(VIDEO_DEMO);
+        hasRestoredRef.current = false;
+        setVideoResetKey((k) => k + 1);
+        return;
+      }
       setVideoLoadFailed(true);
       return;
     }
@@ -1564,6 +1596,8 @@ function Orbe({ pilier, onPress, recommended, lang }) {
     ])).start();
   }, [recommended]);
   const pos = {};
+  const touchW = 96;
+  if (pilier.cx !== undefined) pos.left = pilier.cx - touchW / 2;
   if (pilier.left !== undefined) pos.left = pilier.left;
   if (pilier.right !== undefined) pos.right = pilier.right;
   const innerR = ORBE_INNER / 2;
@@ -1574,7 +1608,7 @@ function Orbe({ pilier, onPress, recommended, lang }) {
       accessibilityLabel={pilier.label}
       accessibilityRole="button"
       onPress={() => { hapticLight(); onPress(pilier); }}
-      style={{ position: 'absolute', top: pilier.top, ...pos, alignItems: 'center', zIndex: 20, width: 96, marginLeft: -16 }}
+      style={{ position: 'absolute', top: pilier.cy !== undefined ? pilier.cy - ORBE_OUTER / 2 : pilier.top, ...pos, alignItems: 'center', zIndex: 20, width: touchW }}
     >
       <Animated.View
         style={{
@@ -1845,12 +1879,23 @@ function getPriceString(p) {
   return '';
 }
 
-function PaywallModal({ visible, onClose, lang, products, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore }) {
+function getRcPriceString(pkg) {
+  const p = pkg?.product;
+  if (!p) return '';
+  if (typeof p.priceString === 'string' && p.priceString.trim()) return p.priceString.trim();
+  if (typeof p.localizedPriceString === 'string' && p.localizedPriceString.trim()) return p.localizedPriceString.trim();
+  if (typeof p.localizedPrice === 'string' && p.localizedPrice.trim()) return p.localizedPrice.trim();
+  if (p.price != null && p.currencyCode) return `${p.price} ${p.currencyCode}`;
+  if (p.price != null) return String(p.price);
+  return '';
+}
+
+function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore }) {
   const tr = T[lang] || T['fr'];
-  const monthly = products?.[PRODUCT_IDS.monthly];
-  const yearly = products?.[PRODUCT_IDS.yearly];
-  const monthlyPrice = getPriceString(monthly);
-  const yearlyPrice = getPriceString(yearly);
+  const monthlyPkg = packagesByProductId?.[PRODUCT_IDS.monthly];
+  const yearlyPkg = packagesByProductId?.[PRODUCT_IDS.yearly];
+  const monthlyPrice = getRcPriceString(monthlyPkg);
+  const yearlyPrice = getRcPriceString(yearlyPkg);
 
   return (
     <Modal visible={!!visible} animationType="fade" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
@@ -1950,8 +1995,8 @@ function PaywallModal({ visible, onClose, lang, products, loadingPrices, disable
           )}
 
           <TouchableOpacity
-            onPress={onBuyMonthly}
-            disabled={disabled || loadingPrices}
+            onPress={() => monthlyPkg && onBuyMonthly?.(monthlyPkg)}
+            disabled={disabled || loadingPrices || !monthlyPkg}
             activeOpacity={0.85}
             style={[
               styles.btnCtaLarge,
@@ -1963,8 +2008,8 @@ function PaywallModal({ visible, onClose, lang, products, loadingPrices, disable
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={onBuyYearly}
-            disabled={disabled || loadingPrices}
+            onPress={() => yearlyPkg && onBuyYearly?.(yearlyPkg)}
+            disabled={disabled || loadingPrices || !yearlyPkg}
             activeOpacity={0.85}
             style={[
               styles.btnCtaLarge,
@@ -2708,39 +2753,59 @@ function MainApp({ prenom, lang, onChangeLang, tensionIdxs, supabase, supaUser }
   const [streak, setStreak] = useState(0);
   const [isSubscriber, setIsSubscriber] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
-  const [iapProducts, setIapProducts] = useState({});
-  const [iapLoadingPrices, setIapLoadingPrices] = useState(false);
+  const [rcPackagesByProductId, setRcPackagesByProductId] = useState({});
+  const [rcLoadingPrices, setRcLoadingPrices] = useState(false);
 
-  const iapSupported = Platform.OS === 'ios';
-  const iapDisabled = !InAppPurchases || !iapSupported || (Device && Device.isDevice === false);
+  const rcSupported = Platform.OS === 'ios';
+  const rcDisabled = !Purchases || !rcSupported || (Device && Device.isDevice === false);
 
   function openPaywall() {
     setPaywallVisible(true);
   }
 
-  async function markSubscribed() {
-    setIsSubscriber(true);
-    try { await AsyncStorage.setItem(FLUID_SUB_KEY, 'true'); } catch (e) {}
+  async function setSubscriptionActive(active) {
+    setIsSubscriber(!!active);
+    try {
+      await AsyncStorage.setItem(FLUID_SUB_KEY, active ? 'true' : 'false');
+      await AsyncStorage.setItem('is_subscription_active', active ? 'true' : 'false');
+    } catch (e) {}
   }
 
-  async function purchaseSubscription(productId) {
-    if (iapDisabled) return;
+  async function refreshCustomerInfo() {
     try {
-      await InAppPurchases.purchaseItemAsync(productId);
+      const info = await Purchases.getCustomerInfo();
+      const active = !!info?.entitlements?.active?.[RC_ENTITLEMENT_ID];
+      await setSubscriptionActive(active);
+      return { info, active };
     } catch (e) {
-      devWarn('purchaseItemAsync', e);
+      console.log('IAP Error:', e);
+      devWarn('RevenueCat getCustomerInfo', e);
+      return { info: null, active: false };
+    }
+  }
+
+  async function purchaseSubscription(pkg) {
+    if (rcDisabled) return;
+    try {
+      const { customerInfo } = await Purchases.purchasePackage(pkg);
+      const active = !!customerInfo?.entitlements?.active?.[RC_ENTITLEMENT_ID];
+      await setSubscriptionActive(active);
+      setPaywallVisible(false);
+    } catch (e) {
+      console.log('IAP Error:', e);
+      devWarn('RevenueCat purchasePackage', e);
     }
   }
 
   async function restoreSubscription() {
-    if (iapDisabled) return;
+    if (rcDisabled) return;
     try {
-      const history = await InAppPurchases.getPurchaseHistoryAsync();
-      const results = history?.results || [];
-      const found = results.some(r => ALL_PRODUCT_IDS.includes(r.productId));
-      if (found) await markSubscribed();
+      const info = await Purchases.restorePurchases();
+      const active = !!info?.entitlements?.active?.[RC_ENTITLEMENT_ID];
+      await setSubscriptionActive(active);
     } catch (e) {
-      devWarn('restoreSubscription', e);
+      console.log('IAP Error:', e);
+      devWarn('RevenueCat restorePurchases', e);
     }
   }
 
@@ -2791,58 +2856,75 @@ function MainApp({ prenom, lang, onChangeLang, tensionIdxs, supabase, supaUser }
   }, []);
 
   useEffect(() => {
-    if (iapDisabled) return;
+    if (rcDisabled) return;
     let mounted = true;
+    let customerInfoListener = null;
 
-    async function initIap() {
+    async function initRevenueCat() {
       try {
-        await InAppPurchases.connectAsync();
+        Purchases.configure({ apiKey: RC_API_KEY_IOS });
       } catch (e) {
         console.log('IAP Error:', e);
-        devWarn('IAP connectAsync', e);
+        devWarn('RevenueCat configure', e);
         return;
       }
 
       try {
+        await refreshCustomerInfo();
+      } catch (e) {}
+
+      try {
+        customerInfoListener = async (info) => {
+          try {
+            const active = !!info?.entitlements?.active?.[RC_ENTITLEMENT_ID];
+            await setSubscriptionActive(active);
+          } catch (e) {}
+        };
+        Purchases.addCustomerInfoUpdateListener(customerInfoListener);
+      } catch (e) {}
+
+      try {
         console.log('Loading products...', PRODUCT_IDS);
-        setIapLoadingPrices(true);
-        const { results } = await InAppPurchases.getProductsAsync(ALL_PRODUCT_IDS);
+        setRcLoadingPrices(true);
+        const offerings = await Purchases.getOfferings();
+        const current = offerings?.current;
+        const packages = current?.availablePackages || [];
+        const map = {};
+        for (const pkg of packages) {
+          const pid = pkg?.product?.identifier;
+          const ptype = pkg?.packageType;
+          if (!pid && !ptype) continue;
+
+          // Accepte les identifiants App Store (longs) + Test Store (courts) + packageType
+          const isMonthly =
+            pid === PRODUCT_IDS.monthly ||
+            pid === 'monthly' ||
+            ptype === 'MONTHLY';
+          const isYearly =
+            pid === PRODUCT_IDS.yearly ||
+            pid === 'yearly' ||
+            ptype === 'ANNUAL';
+
+          const canonical = isMonthly ? PRODUCT_IDS.monthly : isYearly ? PRODUCT_IDS.yearly : null;
+          if (!canonical) continue;
+          map[canonical] = pkg;
+        }
         if (mounted) {
-          const map = {};
-          (results || []).forEach(p => { if (p?.productId) map[p.productId] = p; });
-          setIapProducts(map);
+          setRcPackagesByProductId(map);
           console.log('Products loaded:', map);
         }
       } catch (e) {
         console.log('IAP Error:', e);
-        devWarn('IAP getProductsAsync', e);
+        devWarn('RevenueCat getOfferings', e);
       } finally {
-        if (mounted) setIapLoadingPrices(false);
+        if (mounted) setRcLoadingPrices(false);
       }
-
-      InAppPurchases.setPurchaseListener(async ({ responseCode, results }) => {
-        try {
-          if (responseCode !== InAppPurchases.IAPResponseCode.OK) return;
-          for (const purchase of (results || [])) {
-            if (!purchase?.productId) continue;
-            if (!ALL_PRODUCT_IDS.includes(purchase.productId)) continue;
-            if (purchase.purchaseState !== InAppPurchases.IAPPurchaseState.PURCHASED) continue;
-            try { await InAppPurchases.finishTransactionAsync(purchase, false); } catch (e) {}
-            await markSubscribed();
-            if (mounted) setPaywallVisible(false);
-          }
-        } catch (e) {
-          console.log('IAP Error:', e);
-          devWarn('IAP listener', e);
-        }
-      });
     }
 
-    initIap();
+    initRevenueCat();
     return () => {
       mounted = false;
-      try { InAppPurchases.setPurchaseListener(() => {}); } catch (e) {}
-      try { void InAppPurchases.disconnectAsync(); } catch (e) {}
+      try { if (customerInfoListener) Purchases.removeCustomerInfoUpdateListener(customerInfoListener); } catch (e) {}
     };
   }, []);
 
@@ -2877,11 +2959,11 @@ function MainApp({ prenom, lang, onChangeLang, tensionIdxs, supabase, supaUser }
         visible={paywallVisible}
         onClose={() => setPaywallVisible(false)}
         lang={lang}
-        products={iapProducts}
-        loadingPrices={iapLoadingPrices}
-        disabled={iapDisabled}
-        onBuyMonthly={() => purchaseSubscription(PRODUCT_IDS.monthly)}
-        onBuyYearly={() => purchaseSubscription(PRODUCT_IDS.yearly)}
+        packagesByProductId={rcPackagesByProductId}
+        loadingPrices={rcLoadingPrices}
+        disabled={rcDisabled}
+        onBuyMonthly={(pkg) => purchaseSubscription(pkg)}
+        onBuyYearly={(pkg) => purchaseSubscription(pkg)}
         onRestore={() => restoreSubscription()}
       />
       <NavigationContainer>
