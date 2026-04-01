@@ -15,8 +15,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ytissot.fluidbody",
+      "buildNumber": "9",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       }
     },
     "android": {
