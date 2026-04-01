@@ -1,7 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState } from 'react-native';
+import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState, KeyboardAvoidingView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -21,6 +21,7 @@ try { HapticsMod = require('expo-haptics'); } catch(e) {}
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Svg, { Path, Circle, Ellipse, Line, Rect, Defs, RadialGradient, Stop, G } from 'react-native-svg';
 import { Video, ResizeMode, Audio } from 'expo-av';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -268,6 +269,25 @@ const T = {
     ob_placeholder: 'Ton prénom...',
     ob_demarrer: 'Démarrer →',
     ob_anon: 'Entrer anonymement',
+    ob_auth_tag: 'Compte FluidBody',
+    ob_auth_title: 'Sauvegarde du profil',
+    ob_auth_signup_title: 'Inscription',
+    ob_auth_signin_title: 'Connexion',
+    ob_auth_sub: 'Email et mot de passe pour synchroniser ta progression dans le cloud.',
+    ob_auth_sub_signin: 'Entre tes identifiants pour retrouver ta progression.',
+    ob_email_ph: 'ton@email.com',
+    ob_pass_ph: 'Mot de passe (6 car. min.)',
+    ob_auth_submit_up: 'Créer mon compte',
+    ob_auth_submit_in: 'Me connecter',
+    ob_auth_toggle_in: 'J\'ai déjà un compte →',
+    ob_auth_toggle_up: 'Pas de compte ? S\'inscrire',
+    ob_auth_skip: 'Continuer sans compte nuage →',
+    ob_auth_err_short: 'Mot de passe : au moins 6 caractères.',
+    ob_auth_err_email: 'Entre une adresse email valide.',
+    ob_auth_confirm: 'Si une confirmation est demandée, vérifie ta boîte mail puis reconnecte-toi.',
+    ob_auth_err_net: 'Erreur réseau.',
+    ob_auth_no_cloud: 'Sauvegarde cloud indisponible sur cet environnement. Tes identifiants ne seront pas enregistrés sur un serveur.',
+    ob_auth_continue_local: 'Continuer en local →',
     piliers: ['Épaules', 'Dos', 'Mobilité', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates'],
     etapes: { Comprendre: 'Comprendre', Ressentir: 'Ressentir', Préparer: 'Préparer', Exécuter: 'Exécuter', Évoluer: 'Évoluer' },
     retour: '← Mon Corps',
@@ -355,6 +375,25 @@ const T = {
     ob_placeholder: 'Your first name...',
     ob_demarrer: 'Get started →',
     ob_anon: 'Enter anonymously',
+    ob_auth_tag: 'FluidBody account',
+    ob_auth_title: 'Save your profile',
+    ob_auth_signup_title: 'Sign up',
+    ob_auth_signin_title: 'Sign in',
+    ob_auth_sub: 'Use email and password to sync your progress in the cloud.',
+    ob_auth_sub_signin: 'Enter your credentials to restore your progress.',
+    ob_email_ph: 'you@email.com',
+    ob_pass_ph: 'Password (min. 6 characters)',
+    ob_auth_submit_up: 'Create account',
+    ob_auth_submit_in: 'Sign in',
+    ob_auth_toggle_in: 'I already have an account →',
+    ob_auth_toggle_up: 'No account? Sign up',
+    ob_auth_skip: 'Continue without cloud account →',
+    ob_auth_err_short: 'Password must be at least 6 characters.',
+    ob_auth_err_email: 'Enter a valid email address.',
+    ob_auth_confirm: 'If email confirmation is required, check your inbox then sign in.',
+    ob_auth_err_net: 'Network error.',
+    ob_auth_no_cloud: 'Cloud backup isn’t available in this build. Your credentials won’t be saved to a server.',
+    ob_auth_continue_local: 'Continue locally →',
     piliers: ['Shoulders', 'Back', 'Mobility', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates'],
     etapes: { Comprendre: 'Understand', Ressentir: 'Feel', Préparer: 'Prepare', Exécuter: 'Execute', Évoluer: 'Evolve' },
     retour: '← My Body',
@@ -442,6 +481,25 @@ const T = {
     ob_placeholder: 'Tu nombre...',
     ob_demarrer: 'Empezar →',
     ob_anon: 'Entrar anónimamente',
+    ob_auth_tag: 'Cuenta FluidBody',
+    ob_auth_title: 'Guardar tu perfil',
+    ob_auth_signup_title: 'Registro',
+    ob_auth_signin_title: 'Entrar',
+    ob_auth_sub: 'Email y contraseña para sincronizar tu progreso en la nube.',
+    ob_auth_sub_signin: 'Introduce tus datos para recuperar tu progreso.',
+    ob_email_ph: 'tu@email.com',
+    ob_pass_ph: 'Contraseña (mín. 6 caracteres)',
+    ob_auth_submit_up: 'Crear cuenta',
+    ob_auth_submit_in: 'Iniciar sesión',
+    ob_auth_toggle_in: 'Ya tengo cuenta →',
+    ob_auth_toggle_up: '¿Sin cuenta? Registrarse',
+    ob_auth_skip: 'Continuar sin cuenta en la nube →',
+    ob_auth_err_short: 'La contraseña debe tener al menos 6 caracteres.',
+    ob_auth_err_email: 'Introduce un email válido.',
+    ob_auth_confirm: 'Si pide confirmación, revisa tu correo y vuelve a entrar.',
+    ob_auth_err_net: 'Error de red.',
+    ob_auth_no_cloud: 'La copia en la nube no está disponible en este entorno. Tus datos no se guardarán en un servidor.',
+    ob_auth_continue_local: 'Continuar en local →',
     piliers: ['Hombros', 'Espalda', 'Movilidad', 'Postura', 'Eldoa', 'Golf', 'Mat Pilates'],
     etapes: { Comprendre: 'Comprender', Ressentir: 'Sentir', Préparer: 'Preparar', Exécuter: 'Ejecutar', Évoluer: 'Evolucionar' },
     retour: '← Mi Cuerpo',
@@ -529,6 +587,25 @@ const T = {
     ob_placeholder: 'Il tuo nome...',
     ob_demarrer: 'Inizia →',
     ob_anon: 'Entra anonimamente',
+    ob_auth_tag: 'Account FluidBody',
+    ob_auth_title: 'Salva il profilo',
+    ob_auth_signup_title: 'Registrazione',
+    ob_auth_signin_title: 'Accedi',
+    ob_auth_sub: 'Email e password per sincronizzare i progressi nel cloud.',
+    ob_auth_sub_signin: 'Inserisci le credenziali per recuperare i progressi.',
+    ob_email_ph: 'tu@email.com',
+    ob_pass_ph: 'Password (min. 6 caratteri)',
+    ob_auth_submit_up: 'Crea account',
+    ob_auth_submit_in: 'Accedi',
+    ob_auth_toggle_in: 'Ho già un account →',
+    ob_auth_toggle_up: 'Nessun account? Registrati',
+    ob_auth_skip: 'Continua senza account cloud →',
+    ob_auth_err_short: 'La password deve avere almeno 6 caratteri.',
+    ob_auth_err_email: 'Inserisci un indirizzo email valido.',
+    ob_auth_confirm: 'Se serve conferma email, controlla la posta e rientra.',
+    ob_auth_err_net: 'Errore di rete.',
+    ob_auth_no_cloud: 'Il salvataggio cloud non è disponibile in questa build. Le credenziali non verranno salvate su un server.',
+    ob_auth_continue_local: 'Continua in locale →',
     piliers: ['Spalle', 'Schiena', 'Mobilità', 'Postura', 'Eldoa', 'Golf', 'Mat Pilates'],
     etapes: { Comprendre: 'Capire', Ressentir: 'Sentire', Préparer: 'Preparare', Exécuter: 'Eseguire', Évoluer: 'Evolvere' },
     retour: '← Il Mio Corpo',
@@ -1381,6 +1458,11 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
   }
 
   async function handleCloseVideo() {
+    try {
+      await deactivateKeepAwake();
+    } catch (e) {
+      if (__DEV__) devWarn('deactivateKeepAwake', e);
+    }
     bumpTimer();
     const s = lastStatusRef.current;
     if (
@@ -1435,6 +1517,7 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
     ScreenOrientation.unlockAsync();
     const sub = Dimensions.addEventListener('change', ({ window }) => setDims(window));
     return () => {
+      void deactivateKeepAwake().catch(() => {});
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
       if (controlsTimer.current) clearTimeout(controlsTimer.current);
       sub?.remove();
@@ -1463,10 +1546,20 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
     return () => sub.remove();
   }, [hasRealVideo, pilier?.key, seanceIndex]);
 
+  function syncKeepAwake(s) {
+    if (!hasRealVideo) return;
+    if (s?.isLoaded && s.isPlaying) {
+      void activateKeepAwakeAsync().catch((e) => { if (__DEV__) devWarn('activateKeepAwakeAsync', e); });
+    } else {
+      void deactivateKeepAwake().catch((e) => { if (__DEV__) devWarn('deactivateKeepAwake', e); });
+    }
+  }
+
   function onPlaybackStatusUpdate(s) {
     lastStatusRef.current = s;
     if (!s.isLoaded && s.error) {
       setStatus(s);
+      syncKeepAwake(s);
       console.log('Video playback error:', { uri: uriRef.current, error: s.error });
       if (__DEV__) devWarn('Video playback error', s.error);
       // Fallback: si l’URL spécifique échoue, basculer sur la démo pour éviter un écran bloqué
@@ -1481,6 +1574,7 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
     }
     if (s.isLoaded) setVideoLoadFailed(false);
     setStatus(s);
+    syncKeepAwake(s);
     maybePersistProgress(s);
     if (hasRealVideo && !hasRestoredRef.current && s.isLoaded && s.durationMillis && pilier?.key != null && seanceIndex != null) {
       hasRestoredRef.current = true;
@@ -1865,11 +1959,13 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r'+i} delay={b.delay + 2000} x={b.x + SW * 0.35} size={b.size} duration={b.duration} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r2'+i} delay={b.delay + 5000} x={b.x + SW * 0.65} size={b.size} duration={b.duration} />)}
       <View style={{ paddingTop: 60, paddingHorizontal: 22, paddingBottom: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }} style={{ paddingTop: 8 }}>
             <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(0,220,255,0.78)', letterSpacing: 2.5, textTransform: 'uppercase' }}>{tr.retour}</Text>
           </TouchableOpacity>
-          <EmojiMeduse />
+          <View style={{ width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
+            <MeduseCornerIcon size={90} breathCycleMs={3000} />
+          </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <Text style={{ fontSize: IS_IPAD ? 44 : 40, fontWeight: '200', color: 'rgba(195,242,255,0.94)', letterSpacing: -0.3 }}>{pilier.label}</Text>
@@ -2018,19 +2114,6 @@ function Orbe({ pilier, onPress, recommended, lang }) {
         <Text style={{ fontSize: 8, color: 'rgba(0,215,255,0.88)', letterSpacing: 0.5, textTransform: 'uppercase', textAlign: 'center', width: 92 }}>{tr.recommande_pour_toi}</Text>
       )}
     </TouchableOpacity>
-  );
-}
-
-function EmojiMeduse() {
-  const scale = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    Animated.loop(Animated.sequence([
-      Animated.timing(scale, { toValue: IS_IPAD ? 1.8 : 1.45, duration: 3500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 1.0,  duration: 3500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ])).start();
-  }, []);
-  return (
-    <Animated.Text style={{ fontSize: 48, transform: [{ scale }] }}>{U_JELLY}</Animated.Text>
   );
 }
 
@@ -2262,12 +2345,13 @@ function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPric
         <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
         <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
         {BULLES.map((b, i) => <Bulle key={`pay-b-${i}`} {...b} />)}
-        <View style={{ paddingTop: 62, paddingHorizontal: 22, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <TouchableOpacity onPress={onClose} activeOpacity={0.8}>
+        <View style={{ paddingTop: 62, paddingHorizontal: 22, paddingBottom: 12, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <TouchableOpacity onPress={onClose} activeOpacity={0.8} style={{ paddingTop: 4 }}>
             <Text style={{ fontSize: 10, color: 'rgba(0,205,248,0.44)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.paywall_close}</Text>
           </TouchableOpacity>
-          <EmojiMeduse />
-          <View style={{ width: 40 }} />
+          <View style={{ marginTop: 6, width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
+            <MeduseCornerIcon size={90} breathCycleMs={3000} />
+          </View>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}>
@@ -2791,77 +2875,59 @@ function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak,
 
 
 // ══════════════════════════════════
-// AUTH SCREEN — Magic Link
+// AUTH SCREEN — Email + mot de passe (Supabase), après onboarding si pas de session
 // ══════════════════════════════════
-function AuthScreen({ onSkip, lang = 'fr', prenomHint = '' }) {
+function AuthScreen({ onSkip, lang = 'fr', prenomHint = '', langForProfile = 'fr', tensionIdxsForProfile = [] }) {
+  const tr = T[lang] || T.fr;
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState('up');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const p = await readAuthOtpPending();
-      if (cancelled || !p) return;
-      const age = Date.now() - p.sentAt;
-      if (age < AUTH_OTP_STEP_RESTORE_MS) {
-        setEmail(p.email);
-        setSent(true);
-        setInfo('Utilise le code déjà envoyé à cette adresse. Pas besoin d’en demander un nouveau tout de suite.');
-      } else {
-        await clearAuthOtpPending();
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  async function sendOtp(forceResend = false) {
-    if (!email.trim()) return;
-    setLoading(true); setError(''); setInfo('');
-    const normalized = email.trim().toLowerCase();
-    try {
-      const p = await readAuthOtpPending();
-      if (!forceResend && p?.email === normalized && Date.now() - p.sentAt < AUTH_OTP_RESEND_COOLDOWN_MS) {
-        setSent(true);
-        setInfo('Un code vient d’être envoyé : utilise celui-ci. Tu pourras en demander un autre dans environ une minute si besoin.');
-        setLoading(false);
-        return;
-      }
-      const { error: err } = await supabase.auth.signInWithOtp({ email: normalized, options: { shouldCreateUser: true } });
-      if (err) {
-        setError(err.message);
-      } else {
-        setSent(true);
-        await writeAuthOtpPending(normalized);
-        if (forceResend) setInfo('Nouveau code envoyé.');
-      }
-    } catch (e) { setError('Erreur réseau'); }
-    setLoading(false);
-  }
-
-  async function verifyOtp() {
-    if (otp.length !== 8) return;
+  async function submit() {
+    if (!supabase) return;
+    const em = email.trim().toLowerCase();
+    if (!em.includes('@') || em.length < 5) { setError(tr.ob_auth_err_email); return; }
+    if (password.length < 6) { setError(tr.ob_auth_err_short); return; }
     setLoading(true); setError('');
     try {
-      let { error: err } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: otp.trim(), type: 'email' });
-      let ok = !err;
-      if (err) {
-        const { error: err2 } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: otp.trim(), type: 'magiclink' });
-        if (err2) setError('Code incorrect ou expiré');
-        else ok = true;
-      }
-      if (ok) {
-        await clearAuthOtpPending();
-        const hint = prenomHint && String(prenomHint).trim();
-        if (hint && supabase) {
-          const { error: ue } = await supabase.auth.updateUser({ data: { prenom: hint } });
-          if (ue) devWarn('updateUser metadata prenom', ue);
+      if (mode === 'up') {
+        const { data, error: err } = await supabase.auth.signUp({
+          email: em,
+          password,
+          options: { data: { prenom: String(prenomHint || '').trim() } },
+        });
+        if (err) { setError(err.message); setLoading(false); return; }
+        if (!data.session) {
+          setError(tr.ob_auth_confirm);
+          setLoading(false);
+          return;
         }
+      } else {
+        const { error: err } = await supabase.auth.signInWithPassword({ email: em, password });
+        if (err) { setError(err.message); setLoading(false); return; }
       }
-    } catch (e) { setError('Vérification impossible — réessaie'); }
+      const hint = prenomHint && String(prenomHint).trim();
+      if (hint) {
+        const { error: ue } = await supabase.auth.updateUser({ data: { prenom: hint } });
+        if (ue) devWarn('updateUser metadata prenom', ue);
+      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && supabase) {
+        try {
+          await supabase.from('profiles').upsert({
+            id: session.user.id,
+            prenom: String(prenomHint || hint || '').trim(),
+            lang: langForProfile || lang,
+            tension_idxs: Array.isArray(tensionIdxsForProfile) ? tensionIdxsForProfile : [],
+            updated_at: new Date().toISOString(),
+          });
+        } catch (e) { devWarn('profiles upsert post-auth', e); }
+      }
+    } catch (e) {
+      setError(tr.ob_auth_err_net);
+    }
     setLoading(false);
   }
 
@@ -2869,60 +2935,36 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '' }) {
     <View style={{ flex: 1 }}>
       <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
-      <ScrollView contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingVertical: 60 }}>
-        <EmojiMeduse />
-        <Text style={{ fontSize: 36, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 6, textTransform: 'uppercase', marginTop: 16, marginBottom: 2 }}>FluidBody</Text>
-        <Text style={{ fontSize: 11, color: 'rgba(0,210,250,0.6)', letterSpacing: 6, textTransform: 'uppercase', marginBottom: 4 }}>Pilates</Text>
-        <Text style={{ fontSize: 11, color: 'rgba(0,210,250,0.6)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 36 }}>Ton espace personnel</Text>
-
-        {!sent ? (
-          <>
-            <Text style={{ fontSize: 15, color: 'rgba(215,248,255,0.75)', textAlign: 'center', marginBottom: 24, lineHeight: 24 }}>
-              {`Entre ton email pour sauvegarder ta progression dans le cloud ${U_WAVE}`}{'\n\n'}
-              <Text style={{ fontSize: 13, color: 'rgba(155,215,240,0.55)', lineHeight: 20 }}>
-                Après cette première connexion, tu restes connecté·e sur cet appareil (session enregistrée). Un nouveau code n’est nécessaire qu’après déconnexion ou sur un autre téléphone.
-              </Text>
-            </Text>
-            <TextInput value={email} onChangeText={setEmail} placeholder="ton@email.com" placeholderTextColor="rgba(0,180,220,0.35)" keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
-              style={{ width: '100%', height: 56, backgroundColor: 'rgba(0,18,32,0.8)', borderWidth: 1, borderColor: email ? 'rgba(0,220,255,0.6)' : 'rgba(0,200,240,0.2)', borderRadius: 16, color: 'rgba(200,245,255,0.95)', fontSize: 17, paddingHorizontal: 20, marginBottom: 12 }}
-            />
-            {error ? <Text style={{ color: 'rgba(255,100,100,0.8)', fontSize: 12, marginBottom: 10 }}>{error}</Text> : null}
-            {info ? <Text style={{ color: 'rgba(120,220,255,0.7)', fontSize: 12, marginBottom: 10, textAlign: 'center', lineHeight: 18 }}>{info}</Text> : null}
-            <TouchableOpacity onPress={() => sendOtp(false)} disabled={!email.trim() || loading} style={{ width: '100%', height: 56, borderRadius: 28, backgroundColor: email.trim() ? 'rgba(0,180,235,0.3)' : 'rgba(0,100,140,0.1)', borderWidth: 1.5, borderColor: email.trim() ? 'rgba(0,235,255,0.8)' : 'rgba(0,150,190,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-              <Text style={{ fontSize: 15, fontWeight: '500', color: 'rgba(215,248,255,0.9)', letterSpacing: 1 }}>{loading ? '...' : '✉️  Recevoir un code'}</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <View style={{ alignItems: 'center', marginBottom: 24 }}>
-              <Text style={{ fontSize: 32, marginBottom: 10 }}>{'\uD83D\uDCEC'}</Text>
-              <Text style={{ fontSize: 16, fontWeight: '300', color: 'rgba(215,248,255,0.9)', textAlign: 'center', marginBottom: 6 }}>Code envoyé à</Text>
-              <Text style={{ fontSize: 14, color: 'rgba(0,220,255,0.8)', marginBottom: 4 }}>{email}</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(155,215,240,0.5)', textAlign: 'center' }}>Vérifie ton email et entre le code à 8 chiffres</Text>
-            </View>
-            <TextInput value={otp} onChangeText={t => setOtp(t.replace(/\D/g,'').slice(0,8))} placeholder="00000000" placeholderTextColor="rgba(0,180,220,0.35)" keyboardType="number-pad" maxLength={8}
-              style={{ width: '100%', height: 64, backgroundColor: 'rgba(0,18,32,0.8)', borderWidth: 1.5, borderColor: otp.length === 8 ? 'rgba(0,220,255,0.8)' : 'rgba(0,200,240,0.2)', borderRadius: 16, color: 'rgba(200,245,255,0.95)', fontSize: 22, fontWeight: '300', textAlign: 'center', letterSpacing: 12, marginBottom: 12 }}
-            />
-            {error ? <Text style={{ color: 'rgba(255,100,100,0.8)', fontSize: 12, marginBottom: 10 }}>{error}</Text> : null}
-            {info ? <Text style={{ color: 'rgba(120,220,255,0.75)', fontSize: 12, marginBottom: 10, textAlign: 'center', lineHeight: 18 }}>{info}</Text> : null}
-            <TouchableOpacity onPress={verifyOtp} disabled={otp.length !== 8 || loading} style={{ width: '100%', height: 56, borderRadius: 28, backgroundColor: otp.length === 8 ? 'rgba(0,180,235,0.3)' : 'rgba(0,100,140,0.1)', borderWidth: 1.5, borderColor: otp.length === 8 ? 'rgba(0,235,255,0.8)' : 'rgba(0,150,190,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-              <Text style={{ fontSize: 15, fontWeight: '500', color: 'rgba(215,248,255,0.9)', letterSpacing: 1 }}>{loading ? '...' : '✓  Confirmer'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => sendOtp(true)} disabled={loading} style={{ marginBottom: 14, paddingVertical: 10 }}>
-              <Text style={{ fontSize: 12, color: 'rgba(0,210,250,0.65)', letterSpacing: 1, textAlign: 'center' }}>{loading ? '…' : 'Renvoyer un nouveau code'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setSent(false); setOtp(''); setError(''); setInfo(''); clearAuthOtpPending(); }}>
-              <Text style={{ fontSize: 12, color: 'rgba(0,190,230,0.5)', letterSpacing: 1 }}>Changer d'email</Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        <View style={{ width: '100%', borderTopWidth: 0.5, borderTopColor: 'rgba(0,195,240,0.15)', paddingTop: 20, alignItems: 'center', marginTop: 20 }}>
-          <TouchableOpacity onPress={() => { clearAuthOtpPending(); onSkip(); }} style={{ paddingVertical: 14, paddingHorizontal: 32, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(0,195,240,0.3)', backgroundColor: 'rgba(0,18,32,0.5)' }}>
-            <Text style={{ fontSize: 14, color: 'rgba(0,210,250,0.7)', letterSpacing: 2, textTransform: 'uppercase' }}>Continuer sans compte →</Text>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingVertical: 48 }} keyboardShouldPersistTaps="handled">
+          <View style={{ width: 88, height: 88, marginBottom: 8, overflow: 'visible' }} pointerEvents="none">
+            <MeduseCornerIcon size={88} breathCycleMs={3000} />
+          </View>
+          <Text style={{ fontSize: 36, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 6, textTransform: 'uppercase', marginTop: 16, marginBottom: 2 }}>FluidBody</Text>
+          <Text style={{ fontSize: 11, color: 'rgba(0,210,250,0.6)', letterSpacing: 6, textTransform: 'uppercase', marginBottom: 4 }}>Pilates</Text>
+          <Text style={{ fontSize: 12, color: 'rgba(0,225,255,0.6)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 8 }}>{tr.ob_auth_tag}</Text>
+          <Text style={{ fontSize: 22, fontWeight: '300', color: 'rgba(235,252,255,0.95)', textAlign: 'center', marginBottom: 10 }}>{tr.ob_auth_title}</Text>
+          <Text style={{ fontSize: 14, color: 'rgba(170,220,240,0.85)', textAlign: 'center', marginBottom: 22, lineHeight: 21 }}>{tr.ob_auth_sub}</Text>
+          <TextInput value={email} onChangeText={setEmail} placeholder={tr.ob_email_ph} placeholderTextColor="rgba(0,180,220,0.35)" keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
+            style={{ width: '100%', height: 52, backgroundColor: 'rgba(0,18,32,0.88)', borderWidth: 1, borderColor: email ? 'rgba(0,220,255,0.45)' : 'rgba(0,200,240,0.2)', borderRadius: 14, color: 'rgba(240,252,255,0.95)', fontSize: 16, paddingHorizontal: 16, marginBottom: 10 }}
+          />
+          <TextInput value={password} onChangeText={setPassword} placeholder={tr.ob_pass_ph} placeholderTextColor="rgba(0,180,220,0.35)" secureTextEntry autoCapitalize="none" autoCorrect={false}
+            style={{ width: '100%', height: 52, backgroundColor: 'rgba(0,18,32,0.88)', borderWidth: 1, borderColor: password ? 'rgba(0,220,255,0.45)' : 'rgba(0,200,240,0.2)', borderRadius: 14, color: 'rgba(240,252,255,0.95)', fontSize: 16, paddingHorizontal: 16, marginBottom: 12 }}
+          />
+          {error ? <Text style={{ color: 'rgba(255,120,120,0.9)', fontSize: 12, marginBottom: 10, textAlign: 'center' }}>{error}</Text> : null}
+          <TouchableOpacity onPress={submit} disabled={loading} style={{ width: '100%', height: 52, borderRadius: 26, backgroundColor: email.trim() && password.length >= 6 ? 'rgba(0,180,235,0.35)' : 'rgba(0,100,140,0.12)', borderWidth: 1.5, borderColor: email.trim() && password.length >= 6 ? 'rgba(0,235,255,0.75)' : 'rgba(0,150,190,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+            <Text style={{ fontSize: 15, fontWeight: '500', color: 'rgba(215,248,255,0.92)', letterSpacing: 1 }}>{loading ? '…' : (mode === 'up' ? tr.ob_auth_submit_up : tr.ob_auth_submit_in)}</Text>
           </TouchableOpacity>
-        </View>
-      </ScrollView>
+          <TouchableOpacity onPress={() => { setMode(m => m === 'up' ? 'in' : 'up'); setError(''); }} style={{ paddingVertical: 10 }}>
+            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.7)', letterSpacing: 0.5 }}>{mode === 'up' ? tr.ob_auth_toggle_in : tr.ob_auth_toggle_up}</Text>
+          </TouchableOpacity>
+          <View style={{ width: '100%', borderTopWidth: 0.5, borderTopColor: 'rgba(0,195,240,0.15)', paddingTop: 20, alignItems: 'center', marginTop: 12 }}>
+            <TouchableOpacity onPress={onSkip} style={{ paddingVertical: 14, paddingHorizontal: 32, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(0,195,240,0.3)', backgroundColor: 'rgba(0,18,32,0.5)' }}>
+              <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.75)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.ob_auth_skip}</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -2936,8 +2978,23 @@ function OnboardingScreen({ onDone }) {
   const [step, setStep] = useState(0);
   const [prenom, setPrenom] = useState('');
   const [tensionIdxs, setTensionIdxs] = useState([]);
-  const [obFluidTitleW, setObFluidTitleW] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const step3BackRef = useRef(2);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPass, setAuthPass] = useState('');
+  const [authMode, setAuthMode] = useState('up');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authErr, setAuthErr] = useState('');
+
+  const tr = T[lang] || T.fr;
+  const obStepCount = 4;
+
+  useEffect(() => {
+    if (step === 3) {
+      setAuthMode('up');
+      setAuthErr('');
+    }
+  }, [step]);
 
   function nextStep(n) {
     Animated.sequence([
@@ -2945,6 +3002,52 @@ function OnboardingScreen({ onDone }) {
       Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
     ]).start();
     setTimeout(() => setStep(n), 250);
+  }
+
+  function goToAuthStep(fromStep) {
+    step3BackRef.current = fromStep;
+    nextStep(3);
+  }
+
+  function afterPrenomContinue() {
+    if (!prenom.trim()) return;
+    goToAuthStep(2);
+  }
+
+  function afterPrenomAnon() {
+    goToAuthStep(2);
+  }
+
+  function continueOnboardingWithoutCloud() {
+    onDone(prenom.trim(), lang, tensionIdxs, { skipCloudAuth: true });
+  }
+
+  async function submitAuthStep() {
+    if (!supabase) return;
+    const em = authEmail.trim().toLowerCase();
+    if (!em.includes('@') || em.length < 5) { setAuthErr(tr.ob_auth_err_email); return; }
+    if (authPass.length < 6) { setAuthErr(tr.ob_auth_err_short); return; }
+    setAuthLoading(true); setAuthErr('');
+    try {
+      if (authMode === 'up') {
+        // Inscription cloud — flux onboarding après l’écran prénom
+        const { data, error } = await supabase.auth.signUp({
+          email: em,
+          password: authPass,
+          options: { data: { prenom: prenom.trim() || '' } },
+        });
+        if (error) { setAuthErr(error.message); setAuthLoading(false); return; }
+        if (!data.session) { setAuthErr(tr.ob_auth_confirm); setAuthLoading(false); return; }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: em, password: authPass });
+        if (error) { setAuthErr(error.message); setAuthLoading(false); return; }
+      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) onDone(prenom.trim(), lang, tensionIdxs);
+    } catch (e) {
+      setAuthErr(tr.ob_auth_err_net);
+    }
+    setAuthLoading(false);
   }
 
   function toggleTension(idx) {
@@ -2957,34 +3060,15 @@ function OnboardingScreen({ onDone }) {
         <LinearGradient colors={['#000e18', '#002d48', '#00bdd0', '#005878', '#001828']} locations={[0, 0.3, 0.52, 0.72, 1]} style={StyleSheet.absoluteFill} />
         {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
         <View style={{ position: 'absolute', top: 270, left: 0, right: 0, alignItems: 'center', opacity: 0.75 }}><Meduse /></View>
-        <Text
-          onLayout={(e) => setObFluidTitleW(e.nativeEvent.layout.width)}
-          style={{ position: 'absolute', left: -8000, opacity: 0, fontSize: 52, fontWeight: '200', letterSpacing: 7, textTransform: 'uppercase', color: 'rgba(215,248,255,0.96)' }}
-          pointerEvents="none"
-        >
-          FluidBody
-        </Text>
-        <View style={{ position: 'absolute', top: 64, left: 0, right: 0, alignItems: 'center', zIndex: 10, paddingHorizontal: 20 }}>
+        {/* Petite méduse langue : plus haute et au bord droit que l’étape onboarding suivante */}
+        <View style={{ position: 'absolute', top: 68, right: 0, zIndex: 20, width: 85, height: 85, overflow: 'visible' }} pointerEvents="none">
+          <MeduseCornerIcon size={85} breathCycleMs={3000} />
+        </View>
+        <View style={{ position: 'absolute', top: 96, left: 0, right: 0, alignItems: 'center', zIndex: 10, paddingHorizontal: 20 }}>
           <Text style={{ width: '100%', textAlign: 'center', fontSize: 52, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 7, textTransform: 'uppercase' }}>FluidBody</Text>
           <Text style={{ width: '100%', textAlign: 'center', fontSize: IS_IPAD ? 22 : 17, fontWeight: '300', color: 'rgba(0,210,250,0.78)', letterSpacing: 7, textTransform: 'uppercase', marginTop: 4 }}>Pilates</Text>
           <Text style={{ width: '100%', textAlign: 'center', marginTop: 8, fontSize: 12, color: 'rgba(0,210,250,0.75)', letterSpacing: 4, textTransform: 'uppercase' }}>Sentir · Préparer · Transformer</Text>
         </View>
-        {obFluidTitleW > 0 ? (
-          <View
-            style={{
-              position: 'absolute',
-              top: 64,
-              left: SW / 2 + obFluidTitleW / 2 - 1,
-              width: 50,
-              height: 50,
-              zIndex: 16,
-              overflow: 'visible',
-            }}
-            pointerEvents="none"
-          >
-            <MeduseCornerIcon size={50} />
-          </View>
-        ) : null}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 180, alignItems: 'stretch', justifyContent: 'flex-end', paddingHorizontal: 36, zIndex: 10 }}>
           <Text style={{ width: '100%', fontSize: 16, color: 'rgba(255,255,255,0.75)', letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 22 }}>Une nouvelle façon d'habiter son corps</Text>
           <Text style={{ width: '100%', fontSize: 30, fontWeight: '200', color: 'rgba(255,255,255,0.96)', textAlign: 'center', lineHeight: 44, marginBottom: 24 }}>
@@ -3010,24 +3094,26 @@ function OnboardingScreen({ onDone }) {
     );
   }
 
-  const tr = T[lang] || T['fr'];
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient colors={['#000e18', '#002d48', '#00bdd0', '#005878', '#001828']} locations={[0, 0.3, 0.52, 0.72, 1]} style={StyleSheet.absoluteFill} />
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
-      <View style={{ position: 'absolute', top: 130, left: 0, right: 0, alignItems: 'center', opacity: 0.9 }}><Meduse /></View>
+      {/* Méduse centrale : arrière-plan fixe ; très discrète sur l’étape prénom pour ne pas masquer le texte */}
+      <View style={{ position: 'absolute', top: 130, left: 0, right: 0, alignItems: 'center', opacity: step === 2 ? 0.15 : 0.9, zIndex: 0 }} pointerEvents="none">
+        <Meduse />
+      </View>
       <View style={{ position: 'absolute', top: 92, right: 16, zIndex: 20, width: 85, height: 85, overflow: 'visible' }} pointerEvents="none">
         <MeduseCornerIcon size={85} breathCycleMs={3000} />
       </View>
       <View style={{ position: 'absolute', top: 54, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', zIndex: 10, paddingHorizontal: 24 }}>
-        <TouchableOpacity onPress={() => step === 0 ? setLangStep(true) : nextStep(step - 1)} style={{ position: 'absolute', left: 24, padding: 8 }}>
+        <TouchableOpacity onPress={() => { if (step === 0) setLangStep(true); else if (step === 3) nextStep(step3BackRef.current); else nextStep(step - 1); }} style={{ position: 'absolute', left: 24, padding: 8 }}>
           <Text style={{ fontSize: 22, color: 'rgba(255,255,255,0.6)' }}>←</Text>
         </TouchableOpacity>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          {[0, 1, 2].map(i => <View key={i} style={{ width: step === i ? 20 : 6, height: 6, borderRadius: 3, backgroundColor: step === i ? 'rgba(0,225,255,0.9)' : 'rgba(0,200,240,0.25)' }} />)}
+          {Array.from({ length: obStepCount }, (_, i) => <View key={i} style={{ width: step === i ? 20 : 6, height: 6, borderRadius: 3, backgroundColor: step === i ? 'rgba(0,225,255,0.9)' : 'rgba(0,200,240,0.25)' }} />)}
         </View>
       </View>
-      <Animated.View style={{ flex: 1, opacity: fadeAnim, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 60, zIndex: 5 }}>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 60, zIndex: 2, elevation: step === 2 || step === 3 ? 4 : 0 }}>
         {step === 0 && (
           <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }}>
             <Text style={{ fontSize: 17, color: 'rgba(255,255,255,0.80)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 18, textAlign: 'center' }}>{tr.ob_tag}</Text>
@@ -3037,7 +3123,7 @@ function OnboardingScreen({ onDone }) {
             <TouchableOpacity onPress={() => nextStep(1)} style={styles.btnCtaLarge}>
               <Text style={styles.btnCtaLargeTxt}>{tr.ob_cta}</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => onDone('', lang, [])} style={{ marginTop: 18 }}>
+            <TouchableOpacity onPress={() => goToAuthStep(0)} style={{ marginTop: 18 }}>
               <Text style={{ fontSize: 14, color: 'rgba(0,190,230,0.6)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.ob_compte}</Text>
             </TouchableOpacity>
           </View>
@@ -3063,26 +3149,88 @@ function OnboardingScreen({ onDone }) {
           </View>
         )}
         {step === 2 && (
-          <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }}>
-            <Text style={{ fontSize: 12, color: 'rgba(0,225,255,0.6)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12 }}>{tr.ob_prenom_tag}</Text>
-            <Text style={{ fontSize: 32, fontWeight: '300', color: 'rgba(215,248,255,0.95)', textAlign: 'center', marginBottom: 8 }}>{tr.ob_prenom}</Text>
-            <Text style={{ fontSize: 15, color: 'rgba(120,195,225,0.65)', marginBottom: 24, textAlign: 'center' }}>{tr.ob_prenom_sub}</Text>
-            <TextInput
-              value={prenom} onChangeText={setPrenom}
-              placeholder={tr.ob_placeholder}
-              placeholderTextColor="rgba(0,180,220,0.3)"
-              autoFocus autoCapitalize="words" returnKeyType="done"
-              onSubmitEditing={() => prenom.trim() && onDone(prenom.trim(), lang, tensionIdxs)}
-              style={{ alignSelf: 'stretch', height: 62, backgroundColor: prenom.trim() ? 'rgba(0,30,50,0.85)' : 'rgba(0,18,32,0.6)', borderWidth: prenom.trim() ? 1.5 : 0.5, borderColor: prenom.trim() ? 'rgba(0,220,255,0.6)' : 'rgba(0,200,240,0.22)', borderRadius: 16, color: 'rgba(200,245,255,0.95)', fontSize: 20, fontWeight: '300', textAlign: 'center', marginBottom: 22 }}
-            />
-            {prenom.trim().length > 0 && <Text style={{ fontSize: 13, color: 'rgba(0,220,255,0.6)', marginBottom: 12, marginTop: -14 }}>{`Bonjour ${prenom.trim()} ${U_JELLY}`}</Text>}
-            <TouchableOpacity onPress={() => prenom.trim() ? onDone(prenom.trim(), lang, tensionIdxs) : null} style={[styles.btnCtaLarge, prenom.trim() === '' && styles.btnCtaOff]} disabled={prenom.trim() === ''}>
-              <Text style={styles.btnCtaLargeTxt}>{tr.ob_demarrer}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => onDone('', lang, tensionIdxs)} style={{ marginTop: 18 }}>
+          <KeyboardAvoidingView
+            style={{ flex: 1, alignSelf: 'stretch', width: '100%' }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 52 : 0}
+          >
+          <ScrollView
+            style={{ flex: 1, alignSelf: 'stretch', zIndex: 3 }}
+            contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 100, paddingBottom: 24, flexGrow: 1, justifyContent: 'flex-end' }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            keyboardDismissMode="on-drag"
+          >
+            <View style={{ width: '100%', maxWidth: 420, alignSelf: 'center', paddingVertical: 22, paddingHorizontal: 18, borderRadius: 22, backgroundColor: 'rgba(0,10,22,0.78)', borderWidth: 1, borderColor: 'rgba(0,200,240,0.12)' }}>
+              <Text style={{ fontSize: 12, color: 'rgba(0,235,255,0.85)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{tr.ob_prenom_tag}</Text>
+              <Text style={{ fontSize: 32, fontWeight: '300', color: 'rgba(235,252,255,0.99)', textAlign: 'center', marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 10 }}>{tr.ob_prenom}</Text>
+              <Text style={{ fontSize: 15, color: 'rgba(170,220,240,0.92)', marginBottom: 24, textAlign: 'center', lineHeight: 22, textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{tr.ob_prenom_sub}</Text>
+              <TextInput
+                value={prenom} onChangeText={setPrenom}
+                placeholder={tr.ob_placeholder}
+                placeholderTextColor="rgba(0,200,230,0.45)"
+                autoFocus autoCapitalize="words" returnKeyType="done"
+                textContentType="givenName"
+                autoCorrect={false}
+                keyboardAppearance={Platform.OS === 'ios' ? 'dark' : undefined}
+                onSubmitEditing={() => afterPrenomContinue()}
+                style={{ alignSelf: 'stretch', height: 62, backgroundColor: prenom.trim() ? 'rgba(0,28,48,0.96)' : 'rgba(0,22,38,0.94)', borderWidth: prenom.trim() ? 1.5 : 1, borderColor: prenom.trim() ? 'rgba(0,230,255,0.65)' : 'rgba(0,200,240,0.35)', borderRadius: 16, color: 'rgba(240,252,255,0.98)', fontSize: 20, fontWeight: '400', textAlign: 'center', marginBottom: prenom.trim() ? 10 : 22 }}
+              />
+              {prenom.trim().length > 0 && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', marginBottom: 14 }}>
+                  <Text style={{ fontSize: 13, color: 'rgba(0,230,255,0.88)', lineHeight: 20 }}>{`${tr.bonjour_mot} ${prenom.trim()}`}</Text>
+                  <View style={{ width: 52, height: 52, marginLeft: 8, overflow: 'visible', alignItems: 'center', justifyContent: 'center', transform: [{ translateY: 10 }] }} pointerEvents="none">
+                    <MeduseCornerIcon size={52} breathCycleMs={3000} />
+                  </View>
+                </View>
+              )}
+              <TouchableOpacity onPress={() => afterPrenomContinue()} style={[styles.btnCtaLarge, prenom.trim() === '' && styles.btnCtaOff]} disabled={prenom.trim() === ''}>
+                <Text style={styles.btnCtaLargeTxt}>{tr.ob_demarrer}</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity onPress={() => afterPrenomAnon()} style={{ marginTop: 18 }}>
               <Text style={{ fontSize: 14, color: 'rgba(0,190,230,0.6)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.ob_anon}</Text>
             </TouchableOpacity>
-          </View>
+          </ScrollView>
+          </KeyboardAvoidingView>
+        )}
+        {/* Étape inscription / connexion (après prénom) — affichée même si le client Supabase n’a pas pu être créé */}
+        {step === 3 && (
+          <KeyboardAvoidingView style={{ flex: 1, alignSelf: 'stretch', width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 52 : 0}>
+            <ScrollView contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 28, paddingTop: 24, paddingBottom: 32, flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <View style={{ width: '100%', maxWidth: 420, paddingVertical: 20, paddingHorizontal: 18, borderRadius: 22, backgroundColor: 'rgba(0,10,22,0.82)', borderWidth: 1, borderColor: 'rgba(0,200,240,0.14)' }}>
+                <Text style={{ fontSize: 12, color: 'rgba(0,235,255,0.85)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 10, textAlign: 'center' }}>{tr.ob_auth_tag}</Text>
+                <Text style={{ fontSize: 26, fontWeight: '300', color: 'rgba(235,252,255,0.98)', textAlign: 'center', marginBottom: 8 }}>{!supabase ? tr.ob_auth_signup_title : (authMode === 'up' ? tr.ob_auth_signup_title : tr.ob_auth_signin_title)}</Text>
+                <Text style={{ fontSize: 14, color: 'rgba(170,220,240,0.9)', textAlign: 'center', marginBottom: 12, lineHeight: 20 }}>{!supabase ? tr.ob_auth_no_cloud : (authMode === 'up' ? tr.ob_auth_sub : tr.ob_auth_sub_signin)}</Text>
+                <TextInput value={authEmail} onChangeText={setAuthEmail} placeholder={tr.ob_email_ph} placeholderTextColor="rgba(0,180,220,0.35)" keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
+                  style={{ height: 50, backgroundColor: 'rgba(0,18,32,0.9)', borderWidth: 1, borderColor: authEmail ? 'rgba(0,220,255,0.4)' : 'rgba(0,200,240,0.2)', borderRadius: 14, color: 'rgba(240,252,255,0.95)', fontSize: 16, paddingHorizontal: 14, marginBottom: 10 }}
+                />
+                <TextInput value={authPass} onChangeText={setAuthPass} placeholder={tr.ob_pass_ph} placeholderTextColor="rgba(0,180,220,0.35)" secureTextEntry autoCapitalize="none" autoCorrect={false}
+                  style={{ height: 50, backgroundColor: 'rgba(0,18,32,0.9)', borderWidth: 1, borderColor: authPass ? 'rgba(0,220,255,0.4)' : 'rgba(0,200,240,0.2)', borderRadius: 14, color: 'rgba(240,252,255,0.95)', fontSize: 16, paddingHorizontal: 14, marginBottom: 10 }}
+                />
+                {authErr ? <Text style={{ color: 'rgba(255,120,120,0.9)', fontSize: 12, marginBottom: 10, textAlign: 'center' }}>{authErr}</Text> : null}
+                {!supabase ? (
+                  <TouchableOpacity onPress={continueOnboardingWithoutCloud} style={styles.btnCtaLarge}>
+                    <Text style={styles.btnCtaLargeTxt}>{tr.ob_auth_continue_local}</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <>
+                    <TouchableOpacity onPress={submitAuthStep} disabled={authLoading || !authEmail.trim() || authPass.length < 6} style={[styles.btnCtaLarge, (authLoading || !authEmail.trim() || authPass.length < 6) && styles.btnCtaOff]}>
+                      <Text style={styles.btnCtaLargeTxt}>{authLoading ? '…' : (authMode === 'up' ? tr.ob_auth_submit_up : tr.ob_auth_submit_in)}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => { setAuthMode(m => (m === 'up' ? 'in' : 'up')); setAuthErr(''); }} style={{ marginTop: 14, paddingVertical: 8, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: 'rgba(0,220,255,0.82)', textDecorationLine: 'underline' }}>{authMode === 'up' ? tr.ob_auth_toggle_in : tr.ob_auth_toggle_up}</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+              {supabase ? (
+                <TouchableOpacity onPress={() => onDone(prenom.trim(), lang, tensionIdxs, { skipCloudAuth: true })} style={{ marginTop: 20, paddingVertical: 12 }}>
+                  <Text style={{ fontSize: 13, color: 'rgba(0,190,230,0.65)', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center' }}>{tr.ob_auth_skip}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </ScrollView>
+          </KeyboardAvoidingView>
         )}
       </Animated.View>
     </View>
@@ -3113,24 +3261,30 @@ async function setupNotifications(lang = 'fr') {
 // ══════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════
+const SUPABASE_URL = 'https://ctvtjeidkqpdsmhsjsij.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0dnRqZWlka3FwZHNtaHNqc2lqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODk0MzksImV4cCI6MjA4OTc2NTQzOX0.TlgVvI3znB7T5uEY4LSUGkdNnpZKah1c9ooDSr1iB_8';
+
 let supabase = null;
 try {
   const { createClient } = require('@supabase/supabase-js');
-  supabase = createClient(
-    'https://ctvtjeidkqpdsmhsjsij.supabase.co',
-    'sb_publishable_QQH0CO0MPWqK6fNDFrUBUA_YNsORhmY',
-    {
-      auth: {
-        storage: AsyncStorage,
-        storageKey: 'fluidbody.supabase.auth.v1',
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: false,
-      },
-      realtime: { transport: () => null },
-    }
-  );
-} catch(e) {}
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('SUPABASE_URL ou SUPABASE_ANON_KEY manquant');
+  }
+  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      storage: AsyncStorage,
+      storageKey: 'fluidbody.supabase.auth.v1',
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+    },
+    realtime: { transport: () => null },
+  });
+  console.log('Supabase créé avec succès');
+} catch (e) {
+  supabase = null;
+  console.error('Erreur Supabase:', e?.message != null ? e.message : String(e));
+}
 
 // ══════════════════════════════════
 // MAIN APP
@@ -3469,27 +3623,46 @@ function App() {
 
   async function handleOnboardingDone(p, l, t) {
     setPrenom(p); setLang(l); setTensionIdxs(t); setOnboardingDone(true);
-    if (supabase && supaUser) {
-      try { await supabase.from('profiles').upsert({ id: supaUser.id, prenom: p, lang: l, tension_idxs: t, updated_at: new Date().toISOString() }); } catch (e) { devWarn('Supabase profiles upsert', e); }
-    }
+    if (!supabase) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+    try {
+      await supabase.from('profiles').upsert({
+        id: session.user.id,
+        prenom: String(p ?? '').trim(),
+        lang: l,
+        tension_idxs: Array.isArray(t) ? t : [],
+        updated_at: new Date().toISOString(),
+      });
+    } catch (e) { devWarn('Supabase profiles upsert', e); }
+  }
+
+  async function completeOnboarding(p, l, t, opts) {
+    await handleOnboardingDone(p, l, t);
+    if (!supabase) { setShowAuth(false); return; }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user && !opts?.skipCloudAuth) setShowAuth(true);
+    else setShowAuth(false);
   }
 
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000e18', alignItems: 'center', justifyContent: 'center' }}>
         <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-        <EmojiMeduse />
+        <View style={{ width: 88, height: 88, marginTop: 8, overflow: 'visible' }} pointerEvents="none">
+          <MeduseCornerIcon size={88} breathCycleMs={3000} />
+        </View>
         <Text style={{ color: 'rgba(0,210,250,0.6)', fontSize: 12, letterSpacing: 3, textTransform: 'uppercase', marginTop: 20 }}>FluidBody Pilates</Text>
       </View>
     );
   }
 
   if (!onboardingDone) {
-    return <OnboardingScreen onDone={(p, l, t) => { handleOnboardingDone(p, l, t); if (!supaUser && supabase) setShowAuth(true); }} />;
+    return <OnboardingScreen onDone={(p, l, t, o) => { completeOnboarding(p, l, t, o); }} />;
   }
 
   if (showAuth && !supaUser) {
-    return <AuthScreen onSkip={() => setShowAuth(false)} lang={lang} prenomHint={prenom} />;
+    return <AuthScreen onSkip={() => setShowAuth(false)} lang={lang} prenomHint={prenom} langForProfile={lang} tensionIdxsForProfile={tensionIdxs} />;
   }
 
   return <MainApp prenom={prenom} lang={lang} onChangeLang={setLang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} />;
