@@ -18,11 +18,35 @@ let HapticsMod = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
 try { Device = require('expo-device'); } catch(e) {}
 try { HapticsMod = require('expo-haptics'); } catch(e) {}
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Svg, { Path, Circle, Ellipse, Line, Rect, Defs, RadialGradient, Stop, G } from 'react-native-svg';
 import { Video, ResizeMode, Audio } from 'expo-av';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+/** Pictogrammes restants (autres que 🔥🔒✓▶) — chaînes UTF-8. */
+const U_JELLY = '\uD83E\uDEBC';
+const U_WAVE = '\uD83C\uDF0A';
+const U_STAR = '\u2B50';
+const U_SEED = '\uD83C\uDF31';
+const U_DROP = '\uD83D\uDCA7';
+
+/** Valeur numérique du streak pour l’affichage à côté de {'🔥'} dans le JSX. */
+function streakCountValue(streak) {
+  const n = Number(streak);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+}
+
+/** URL vidéo hébergée Bunny.net (HLS / CDN). */
+function isBunnyVideoUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  const u = url.trim().toLowerCase();
+  if (u.includes('b-cdn.net')) return true;
+  if (u.includes('bunnycdn.com')) return true;
+  if (u.includes('bunny.net')) return true;
+  if (u.includes('vz-') && u.includes('.m3u8')) return true;
+  return false;
+}
 
 function devWarn(...args) {
   if (__DEV__) console.warn('[FluidBody]', ...args);
@@ -37,11 +61,76 @@ function hapticSuccess() {
   try { void HapticsMod.notificationAsync(HapticsMod.NotificationFeedbackType.Success); } catch (e) {}
 }
 
+function tabBarIconTint(color) {
+  return color != null && color !== '' ? color : 'rgba(0,220,255,0.9)';
+}
+
+function TabIconMonCorps({ color, size }) {
+  const c = tabBarIconTint(color);
+  const s = size ?? 22;
+  return (
+    <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <Path d="M12 2C8 2 5 6 5 10c0 3 2 5 5 6v6" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+        <Path d="M12 16c3-1 7-3 7-6 0-4-3-8-7-8" stroke={c} strokeWidth={1.6} strokeLinecap="round" opacity={0.5} />
+      </Svg>
+    </View>
+  );
+}
+
+function TabIconProgresser({ color, size }) {
+  const c = tabBarIconTint(color);
+  const s = size ?? 22;
+  return (
+    <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <Path d="M3 20h18M3 14h12M3 8h8" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
+        <Circle cx={19} cy={8} r={3} stroke={c} strokeWidth={1.6} fill="none" />
+      </Svg>
+    </View>
+  );
+}
+
+function TabIconBiblio({ color, size }) {
+  const c = tabBarIconTint(color);
+  const s = size ?? 22;
+  return (
+    <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <Path d="M4 4h16v16H4z" stroke={c} strokeWidth={1.6} strokeLinejoin="round" fill="none" />
+        <Path d="M8 8h8M8 12h8M8 16h5" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+      </Svg>
+    </View>
+  );
+}
+
+/** Parcours : repère sur un tracé (évite la confusion avec une horloge « manquante »). */
+function TabIconParcours({ color, size }) {
+  const c = tabBarIconTint(color);
+  const s = size ?? 22;
+  return (
+    <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"
+          stroke={c}
+          strokeWidth={1.55}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}
+
 const Tab = createBottomTabNavigator();
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
 const SCALE = IS_IPAD ? SW / 390 : 1; // Scale factor relative to iPhone 390px
 const VIDEO_DEMO = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+
+/** Codes langue affichés à la place des drapeaux emoji (souvent cassés sur iOS / polices système). */
+const LANG_CODE = { fr: 'FR', en: 'EN', es: 'ES', it: 'IT' };
 
 /** Indices 0 et 1 gratuits ; le reste verrouillé si pas d’abonnement simulé (AsyncStorage `fluid_sub`). */
 const FREE_SEANCE_INDEX = 2;
@@ -153,7 +242,6 @@ const T = {
   fr: {
     lang: 'fr', flag: '🇫🇷', nom: 'Français',
     tabs: ['Mon Corps', 'Progresser', 'Biblio', 'Parcours'],
-    logoSub: '🪼  Sentir · Préparer · Transformer',
     bonjour: (p) => p ? `Bonjour ${p}` : '',
     bonjour_mot: 'Bonjour',
     ob_tag: 'Une nouvelle façon d\'habiter son corps',
@@ -202,6 +290,7 @@ const T = {
     mon_parcours: 'Mon Parcours',
     prog_globale: 'Progression globale',
     par_pilier: 'Par pilier',
+    parcours_langue: 'Langue',
     mon_compte: 'Mon compte',
     compte_info: [['Application', 'FluidBody · Pilates'], ['Version', 'FluidBody Beta 1.0'], ['Méthode', 'Pilates Conscient · 23 ans']],
     progresser_sub: (p) => `${p}% du parcours complété`,
@@ -210,14 +299,14 @@ const T = {
     seance_du_jour_sub: "Recommandée pour toi aujourd'hui",
     commencer_seance: 'Commencer →',
     deja_faite: "✓ Déjà faite aujourd'hui",
-    notif_title: 'FluidBody 🪼',
+    notif_title: `FluidBody ${U_JELLY}`,
     notif_body: "Ta séance du jour t'attend. Ton corps a besoin de toi.",
     motivation: (streak) => streak === 0 ? '"Commence aujourd\'hui.\nTon corps t\'attend."' :
       streak < 3  ? `"${streak} jour${streak > 1 ? 's' : ''} de suite. Continue."` :
       streak < 7  ? `"${streak} jours consécutifs !\nTon corps s\'éveille."` :
       streak < 14 ? `"${streak} jours ! Une vraie habitude\nse construit."` :
-      `"${streak} jours. Tu es remarquable. 🌊"`,
-    celebration: 'Ton corps a progressé.\nContinue comme ça 💪',
+      `"${streak} jours. Tu es remarquable. ${U_WAVE}"`,
+    celebration: 'Ton corps a progressé.\nContinue comme ça \uD83D\uDCAA',
     biblio_signature: '— FluidBody',
     premium_alert_title: 'Contenu Premium',
     premium_alert_simulate: 'Voir les offres',
@@ -240,7 +329,6 @@ const T = {
   en: {
     lang: 'en', flag: '🇬🇧', nom: 'English',
     tabs: ['My Body', 'Progress', 'Library', 'Journey'],
-    logoSub: '🪼  Feel · Prepare · Transform',
     bonjour: (p) => p ? `Hello ${p}` : '',
     bonjour_mot: 'Hello',
     ob_tag: 'A new way to inhabit your body',
@@ -289,6 +377,7 @@ const T = {
     mon_parcours: 'My Journey',
     prog_globale: 'Overall progress',
     par_pilier: 'By pillar',
+    parcours_langue: 'Language',
     mon_compte: 'My account',
     compte_info: [['App', 'FluidBody · Pilates'], ['Version', 'FluidBody Beta 1.0'], ['Method', 'Conscious Pilates · 23 years']],
     progresser_sub: (p) => `${p}% of journey completed`,
@@ -297,14 +386,14 @@ const T = {
     seance_du_jour_sub: 'Recommended for you today',
     commencer_seance: 'Start →',
     deja_faite: '✓ Already done today',
-    notif_title: 'FluidBody 🪼',
+    notif_title: `FluidBody ${U_JELLY}`,
     notif_body: 'Your daily session is waiting. Your body needs you.',
     motivation: (streak) => streak === 0 ? '"Start today.\nYour body is waiting."' :
       streak < 3  ? `"${streak} day${streak > 1 ? 's' : ''} in a row. Keep going."` :
       streak < 7  ? `"${streak} days in a row!\nYour body is awakening."` :
       streak < 14 ? `"${streak} days! A real habit\nis forming."` :
-      `"${streak} days. You are remarkable. 🌊"`,
-    celebration: 'Your body has progressed.\nKeep it up 💪',
+      `"${streak} days. You are remarkable. ${U_WAVE}"`,
+    celebration: 'Your body has progressed.\nKeep it up \uD83D\uDCAA',
     biblio_signature: '— FluidBody',
     premium_alert_title: 'Premium content',
     premium_alert_simulate: 'See offers',
@@ -327,7 +416,6 @@ const T = {
   es: {
     lang: 'es', flag: '🇪🇸', nom: 'Español',
     tabs: ['Mi Cuerpo', 'Progresar', 'Biblioteca', 'Recorrido'],
-    logoSub: '🪼  Sentir · Preparar · Transformar',
     bonjour: (p) => p ? `Hola ${p}` : '',
     bonjour_mot: 'Hola',
     ob_tag: 'Una nueva forma de habitar tu cuerpo',
@@ -376,6 +464,7 @@ const T = {
     mon_parcours: 'Mi Recorrido',
     prog_globale: 'Progreso global',
     par_pilier: 'Por pilar',
+    parcours_langue: 'Idioma',
     mon_compte: 'Mi cuenta',
     compte_info: [['Aplicación', 'FluidBody · Pilates'], ['Versión', 'FluidBody Beta 1.0'], ['Método', 'Pilates Consciente · 23 años']],
     progresser_sub: (p) => `${p}% del recorrido completado`,
@@ -384,14 +473,14 @@ const T = {
     seance_du_jour_sub: 'Recomendada para ti hoy',
     commencer_seance: 'Empezar →',
     deja_faite: '✓ Ya hecha hoy',
-    notif_title: 'FluidBody 🪼',
+    notif_title: `FluidBody ${U_JELLY}`,
     notif_body: 'Tu sesión del día te espera. Tu cuerpo te necesita.',
     motivation: (streak) => streak === 0 ? '"Empieza hoy.\nTu cuerpo te espera."' :
       streak < 3  ? `"${streak} día${streak > 1 ? 's' : ''} seguido${streak > 1 ? 's' : ''}. Sigue."` :
       streak < 7  ? `"¡${streak} días seguidos!\nTu cuerpo despierta."` :
       streak < 14 ? `"¡${streak} días! Un hábito real\nse está formando."` :
-      `"${streak} días. Eres extraordinario. 🌊"`,
-    celebration: 'Tu cuerpo ha progresado.\n¡Sigue así! 💪',
+      `"${streak} días. Eres extraordinario. ${U_WAVE}"`,
+    celebration: 'Tu cuerpo ha progresado.\n¡Sigue así! \uD83D\uDCAA',
     biblio_signature: '— FluidBody',
     premium_alert_title: 'Contenido Premium',
     premium_alert_simulate: 'Ver ofertas',
@@ -414,7 +503,6 @@ const T = {
   it: {
     lang: 'it', flag: '🇮🇹', nom: 'Italiano',
     tabs: ['Il Mio Corpo', 'Progredire', 'Biblioteca', 'Percorso'],
-    logoSub: '🪼  Sentire · Preparare · Trasformare',
     bonjour: (p) => p ? `Ciao ${p}` : '',
     bonjour_mot: 'Ciao',
     ob_tag: 'Un nuovo modo di abitare il tuo corpo',
@@ -463,6 +551,7 @@ const T = {
     mon_parcours: 'Il Mio Percorso',
     prog_globale: 'Progresso globale',
     par_pilier: 'Per pilastro',
+    parcours_langue: 'Lingua',
     mon_compte: 'Il mio account',
     compte_info: [['App', 'FluidBody · Pilates'], ['Versione', 'FluidBody Beta 1.0'], ['Metodo', 'Pilates Consapevole · 23 anni']],
     progresser_sub: (p) => `${p}% del percorso completato`,
@@ -471,14 +560,14 @@ const T = {
     seance_du_jour_sub: 'Consigliata per te oggi',
     commencer_seance: 'Inizia →',
     deja_faite: '✓ Già fatta oggi',
-    notif_title: 'FluidBody 🪼',
+    notif_title: `FluidBody ${U_JELLY}`,
     notif_body: 'La tua sessione del giorno ti aspetta. Il tuo corpo ha bisogno di te.',
     motivation: (streak) => streak === 0 ? '"Inizia oggi.\nIl tuo corpo ti aspetta."' :
       streak < 3  ? `"${streak} giorno${streak > 1 ? 'i' : ''} di fila. Continua."` :
       streak < 7  ? `"${streak} giorni consecutivi!\nIl tuo corpo si risveglia."` :
       streak < 14 ? `"${streak} giorni! Una vera abitudine\nsi sta formando."` :
-      `"${streak} giorni. Sei straordinario. 🌊"`,
-    celebration: 'Il tuo corpo ha progredito.\nContinua così! 💪',
+      `"${streak} giorni. Sei straordinario. ${U_WAVE}"`,
+    celebration: 'Il tuo corpo ha progredito.\nContinua così! \uD83D\uDCAA',
     biblio_signature: '— FluidBody',
     premium_alert_title: 'Contenuto Premium',
     premium_alert_simulate: 'Vedi offerte',
@@ -840,6 +929,206 @@ function Meduse() {
   );
 }
 
+/** Même SVG animé que `Meduse`, teinte #00B4D8 — option `breathCycleMs` : respiration 1 → 1,08 → 1. */
+const MEDUSE_CORNER_BLUE = '#00B4D8';
+function blueMeduse(a) {
+  return `rgba(0,180,216,${a})`;
+}
+
+function MeduseCornerIcon({ size = 50, breathCycleMs = null }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  const breath = useRef(new Animated.Value(1)).current;
+  const [tick, setTick] = useState(0);
+  const tickRef = useRef(0);
+
+  const { bellScale, floatY } = useMemo(() => {
+    const N = 20;
+    const pts = Array.from({ length: N + 1 }, (_, i) => i / N);
+    const amp = IS_IPAD ? 0.14 : 0.12;
+    const floatAmp = IS_IPAD ? 12 : 10;
+    return {
+      bellScale: anim.interpolate({
+        inputRange: pts,
+        outputRange: pts.map((t) => 1.0 + amp * Math.sin(Math.PI * t)),
+      }),
+      floatY: anim.interpolate({
+        inputRange: pts,
+        outputRange: pts.map((t) => -floatAmp * Math.sin(Math.PI * t)),
+      }),
+    };
+  }, [anim]);
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 8000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    loop.start();
+    const id = setInterval(() => {
+      tickRef.current += 0.026;
+      setTick(tickRef.current);
+    }, 36);
+    return () => {
+      loop.stop();
+      clearInterval(id);
+    };
+  }, [anim]);
+
+  useEffect(() => {
+    if (!breathCycleMs) return;
+    breath.setValue(1);
+    const half = breathCycleMs / 2;
+    const breathLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, { toValue: 1.08, duration: half, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(breath, { toValue: 1.0, duration: half, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    );
+    breathLoop.start();
+    return () => breathLoop.stop();
+  }, [breathCycleMs, breath]);
+
+  const tentPaths = TENTS2.map(t => tentaclePath(t.sx, t.sy, t.angle, t.len, tick, t.phase, t.amp));
+
+  return (
+    <Animated.View style={{ width: size, height: size, overflow: 'visible', transform: [{ translateY: floatY }], alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View style={{ transform: [{ scale: breathCycleMs ? breath : bellScale }] }}>
+        <Svg width={size} height={size} viewBox="0 0 280 520" preserveAspectRatio="xMidYMid meet" overflow="visible">
+          {tentPaths.map((d, i) => (
+            <Path key={i} d={d} stroke={blueMeduse(0.35 + (i % 7) * 0.02)} strokeWidth={TENTS2[i].w} fill="none" strokeLinecap="round" />
+          ))}
+          <Defs>
+            <RadialGradient id="cornerBellGrad" cx="50%" cy="28%" rx="55%" ry="60%" fx="48%" fy="22%">
+              <Stop offset="0%" stopColor="#E8F8FC" stopOpacity="0.92" />
+              <Stop offset="28%" stopColor={MEDUSE_CORNER_BLUE} stopOpacity="0.62" />
+              <Stop offset="58%" stopColor={MEDUSE_CORNER_BLUE} stopOpacity="0.38" />
+              <Stop offset="80%" stopColor="#0095B8" stopOpacity="0.18" />
+              <Stop offset="100%" stopColor="#006884" stopOpacity="0.06" />
+            </RadialGradient>
+            <RadialGradient id="cornerTopGlow" cx="40%" cy="20%" rx="42%" ry="35%">
+              <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.38" />
+              <Stop offset="50%" stopColor="#7FD8EC" stopOpacity="0.22" />
+              <Stop offset="100%" stopColor={MEDUSE_CORNER_BLUE} stopOpacity="0" />
+            </RadialGradient>
+          </Defs>
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke={blueMeduse(0.35)} strokeWidth="18" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke={blueMeduse(0.45)} strokeWidth="10" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke={blueMeduse(0.55)} strokeWidth="5" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke="rgba(255,255,255,0.78)" strokeWidth="1.5" />
+          <Path d="M 55 62 C 75 28 115 10 160 14 C 190 17 215 32 232 55" fill="none" stroke={blueMeduse(0.78)} strokeWidth="2.5" strokeLinecap="round" />
+          <Path d="M 62 58 C 82 26 118 9 158 13" fill="none" stroke={blueMeduse(0.55)} strokeWidth="1.2" strokeLinecap="round" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill={blueMeduse(0.34)} />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="url(#cornerBellGrad)" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="url(#cornerTopGlow)" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke={blueMeduse(0.72)} strokeWidth="1.2" />
+          <Path d="M 140 105 Q 108 88 78  98" stroke={blueMeduse(0.35)} strokeWidth="1.3" fill="none" />
+          <Path d="M 140 105 Q 115 78 100 52" stroke={blueMeduse(0.35)} strokeWidth="1.3" fill="none" />
+          <Path d="M 140 105 Q 132 68 130 38" stroke={blueMeduse(0.32)} strokeWidth="1.2" fill="none" />
+          <Path d="M 140 105 Q 140 66 140 36" stroke={blueMeduse(0.38)} strokeWidth="1.4" fill="none" />
+          <Path d="M 140 105 Q 148 68 150 38" stroke={blueMeduse(0.32)} strokeWidth="1.2" fill="none" />
+          <Path d="M 140 105 Q 165 78 180 52" stroke={blueMeduse(0.35)} strokeWidth="1.3" fill="none" />
+          <Path d="M 140 105 Q 172 88 202 98" stroke={blueMeduse(0.35)} strokeWidth="1.3" fill="none" />
+          <Path d="M 140 105 Q 95  95  68 108" stroke={blueMeduse(0.28)} strokeWidth="1.1" fill="none" />
+          <Path d="M 140 105 Q 185 95 212 108" stroke={blueMeduse(0.28)} strokeWidth="1.1" fill="none" />
+          <Path d="M 46 122 Q 62 136 80 132 Q 96 142 112 138 Q 126 144 140 144 Q 154 144 168 138 Q 184 142 200 132 Q 218 136 234 122" stroke={blueMeduse(0.55)} strokeWidth="1.8" fill="none" />
+          <Path d="M 58 126 Q 68 134 78 130 Q 88 138 100 134 Q 112 142 124 138 Q 132 144 140 143 Q 148 144 156 138 Q 168 142 180 134 Q 192 138 202 130 Q 212 134 222 126" stroke={blueMeduse(0.42)} strokeWidth="1.2" fill="none" />
+          <Path d="M 140 148 C 134 160 126 172 122 186 C 118 198 124 208 130 218 C 124 228 118 240 122 254 C 118 264 112 274 115 288" stroke={blueMeduse(0.58)} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          <Path d="M 140 148 C 146 160 154 172 158 186 C 162 198 156 208 150 218 C 156 228 162 240 158 254 C 162 264 168 274 165 288" stroke={blueMeduse(0.58)} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          <Path d="M 140 148 C 140 164 138 178 136 192 C 134 204 138 215 140 225 C 142 215 146 204 144 192 C 142 178 140 164 140 148" stroke={blueMeduse(0.5)} strokeWidth="1.8" fill="none" strokeLinecap="round" />
+          <Circle cx="96" cy="60" r="2.2" fill={blueMeduse(0.88)} />
+          <Circle cx="184" cy="60" r="2.2" fill={blueMeduse(0.88)} />
+          <Circle cx="68" cy="95" r="1.8" fill={blueMeduse(0.72)} />
+          <Circle cx="212" cy="95" r="1.8" fill={blueMeduse(0.72)} />
+          <Circle cx="140" cy="28" r="2.8" fill="rgba(255,255,255,0.92)" />
+          <Circle cx="120" cy="22" r="1.5" fill={blueMeduse(0.78)} />
+          <Circle cx="160" cy="22" r="1.5" fill={blueMeduse(0.78)} />
+        </Svg>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+/** Placeholder séance sans vidéo Bunny : méduse SVG + flottement vertical (Animated). */
+function VideoPlaceholderMeduse({ size }) {
+  const float = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(float, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(float, { toValue: 0, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => {
+      loop.stop();
+    };
+  }, [float]);
+  const floatY = float.interpolate({ inputRange: [0, 1], outputRange: [8, -16] });
+  const tick = 0;
+  const tentPaths = TENTS2.map(t => tentaclePath(t.sx, t.sy, t.angle, t.len, tick, t.phase, t.amp));
+  const w = size;
+  const h = size * (460 / 260);
+  return (
+    <Animated.View style={{ transform: [{ translateY: floatY }], alignItems: 'center' }}>
+      <Svg width={w} height={h} viewBox="0 0 280 520" overflow="visible">
+        {tentPaths.map((d, i) => (
+          <Path key={i} d={d} stroke={TENTS2[i].color} strokeWidth={TENTS2[i].w} fill="none" strokeLinecap="round" />
+        ))}
+        <Defs>
+          <RadialGradient id="ph_bellGrad" cx="50%" cy="28%" rx="55%" ry="60%" fx="48%" fy="22%">
+            <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.75" />
+            <Stop offset="20%" stopColor="#f8faff" stopOpacity="0.58" />
+            <Stop offset="45%" stopColor="#f0f4ff" stopOpacity="0.40" />
+            <Stop offset="70%" stopColor="#e4ecff" stopOpacity="0.22" />
+            <Stop offset="88%" stopColor="#d8e4ff" stopOpacity="0.10" />
+            <Stop offset="100%" stopColor="#c8d8f8" stopOpacity="0.04" />
+          </RadialGradient>
+          <RadialGradient id="ph_topGlow" cx="40%" cy="20%" rx="42%" ry="35%">
+            <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.45" />
+            <Stop offset="50%" stopColor="#f8f8ff" stopOpacity="0.12" />
+            <Stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke="rgba(220,230,255,0.15)" strokeWidth="18" />
+        <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke="rgba(230,235,255,0.20)" strokeWidth="10" />
+        <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke="rgba(240,242,255,0.30)" strokeWidth="5" />
+        <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke="rgba(255,255,255,0.90)" strokeWidth="1.5" />
+        <Path d="M 55 62 C 75 28 115 10 160 14 C 190 17 215 32 232 55" fill="none" stroke="rgba(255,255,255,0.70)" strokeWidth="2.5" strokeLinecap="round" />
+        <Path d="M 62 58 C 82 26 118 9 158 13" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1.2" strokeLinecap="round" />
+        <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="rgba(240,245,255,0.28)" />
+        <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="url(#ph_bellGrad)" />
+        <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="url(#ph_topGlow)" />
+        <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="1.2" />
+        <Path d="M 140 105 Q 108 88 78  98" stroke="rgba(200,215,255,0.25)" strokeWidth="1.3" fill="none" />
+        <Path d="M 140 105 Q 115 78 100 52" stroke="rgba(200,215,255,0.25)" strokeWidth="1.3" fill="none" />
+        <Path d="M 140 105 Q 132 68 130 38" stroke="rgba(205,218,255,0.22)" strokeWidth="1.2" fill="none" />
+        <Path d="M 140 105 Q 140 66 140 36" stroke="rgba(210,220,255,0.26)" strokeWidth="1.4" fill="none" />
+        <Path d="M 140 105 Q 148 68 150 38" stroke="rgba(205,218,255,0.22)" strokeWidth="1.2" fill="none" />
+        <Path d="M 140 105 Q 165 78 180 52" stroke="rgba(200,215,255,0.25)" strokeWidth="1.3" fill="none" />
+        <Path d="M 140 105 Q 172 88 202 98" stroke="rgba(200,215,255,0.25)" strokeWidth="1.3" fill="none" />
+        <Path d="M 140 105 Q 95  95  68 108" stroke="rgba(200,212,255,0.20)" strokeWidth="1.1" fill="none" />
+        <Path d="M 140 105 Q 185 95 212 108" stroke="rgba(200,212,255,0.20)" strokeWidth="1.1" fill="none" />
+        <Path d="M 46 122 Q 62 136 80 132 Q 96 142 112 138 Q 126 144 140 144 Q 154 144 168 138 Q 184 142 200 132 Q 218 136 234 122" stroke="rgba(220,228,255,0.50)" strokeWidth="1.8" fill="none" />
+        <Path d="M 58 126 Q 68 134 78 130 Q 88 138 100 134 Q 112 142 124 138 Q 132 144 140 143 Q 148 144 156 138 Q 168 142 180 134 Q 192 138 202 130 Q 212 134 222 126" stroke="rgba(228,235,255,0.35)" strokeWidth="1.2" fill="none" />
+        <Path d="M 140 148 C 134 160 126 172 122 186 C 118 198 124 208 130 218 C 124 228 118 240 122 254 C 118 264 112 274 115 288" stroke="rgba(200,210,255,0.65)" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+        <Path d="M 140 148 C 146 160 154 172 158 186 C 162 198 156 208 150 218 C 156 228 162 240 158 254 C 162 264 168 274 165 288" stroke="rgba(200,210,255,0.65)" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+        <Path d="M 140 148 C 140 164 138 178 136 192 C 134 204 138 215 140 225 C 142 215 146 204 144 192 C 142 178 140 164 140 148" stroke="rgba(210,218,255,0.58)" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+        <Circle cx="96" cy="60" r="2.2" fill="rgba(200,235,255,0.72)" />
+        <Circle cx="184" cy="60" r="2.2" fill="rgba(200,235,255,0.72)" />
+        <Circle cx="68" cy="95" r="1.8" fill="rgba(180,225,255,0.60)" />
+        <Circle cx="212" cy="95" r="1.8" fill="rgba(180,225,255,0.60)" />
+        <Circle cx="140" cy="28" r="2.8" fill="rgba(240,250,255,0.95)" />
+        <Circle cx="120" cy="22" r="1.5" fill="rgba(220,242,255,0.70)" />
+        <Circle cx="160" cy="22" r="1.5" fill="rgba(220,242,255,0.70)" />
+      </Svg>
+    </Animated.View>
+  );
+}
+
 
 const BULLES = [
   { x: 337, size: 2, delay: 409,   duration: 11506 },
@@ -930,7 +1219,7 @@ function CelebrationOverlay({ visible, onDone, pilier, lang }) {
   }, [visible]);
 
   if (!visible) return null;
-  const EMOJIS = ['✨','🌊','💧','⭐','🫧','💫','🌸'];
+  const EMOJIS = ['\u2728', U_WAVE, U_DROP, U_STAR, '\uD83E\uDEA7', '\uD83D\uDCAB', '\uD83C\uDF38'];
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, alignItems: 'center', justifyContent: 'center' }}>
       <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,5,15,0.82)', opacity: opacAnim }} />
@@ -957,7 +1246,7 @@ function CelebrationOverlay({ visible, onDone, pilier, lang }) {
         elevation: 16,
       }}>
         <Animated.View style={{ transform: [{ scale: medalAnim }], marginBottom: 16 }}>
-          <Text style={{ fontSize: 64 }}>🪼</Text>
+          <Text style={{ fontSize: 64 }}>{U_JELLY}</Text>
         </Animated.View>
         <Text style={{ fontSize: 11, color: pilier?.color || 'rgba(0,215,255,0.95)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 10 }}>{tr.seance_done}</Text>
         <Text style={{ fontSize: 22, fontWeight: '200', color: 'rgba(255,255,255,0.96)', textAlign: 'center', lineHeight: 32 }}>{pilier?.label}</Text>
@@ -1066,7 +1355,6 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
   const completedRef = useRef(false);
   const [status, setStatus] = useState({});
   const [resumeHint, setResumeHint] = useState(null);
-  const [showControls, setShowControls] = useState(false);
   const controlsTimer = useRef(null);
   const [dims, setDims] = useState(Dimensions.get('window'));
   const playScale = useRef(new Animated.Value(1)).current;
@@ -1074,12 +1362,15 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
   const [videoLoadFailed, setVideoLoadFailed] = useState(false);
   const [videoResetKey, setVideoResetKey] = useState(0);
   const [titre, duree, etape, videoUrl] = seance;
-  const [uri, setUri] = useState(videoUrl || VIDEO_DEMO);
+  const hasRealVideo = isBunnyVideoUrl(videoUrl);
+  const [showControls, setShowControls] = useState(!hasRealVideo);
+  const [uri, setUri] = useState(hasRealVideo ? (videoUrl || '') : '');
   const uriRef = useRef(uri);
   uriRef.current = uri;
   const lastPersistAtRef = useRef(0);
 
   function maybePersistProgress(s) {
+    if (!hasRealVideo) return;
     if (completedRef.current || pilier?.key == null || seanceIndex == null) return;
     if (!s?.isLoaded || !s.durationMillis || s.positionMillis == null) return;
     if (s.positionMillis < 2500 || s.durationMillis - s.positionMillis < 5000) return;
@@ -1092,7 +1383,14 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
   async function handleCloseVideo() {
     bumpTimer();
     const s = lastStatusRef.current;
-    if (!completedRef.current && pilier?.key != null && seanceIndex != null && s?.durationMillis && s.positionMillis != null) {
+    if (
+      hasRealVideo &&
+      !completedRef.current &&
+      pilier?.key != null &&
+      seanceIndex != null &&
+      s?.durationMillis &&
+      s.positionMillis != null
+    ) {
       await saveVideoResume(pilier.key, seanceIndex, uriRef.current, s.positionMillis, s.durationMillis);
     }
     onClose();
@@ -1105,6 +1403,7 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
   }
 
   function scheduleHide() {
+    if (!hasRealVideo) return;
     if (controlsTimer.current) clearTimeout(controlsTimer.current);
     controlsTimer.current = setTimeout(() => setShowControls(false), 4500);
   }
@@ -1120,7 +1419,7 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
   }
 
   function bumpTimer() {
-    scheduleHide();
+    if (hasRealVideo) scheduleHide();
   }
 
   useEffect(() => {
@@ -1144,15 +1443,17 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
 
   useEffect(() => {
     return () => {
+      if (!hasRealVideo) return;
       if (completedRef.current || pilier?.key == null || seanceIndex == null) return;
       const s = lastStatusRef.current;
       if (!s?.durationMillis || s.positionMillis == null) return;
       void saveVideoResume(pilier.key, seanceIndex, uriRef.current, s.positionMillis, s.durationMillis);
     };
-  }, [pilier?.key, seanceIndex]);
+  }, [hasRealVideo, pilier?.key, seanceIndex]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
+      if (!hasRealVideo) return;
       if (next !== 'background' && next !== 'inactive') return;
       if (completedRef.current || pilier?.key == null || seanceIndex == null) return;
       const s = lastStatusRef.current;
@@ -1160,7 +1461,7 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
       void saveVideoResume(pilier.key, seanceIndex, uriRef.current, s.positionMillis, s.durationMillis);
     });
     return () => sub.remove();
-  }, [pilier?.key, seanceIndex]);
+  }, [hasRealVideo, pilier?.key, seanceIndex]);
 
   function onPlaybackStatusUpdate(s) {
     lastStatusRef.current = s;
@@ -1169,7 +1470,7 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
       console.log('Video playback error:', { uri: uriRef.current, error: s.error });
       if (__DEV__) devWarn('Video playback error', s.error);
       // Fallback: si l’URL spécifique échoue, basculer sur la démo pour éviter un écran bloqué
-      if (uriRef.current !== VIDEO_DEMO) {
+      if (hasRealVideo && uriRef.current !== VIDEO_DEMO) {
         setUri(VIDEO_DEMO);
         hasRestoredRef.current = false;
         setVideoResetKey((k) => k + 1);
@@ -1181,7 +1482,7 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
     if (s.isLoaded) setVideoLoadFailed(false);
     setStatus(s);
     maybePersistProgress(s);
-    if (!hasRestoredRef.current && s.isLoaded && s.durationMillis && pilier?.key != null && seanceIndex != null) {
+    if (hasRealVideo && !hasRestoredRef.current && s.isLoaded && s.durationMillis && pilier?.key != null && seanceIndex != null) {
       hasRestoredRef.current = true;
       loadVideoResume(pilier.key, seanceIndex, uriRef.current, s.durationMillis).then((pos) => {
         if (pos != null && videoRef.current) {
@@ -1230,15 +1531,47 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, backgroundColor: '#000', width: dims.width, height: dims.height }}>
-      <Video
-        key={videoResetKey}
-        ref={videoRef}
-        source={{ uri }}
-        style={{ position: 'absolute', top: 0, left: 0, width: dims.width, height: dims.height }}
-        resizeMode={ResizeMode.CONTAIN}
-        shouldPlay
-        onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-      />
+      {hasRealVideo ? (
+        <Video
+          key={videoResetKey}
+          ref={videoRef}
+          source={{ uri }}
+          style={{ position: 'absolute', top: 0, left: 0, width: dims.width, height: dims.height }}
+          resizeMode={ResizeMode.CONTAIN}
+          shouldPlay
+          onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+        />
+      ) : (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: dims.width,
+            height: dims.height,
+            backgroundColor: '#000',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingBottom: 48,
+          }}
+        >
+          <VideoPlaceholderMeduse size={Math.min(dims.width, dims.height) * 0.58} />
+          <Text
+            style={{
+              marginTop: 28,
+              fontSize: 17,
+              fontWeight: '500',
+              color: '#ffffff',
+              textAlign: 'center',
+              paddingHorizontal: 32,
+              lineHeight: 24,
+              letterSpacing: 0.3,
+            }}
+          >
+            Vidéo bientôt disponible
+          </Text>
+        </View>
+      )}
 
       {videoLoadFailed && (
         <View
@@ -1289,6 +1622,7 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
               </TouchableOpacity>
             </View>
 
+            {hasRealVideo && (
             <View pointerEvents="box-none" style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 28 }}>
                 <VideoSkip10Icon
@@ -1333,9 +1667,10 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
                 />
               </View>
             </View>
+            )}
 
             <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingBottom: 32, paddingHorizontal: 20 }} pointerEvents="box-none">
-              {resumeHint != null && (
+              {hasRealVideo && resumeHint != null && (
                 <View
                   style={{
                     alignSelf: 'center',
@@ -1354,6 +1689,8 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
                   </Text>
                 </View>
               )}
+              {hasRealVideo && (
+              <>
               <Pressable
                 accessibilityLabel="Barre de progression de la vidéo"
                 accessibilityRole="adjustable"
@@ -1395,6 +1732,8 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
                 <Text style={{ fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.85)' }}>{formatTimeCode(status.positionMillis)}</Text>
                 <Text style={{ fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.85)' }}>{formatRemaining(status.positionMillis, status.durationMillis)}</Text>
               </View>
+              </>
+              )}
               <Pressable
                 onPress={() => {
                   bumpTimer();
@@ -1507,6 +1846,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
         onRequestClose={() => setActiveVideo(null)}
       >
         <VideoPlayer
+          key={`${pilier.key}-${activeVideo}`}
           seance={seances[activeVideo]}
           pilier={pilier}
           lang={lang}
@@ -1526,13 +1866,13 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r'+i} delay={b.delay + 2000} x={b.x + SW * 0.35} size={b.size} duration={b.duration} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r2'+i} delay={b.delay + 5000} x={b.x + SW * 0.65} size={b.size} duration={b.duration} />)}
       <View style={{ paddingTop: 60, paddingHorizontal: 22, paddingBottom: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <TouchableOpacity onPress={onClose}>
-            <Text style={{ fontSize: 10, color: 'rgba(0,205,248,0.44)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.retour}</Text>
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(0,220,255,0.78)', letterSpacing: 2.5, textTransform: 'uppercase' }}>{tr.retour}</Text>
           </TouchableOpacity>
           <EmojiMeduse />
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Text style={{ fontSize: 34, fontWeight: '200', color: 'rgba(195,242,255,0.94)' }}>{pilier.label}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <Text style={{ fontSize: IS_IPAD ? 44 : 40, fontWeight: '200', color: 'rgba(195,242,255,0.94)', letterSpacing: -0.3 }}>{pilier.label}</Text>
           {isRecommended && (
             <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(0,215,255,0.2)', borderWidth: 1, borderColor: 'rgba(0,215,255,0.7)' }}>
               <Text style={{ fontSize: 9, color: 'rgba(0,220,255,0.9)', letterSpacing: 1 }}>★ {tr.recommande_pour_toi}</Text>
@@ -1675,7 +2015,7 @@ function Orbe({ pilier, onPress, recommended, lang }) {
       </Animated.View>
       <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 0.75, color: pilier.color, marginTop: 8, textTransform: 'uppercase', textAlign: 'center', width: 92, textShadowColor: 'rgba(0,8,24,0.45)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>{pilier.label}</Text>
       {recommended && (
-        <Text style={{ fontSize: 8, color: 'rgba(0,215,255,0.88)', letterSpacing: 0.5, textTransform: 'uppercase' }}>{tr.recommande_pour_toi}</Text>
+        <Text style={{ fontSize: 8, color: 'rgba(0,215,255,0.88)', letterSpacing: 0.5, textTransform: 'uppercase', textAlign: 'center', width: 92 }}>{tr.recommande_pour_toi}</Text>
       )}
     </TouchableOpacity>
   );
@@ -1690,7 +2030,7 @@ function EmojiMeduse() {
     ])).start();
   }, []);
   return (
-    <Animated.Text style={{ fontSize: 48, transform: [{ scale }] }}>🪼</Animated.Text>
+    <Animated.Text style={{ fontSize: 48, transform: [{ scale }] }}>{U_JELLY}</Animated.Text>
   );
 }
 
@@ -1715,10 +2055,15 @@ function MetricTile({ children }) {
 function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubscriber, onActivateSubscription }) {
   const tr = T[lang] || T['fr'];
   const [openPilier, setOpenPilier] = useState(null);
+  const [pilatesW, setPilatesW] = useState(0);
+  const [pilatesLineH, setPilatesLineH] = useState(0);
   const totalDone = Object.values(done).flat().filter(Boolean).length;
   const piliers = getPiliers(lang);
   const recommendedPiliers = tensionIdxs.map(i => ZONE_TO_PILIER[i]);
   const effectiveRecommended = recommendedPiliers.length > 0 ? recommendedPiliers : [];
+  const pilatesLetterSpacing = IS_IPAD ? 6 : 5;
+  /** Ancrage vertical du titre PILATES (ex-148) : espace libéré sans la ligne tagline. */
+  const pilatesHeaderTop = 112;
 
   return (
     <View style={styles.screen}>
@@ -1731,42 +2076,52 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         {IS_IPAD && BULLES_MONCORPS.map((b, i) => <Bulle key={`mc-ipad1-${i}`} delay={b.delay + 2000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.35))} size={b.size} duration={b.duration} />)}
         {IS_IPAD && BULLES_MONCORPS.map((b, i) => <Bulle key={`mc-ipad2-${i}`} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />)}
       </View>
+      <Text
+        onLayout={(e) => setPilatesW(e.nativeEvent.layout.width)}
+        style={{ position: 'absolute', left: -8000, opacity: 0, fontSize: 34, fontWeight: '300', letterSpacing: pilatesLetterSpacing, textTransform: 'uppercase', color: 'rgba(0,235,255,0.96)' }}
+        pointerEvents="none"
+      >
+        Pilates
+      </Text>
       <Text style={styles.logoTitle}>FluidBody</Text>
-      <View style={{ position: 'absolute', top: 118, left: 0, right: 0, zIndex: 10 }} pointerEvents="box-none">
+      {/* Méduse 85×85 juste à droite du « S » de PILATES, respiration 3 s */}
+      {pilatesW > 0 ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: pilatesLineH > 0 ? pilatesHeaderTop + (pilatesLineH - 85) / 2 + 30 : pilatesHeaderTop + 30,
+            left: Math.min(SW - 85 - 4, Math.max(4, SW / 2 + pilatesW / 2 + 4)),
+            width: 85,
+            height: 85,
+            zIndex: 16,
+            overflow: 'visible',
+          }}
+          pointerEvents="none"
+        >
+          <MeduseCornerIcon size={85} breathCycleMs={3000} />
+        </View>
+      ) : null}
+      <View style={{ position: 'absolute', top: pilatesHeaderTop, left: 0, right: 0, zIndex: 10, alignItems: 'center', paddingHorizontal: 20 }} pointerEvents="box-none">
         <Text
+          onLayout={(e) => setPilatesLineH(e.nativeEvent.layout.height)}
           style={{
             width: '100%',
             textAlign: 'center',
-            fontSize: 21,
+            fontSize: 34,
             fontWeight: '300',
             color: 'rgba(0,235,255,0.96)',
-            letterSpacing: 4,
+            letterSpacing: pilatesLetterSpacing,
             textTransform: 'uppercase',
           }}
         >
           Pilates
         </Text>
         {prenom ? (
-          <Text
-            style={{
-              position: 'absolute',
-              top: 0,
-              right: 16,
-              maxWidth: '44%',
-              textAlign: 'right',
-            }}
-            numberOfLines={1}
-          >
+          <Text style={{ width: '100%', marginTop: 6, textAlign: 'center', paddingHorizontal: 12 }} numberOfLines={1}>
             <Text style={{ fontSize: 17, fontWeight: '300', color: 'rgba(0,210,250,0.78)' }}>{tr.bonjour_mot} </Text>
             <Text style={{ fontSize: 18, fontWeight: '600', color: 'rgba(0,235,255,0.96)' }}>{prenom}</Text>
           </Text>
         ) : null}
-      </View>
-      <View style={{ position: 'absolute', top: 142, left: 10, right: 10, zIndex: 10, alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-          <EmojiMeduse />
-          <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.85)', letterSpacing: 3, textTransform: 'uppercase', marginLeft: 8 }}>{tr.logoSub.replace('🪼  ', '')}</Text>
-        </View>
       </View>
       {piliers.map(p => (
         <Orbe key={p.key} pilier={p} onPress={setOpenPilier} recommended={effectiveRecommended.includes(p.key)} lang={lang} />
@@ -1850,7 +2205,10 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
       })()}
       <View style={styles.metrics}>
         <MetricTile><Text style={styles.mval}>{totalDone}</Text><Text style={styles.mlbl}>{tr.m_seances}</Text></MetricTile>
-        <MetricTile><Text style={styles.mval}>{streak > 0 ? `${streak}🔥` : '0🔥'}</Text><Text style={styles.mlbl}>{tr.m_streak}</Text></MetricTile>
+        <MetricTile>
+          <Text style={[styles.mval, Platform.OS === 'android' && { fontFamily: 'sans-serif' }]}>{'🔥'} {streakCountValue(streak)}</Text>
+          <Text style={styles.mlbl}>{tr.m_streak}</Text>
+        </MetricTile>
         <MetricTile><Text style={styles.mval}>{Math.round(totalDone / 140 * 100)}%</Text><Text style={styles.mlbl}>{tr.m_progress}</Text></MetricTile>
       </View>
       {openPilier && (
@@ -2140,9 +2498,11 @@ function Biblio({ lang }) {
       <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.15} />
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
       <View style={{ paddingTop: 62, paddingHorizontal: 22, paddingBottom: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <Text style={{ fontSize: 34, fontWeight: '200', color: 'rgba(215,248,255,0.94)', letterSpacing: 1 }}>{tr.biblio_titre}</Text>
-          <EmojiMeduse />
+          <View style={{ marginTop: 14, width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
+            <MeduseCornerIcon size={90} breathCycleMs={3000} />
+          </View>
         </View>
         <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.42)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.biblio_sub}</Text>
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
@@ -2235,9 +2595,11 @@ function Progresser({ done, lang, tensionIdxs }) {
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={{ paddingTop: 65, paddingHorizontal: 24, marginBottom: 24 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <Text style={{ fontSize: 34, fontWeight: '200', color: 'rgba(215,248,255,0.94)', letterSpacing: 1 }}>{tr.tabs[1]}</Text>
-            <EmojiMeduse />
+            <View style={{ marginTop: 14, width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
+              <MeduseCornerIcon size={90} breathCycleMs={3000} />
+            </View>
           </View>
           <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.42)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.progresser_sub(pct)}</Text>
           <View style={{ height: 6, backgroundColor: 'rgba(0,195,240,0.1)', borderRadius: 3, marginTop: 14, overflow: 'hidden' }}>
@@ -2294,12 +2656,14 @@ function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak,
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
 
       <View style={{ paddingTop: 62, paddingHorizontal: 24, paddingBottom: 0 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
           <View>
             <Text style={{ fontSize: 26, fontWeight: '200', color: 'rgba(215,248,255,0.97)', letterSpacing: 2 }}>{prenom || 'FluidBody'}</Text>
             <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.45)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>{tr.mon_parcours}</Text>
           </View>
-          <EmojiMeduse />
+          <View style={{ marginTop: 14, width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
+            <MeduseCornerIcon size={90} breathCycleMs={3000} />
+          </View>
         </View>
       </View>
 
@@ -2310,8 +2674,7 @@ function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak,
               <Text style={styles.statLbl}>{tr.m_seances}</Text>
             </View>
             <View style={[styles.statCard, { flex: 1, borderColor: streak > 6 ? 'rgba(255,160,30,0.5)' : 'rgba(0,195,240,0.15)' }]}>
-              <Text style={{ fontSize: 28, fontWeight: '200', color: streak > 0 ? 'rgba(255,180,40,0.95)' : 'rgba(0,238,255,0.95)' }}>{streak > 0 ? streak : 0}</Text>
-              <Text style={{ fontSize: 16 }}>🔥</Text>
+              <Text style={{ fontSize: 28, fontWeight: '200', color: streak > 0 ? 'rgba(255,180,40,0.95)' : 'rgba(0,238,255,0.95)' }}>{'🔥'} {streakCountValue(streak)}</Text>
               <Text style={styles.statLbl}>{tr.m_streak}</Text>
             </View>
             <View style={[styles.statCard, { flex: 1 }]}>
@@ -2329,7 +2692,7 @@ function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak,
               <Animated.View style={{ height: 10, width: animPct.interpolate({ inputRange: [0, 100], outputRange: [0, 300] }), backgroundColor: 'rgba(0,215,255,0.8)', borderRadius: 5 }} />
             </View>
             <Text style={{ fontSize: 11, color: 'rgba(0,195,240,0.35)', textAlign: 'right' }}>
-              {pct < 10 ? '🌱 Début du voyage' : pct < 30 ? '🌊 En route' : pct < 60 ? '💧 Bonne progression' : pct < 90 ? '⭐ Presque là' : '🪼 Maîtrise totale'}
+              {pct < 10 ? `${U_SEED} Début du voyage` : pct < 30 ? `${U_WAVE} En route` : pct < 60 ? `${U_DROP} Bonne progression` : pct < 90 ? `${U_STAR} Presque là` : `${U_JELLY} Maîtrise totale`}
             </Text>
           </View>
 
@@ -2356,7 +2719,7 @@ function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak,
           </View>
 
           <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,215,255,0.2)', borderRadius: 24, padding: 22, marginBottom: 14, alignItems: 'center' }}>
-            <Text style={{ fontSize: 32, marginBottom: 10 }}>🪼</Text>
+            <Text style={{ fontSize: 32, marginBottom: 10 }}>{U_JELLY}</Text>
             <Text style={{ fontSize: 15, fontWeight: '200', color: 'rgba(215,248,255,0.85)', textAlign: 'center', lineHeight: 24, fontStyle: 'italic' }}>{tr.motivation(streak)}</Text>
           </View>
 
@@ -2388,11 +2751,14 @@ function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak,
           </View>
 
           <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22, marginBottom: 14 }}>
-            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.55)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>🌐 Langue</Text>
+            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.55)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.parcours_langue}</Text>
             <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
               {Object.values(T).map(l => (
                 <TouchableOpacity key={l.lang} onPress={() => onChangeLang(l.lang)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: lang === l.lang ? 'rgba(0,220,255,0.7)' : 'rgba(0,195,240,0.2)', backgroundColor: lang === l.lang ? 'rgba(0,180,230,0.18)' : 'rgba(0,18,32,0.5)' }}>
-                  <Text style={{ fontSize: 13, color: lang === l.lang ? 'rgba(0,230,255,0.9)' : 'rgba(0,180,220,0.5)' }}>{l.flag} {l.nom}</Text>
+                  <Text style={{ fontSize: 13, color: lang === l.lang ? 'rgba(0,230,255,0.9)' : 'rgba(0,180,220,0.5)' }}>
+                    <Text style={{ fontWeight: '700' }}>{LANG_CODE[l.lang]}</Text>
+                    {`  ${l.nom}`}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -2512,7 +2878,7 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '' }) {
         {!sent ? (
           <>
             <Text style={{ fontSize: 15, color: 'rgba(215,248,255,0.75)', textAlign: 'center', marginBottom: 24, lineHeight: 24 }}>
-              Entre ton email pour sauvegarder ta progression dans le cloud 🌊{'\n\n'}
+              {`Entre ton email pour sauvegarder ta progression dans le cloud ${U_WAVE}`}{'\n\n'}
               <Text style={{ fontSize: 13, color: 'rgba(155,215,240,0.55)', lineHeight: 20 }}>
                 Après cette première connexion, tu restes connecté·e sur cet appareil (session enregistrée). Un nouveau code n’est nécessaire qu’après déconnexion ou sur un autre téléphone.
               </Text>
@@ -2529,7 +2895,7 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '' }) {
         ) : (
           <>
             <View style={{ alignItems: 'center', marginBottom: 24 }}>
-              <Text style={{ fontSize: 32, marginBottom: 10 }}>📬</Text>
+              <Text style={{ fontSize: 32, marginBottom: 10 }}>{'\uD83D\uDCEC'}</Text>
               <Text style={{ fontSize: 16, fontWeight: '300', color: 'rgba(215,248,255,0.9)', textAlign: 'center', marginBottom: 6 }}>Code envoyé à</Text>
               <Text style={{ fontSize: 14, color: 'rgba(0,220,255,0.8)', marginBottom: 4 }}>{email}</Text>
               <Text style={{ fontSize: 12, color: 'rgba(155,215,240,0.5)', textAlign: 'center' }}>Vérifie ton email et entre le code à 8 chiffres</Text>
@@ -2570,6 +2936,7 @@ function OnboardingScreen({ onDone }) {
   const [step, setStep] = useState(0);
   const [prenom, setPrenom] = useState('');
   const [tensionIdxs, setTensionIdxs] = useState([]);
+  const [obFluidTitleW, setObFluidTitleW] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   function nextStep(n) {
@@ -2590,28 +2957,50 @@ function OnboardingScreen({ onDone }) {
         <LinearGradient colors={['#000e18', '#002d48', '#00bdd0', '#005878', '#001828']} locations={[0, 0.3, 0.52, 0.72, 1]} style={StyleSheet.absoluteFill} />
         {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
         <View style={{ position: 'absolute', top: 270, left: 0, right: 0, alignItems: 'center', opacity: 0.75 }}><Meduse /></View>
-        <View style={{ position: 'absolute', top: 64, left: 0, right: 0, alignItems: 'center', zIndex: 10 }}>
-          <Text style={{ fontSize: 48, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 7, textTransform: 'uppercase' }}>FluidBody</Text>
-          <Text style={{ fontSize: 12, color: 'rgba(0,210,250,0.7)', letterSpacing: 6, textTransform: 'uppercase', marginTop: 2 }}>Pilates</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 }}>
-            <EmojiMeduse />
-            <Text style={{ fontSize: 12, color: 'rgba(0,210,250,0.75)', letterSpacing: 4, textTransform: 'uppercase' }}>Sentir · Préparer · Transformer</Text>
-          </View>
+        <Text
+          onLayout={(e) => setObFluidTitleW(e.nativeEvent.layout.width)}
+          style={{ position: 'absolute', left: -8000, opacity: 0, fontSize: 52, fontWeight: '200', letterSpacing: 7, textTransform: 'uppercase', color: 'rgba(215,248,255,0.96)' }}
+          pointerEvents="none"
+        >
+          FluidBody
+        </Text>
+        <View style={{ position: 'absolute', top: 64, left: 0, right: 0, alignItems: 'center', zIndex: 10, paddingHorizontal: 20 }}>
+          <Text style={{ width: '100%', textAlign: 'center', fontSize: 52, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 7, textTransform: 'uppercase' }}>FluidBody</Text>
+          <Text style={{ width: '100%', textAlign: 'center', fontSize: IS_IPAD ? 22 : 17, fontWeight: '300', color: 'rgba(0,210,250,0.78)', letterSpacing: 7, textTransform: 'uppercase', marginTop: 4 }}>Pilates</Text>
+          <Text style={{ width: '100%', textAlign: 'center', marginTop: 8, fontSize: 12, color: 'rgba(0,210,250,0.75)', letterSpacing: 4, textTransform: 'uppercase' }}>Sentir · Préparer · Transformer</Text>
         </View>
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 180, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 36, zIndex: 10 }}>
-          <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.75)', letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 22 }}>Une nouvelle façon d'habiter son corps</Text>
-          <Text style={{ fontSize: 30, fontWeight: '200', color: 'rgba(255,255,255,0.96)', textAlign: 'center', lineHeight: 44, marginBottom: 24 }}>
+        {obFluidTitleW > 0 ? (
+          <View
+            style={{
+              position: 'absolute',
+              top: 64,
+              left: SW / 2 + obFluidTitleW / 2 - 1,
+              width: 50,
+              height: 50,
+              zIndex: 16,
+              overflow: 'visible',
+            }}
+            pointerEvents="none"
+          >
+            <MeduseCornerIcon size={50} />
+          </View>
+        ) : null}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 180, alignItems: 'stretch', justifyContent: 'flex-end', paddingHorizontal: 36, zIndex: 10 }}>
+          <Text style={{ width: '100%', fontSize: 16, color: 'rgba(255,255,255,0.75)', letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 22 }}>Une nouvelle façon d'habiter son corps</Text>
+          <Text style={{ width: '100%', fontSize: 30, fontWeight: '200', color: 'rgba(255,255,255,0.96)', textAlign: 'center', lineHeight: 44, marginBottom: 24 }}>
             FluidBody t'apprend à{'\n'}<Text style={{ fontWeight: '400' }}>ressentir ton corps.</Text>
           </Text>
-          <View style={{ width: 40, height: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginBottom: 22 }} />
-          <Text style={{ fontSize: 17, color: 'rgba(255,255,255,0.72)', textAlign: 'center', lineHeight: 28 }}>Pas juste bouger —{'\n'}comprendre, préparer, transformer.</Text>
+          <View style={{ alignSelf: 'center', width: 40, height: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginBottom: 22 }} />
+          <Text style={{ width: '100%', fontSize: 17, color: 'rgba(255,255,255,0.72)', textAlign: 'center', lineHeight: 28 }}>Pas juste bouger{'\n'}comprendre, préparer, transformer.</Text>
         </View>
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingBottom: 40, paddingHorizontal: 24, zIndex: 10 }}>
           <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.35)', letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 12 }}>Choisir la langue · Choose language</Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
             {Object.values(T).map(l => (
-              <TouchableOpacity key={l.lang} onPress={() => { setLang(l.lang); setLangStep(false); }} style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(0,180,235,0.15)', borderWidth: 1, borderColor: 'rgba(0,235,255,0.5)', alignItems: 'center' }}>
-                <Text style={{ fontSize: 18, marginBottom: 2 }}>{l.flag}</Text>
+              <TouchableOpacity key={l.lang} onPress={() => { setLang(l.lang); setLangStep(false); }} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(0,180,235,0.15)', borderWidth: 1, borderColor: 'rgba(0,235,255,0.5)', alignItems: 'center', minWidth: 76 }}>
+                <View style={{ marginBottom: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(0,25,45,0.85)', borderWidth: 1, borderColor: 'rgba(0,235,255,0.4)' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: 'rgba(0,235,255,0.95)', letterSpacing: 0.5 }}>{LANG_CODE[l.lang]}</Text>
+                </View>
                 <Text style={{ fontSize: 10, color: 'rgba(0,220,255,0.8)', letterSpacing: 1 }}>{l.nom}</Text>
               </TouchableOpacity>
             ))}
@@ -2627,7 +3016,9 @@ function OnboardingScreen({ onDone }) {
       <LinearGradient colors={['#000e18', '#002d48', '#00bdd0', '#005878', '#001828']} locations={[0, 0.3, 0.52, 0.72, 1]} style={StyleSheet.absoluteFill} />
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
       <View style={{ position: 'absolute', top: 130, left: 0, right: 0, alignItems: 'center', opacity: 0.9 }}><Meduse /></View>
-      <View style={{ position: 'absolute', top: 100, right: 22, zIndex: 20 }}><EmojiMeduse /></View>
+      <View style={{ position: 'absolute', top: 92, right: 16, zIndex: 20, width: 85, height: 85, overflow: 'visible' }} pointerEvents="none">
+        <MeduseCornerIcon size={85} breathCycleMs={3000} />
+      </View>
       <View style={{ position: 'absolute', top: 54, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', zIndex: 10, paddingHorizontal: 24 }}>
         <TouchableOpacity onPress={() => step === 0 ? setLangStep(true) : nextStep(step - 1)} style={{ position: 'absolute', left: 24, padding: 8 }}>
           <Text style={{ fontSize: 22, color: 'rgba(255,255,255,0.6)' }}>←</Text>
@@ -2684,7 +3075,7 @@ function OnboardingScreen({ onDone }) {
               onSubmitEditing={() => prenom.trim() && onDone(prenom.trim(), lang, tensionIdxs)}
               style={{ alignSelf: 'stretch', height: 62, backgroundColor: prenom.trim() ? 'rgba(0,30,50,0.85)' : 'rgba(0,18,32,0.6)', borderWidth: prenom.trim() ? 1.5 : 0.5, borderColor: prenom.trim() ? 'rgba(0,220,255,0.6)' : 'rgba(0,200,240,0.22)', borderRadius: 16, color: 'rgba(200,245,255,0.95)', fontSize: 20, fontWeight: '300', textAlign: 'center', marginBottom: 22 }}
             />
-            {prenom.trim().length > 0 && <Text style={{ fontSize: 13, color: 'rgba(0,220,255,0.6)', marginBottom: 12, marginTop: -14 }}>Bonjour {prenom.trim()} 🪼</Text>}
+            {prenom.trim().length > 0 && <Text style={{ fontSize: 13, color: 'rgba(0,220,255,0.6)', marginBottom: 12, marginTop: -14 }}>{`Bonjour ${prenom.trim()} ${U_JELLY}`}</Text>}
             <TouchableOpacity onPress={() => prenom.trim() ? onDone(prenom.trim(), lang, tensionIdxs) : null} style={[styles.btnCtaLarge, prenom.trim() === '' && styles.btnCtaOff]} disabled={prenom.trim() === ''}>
               <Text style={styles.btnCtaLargeTxt}>{tr.ob_demarrer}</Text>
             </TouchableOpacity>
@@ -2967,11 +3358,11 @@ function MainApp({ prenom, lang, onChangeLang, tensionIdxs, supabase, supaUser }
         onRestore={() => restoreSubscription()}
       />
       <NavigationContainer>
-        <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { backgroundColor: 'rgba(0,10,20,0.95)', borderTopColor: 'rgba(0,215,255,0.14)', height: 90, paddingBottom: 14, paddingTop: 8 }, tabBarActiveTintColor: 'rgba(0,220,255,0.9)', tabBarInactiveTintColor: 'rgba(0,195,240,0.36)', tabBarLabelStyle: { fontSize: 14, fontWeight: '400', letterSpacing: 0.3 } }}>
-          <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Path d="M12 2C8 2 5 6 5 10c0 3 2 5 5 6v6" stroke={color} strokeWidth="1.6" strokeLinecap="round"/><Path d="M12 16c3-1 7-3 7-6 0-4-3-8-7-8" stroke={color} strokeWidth="1.6" strokeLinecap="round" opacity="0.5"/></Svg> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={isSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Path d="M3 20h18M3 14h12M3 8h8" stroke={color} strokeWidth="1.8" strokeLinecap="round"/><Circle cx="19" cy="8" r="3" stroke={color} strokeWidth="1.6" fill="none"/></Svg> }}>{() => <Progresser done={done} lang={lang} tensionIdxs={tensionIdxs} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Path d="M4 4h16v16H4z" stroke={color} strokeWidth="1.6" strokeLinejoin="round" fill="none"/><Path d="M8 8h8M8 12h8M8 16h5" stroke={color} strokeWidth="1.6" strokeLinecap="round"/></Svg> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: ({ color }) => <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.6" fill="none"/><Path d="M12 7v5l3 3" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></Svg> }}>{() => <ParcoursScreen prenom={prenom} done={done} lang={lang} onChangeLang={onChangeLang} tensionIdxs={tensionIdxs} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} />}</Tab.Screen>
+          <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { backgroundColor: 'rgba(0,10,20,0.95)', borderTopColor: 'rgba(0,215,255,0.14)', height: 90, paddingBottom: 14, paddingTop: 8 }, tabBarActiveTintColor: 'rgba(0,220,255,0.9)', tabBarInactiveTintColor: 'rgba(0,195,240,0.36)', tabBarLabelStyle: { fontSize: 14, fontWeight: '400', letterSpacing: 0.3 } }}>
+          <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={isSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconProgresser {...props} /> }}>{() => <Progresser done={done} lang={lang} tensionIdxs={tensionIdxs} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconParcours {...props} /> }}>{() => <ParcoursScreen prenom={prenom} done={done} lang={lang} onChangeLang={onChangeLang} tensionIdxs={tensionIdxs} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} />}</Tab.Screen>
         </Tab.Navigator>
       </NavigationContainer>
     </>
@@ -2991,6 +3382,12 @@ function App() {
   const [showAuth, setShowAuth] = useState(false);
   const profileLocalRef = useRef({ prenom: '', lang: 'fr', tensionIdxs: [] });
   profileLocalRef.current = { prenom, lang, tensionIdxs };
+
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('[FluidBody] emojis inline', JSON.stringify({ fire: '🔥', lock: '🔒', check: '✓', play: '▶' }));
+    }
+  }, []);
 
   useEffect(() => {
     function friendlyFromEmail(email) {
@@ -3108,7 +3505,7 @@ export default function AppWithBoundary() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  logoTitle: { position: 'absolute', top: 58, fontSize: 44, color: 'rgba(215,248,255,0.96)', fontWeight: '200', letterSpacing: 7, textTransform: 'uppercase', zIndex: 10 },
+  logoTitle: { position: 'absolute', top: 58, left: 0, right: 0, fontSize: 48, color: 'rgba(215,248,255,0.96)', fontWeight: '200', letterSpacing: 7, textTransform: 'uppercase', zIndex: 10, textAlign: 'center' },
   metrics: { position: 'absolute', bottom: 30, left: 16, right: 16, flexDirection: 'row', gap: 8 },
   metricShell: {
     flex: 1,
