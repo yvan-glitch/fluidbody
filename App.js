@@ -888,6 +888,7 @@ function Bulle({ delay, x, size, duration }) {
   useEffect(() => { setTimeout(() => { Animated.loop(Animated.timing(a, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true })).start(); }, delay); }, []);
   return (
     <Animated.View
+      pointerEvents="none"
       style={{
         position: 'absolute',
         bottom: 0,
@@ -913,7 +914,7 @@ function Bulle({ delay, x, size, duration }) {
 function Rayon({ left, width, delay, duration, opacity }) {
   const a = useRef(new Animated.Value(opacity * 0.5)).current;
   useEffect(() => { setTimeout(() => { Animated.loop(Animated.sequence([Animated.timing(a, { toValue: opacity, duration: duration / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }), Animated.timing(a, { toValue: opacity * 0.2, duration: duration / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true })])).start(); }, delay); }, []);
-  return <Animated.View style={{ position: 'absolute', top: 0, left, width, bottom: 0, backgroundColor: 'rgba(0,255,255,0.12)', opacity: a, transform: [{ skewX: '-5deg' }] }} />;
+  return <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left, width, bottom: 0, backgroundColor: 'rgba(0,255,255,0.12)', opacity: a, transform: [{ skewX: '-5deg' }] }} />;
 }
 
 function Meduse() {
@@ -2578,28 +2579,35 @@ function Biblio({ lang }) {
 
   return (
     <View style={{ flex: 1 }}>
-      <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
+      <LinearGradient pointerEvents="none" colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
       <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.15} />
-      {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
-      <View style={{ paddingTop: 62, paddingHorizontal: 22, paddingBottom: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: 34, fontWeight: '200', color: 'rgba(215,248,255,0.94)', letterSpacing: 1 }}>{tr.biblio_titre}</Text>
-          <View style={{ marginTop: 14, width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
-            <MeduseCornerIcon size={90} breathCycleMs={3000} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
+        {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
+      </View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 40 }}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={true}
+      >
+        <View style={{ paddingTop: 62, paddingHorizontal: 6, paddingBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <Text style={{ fontSize: 34, fontWeight: '200', color: 'rgba(215,248,255,0.94)', letterSpacing: 1 }}>{tr.biblio_titre}</Text>
+            <View style={{ marginTop: 14, width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
+              <MeduseCornerIcon size={90} breathCycleMs={3000} />
+            </View>
+          </View>
+          <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.42)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.biblio_sub}</Text>
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
+            {['piliers', 'methode'].map(t => (
+              <TouchableOpacity key={t} onPress={() => setTab(t)} style={{ paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: tab === t ? 'rgba(0,220,255,0.7)' : 'rgba(0,195,240,0.2)', backgroundColor: tab === t ? 'rgba(0,180,230,0.18)' : 'rgba(0,18,32,0.5)' }}>
+                <Text style={{ fontSize: 12, fontWeight: '300', color: tab === t ? 'rgba(0,230,255,0.9)' : 'rgba(0,180,220,0.5)' }}>{t === 'piliers' ? tr.tab_piliers : tr.tab_methode}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
-        <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.42)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.biblio_sub}</Text>
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
-          {['piliers', 'methode'].map(t => (
-            <TouchableOpacity key={t} onPress={() => setTab(t)} style={{ paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: tab === t ? 'rgba(0,220,255,0.7)' : 'rgba(0,195,240,0.2)', backgroundColor: tab === t ? 'rgba(0,180,230,0.18)' : 'rgba(0,18,32,0.5)' }}>
-              <Text style={{ fontSize: 12, fontWeight: '300', color: tab === t ? 'rgba(0,230,255,0.9)' : 'rgba(0,180,220,0.5)' }}>{t === 'piliers' ? tr.tab_piliers : tr.tab_methode}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-      <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
         {tab === 'piliers' && (
-          <View style={{ gap: 12, paddingBottom: 40 }}>
+          <View style={{ gap: 12 }}>
             {articles.map((a, i) => {
               const IconComp = ICONS[a.key];
               return (
@@ -2621,7 +2629,7 @@ function Biblio({ lang }) {
           </View>
         )}
         {tab === 'methode' && (
-          <View style={{ gap: 12, paddingBottom: 40 }}>
+          <View style={{ gap: 12 }}>
             <View style={{ backgroundColor: 'rgba(0,18,38,0.7)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 20, padding: 18, marginBottom: 4 }}>
               <Text style={{ fontSize: 14, fontWeight: '200', color: 'rgba(155,215,240,0.7)', lineHeight: 22 }}>{tr.biblio_intro}</Text>
             </View>
@@ -2675,9 +2683,16 @@ function Progresser({ done, lang, tensionIdxs }) {
   const sortedPiliers = [...piliers].sort((a, b) => (recommendedPiliers.includes(a.key) ? 0 : 1) - (recommendedPiliers.includes(b.key) ? 0 : 1));
   return (
     <View style={{ flex: 1 }}>
-      <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-      {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <LinearGradient pointerEvents="none" colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
+        {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
+      </View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={true}
+      >
         <View style={{ paddingTop: 65, paddingHorizontal: 24, marginBottom: 24 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <Text style={{ fontSize: 34, fontWeight: '200', color: 'rgba(215,248,255,0.94)', letterSpacing: 1 }}>{tr.tabs[1]}</Text>
@@ -2736,22 +2751,27 @@ function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak,
 
   return (
     <View style={{ flex: 1 }}>
-      <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-      {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
-
-      <View style={{ paddingTop: 62, paddingHorizontal: 24, paddingBottom: 0 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-          <View>
-            <Text style={{ fontSize: 26, fontWeight: '200', color: 'rgba(215,248,255,0.97)', letterSpacing: 2 }}>{prenom || 'FluidBody'}</Text>
-            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.45)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>{tr.mon_parcours}</Text>
-          </View>
-          <View style={{ marginTop: 14, width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
-            <MeduseCornerIcon size={90} breathCycleMs={3000} />
+      <LinearGradient pointerEvents="none" colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
+        {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
+      </View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 60 }}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={true}
+      >
+        <View style={{ paddingTop: 62, paddingHorizontal: 24, paddingBottom: 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+            <View>
+              <Text style={{ fontSize: 26, fontWeight: '200', color: 'rgba(215,248,255,0.97)', letterSpacing: 2 }}>{prenom || 'FluidBody'}</Text>
+              <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.45)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>{tr.mon_parcours}</Text>
+            </View>
+            <View style={{ marginTop: 14, width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
+              <MeduseCornerIcon size={90} breathCycleMs={3000} />
+            </View>
           </View>
         </View>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
           <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 16 }}>
             <View style={[styles.statCard, { flex: 1 }]}>
               <Text style={{ fontSize: 28, fontWeight: '200', color: 'rgba(0,238,255,0.95)' }}>{totalDone}</Text>
