@@ -2139,15 +2139,13 @@ function MetricTile({ children }) {
 function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubscriber, onActivateSubscription }) {
   const tr = T[lang] || T['fr'];
   const [openPilier, setOpenPilier] = useState(null);
-  const [pilatesW, setPilatesW] = useState(0);
-  const [pilatesLineH, setPilatesLineH] = useState(0);
   const totalDone = Object.values(done).flat().filter(Boolean).length;
   const piliers = getPiliers(lang);
   const recommendedPiliers = tensionIdxs.map(i => ZONE_TO_PILIER[i]);
   const effectiveRecommended = recommendedPiliers.length > 0 ? recommendedPiliers : [];
   const pilatesLetterSpacing = IS_IPAD ? 6 : 5;
-  /** Ancrage vertical du titre PILATES (ex-148) : espace libéré sans la ligne tagline. */
-  const pilatesHeaderTop = 112;
+  /** Ancrage vertical du titre PILATES : sous la rangée logo (méduse + FluidBody). */
+  const pilatesHeaderTop = 148;
 
   return (
     <View style={styles.screen}>
@@ -2160,34 +2158,14 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         {IS_IPAD && BULLES_MONCORPS.map((b, i) => <Bulle key={`mc-ipad1-${i}`} delay={b.delay + 2000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.35))} size={b.size} duration={b.duration} />)}
         {IS_IPAD && BULLES_MONCORPS.map((b, i) => <Bulle key={`mc-ipad2-${i}`} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />)}
       </View>
-      <Text
-        onLayout={(e) => setPilatesW(e.nativeEvent.layout.width)}
-        style={{ position: 'absolute', left: -8000, opacity: 0, fontSize: 34, fontWeight: '300', letterSpacing: pilatesLetterSpacing, textTransform: 'uppercase', color: 'rgba(0,235,255,0.96)' }}
-        pointerEvents="none"
-      >
-        Pilates
-      </Text>
-      <Text style={styles.logoTitle}>FluidBody</Text>
-      {/* Méduse 85×85 juste à droite du « S » de PILATES, respiration 3 s */}
-      {pilatesW > 0 ? (
-        <View
-          style={{
-            position: 'absolute',
-            top: pilatesLineH > 0 ? pilatesHeaderTop + (pilatesLineH - 85) / 2 + 30 : pilatesHeaderTop + 30,
-            left: Math.min(SW - 85 - 4, Math.max(4, SW / 2 + pilatesW / 2 + 4)),
-            width: 85,
-            height: 85,
-            zIndex: 16,
-            overflow: 'visible',
-          }}
-          pointerEvents="none"
-        >
+      <View style={styles.logoRow} pointerEvents="box-none">
+        <View style={styles.logoMedusaWrap} pointerEvents="none">
           <MeduseCornerIcon size={85} breathCycleMs={3000} />
         </View>
-      ) : null}
+        <Text style={styles.logoWordmark}>FluidBody</Text>
+      </View>
       <View style={{ position: 'absolute', top: pilatesHeaderTop, left: 0, right: 0, zIndex: 10, alignItems: 'center', paddingHorizontal: 20 }} pointerEvents="box-none">
         <Text
-          onLayout={(e) => setPilatesLineH(e.nativeEvent.layout.height)}
           style={{
             width: '100%',
             textAlign: 'center',
@@ -2210,7 +2188,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
       {piliers.map(p => (
         <Orbe key={p.key} pilier={p} onPress={setOpenPilier} recommended={effectiveRecommended.includes(p.key)} lang={lang} />
       ))}
-      <View style={{ marginTop: IS_IPAD ? 228 : 302 }}><Meduse /></View>
+      <View style={{ marginTop: IS_IPAD ? 264 : 338 }}><Meduse /></View>
       {(() => {
         const sdj = getSeanceDuJour(done, tensionIdxs, lang);
         if (!sdj) return null;
@@ -2957,11 +2935,15 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '', langForProfile = 'fr
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingVertical: 48 }} keyboardShouldPersistTaps="handled">
-          <View style={{ width: 88, height: 88, marginBottom: 8, overflow: 'visible' }} pointerEvents="none">
-            <MeduseCornerIcon size={88} breathCycleMs={3000} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ width: 88, height: 88, marginRight: 14, overflow: 'visible' }} pointerEvents="none">
+              <MeduseCornerIcon size={88} breathCycleMs={3000} />
+            </View>
+            <View style={{ justifyContent: 'center' }}>
+              <Text style={{ fontSize: 36, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 6, textTransform: 'uppercase', marginBottom: 2 }}>FluidBody</Text>
+              <Text style={{ fontSize: 11, color: 'rgba(0,210,250,0.6)', letterSpacing: 6, textTransform: 'uppercase' }}>Pilates</Text>
+            </View>
           </View>
-          <Text style={{ fontSize: 36, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 6, textTransform: 'uppercase', marginTop: 16, marginBottom: 2 }}>FluidBody</Text>
-          <Text style={{ fontSize: 11, color: 'rgba(0,210,250,0.6)', letterSpacing: 6, textTransform: 'uppercase', marginBottom: 4 }}>Pilates</Text>
           <Text style={{ fontSize: 12, color: 'rgba(0,225,255,0.6)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 8 }}>{tr.ob_auth_tag}</Text>
           <Text style={{ fontSize: 22, fontWeight: '300', color: 'rgba(235,252,255,0.95)', textAlign: 'center', marginBottom: 10 }}>{tr.ob_auth_title}</Text>
           <Text style={{ fontSize: 14, color: 'rgba(170,220,240,0.85)', textAlign: 'center', marginBottom: 22, lineHeight: 21 }}>{tr.ob_auth_sub}</Text>
@@ -3080,14 +3062,17 @@ function OnboardingScreen({ onDone }) {
         <LinearGradient colors={['#000e18', '#002d48', '#00bdd0', '#005878', '#001828']} locations={[0, 0.3, 0.52, 0.72, 1]} style={StyleSheet.absoluteFill} />
         {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
         <View style={{ position: 'absolute', top: 270, left: 0, right: 0, alignItems: 'center', opacity: 0.75 }}><Meduse /></View>
-        {/* Petite méduse langue : plus haute et au bord droit que l’étape onboarding suivante */}
-        <View style={{ position: 'absolute', top: 68, right: 0, zIndex: 20, width: 85, height: 85, overflow: 'visible' }} pointerEvents="none">
-          <MeduseCornerIcon size={85} breathCycleMs={3000} />
-        </View>
-        <View style={{ position: 'absolute', top: 96, left: 0, right: 0, alignItems: 'center', zIndex: 10, paddingHorizontal: 20 }}>
-          <Text style={{ width: '100%', textAlign: 'center', fontSize: 52, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 7, textTransform: 'uppercase' }}>FluidBody</Text>
-          <Text style={{ width: '100%', textAlign: 'center', fontSize: IS_IPAD ? 22 : 17, fontWeight: '300', color: 'rgba(0,210,250,0.78)', letterSpacing: 7, textTransform: 'uppercase', marginTop: 4 }}>Pilates</Text>
-          <Text style={{ width: '100%', textAlign: 'center', marginTop: 8, fontSize: 12, color: 'rgba(0,210,250,0.75)', letterSpacing: 4, textTransform: 'uppercase' }}>Sentir · Préparer · Transformer</Text>
+        <View style={{ position: 'absolute', top: 88, left: 0, right: 0, alignItems: 'center', zIndex: 10, paddingHorizontal: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', maxWidth: '100%' }}>
+            <View style={{ width: 85, height: 85, marginRight: 12, overflow: 'visible' }} pointerEvents="none">
+              <MeduseCornerIcon size={85} breathCycleMs={3000} />
+            </View>
+            <View style={{ flexShrink: 1, alignItems: 'center' }}>
+              <Text style={{ width: '100%', textAlign: 'center', fontSize: 52, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 7, textTransform: 'uppercase' }}>FluidBody</Text>
+              <Text style={{ width: '100%', textAlign: 'center', fontSize: IS_IPAD ? 22 : 17, fontWeight: '300', color: 'rgba(0,210,250,0.78)', letterSpacing: 7, textTransform: 'uppercase', marginTop: 4 }}>Pilates</Text>
+              <Text style={{ width: '100%', textAlign: 'center', marginTop: 8, fontSize: 12, color: 'rgba(0,210,250,0.75)', letterSpacing: 4, textTransform: 'uppercase' }}>Sentir · Préparer · Transformer</Text>
+            </View>
+          </View>
         </View>
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 180, alignItems: 'stretch', justifyContent: 'flex-end', paddingHorizontal: 36, zIndex: 10 }}>
           <Text style={{ width: '100%', fontSize: 16, color: 'rgba(255,255,255,0.75)', letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 22 }}>Une nouvelle façon d'habiter son corps</Text>
@@ -3122,8 +3107,11 @@ function OnboardingScreen({ onDone }) {
       <View style={{ position: 'absolute', top: 130, left: 0, right: 0, alignItems: 'center', opacity: step === 2 ? 0.15 : 0.9, zIndex: 0 }} pointerEvents="none">
         <Meduse />
       </View>
-      <View style={{ position: 'absolute', top: 92, right: 16, zIndex: 20, width: 85, height: 85, overflow: 'visible' }} pointerEvents="none">
-        <MeduseCornerIcon size={85} breathCycleMs={3000} />
+      <View style={{ position: 'absolute', top: 86, left: 0, right: 0, zIndex: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 56, pointerEvents: 'none' }}>
+        <View style={{ width: 85, height: 85, marginRight: 10, overflow: 'visible' }}>
+          <MeduseCornerIcon size={85} breathCycleMs={3000} />
+        </View>
+        <Text style={{ fontSize: 26, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 5, textTransform: 'uppercase' }}>FluidBody</Text>
       </View>
       <View style={{ position: 'absolute', top: 54, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', zIndex: 10, paddingHorizontal: 24 }}>
         <TouchableOpacity onPress={() => { if (step === 0) setLangStep(true); else if (step === 3) nextStep(step3BackRef.current); else nextStep(step - 1); }} style={{ position: 'absolute', left: 24, padding: 8 }}>
@@ -3176,7 +3164,7 @@ function OnboardingScreen({ onDone }) {
           >
           <ScrollView
             style={{ flex: 1, alignSelf: 'stretch', zIndex: 3 }}
-            contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 100, paddingBottom: 24, flexGrow: 1, justifyContent: 'flex-end' }}
+            contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 188, paddingBottom: 24, flexGrow: 1, justifyContent: 'flex-end' }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             keyboardDismissMode="on-drag"
@@ -3217,7 +3205,7 @@ function OnboardingScreen({ onDone }) {
         {/* Étape inscription / connexion (après prénom) — affichée même si le client Supabase n’a pas pu être créé */}
         {step === 3 && (
           <KeyboardAvoidingView style={{ flex: 1, alignSelf: 'stretch', width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 52 : 0}>
-            <ScrollView contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 28, paddingTop: 24, paddingBottom: 32, flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 28, paddingTop: 100, paddingBottom: 32, flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <View style={{ width: '100%', maxWidth: 420, paddingVertical: 20, paddingHorizontal: 18, borderRadius: 22, backgroundColor: 'rgba(0,10,22,0.82)', borderWidth: 1, borderColor: 'rgba(0,200,240,0.14)' }}>
                 <Text style={{ fontSize: 12, color: 'rgba(0,235,255,0.85)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 10, textAlign: 'center' }}>{tr.ob_auth_tag}</Text>
                 <Text style={{ fontSize: 26, fontWeight: '300', color: 'rgba(235,252,255,0.98)', textAlign: 'center', marginBottom: 8 }}>{!supabase ? tr.ob_auth_signup_title : (authMode === 'up' ? tr.ob_auth_signup_title : tr.ob_auth_signin_title)}</Text>
@@ -3669,10 +3657,12 @@ function App() {
     return (
       <View style={{ flex: 1, backgroundColor: '#000e18', alignItems: 'center', justifyContent: 'center' }}>
         <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-        <View style={{ width: 88, height: 88, marginTop: 8, overflow: 'visible' }} pointerEvents="none">
-          <MeduseCornerIcon size={88} breathCycleMs={3000} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+          <View style={{ width: 88, height: 88, marginRight: 14, overflow: 'visible' }} pointerEvents="none">
+            <MeduseCornerIcon size={88} breathCycleMs={3000} />
+          </View>
+          <Text style={{ color: 'rgba(0,210,250,0.6)', fontSize: 12, letterSpacing: 3, textTransform: 'uppercase' }}>FluidBody Pilates</Text>
         </View>
-        <Text style={{ color: 'rgba(0,210,250,0.6)', fontSize: 12, letterSpacing: 3, textTransform: 'uppercase', marginTop: 20 }}>FluidBody Pilates</Text>
       </View>
     );
   }
@@ -3698,7 +3688,9 @@ export default function AppWithBoundary() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  logoTitle: { position: 'absolute', top: 58, left: 0, right: 0, fontSize: 48, color: 'rgba(215,248,255,0.96)', fontWeight: '200', letterSpacing: 7, textTransform: 'uppercase', zIndex: 10, textAlign: 'center' },
+  logoRow: { position: 'absolute', top: 58, left: 0, right: 0, zIndex: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  logoMedusaWrap: { width: 85, height: 85, marginRight: 8, overflow: 'visible' },
+  logoWordmark: { fontSize: 48, color: 'rgba(215,248,255,0.96)', fontWeight: '200', letterSpacing: 7, textTransform: 'uppercase' },
   metrics: { position: 'absolute', bottom: 30, left: 16, right: 16, flexDirection: 'row', gap: 8 },
   metricShell: {
     flex: 1,
