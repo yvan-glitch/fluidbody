@@ -23,6 +23,7 @@ import Svg, { Path, Circle, Ellipse, Line, Rect, Defs, RadialGradient, Stop, G }
 import { Video, ResizeMode, Audio } from 'expo-av';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /** Pictogrammes restants (autres que 🔥🔒✓▶) — chaînes UTF-8. */
@@ -130,8 +131,18 @@ const IS_IPAD = SW >= 768;
 const SCALE = IS_IPAD ? SW / 390 : 1; // Scale factor relative to iPhone 390px
 const VIDEO_DEMO = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
 
-/** Codes langue affichés à la place des drapeaux emoji (souvent cassés sur iOS / polices système). */
-const LANG_CODE = { fr: 'FR', en: 'EN', es: 'ES', it: 'IT' };
+const SUPPORTED_APP_LANGS = ['fr', 'en', 'es', 'it'];
+
+/** Langue d’interface : locale appareil (expo-localization), sinon français. */
+function getAppLangFromLocale() {
+  try {
+    const locales = getLocales();
+    const first = locales?.[0];
+    const code = (first?.languageCode || String(first?.languageTag || '').split(/[-_]/)[0] || '').toLowerCase();
+    if (SUPPORTED_APP_LANGS.includes(code)) return code;
+  } catch (e) {}
+  return 'fr';
+}
 
 /** Indices 0 et 1 gratuits ; le reste verrouillé si pas d’abonnement simulé (AsyncStorage `fluid_sub`). */
 const FREE_SEANCE_INDEX = 2;
@@ -897,8 +908,8 @@ function Bulle({ delay, x, size, duration }) {
         height: size,
         borderRadius: size / 2,
         borderWidth: 1.2,
-        borderColor: 'rgba(255,255,255,0.9)',
-        backgroundColor: 'rgba(255,255,255,0.20)',
+        borderColor: 'rgba(200, 169, 110, 0.92)',
+        backgroundColor: 'rgba(200, 169, 110, 0.22)',
         opacity: a.interpolate({ inputRange: [0, 0.04, 0.12, 0.86, 1], outputRange: [0.45, 1, 1, 0.55, 0] }),
         transform: [{
           translateY: a.interpolate({
@@ -1013,7 +1024,7 @@ function blueMeduse(a) {
   return `rgba(0,180,216,${a})`;
 }
 
-function MeduseCornerIcon({ size = 50, breathCycleMs = null }) {
+function MeduseCornerIcon({ size = 50, breathCycleMs = null, breathMaxScale = 1.08 }) {
   const anim = useRef(new Animated.Value(0)).current;
   const breath = useRef(new Animated.Value(1)).current;
   const [tick, setTick] = useState(0);
@@ -1062,13 +1073,13 @@ function MeduseCornerIcon({ size = 50, breathCycleMs = null }) {
     const half = breathCycleMs / 2;
     const breathLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(breath, { toValue: 1.08, duration: half, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(breath, { toValue: breathMaxScale, duration: half, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         Animated.timing(breath, { toValue: 1.0, duration: half, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     );
     breathLoop.start();
     return () => breathLoop.stop();
-  }, [breathCycleMs, breath]);
+  }, [breathCycleMs, breath, breathMaxScale]);
 
   const tentPaths = TENTS2.map(t => tentaclePath(t.sx, t.sy, t.angle, t.len, tick, t.phase, t.amp));
 
@@ -1256,6 +1267,32 @@ const BULLES_MONCORPS = [
     x: Math.max(0, Math.min(SW - 8, b.x + Math.round(SW * 0.34))),
     delay: b.delay + 1300 + (i % 8) * 55,
   })),
+];
+
+/** Onboarding : quelques vagues décalées + bulles en plus (moins dense que la version max). */
+const BULLES_ONBOARDING = [
+  ...BULLES,
+  ...BULLES.map((b, i) => ({
+    ...b,
+    x: Math.max(0, Math.min(SW - 8, b.x + Math.round(SW * 0.14) + (i % 4) - 2)),
+    delay: b.delay + 820 + (i % 14) * 52,
+    duration: b.duration + (i % 7) * 160,
+  })),
+  ...BULLES.map((b, i) => ({
+    ...b,
+    x: Math.max(0, Math.min(SW - 8, b.x - Math.round(SW * 0.07) + (i % 3))),
+    delay: b.delay + 2380 + (i % 12) * 68,
+    duration: Math.round(b.duration * 1.04),
+  })),
+  ...Array.from({ length: 22 }, (_, i) => {
+    const t = (i * 0.6180339887) % 1;
+    return {
+      x: Math.max(0, Math.min(SW - 8, Math.round(t * (SW - 24)) + 4)),
+      size: 2 + (i % 5),
+      delay: 180 + i * 140 + (i % 9) * 40,
+      duration: 8200 + (i % 11) * 700,
+    };
+  }),
 ];
 
 function CelebrationOverlay({ visible, onDone, pilier, lang }) {
@@ -2159,10 +2196,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         {IS_IPAD && BULLES_MONCORPS.map((b, i) => <Bulle key={`mc-ipad2-${i}`} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />)}
       </View>
       <View style={styles.logoRow} pointerEvents="box-none">
-        <View style={styles.logoMedusaWrap} pointerEvents="none">
-          <MeduseCornerIcon size={85} breathCycleMs={3000} />
+        <View style={{ flexShrink: 0, transform: [{ translateX: 8 }, { translateY: 34 }] }}>
+          <MeduseCornerIcon size={38} breathCycleMs={3200} />
         </View>
-        <Text style={styles.logoWordmark}>FluidBody</Text>
+        <Text style={styles.logoWordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+          FLUIDBODY<Text style={{ fontWeight: '900', color: '#C8A96E', fontSize: 34 }}>+</Text>
+        </Text>
       </View>
       <View style={{ position: 'absolute', top: pilatesHeaderTop, left: 0, right: 0, zIndex: 10, alignItems: 'center', paddingHorizontal: 20 }} pointerEvents="box-none">
         <Text
@@ -2718,7 +2757,7 @@ function Progresser({ done, lang, tensionIdxs }) {
 // ══════════════════════════════════
 // PARCOURS — Stats + Calendrier
 // ══════════════════════════════════
-function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak, supabase, supaUser, onLogout, isSubscriber, onRestorePurchases }) {
+function ParcoursScreen({ prenom, done, lang, tensionIdxs, streak, supabase, supaUser, onLogout, isSubscriber, onRestorePurchases }) {
   const tr = T[lang] || T['fr'];
   const totalDone = Object.values(done).flat().filter(Boolean).length;
   const pct = Math.round(totalDone / 140 * 100);
@@ -2830,20 +2869,6 @@ function ParcoursScreen({ prenom, done, lang, onChangeLang, tensionIdxs, streak,
             <TouchableOpacity onPress={onRestorePurchases} style={{ paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,215,255,0.35)', backgroundColor: 'rgba(0,180,235,0.10)', alignItems: 'center' }}>
               <Text style={{ fontSize: 14, color: 'rgba(0,230,255,0.9)' }}>{tr.subscription_reset}</Text>
             </TouchableOpacity>
-          </View>
-
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22, marginBottom: 14 }}>
-            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.55)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.parcours_langue}</Text>
-            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-              {Object.values(T).map(l => (
-                <TouchableOpacity key={l.lang} onPress={() => onChangeLang(l.lang)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: lang === l.lang ? 'rgba(0,220,255,0.7)' : 'rgba(0,195,240,0.2)', backgroundColor: lang === l.lang ? 'rgba(0,180,230,0.18)' : 'rgba(0,18,32,0.5)' }}>
-                  <Text style={{ fontSize: 13, color: lang === l.lang ? 'rgba(0,230,255,0.9)' : 'rgba(0,180,220,0.5)' }}>
-                    <Text style={{ fontWeight: '700' }}>{LANG_CODE[l.lang]}</Text>
-                    {`  ${l.nom}`}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
           </View>
 
           <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22 }}>
@@ -2974,9 +2999,8 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '', langForProfile = 'fr
 // ══════════════════════════════════
 // ONBOARDING
 // ══════════════════════════════════
-function OnboardingScreen({ onDone }) {
-  const [langStep, setLangStep] = useState(true);
-  const [lang, setLang] = useState('fr');
+function OnboardingScreen({ onDone, initialLang }) {
+  const [lang] = useState(() => initialLang ?? getAppLangFromLocale());
   const [step, setStep] = useState(0);
   const [prenom, setPrenom] = useState('');
   const [tensionIdxs, setTensionIdxs] = useState([]);
@@ -2990,6 +3014,11 @@ function OnboardingScreen({ onDone }) {
 
   const tr = T[lang] || T.fr;
   const obStepCount = 4;
+  /** Titre pleine largeur ; petite méduse fixée en haut à gauche. */
+  const obWordmarkPad = 8;
+  const obWordmarkMaxFs = 236;
+  const obWordmarkMaxPlusFs = 260;
+  const obCornerMedusa = 78;
 
   useEffect(() => {
     if (step === 3) {
@@ -3056,83 +3085,105 @@ function OnboardingScreen({ onDone }) {
     setTensionIdxs(prev => prev.includes(idx) ? prev.filter(x => x !== idx) : [...prev, idx]);
   }
 
-  if (langStep) {
-    return (
-      <View style={{ flex: 1 }}>
-        <LinearGradient colors={['#000e18', '#002d48', '#00bdd0', '#005878', '#001828']} locations={[0, 0.3, 0.52, 0.72, 1]} style={StyleSheet.absoluteFill} />
-        {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
-        <View style={{ position: 'absolute', top: 270, left: 0, right: 0, alignItems: 'center', opacity: 0.75 }}><Meduse /></View>
-        <View style={{ position: 'absolute', top: 88, left: 0, right: 0, alignItems: 'center', zIndex: 10, paddingHorizontal: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', maxWidth: '100%' }}>
-            <View style={{ width: 85, height: 85, marginRight: 12, overflow: 'visible' }} pointerEvents="none">
-              <MeduseCornerIcon size={85} breathCycleMs={3000} />
-            </View>
-            <View style={{ flexShrink: 1, alignItems: 'center' }}>
-              <Text style={{ width: '100%', textAlign: 'center', fontSize: 52, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 7, textTransform: 'uppercase' }}>FluidBody</Text>
-              <Text style={{ width: '100%', textAlign: 'center', fontSize: IS_IPAD ? 22 : 17, fontWeight: '300', color: 'rgba(0,210,250,0.78)', letterSpacing: 7, textTransform: 'uppercase', marginTop: 4 }}>Pilates</Text>
-              <Text style={{ width: '100%', textAlign: 'center', marginTop: 8, fontSize: 12, color: 'rgba(0,210,250,0.75)', letterSpacing: 4, textTransform: 'uppercase' }}>Sentir · Préparer · Transformer</Text>
-            </View>
-          </View>
-        </View>
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 180, alignItems: 'stretch', justifyContent: 'flex-end', paddingHorizontal: 36, zIndex: 10 }}>
-          <Text style={{ width: '100%', fontSize: 16, color: 'rgba(255,255,255,0.75)', letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 22 }}>Une nouvelle façon d'habiter son corps</Text>
-          <Text style={{ width: '100%', fontSize: 30, fontWeight: '200', color: 'rgba(255,255,255,0.96)', textAlign: 'center', lineHeight: 44, marginBottom: 24 }}>
-            FluidBody t'apprend à{'\n'}<Text style={{ fontWeight: '400' }}>ressentir ton corps.</Text>
-          </Text>
-          <View style={{ alignSelf: 'center', width: 40, height: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginBottom: 22 }} />
-          <Text style={{ width: '100%', fontSize: 17, color: 'rgba(255,255,255,0.72)', textAlign: 'center', lineHeight: 28 }}>Pas juste bouger{'\n'}comprendre, préparer, transformer.</Text>
-        </View>
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingBottom: 40, paddingHorizontal: 24, zIndex: 10 }}>
-          <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.35)', letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 12 }}>Choisir la langue · Choose language</Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
-            {Object.values(T).map(l => (
-              <TouchableOpacity key={l.lang} onPress={() => { setLang(l.lang); setLangStep(false); }} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(0,180,235,0.15)', borderWidth: 1, borderColor: 'rgba(0,235,255,0.5)', alignItems: 'center', minWidth: 76 }}>
-                <View style={{ marginBottom: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(0,25,45,0.85)', borderWidth: 1, borderColor: 'rgba(0,235,255,0.4)' }}>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: 'rgba(0,235,255,0.95)', letterSpacing: 0.5 }}>{LANG_CODE[l.lang]}</Text>
-                </View>
-                <Text style={{ fontSize: 10, color: 'rgba(0,220,255,0.8)', letterSpacing: 1 }}>{l.nom}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient colors={['#000e18', '#002d48', '#00bdd0', '#005878', '#001828']} locations={[0, 0.3, 0.52, 0.72, 1]} style={StyleSheet.absoluteFill} />
-      {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
+      {BULLES_ONBOARDING.map((b, i) => <Bulle key={`ob-${i}`} {...b} />)}
       {/* Méduse centrale : arrière-plan fixe ; très discrète sur l’étape prénom pour ne pas masquer le texte */}
-      <View style={{ position: 'absolute', top: 130, left: 0, right: 0, alignItems: 'center', opacity: step === 2 ? 0.15 : 0.9, zIndex: 0 }} pointerEvents="none">
+      <View style={{ position: 'absolute', top: 298, left: 0, right: 0, alignItems: 'center', opacity: step === 2 ? 0.15 : 0.9, zIndex: 0 }} pointerEvents="none">
         <Meduse />
       </View>
-      <View style={{ position: 'absolute', top: 86, left: 0, right: 0, zIndex: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 56, pointerEvents: 'none' }}>
-        <View style={{ width: 85, height: 85, marginRight: 10, overflow: 'visible' }}>
-          <MeduseCornerIcon size={85} breathCycleMs={3000} />
-        </View>
-        <Text style={{ fontSize: 26, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 5, textTransform: 'uppercase' }}>FluidBody</Text>
+      <View style={{ position: 'absolute', top: 98, left: 12, zIndex: 18, overflow: 'visible' }} pointerEvents="none">
+        <MeduseCornerIcon size={obCornerMedusa} breathCycleMs={5200} breathMaxScale={1.14} />
       </View>
-      <View style={{ position: 'absolute', top: 54, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', zIndex: 10, paddingHorizontal: 24 }}>
-        <TouchableOpacity onPress={() => { if (step === 0) setLangStep(true); else if (step === 3) nextStep(step3BackRef.current); else nextStep(step - 1); }} style={{ position: 'absolute', left: 24, padding: 8 }}>
-          <Text style={{ fontSize: 22, color: 'rgba(255,255,255,0.6)' }}>←</Text>
-        </TouchableOpacity>
+      <View style={{ position: 'absolute', top: 128, left: 0, right: 0, zIndex: 20, alignItems: 'center', paddingHorizontal: obWordmarkPad, pointerEvents: 'none' }}>
+        <View style={{ width: '100%', maxWidth: SW - obWordmarkPad * 2, alignItems: 'center' }}>
+          <View style={{ width: '100%', paddingHorizontal: 2 }}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.2}
+              style={{
+                width: '100%',
+                fontSize: obWordmarkMaxFs,
+                fontWeight: '200',
+                letterSpacing: 10,
+                color: '#FAFEFF',
+                textAlign: 'center',
+                textShadowColor: 'rgba(0, 14, 32, 0.55)',
+                textShadowOffset: { width: 0, height: 5 },
+                textShadowRadius: 24,
+                ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
+              }}
+            >
+              FLUIDBODY<Text
+                style={{
+                  fontWeight: '700',
+                  fontSize: obWordmarkMaxPlusFs,
+                  letterSpacing: 1,
+                  color: '#C8A96E',
+                  textShadowColor: 'rgba(0, 0, 0, 0.4)',
+                  textShadowOffset: { width: 0, height: 3 },
+                  textShadowRadius: 14,
+                  ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
+                }}
+              >
+                +
+              </Text>
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', flexWrap: 'nowrap', marginTop: -2, width: '100%', paddingHorizontal: 8 }}>
+            <Text
+              style={{
+                fontSize: 28,
+                fontWeight: '400',
+                color: 'rgba(160, 238, 252, 0.94)',
+                letterSpacing: 16,
+                textTransform: 'uppercase',
+                textShadowColor: 'rgba(0, 12, 28, 0.45)',
+                textShadowOffset: { width: 0, height: 2 },
+                textShadowRadius: 10,
+                ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
+              }}
+            >
+              PILATES
+            </Text>
+            <Text
+              style={{
+                marginLeft: 14,
+                fontSize: 16,
+                fontWeight: '300',
+                color: 'rgba(150, 220, 238, 0.88)',
+                letterSpacing: 2,
+                textShadowColor: 'rgba(0, 12, 28, 0.35)',
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 6,
+                ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
+              }}
+            >
+              {'& More'}
+            </Text>
+          </View>
+        </View>
+      </View>
+      <View style={{ position: 'absolute', top: 54, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', zIndex: 30, paddingHorizontal: 24 }}>
+        {step > 0 ? (
+          <TouchableOpacity onPress={() => { if (step === 3) nextStep(step3BackRef.current); else nextStep(step - 1); }} style={{ position: 'absolute', left: 24, padding: 8 }}>
+            <Text style={{ fontSize: 22, color: 'rgba(255,255,255,0.6)' }}>←</Text>
+          </TouchableOpacity>
+        ) : null}
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {Array.from({ length: obStepCount }, (_, i) => <View key={i} style={{ width: step === i ? 20 : 6, height: 6, borderRadius: 3, backgroundColor: step === i ? 'rgba(0,225,255,0.9)' : 'rgba(0,200,240,0.25)' }} />)}
         </View>
       </View>
-      <Animated.View style={{ flex: 1, opacity: fadeAnim, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 60, zIndex: 2, elevation: step === 2 || step === 3 ? 4 : 0 }}>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: step === 0 ? 132 : 60, zIndex: 2, elevation: step === 2 || step === 3 ? 4 : 0 }}>
         {step === 0 && (
           <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }}>
-            <Text style={{ fontSize: 17, color: 'rgba(255,255,255,0.80)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 18, textAlign: 'center' }}>{tr.ob_tag}</Text>
-            <Text style={{ fontSize: 27, fontWeight: '300', color: 'rgba(215,248,255,0.95)', textAlign: 'center', lineHeight: 38, marginBottom: 10 }}>{tr.ob_l1}<Text style={{ color: 'rgba(80,235,255,0.9)' }}>{tr.ob_l1b}</Text></Text>
-            <Text style={{ fontSize: 27, fontWeight: '300', color: 'rgba(215,248,255,0.95)', textAlign: 'center', lineHeight: 38, marginBottom: 10 }}>{tr.ob_l2}<Text style={{ color: 'rgba(80,235,255,0.9)' }}>{tr.ob_l2b}</Text></Text>
-            <Text style={{ fontSize: 15, color: 'rgba(120,195,225,0.65)', textAlign: 'center', marginBottom: 36, marginTop: 10 }}>{tr.ob_sub}</Text>
             <TouchableOpacity onPress={() => nextStep(1)} style={styles.btnCtaLarge}>
               <Text style={styles.btnCtaLargeTxt}>{tr.ob_cta}</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => goToAuthStep(0)} style={{ marginTop: 18 }}>
-              <Text style={{ fontSize: 14, color: 'rgba(0,190,230,0.6)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.ob_compte}</Text>
+            <TouchableOpacity onPress={() => goToAuthStep(0)} style={{ marginTop: 18, paddingVertical: 4 }}>
+              <Text style={{ fontSize: 17, fontWeight: '500', color: 'rgba(0,205,235,0.75)', letterSpacing: 2.5, textTransform: 'uppercase' }}>{tr.ob_compte}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -3205,7 +3256,7 @@ function OnboardingScreen({ onDone }) {
         {/* Étape inscription / connexion (après prénom) — affichée même si le client Supabase n’a pas pu être créé */}
         {step === 3 && (
           <KeyboardAvoidingView style={{ flex: 1, alignSelf: 'stretch', width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 52 : 0}>
-            <ScrollView contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 28, paddingTop: 100, paddingBottom: 32, flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 28, paddingTop: 24, paddingBottom: 32, flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <View style={{ width: '100%', maxWidth: 420, paddingVertical: 20, paddingHorizontal: 18, borderRadius: 22, backgroundColor: 'rgba(0,10,22,0.82)', borderWidth: 1, borderColor: 'rgba(0,200,240,0.14)' }}>
                 <Text style={{ fontSize: 12, color: 'rgba(0,235,255,0.85)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 10, textAlign: 'center' }}>{tr.ob_auth_tag}</Text>
                 <Text style={{ fontSize: 26, fontWeight: '300', color: 'rgba(235,252,255,0.98)', textAlign: 'center', marginBottom: 8 }}>{!supabase ? tr.ob_auth_signup_title : (authMode === 'up' ? tr.ob_auth_signup_title : tr.ob_auth_signin_title)}</Text>
@@ -3297,7 +3348,7 @@ try {
 // ══════════════════════════════════
 // MAIN APP
 // ══════════════════════════════════
-function MainApp({ prenom, lang, onChangeLang, tensionIdxs, supabase, supaUser }) {
+function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
   const tr = T[lang] || T['fr'];
   const [done, setDone] = useState({
     p1: Array(20).fill(false), p2: Array(20).fill(false), p3: Array(20).fill(false),
@@ -3524,7 +3575,7 @@ function MainApp({ prenom, lang, onChangeLang, tensionIdxs, supabase, supaUser }
           <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={isSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconProgresser {...props} /> }}>{() => <Progresser done={done} lang={lang} tensionIdxs={tensionIdxs} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconParcours {...props} /> }}>{() => <ParcoursScreen prenom={prenom} done={done} lang={lang} onChangeLang={onChangeLang} tensionIdxs={tensionIdxs} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconParcours {...props} /> }}>{() => <ParcoursScreen prenom={prenom} done={done} lang={lang} tensionIdxs={tensionIdxs} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} />}</Tab.Screen>
         </Tab.Navigator>
       </NavigationContainer>
     </>
@@ -3537,7 +3588,7 @@ function MainApp({ prenom, lang, onChangeLang, tensionIdxs, supabase, supaUser }
 function App() {
   const [onboardingDone, setOnboardingDone] = useState(false);
   const [prenom, setPrenom] = useState('');
-  const [lang, setLang] = useState('fr');
+  const [lang, setLang] = useState(() => getAppLangFromLocale());
   const [tensionIdxs, setTensionIdxs] = useState([]);
   const [supaUser, setSupaUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -3668,14 +3719,14 @@ function App() {
   }
 
   if (!onboardingDone) {
-    return <OnboardingScreen onDone={(p, l, t, o) => { completeOnboarding(p, l, t, o); }} />;
+    return <OnboardingScreen initialLang={lang} onDone={(p, l, t, o) => { completeOnboarding(p, l, t, o); }} />;
   }
 
   if (showAuth && !supaUser) {
     return <AuthScreen onSkip={() => setShowAuth(false)} lang={lang} prenomHint={prenom} langForProfile={lang} tensionIdxsForProfile={tensionIdxs} />;
   }
 
-  return <MainApp prenom={prenom} lang={lang} onChangeLang={setLang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} />;
+  return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} />;
 }
 
 export default function AppWithBoundary() {
@@ -3688,9 +3739,8 @@ export default function AppWithBoundary() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  logoRow: { position: 'absolute', top: 58, left: 0, right: 0, zIndex: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
-  logoMedusaWrap: { width: 85, height: 85, marginRight: 8, overflow: 'visible' },
-  logoWordmark: { fontSize: 48, color: 'rgba(215,248,255,0.96)', fontWeight: '200', letterSpacing: 7, textTransform: 'uppercase' },
+  logoRow: { position: 'absolute', top: 58, left: 0, right: 0, zIndex: 10, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', paddingHorizontal: 8, gap: 10 },
+  logoWordmark: { fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 },
   metrics: { position: 'absolute', bottom: 30, left: 16, right: 16, flexDirection: 'row', gap: 8 },
   metricShell: {
     flex: 1,
