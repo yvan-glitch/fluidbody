@@ -1,7 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState, KeyboardAvoidingView } from 'react-native';
+import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState, KeyboardAvoidingView, ImageBackground } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -814,33 +814,10 @@ const PILIERS_BASE = [
   { key: 'p2', color: 'rgba(255,155,0,1)', bg: 'rgba(255,155,0,0.42)' },
 ];
 
-function computePilierPositions() {
-  const totalOrbes = PILIERS_BASE.length;
-  const centerX = SW / 2;
-  // Centre visuel proche de la méduse dans l'écran Home (évite l'entête + tab bar)
-  const safeTop = 180;
-  const safeBottom = 200;
-  const usableH = Math.max(320, SH - safeTop - safeBottom);
-  // Remonte l'ensemble des orbes (cercle plus haut)
-  const centerY = safeTop + usableH * 0.42;
-  const baseR = Math.min(SW, usableH) * (IS_IPAD ? 0.35 : 0.33);
-  const radius = Math.max(155, Math.min(baseR + 14, 255));
-  const startAngle = -Math.PI / 2; // commence en haut
-
-  return PILIERS_BASE.map((p, index) => {
-    const angle = (index / totalOrbes) * 2 * Math.PI + startAngle;
-    const cx = centerX + radius * Math.cos(angle);
-    const cy = centerY + radius * Math.sin(angle);
-    return { ...p, cx, cy };
-  });
-}
-
-const PILIERS_DATA = computePilierPositions();
-
 const PILIER_LABEL_IDX = { p1: 0, p2: 1, p3: 2, p4: 3, p5: 4, p6: 5, p7: 6 };
 function getPiliers(lang) {
-  const t = T[lang] || T['fr'];
-  return PILIERS_DATA.map((p) => ({ ...p, label: t.piliers[PILIER_LABEL_IDX[p.key]] }));
+  const t = T[lang] || T["fr"];
+  return PILIERS_BASE.map((p) => ({ ...p, label: t.piliers[PILIER_LABEL_IDX[p.key]] }));
 }
 
 function tentaclePath(bx, by, angle, length, t, phase, amp) {
@@ -2055,102 +2032,56 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
   );
 }
 
-/** Même langage visuel que le bouton lecture (verre + ombre noire), avec teinte pilier à l’intérieur. */
-const ORBE_OUTER = 76;
-const ORBE_INNER = 66;
+const CARD_W = Math.floor((SW - 48) / 2);
+const CARD_H = Math.floor(CARD_W * 0.75);
 
-function Orbe({ pilier, onPress, recommended, lang }) {
-  const tr = T[lang] || T['fr'];
-  const pulse = useRef(new Animated.Value(1)).current;
-  const IconComp = ICONS[pilier.key];
-  useEffect(() => {
-    Animated.loop(Animated.sequence([
-      Animated.timing(pulse, { toValue: recommended ? 1.22 : 1.12, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse, { toValue: 1.0, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ])).start();
-  }, [recommended]);
-  const pos = {};
-  const touchW = 96;
-  if (pilier.cx !== undefined) pos.left = pilier.cx - touchW / 2;
-  if (pilier.left !== undefined) pos.left = pilier.left;
-  if (pilier.right !== undefined) pos.right = pilier.right;
-  const innerR = ORBE_INNER / 2;
-  const tintGrad = ['rgba(255,255,255,0.38)', pilier.bg, 'rgba(0,0,0,0.12)'];
+const PILIER_IMAGES = {
+  p1: require("./assets/piliers/epaules.jpg"),
+  p2: require("./assets/piliers/dos.jpg"),
+  p3: require("./assets/piliers/mobilite.jpg"),
+  p4: require("./assets/piliers/posture.jpg"),
+  p5: require("./assets/piliers/eldoa.jpg"),
+  p6: require("./assets/piliers/golf.jpg"),
+  p7: require("./assets/piliers/mat_pilates.jpg"),
+  sdj: require("./assets/piliers/seance_du_jour.jpg"),
+};
+
+function PilierCard({ pilier, doneCount, onPress, recommended, lang, imageKey }) {
+  var tr = T[lang] || T["fr"];
+  var imgSrc = PILIER_IMAGES[imageKey || pilier.key];
   return (
     <TouchableOpacity
       activeOpacity={0.88}
       accessibilityLabel={pilier.label}
       accessibilityRole="button"
-      onPress={() => { hapticLight(); onPress(pilier); }}
-      style={{ position: 'absolute', top: pilier.cy !== undefined ? pilier.cy - ORBE_OUTER / 2 : pilier.top, ...pos, alignItems: 'center', zIndex: 20, width: touchW }}
+      onPress={function() { hapticLight(); onPress(pilier); }}
+      style={{
+        width: CARD_W,
+        height: CARD_H,
+        borderRadius: 20,
+        overflow: "hidden",
+        shadowColor: "#000",
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 10,
+      }}
     >
-      <Animated.View
-        style={{
-          transform: [{ scale: pulse }],
-          width: ORBE_OUTER,
-          height: ORBE_OUTER,
-          borderRadius: ORBE_OUTER / 2,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'rgba(255,255,255,0.2)',
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.45)',
-          shadowColor: '#000',
-          shadowOpacity: recommended ? 0.48 : 0.36,
-          shadowRadius: recommended ? 20 : 16,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: recommended ? 14 : 10,
-        }}
+      <ImageBackground
+        source={imgSrc}
+        resizeMode="cover"
+        style={{ flex: 1 }}
       >
-        <LinearGradient
-          colors={tintGrad}
-          locations={[0.05, 0.48, 1]}
-          start={{ x: 0.15, y: 0.1 }}
-          end={{ x: 0.88, y: 0.95 }}
-          style={{
-            width: ORBE_INNER,
-            height: ORBE_INNER,
-            borderRadius: innerR,
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'hidden',
-            borderWidth: 1,
-            borderColor: pilier.color,
-          }}
-        >
-          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <IconComp color={pilier.color} />
-          </View>
-        </LinearGradient>
-        {recommended && (
-          <View
-            style={{
-              position: 'absolute',
-              top: -2,
-              right: -2,
-              width: 18,
-              height: 18,
-              borderRadius: 9,
-              backgroundColor: 'rgba(0,200,255,0.96)',
-              borderWidth: 1.5,
-              borderColor: 'rgba(255,255,255,0.95)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#000',
-              shadowOpacity: 0.35,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 8,
-            }}
-          >
-            <Text style={{ fontSize: 9, color: '#000', fontWeight: '800' }}>★</Text>
-          </View>
-        )}
-      </Animated.View>
-      <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 0.75, color: pilier.color, marginTop: 8, textTransform: 'uppercase', textAlign: 'center', width: 92, textShadowColor: 'rgba(0,8,24,0.45)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>{pilier.label}</Text>
-      {recommended && (
-        <Text style={{ fontSize: 8, color: 'rgba(0,215,255,0.88)', letterSpacing: 0.5, textTransform: 'uppercase', textAlign: 'center', width: 92 }}>{tr.recommande_pour_toi}</Text>
-      )}
+        <View style={{ flex: 1, padding: 14, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" }}>
+          {recommended && (
+            <View style={{ position: "absolute", top: 10, left: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "rgba(0,215,255,0.22)", borderWidth: 1, borderColor: "rgba(0,215,255,0.6)" }}>
+              <Text style={{ fontSize: 8, color: "rgba(0,225,255,0.95)", fontWeight: "700", letterSpacing: 0.5 }}>{"\u2605"} {tr.recommande_pour_toi}</Text>
+            </View>
+          )}
+          <Text style={{ fontSize: 18, fontWeight: "700", color: "#fff", marginBottom: 4 }}>{pilier.label}</Text>
+          <Text style={{ fontSize: 11, fontWeight: "500", color: "rgba(255,255,255,0.85)" }}>{doneCount}/20 {tr.m_seances}</Text>
+        </View>
+      </ImageBackground>
     </TouchableOpacity>
   );
 }
@@ -2174,146 +2105,76 @@ function MetricTile({ children }) {
 }
 
 function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubscriber, onActivateSubscription }) {
-  const tr = T[lang] || T['fr'];
-  const [openPilier, setOpenPilier] = useState(null);
-  const totalDone = Object.values(done).flat().filter(Boolean).length;
-  const piliers = getPiliers(lang);
-  const recommendedPiliers = tensionIdxs.map(i => ZONE_TO_PILIER[i]);
-  const effectiveRecommended = recommendedPiliers.length > 0 ? recommendedPiliers : [];
-  const pilatesLetterSpacing = IS_IPAD ? 6 : 5;
-  /** Ancrage vertical du titre PILATES : sous la rangée logo (méduse + FluidBody). */
-  const pilatesHeaderTop = 148;
+  var tr = T[lang] || T["fr"];
+  var [openPilier, setOpenPilier] = useState(null);
+  var piliers = getPiliers(lang);
+  var recommendedPiliers = tensionIdxs.map(function(i) { return ZONE_TO_PILIER[i]; });
+  var effectiveRecommended = recommendedPiliers.length > 0 ? recommendedPiliers : [];
+  var sdj = getSeanceDuJour(done, tensionIdxs, lang);
+
+  var sortedPiliers = [...piliers].sort(function(a, b) {
+    var aRec = effectiveRecommended.includes(a.key) ? 0 : 1;
+    var bRec = effectiveRecommended.includes(b.key) ? 0 : 1;
+    return aRec - bRec;
+  });
 
   return (
     <View style={styles.screen}>
-      <LinearGradient colors={['#000e18', '#001828', '#002d48', '#005878', '#00bdd0']} locations={[0, 0.2, 0.45, 0.70, 1]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={["#000e18", "#001828", "#002d48", "#005878", "#00bdd0"]} locations={[0, 0.2, 0.45, 0.70, 1]} style={StyleSheet.absoluteFill} />
       <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
       <Rayon left={140} width={55} delay={2000} duration={11000} opacity={0.15} />
       <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 2, pointerEvents: 'none', overflow: 'visible' }}>
-        {BULLES_MONCORPS.map((b, i) => <Bulle key={`mc-${i}`} {...b} />)}
-        {IS_IPAD && BULLES_MONCORPS.map((b, i) => <Bulle key={`mc-ipad1-${i}`} delay={b.delay + 2000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.35))} size={b.size} duration={b.duration} />)}
-        {IS_IPAD && BULLES_MONCORPS.map((b, i) => <Bulle key={`mc-ipad2-${i}`} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />)}
+      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 2, pointerEvents: "none", overflow: "visible" }}>
+        {BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-" + i} {...b} />; })}
+        {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad1-" + i} delay={b.delay + 2000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.35))} size={b.size} duration={b.duration} />; })}
+        {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad2-" + i} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />; })}
       </View>
-      <View style={styles.logoRow} pointerEvents="box-none">
-        <View style={{ flexShrink: 0, transform: [{ translateX: 8 }, { translateY: 34 }] }}>
-          <MeduseCornerIcon size={38} breathCycleMs={3200} />
-        </View>
+      <View style={[styles.logoRow, { justifyContent: "flex-start", paddingLeft: 20, paddingTop: 10, marginBottom: 20 }]} pointerEvents="box-none">
         <Text style={styles.logoWordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-          FLUIDBODY<Text style={{ fontWeight: '900', color: '#C8A96E', fontSize: 34 }}>+</Text>
+          FLUIDBODY<Text style={{ fontWeight: "900", color: "#00BDD0", fontSize: 34 }}>+</Text>
         </Text>
+        <View style={{ position: "absolute", top: 26, right: 20 }}>
+          <MeduseCornerIcon size={68} breathCycleMs={3200} />
+        </View>
       </View>
-      <View style={{ position: 'absolute', top: pilatesHeaderTop, left: 0, right: 0, zIndex: 10, alignItems: 'center', paddingHorizontal: 20 }} pointerEvents="box-none">
-        <Text
-          style={{
-            width: '100%',
-            textAlign: 'center',
-            fontSize: 34,
-            fontWeight: '300',
-            color: 'rgba(0,235,255,0.96)',
-            letterSpacing: pilatesLetterSpacing,
-            textTransform: 'uppercase',
-          }}
-        >
-          Pilates
-        </Text>
-        {prenom ? (
-          <Text style={{ width: '100%', marginTop: 6, textAlign: 'center', paddingHorizontal: 12 }} numberOfLines={1}>
-            <Text style={{ fontSize: 17, fontWeight: '300', color: 'rgba(0,210,250,0.78)' }}>{tr.bonjour_mot} </Text>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: 'rgba(0,235,255,0.96)' }}>{prenom}</Text>
-          </Text>
-        ) : null}
-      </View>
-      {piliers.map(p => (
-        <Orbe key={p.key} pilier={p} onPress={setOpenPilier} recommended={effectiveRecommended.includes(p.key)} lang={lang} />
-      ))}
-      <View style={{ marginTop: IS_IPAD ? 264 : 338 }}><Meduse /></View>
-      {(() => {
-        const sdj = getSeanceDuJour(done, tensionIdxs, lang);
-        if (!sdj) return null;
-        const [titre, duree] = sdj.seance;
-        const alreadyDone = done[sdj.key]?.[sdj.idx] === true || done[sdj.key]?.[sdj.idx] === 'true';
-        const sdjLocked = !alreadyDone && !canAccessSeanceIndex(sdj.idx, isSubscriber);
-        const IconComp = ICONS[sdj.key];
-        const sdjShellBorder = alreadyDone ? 'rgba(0,235,165,0.7)' : sdjLocked ? 'rgba(255,210,100,0.65)' : 'rgba(255,255,255,0.6)';
-        const sdjRow = { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 12 };
-        const sdjTitleStyle = { fontSize: 14, fontWeight: '600', color: '#fff', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 };
-        const sdjSubStyle = { fontSize: 11, marginTop: 3, color: 'rgba(235,250,255,0.94)', fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 };
-        const sdjInner = Platform.OS === 'web' ? (
-          <View style={[sdjRow, { backgroundColor: 'rgba(0,14,30,0.52)' }]}>
-            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: sdj.pilier.bg, borderWidth: 1.5, borderColor: sdj.pilier.color, alignItems: 'center', justifyContent: 'center' }}>
-              <IconComp color={sdj.pilier.color} />
+      <ScrollView
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 3 }}
+        contentContainerStyle={{ paddingTop: 140, paddingBottom: 40, paddingHorizontal: 16, flexDirection: "row", flexWrap: "wrap", gap: 14, justifyContent: "center" }}
+        showsVerticalScrollIndicator={false}
+      >
+        {sortedPiliers.map(function(p) {
+          return <PilierCard key={p.key} pilier={p} doneCount={done[p.key] ? done[p.key].filter(Boolean).length : 0} onPress={setOpenPilier} recommended={effectiveRecommended.includes(p.key)} lang={lang} />;
+        })}
+        {sdj && (function() {
+          var alreadyDone = done[sdj.key] && (done[sdj.key][sdj.idx] === true || done[sdj.key][sdj.idx] === "true");
+          var sdjLocked = !alreadyDone && !canAccessSeanceIndex(sdj.idx, isSubscriber);
+          var sdjTitle = sdj.seance[0];
+          var sdjDuree = sdj.seance[1];
+          var sdjLabel = tr.seance_du_jour + " \u00B7 " + sdjDuree + (typeof sdjDuree === "string" && sdjDuree.includes("min") ? "" : " min");
+          var sdjPilier = { ...sdj.pilier, label: sdjTitle };
+          return (
+            <View key="sdj" style={{ width: CARD_W, opacity: sdjLocked ? 0.85 : 1 }}>
+              <PilierCard
+                pilier={sdjPilier}
+                doneCount={0}
+                onPress={function() {
+                  if (alreadyDone) return;
+                  if (sdjLocked) { onActivateSubscription && onActivateSubscription(); return; }
+                  setOpenPilier(sdj.pilier);
+                }}
+                recommended={false}
+                lang={lang}
+                imageKey="sdj"
+              />
+              <View style={{ position: "absolute", top: 10, left: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.18)", borderWidth: 1, borderColor: "rgba(255,255,255,0.4)" }}>
+                <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.95)", fontWeight: "700", letterSpacing: 0.5 }}>{alreadyDone ? "\u2713" : sdjLocked ? "\uD83D\uDD12" : "\u25B6"} {tr.seance_du_jour}</Text>
+              </View>
             </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={sdjTitleStyle} numberOfLines={2}>{titre}</Text>
-              <Text style={sdjSubStyle}><Text style={{ color: sdj.pilier.color }}>{tr.seance_du_jour}</Text>{' · '}{duree}{typeof duree === 'string' && duree.includes('min') ? '' : ' min'}</Text>
-            </View>
-            <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: alreadyDone ? 'rgba(0,210,140,0.35)' : sdjLocked ? 'rgba(255,200,80,0.28)' : sdj.pilier.bg, borderWidth: 1, borderColor: alreadyDone ? 'rgba(0,235,165,0.85)' : sdjLocked ? 'rgba(255,215,120,0.75)' : sdj.pilier.color }}>
-              <Text style={{ fontSize: 10, fontWeight: '700', color: alreadyDone ? '#fff' : sdjLocked ? 'rgba(40,30,10,0.95)' : 'rgba(255,255,255,0.98)' }}>{alreadyDone ? '✓' : sdjLocked ? '🔒' : tr.commencer_seance}</Text>
-            </View>
-          </View>
-        ) : (
-          <BlurView
-            intensity={Platform.OS === 'ios' ? 22 : 18}
-            tint="dark"
-            style={[sdjRow, { backgroundColor: 'rgba(0,12,26,0.2)' }]}
-          >
-            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: sdj.pilier.bg, borderWidth: 1.5, borderColor: sdj.pilier.color, alignItems: 'center', justifyContent: 'center' }}>
-              <IconComp color={sdj.pilier.color} />
-            </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={sdjTitleStyle} numberOfLines={2}>{titre}</Text>
-              <Text style={sdjSubStyle}><Text style={{ color: sdj.pilier.color }}>{tr.seance_du_jour}</Text>{' · '}{duree}{typeof duree === 'string' && duree.includes('min') ? '' : ' min'}</Text>
-            </View>
-            <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: alreadyDone ? 'rgba(0,210,140,0.35)' : sdjLocked ? 'rgba(255,200,80,0.28)' : sdj.pilier.bg, borderWidth: 1, borderColor: alreadyDone ? 'rgba(0,235,165,0.85)' : sdjLocked ? 'rgba(255,215,120,0.75)' : sdj.pilier.color }}>
-              <Text style={{ fontSize: 10, fontWeight: '700', color: alreadyDone ? '#fff' : sdjLocked ? 'rgba(40,30,10,0.95)' : 'rgba(255,255,255,0.98)' }}>{alreadyDone ? '✓' : sdjLocked ? '🔒' : tr.commencer_seance}</Text>
-            </View>
-          </BlurView>
-        );
-        return (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => {
-              if (alreadyDone) return;
-              if (sdjLocked) {
-                onActivateSubscription?.();
-                return;
-              }
-              hapticLight();
-              setOpenPilier(sdj.pilier);
-            }}
-            style={{
-              position: 'absolute',
-              bottom: 100,
-              left: 14,
-              right: 14,
-              borderRadius: 16,
-              overflow: 'hidden',
-              borderWidth: 1.5,
-              borderColor: sdjShellBorder,
-              zIndex: 5,
-              opacity: sdjLocked ? 0.92 : 1,
-              shadowColor: '#000',
-              shadowOpacity: 0.24,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 9,
-            }}
-          >
-            {sdjInner}
-          </TouchableOpacity>
-        );
-      })()}
-      <View style={styles.metrics}>
-        <MetricTile><Text style={styles.mval}>{totalDone}</Text><Text style={styles.mlbl}>{tr.m_seances}</Text></MetricTile>
-        <MetricTile>
-          <Text style={[styles.mval, Platform.OS === 'android' && { fontFamily: 'sans-serif' }]}>{'🔥'} {streakCountValue(streak)}</Text>
-          <Text style={styles.mlbl}>{tr.m_streak}</Text>
-        </MetricTile>
-        <MetricTile><Text style={styles.mval}>{Math.round(totalDone / 140 * 100)}%</Text><Text style={styles.mlbl}>{tr.m_progress}</Text></MetricTile>
-      </View>
+          );
+        })()}
+      </ScrollView>
       {openPilier && (
-        <PilierPanel pilier={openPilier} done={done[openPilier.key]} onToggle={(idx) => toggleDone(openPilier.key, idx)} onClose={() => setOpenPilier(null)} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} />
+        <PilierPanel pilier={openPilier} done={done[openPilier.key]} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} />
       )}
     </View>
   );
