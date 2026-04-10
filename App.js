@@ -2067,21 +2067,34 @@ function PilierCard({ pilier, doneCount, onPress, recommended, lang, imageKey })
         elevation: 10,
       }}
     >
-      <ImageBackground
-        source={imgSrc}
-        resizeMode="cover"
+      <LinearGradient
+        colors={["#000e18", pilier.bg, pilier.color]}
+        locations={[0.0, 0.55, 1]}
+        start={{ x: 0.2, y: 0 }}
+        end={{ x: 0.8, y: 1 }}
         style={{ flex: 1 }}
       >
-        <View style={{ flex: 1, padding: 14, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" }}>
-          {recommended && (
-            <View style={{ position: "absolute", top: 10, left: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "rgba(0,215,255,0.22)", borderWidth: 1, borderColor: "rgba(0,215,255,0.6)" }}>
-              <Text style={{ fontSize: 8, color: "rgba(0,225,255,0.95)", fontWeight: "700", letterSpacing: 0.5 }}>{"\u2605"} {tr.recommande_pour_toi}</Text>
-            </View>
-          )}
-          <Text style={{ fontSize: 18, fontWeight: "700", color: "#fff", marginBottom: 4 }}>{pilier.label}</Text>
-          <Text style={{ fontSize: 11, fontWeight: "500", color: "rgba(255,255,255,0.85)" }}>{doneCount}/20 {tr.m_seances}</Text>
-        </View>
-      </ImageBackground>
+        <ImageBackground
+          source={imgSrc}
+          resizeMode="cover"
+          style={{ flex: 1 }}
+          imageStyle={{ opacity: 0.70 }}
+        >
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.65)"]}
+            locations={[0.3, 1]}
+            style={{ flex: 1, padding: 14, justifyContent: "flex-end" }}
+          >
+            {recommended && (
+              <View style={{ position: "absolute", top: 10, left: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "rgba(0,215,255,0.22)", borderWidth: 1, borderColor: "rgba(0,215,255,0.6)" }}>
+                <Text style={{ fontSize: 8, color: "rgba(0,225,255,0.95)", fontWeight: "700", letterSpacing: 0.5 }}>{"\u2605"} {tr.recommande_pour_toi}</Text>
+              </View>
+            )}
+            <Text style={{ fontSize: 18, fontWeight: "700", color: "#fff", marginBottom: 4 }}>{pilier.label}</Text>
+            <Text style={{ fontSize: 11, fontWeight: "500", color: "rgba(255,255,255,0.85)" }}>{doneCount}/20 {tr.m_seances}</Text>
+          </LinearGradient>
+        </ImageBackground>
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
@@ -2121,10 +2134,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
   return (
     <View style={styles.screen}>
       <LinearGradient colors={["#000e18", "#001828", "#002d48", "#005878", "#00bdd0"]} locations={[0, 0.2, 0.45, 0.70, 1]} style={StyleSheet.absoluteFill} />
-      <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
-      <Rayon left={140} width={55} delay={2000} duration={11000} opacity={0.15} />
-      <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
-      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 2, pointerEvents: "none", overflow: "visible" }}>
+      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: "none" }}>
+        <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
+        <Rayon left={140} width={55} delay={2000} duration={11000} opacity={0.15} />
+        <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
+      </View>
+      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: "none", overflow: "visible" }}>
         {BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-" + i} {...b} />; })}
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad1-" + i} delay={b.delay + 2000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.35))} size={b.size} duration={b.duration} />; })}
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad2-" + i} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />; })}
@@ -2211,151 +2226,74 @@ function getRcPriceString(pkg) {
 }
 
 function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore }) {
-  const tr = T[lang] || T['fr'];
-  const monthlyPkg = packagesByProductId?.[PRODUCT_IDS.monthly];
-  const yearlyPkg = packagesByProductId?.[PRODUCT_IDS.yearly];
-  const monthlyPrice = getRcPriceString(monthlyPkg);
-  const yearlyPrice = getRcPriceString(yearlyPkg);
+  var tr = T[lang] || T["fr"];
+  var monthlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.monthly];
+  var yearlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.yearly];
+  var monthlyPrice = getRcPriceString(monthlyPkg);
+  var yearlyPrice = getRcPriceString(yearlyPkg);
+  var showYearly = !!(yearlyPkg || loadingPrices);
 
   return (
-    <Modal visible={!!visible} animationType="fade" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
-      <View style={{ flex: 1 }}>
-        <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-        <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
-        <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
-        {BULLES.map((b, i) => <Bulle key={`pay-b-${i}`} {...b} />)}
-        <View style={{ paddingTop: 62, paddingHorizontal: 22, paddingBottom: 12, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <TouchableOpacity onPress={onClose} activeOpacity={0.8} style={{ paddingTop: 4 }}>
-            <Text style={{ fontSize: 10, color: 'rgba(0,205,248,0.44)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.paywall_close}</Text>
-          </TouchableOpacity>
-          <View style={{ marginTop: 6, width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
-            <MeduseCornerIcon size={90} breathCycleMs={3000} />
-          </View>
-        </View>
+    <Modal visible={!!visible} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: "#000000" }}>
+        <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={{ position: "absolute", top: 56, right: 20, zIndex: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 16, color: "rgba(255,255,255,0.7)", fontWeight: "600" }}>{"\u2715"}</Text>
+        </TouchableOpacity>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}>
-          <Text style={{ fontSize: 26, fontWeight: '200', color: 'rgba(215,248,255,0.97)', letterSpacing: 1, marginBottom: 8 }}>{tr.paywall_title}</Text>
-          <Text style={{ fontSize: 14, fontWeight: '200', color: 'rgba(0,210,250,0.6)', lineHeight: 22, marginBottom: 18 }}>{tr.paywall_sub}</Text>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 100, paddingHorizontal: 28, paddingBottom: 50, alignItems: "center" }}>
+          <MeduseCornerIcon size={80} breathCycleMs={3000} />
 
-          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
-            {[
-              { key: 'm', title: tr.paywall_monthly, price: loadingPrices ? tr.paywall_prices_loading : (monthlyPrice || '—'), border: 'rgba(0,215,255,0.28)', glow: 'rgba(0,235,255,0.12)', titleColor: 'rgba(0,210,250,0.70)' },
-              { key: 'y', title: tr.paywall_yearly, price: loadingPrices ? tr.paywall_prices_loading : (yearlyPrice || '—'), border: 'rgba(255,210,90,0.30)', glow: 'rgba(255,210,90,0.10)', titleColor: 'rgba(255,210,90,0.80)' },
-            ].map((card) => (
-              <View
-                key={card.key}
-                style={{
-                  flex: 1,
-                  borderRadius: 18,
-                  overflow: 'hidden',
-                  borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.14)',
-                  shadowColor: card.glow,
-                  shadowOpacity: 1,
-                  shadowRadius: 26,
-                  shadowOffset: { width: 0, height: 14 },
-                  elevation: 14,
-                }}
-              >
-                {Platform.OS === 'web' ? (
-                  <View style={{ padding: 16, backgroundColor: 'rgba(0,18,38,0.30)' }}>
-                    <Text style={{ fontSize: 11, color: card.titleColor, letterSpacing: 2, textTransform: 'uppercase' }}>{card.title}</Text>
-                    <Text style={{ fontSize: 22, fontWeight: '200', color: 'rgba(215,248,255,0.95)', marginTop: 10 }}>{card.price}</Text>
-                  </View>
-                ) : (
-                  <View style={{ position: 'relative' }}>
-                    <BlurView
-                      intensity={Platform.OS === 'ios' ? 42 : 28}
-                      tint="dark"
-                      style={{ padding: 16, backgroundColor: 'rgba(0,18,38,0.10)' }}
-                    >
-                      <Text style={{ fontSize: 11, color: card.titleColor, letterSpacing: 2, textTransform: 'uppercase' }}>{card.title}</Text>
-                      <Text style={{ fontSize: 22, fontWeight: '200', color: 'rgba(215,248,255,0.98)', marginTop: 10 }}>{card.price}</Text>
-                    </BlurView>
-
-                    {/* Reflets "glassy" */}
-                    <LinearGradient
-                      colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0)']}
-                      locations={[0, 0.35, 1]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 44 }}
-                      pointerEvents="none"
-                    />
-                    <LinearGradient
-                      colors={['rgba(0,235,255,0.16)', 'rgba(0,235,255,0)', 'rgba(255,210,90,0.12)']}
-                      locations={[0, 0.55, 1]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                      pointerEvents="none"
-                    />
-                    <View
-                      pointerEvents="none"
-                      style={{
-                        position: 'absolute',
-                        top: 1,
-                        left: 1,
-                        right: 1,
-                        bottom: 1,
-                        borderRadius: 17,
-                        borderWidth: 1,
-                        borderColor: card.border,
-                      }}
-                    />
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
+          <Text style={{ fontSize: 32, fontWeight: "800", color: "#ffffff", textAlign: "center", marginTop: 28, marginBottom: 10 }}>{tr.paywall_title}</Text>
+          <Text style={{ fontSize: 16, fontWeight: "400", color: "rgba(255,255,255,0.55)", textAlign: "center", lineHeight: 24, marginBottom: 40, paddingHorizontal: 10 }}>{tr.paywall_sub}</Text>
 
           {disabled && (
-            <View style={{ marginBottom: 14, backgroundColor: 'rgba(255,200,80,0.10)', borderWidth: 1, borderColor: 'rgba(255,200,80,0.25)', borderRadius: 16, padding: 14 }}>
-              <Text style={{ color: 'rgba(255,220,140,0.9)', fontSize: 12, lineHeight: 18 }}>{tr.paywall_not_available}</Text>
+            <View style={{ alignSelf: "stretch", marginBottom: 20, backgroundColor: "rgba(255,200,80,0.10)", borderWidth: 1, borderColor: "rgba(255,200,80,0.25)", borderRadius: 16, padding: 14 }}>
+              <Text style={{ color: "rgba(255,220,140,0.9)", fontSize: 12, lineHeight: 18, textAlign: "center" }}>{tr.paywall_not_available}</Text>
             </View>
           )}
 
           <TouchableOpacity
-            onPress={() => monthlyPkg && onBuyMonthly?.(monthlyPkg)}
+            onPress={function() { monthlyPkg && onBuyMonthly && onBuyMonthly(monthlyPkg); }}
             disabled={disabled || loadingPrices || !monthlyPkg}
             activeOpacity={0.85}
-            style={[
-              styles.btnCtaLarge,
-              (disabled || loadingPrices) && styles.btnCtaOff,
-              { borderColor: 'rgba(0,235,255,0.9)', backgroundColor: 'rgba(0,180,235,0.28)', marginBottom: 10 },
-            ]}
+            style={{
+              alignSelf: "stretch",
+              height: 60,
+              borderRadius: 30,
+              backgroundColor: "#00BDD0",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 10,
+              opacity: (disabled || loadingPrices) ? 0.4 : 1,
+            }}
           >
-            <Text style={styles.btnCtaLargeTxt}>{tr.paywall_buy_monthly}</Text>
+            <Text style={{ fontSize: 17, fontWeight: "700", color: "#000000", letterSpacing: 1 }}>{tr.paywall_buy_monthly}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => yearlyPkg && onBuyYearly?.(yearlyPkg)}
-            disabled={disabled || loadingPrices || !yearlyPkg}
-            activeOpacity={0.85}
-            style={[
-              styles.btnCtaLarge,
-              (disabled || loadingPrices) && styles.btnCtaOff,
-              { borderColor: 'rgba(255,210,90,0.9)', backgroundColor: 'rgba(255,200,80,0.20)', marginBottom: 14 },
-            ]}
-          >
-            <Text style={[styles.btnCtaLargeTxt, { color: 'rgba(255,245,220,1)' }]}>{tr.paywall_buy_yearly}</Text>
-          </TouchableOpacity>
+          <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 24, textAlign: "center" }}>
+            {loadingPrices ? tr.paywall_prices_loading : (monthlyPrice || "")}
+          </Text>
+
+          {showYearly && (
+            <TouchableOpacity
+              onPress={function() { yearlyPkg && onBuyYearly && onBuyYearly(yearlyPkg); }}
+              disabled={disabled || loadingPrices || !yearlyPkg}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "600", color: "#00BDD0", textAlign: "center", marginBottom: 6 }}>{tr.paywall_buy_yearly}</Text>
+              <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", textAlign: "center" }}>
+                {loadingPrices ? tr.paywall_prices_loading : (yearlyPrice || "")}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             onPress={onRestore}
             disabled={disabled}
-            activeOpacity={0.85}
-            style={{
-              height: 54,
-              borderRadius: 27,
-              borderWidth: 1,
-              borderColor: 'rgba(0,215,255,0.28)',
-              backgroundColor: 'rgba(0,18,38,0.55)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            activeOpacity={0.7}
+            style={{ marginTop: 36 }}
           >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(0,230,255,0.92)', letterSpacing: 1 }}>{tr.paywall_restore}</Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: "rgba(255,255,255,0.35)", textAlign: "center" }}>{tr.paywall_restore}</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
