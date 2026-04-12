@@ -173,7 +173,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
   })).current;
 
   return (
-    <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: 66, backgroundColor: 'rgba(28,28,30,0.94)', borderRadius: 33 }} {...panResponder.panHandlers}>
+    <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: 66, backgroundColor: 'rgba(28,28,30,0.94)', borderRadius: 33, borderWidth: 1, borderColor: '#AEEF4D' }} {...panResponder.panHandlers}>
       <Animated.View style={{ position: 'absolute', top: (66 - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.13)', transform: [{ translateX: indicatorX }] }} />
       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
         {state.routes.map(function(route, index) {
@@ -253,20 +253,14 @@ function TabIconBiblio({ color, size }) {
   );
 }
 
-/** Parcours : repère sur un tracé (évite la confusion avec une horloge « manquante »). */
-function TabIconParcours({ color, size }) {
-  const c = tabBarIconTint(color);
-  const s = size ?? 22;
+function TabIconProfil({ color, size }) {
+  var c = tabBarIconTint(color);
+  var s = size ?? 22;
   return (
     <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-        <Path
-          d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"
-          stroke={c}
-          strokeWidth={1.55}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <Circle cx="12" cy="8" r="4" stroke={c} strokeWidth={1.6} />
+        <Path d="M4 21c0-3.87 3.58-7 8-7s8 3.13 8 7" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
       </Svg>
     </View>
   );
@@ -390,7 +384,7 @@ function getSeanceDuJour(done, tensionIdxs, lang) {
 const T = {
   fr: {
     lang: 'fr', flag: '🇫🇷', nom: 'Français',
-    tabs: ['Résumé', 'Mon Corps', 'Progresser', 'Biblio', 'Parcours'],
+    tabs: ['FluidBody+', 'Résumé', 'Biblio', 'Profil'],
     resume_title: 'Résumé', resume_activite: 'Activité', resume_bouger: 'Bouger', resume_exercice: 'Exercice', resume_debout: 'Debout', resume_seances: 'Séances FluidBody', resume_no_seance: 'Aucune séance complétée', resume_progression: 'Progression', resume_global: 'Global', resume_streak: 'Streak',
     bonjour: (p) => p ? `Bonjour ${p}` : '',
     bonjour_mot: 'Bonjour',
@@ -476,6 +470,7 @@ const T = {
     prog_jours_label: 'Jours par semaine',
     prog_save: 'Enregistrer',
     prog_saved: 'Programme enregistré !',
+    prog_mes_programmes: 'Mes programmes',
     biblio_intro: 'La méthode FluidBody repose sur 5 étapes progressives. Chaque séance les traverse dans l\'ordre.',
     lire: ' de lecture',
     retour_biblio: '← Bibliothèque',
@@ -528,7 +523,7 @@ const T = {
   },
   en: {
     lang: 'en', flag: '🇬🇧', nom: 'English',
-    tabs: ['Summary', 'My Body', 'Progress', 'Library', 'Journey'],
+    tabs: ['FluidBody+', 'Summary', 'Library', 'Profile'],
     resume_title: 'Summary', resume_activite: 'Activity', resume_bouger: 'Move', resume_exercice: 'Exercise', resume_debout: 'Stand', resume_seances: 'FluidBody Sessions', resume_no_seance: 'No sessions completed', resume_progression: 'Progress', resume_global: 'Overall', resume_streak: 'Streak',
     bonjour: (p) => p ? `Hello ${p}` : '',
     bonjour_mot: 'Hello',
@@ -614,6 +609,7 @@ const T = {
     prog_jours_label: 'Days per week',
     prog_save: 'Save',
     prog_saved: 'Program saved!',
+    prog_mes_programmes: 'My programs',
     biblio_intro: 'The FluidBody method is built on 5 progressive steps. Each session follows them in order.',
     lire: ' read',
     retour_biblio: '← Library',
@@ -666,7 +662,7 @@ const T = {
   },
   es: {
     lang: 'es', flag: '🇪🇸', nom: 'Español',
-    tabs: ['Resumen', 'Mi Cuerpo', 'Progresar', 'Biblioteca', 'Recorrido'],
+    tabs: ['FluidBody+', 'Resumen', 'Biblioteca', 'Perfil'],
     resume_title: 'Resumen', resume_activite: 'Actividad', resume_bouger: 'Movimiento', resume_exercice: 'Ejercicio', resume_debout: 'De pie', resume_seances: 'Sesiones FluidBody', resume_no_seance: 'Ninguna sesión completada', resume_progression: 'Progresión', resume_global: 'Global', resume_streak: 'Racha',
     bonjour: (p) => p ? `Hola ${p}` : '',
     bonjour_mot: 'Hola',
@@ -752,6 +748,7 @@ const T = {
     prog_jours_label: 'Días por semana',
     prog_save: 'Guardar',
     prog_saved: '¡Programa guardado!',
+    prog_mes_programmes: 'Mis programas',
     biblio_intro: 'El método FluidBody se basa en 5 pasos progresivos. Cada sesión los recorre en orden.',
     lire: ' de lectura',
     retour_biblio: '← Biblioteca',
@@ -804,7 +801,7 @@ const T = {
   },
   it: {
     lang: 'it', flag: '🇮🇹', nom: 'Italiano',
-    tabs: ['Riepilogo', 'Il Mio Corpo', 'Progredire', 'Biblioteca', 'Percorso'],
+    tabs: ['FluidBody+', 'Riepilogo', 'Biblioteca', 'Profilo'],
     resume_title: 'Riepilogo', resume_activite: 'Attività', resume_bouger: 'Movimento', resume_exercice: 'Esercizio', resume_debout: 'In piedi', resume_seances: 'Sessioni FluidBody', resume_no_seance: 'Nessuna sessione completata', resume_progression: 'Progressione', resume_global: 'Globale', resume_streak: 'Serie',
     bonjour: (p) => p ? `Ciao ${p}` : '',
     bonjour_mot: 'Ciao',
@@ -890,6 +887,7 @@ const T = {
     prog_jours_label: 'Giorni a settimana',
     prog_save: 'Salva',
     prog_saved: 'Programma salvato!',
+    prog_mes_programmes: 'I miei programmi',
     biblio_intro: 'Il metodo FluidBody si basa su 5 passaggi progressivi. Ogni sessione li percorre in ordine.',
     lire: ' di lettura',
     retour_biblio: '← Biblioteca',
@@ -2395,6 +2393,24 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
   var [openPilier, setOpenPilier] = useState(null);
   var [mcTab, setMcTab] = useState('pour_vous');
   var [showCreateProg, setShowCreateProg] = useState(false);
+  var [savedPrograms, setSavedPrograms] = useState([]);
+
+  useEffect(function() { loadSavedPrograms(); }, []);
+  function loadSavedPrograms() {
+    AsyncStorage.getItem('fluid_custom_programs').then(function(raw) {
+      if (raw) { try { setSavedPrograms(JSON.parse(raw)); } catch(e) {} }
+      else {
+        AsyncStorage.getItem('fluid_custom_program').then(function(old) {
+          if (old) { try { var p = JSON.parse(old); setSavedPrograms([p]); AsyncStorage.setItem('fluid_custom_programs', JSON.stringify([p])); } catch(e) {} }
+        });
+      }
+    });
+  }
+  function deleteSavedProgram(idx) {
+    var updated = savedPrograms.filter(function(_, i) { return i !== idx; });
+    setSavedPrograms(updated);
+    AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(updated));
+  }
   var MC_TABS = ['pour_vous', 'explorer', 'programmes', 'recherche'];
   var mcTabLabels = { pour_vous: tr.tab_pour_vous, explorer: tr.tab_explorer, programmes: tr.tab_programmes, recherche: tr.tab_recherche };
   var piliers = getPiliers(lang);
@@ -2548,14 +2564,15 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
           <View key="programmes">
             <Text style={{ fontSize: 22, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_section_title}</Text>
             <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.45)", lineHeight: 18, marginBottom: 14 }}>{tr.prog_section_sub}</Text>
-            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 20, height: 230 }}>
-              <LinearGradient colors={["#2a1a5a", "#6a4a9f", "#b080c0", "#d4a8c8"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
+            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 20, height: 230, borderWidth: 1, borderColor: '#AEEF4D' }}>
+              <LinearGradient colors={["#0a1628", "#0d3b66", "#1a8fa8"]} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
                 <View>
                   <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_debuter}</Text>
                   <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>{tr.prog_debuter_sub}</Text>
                   <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff", letterSpacing: 1 }}>{tr.prog_debuter_duree}</Text>
                 </View>
                 <TouchableOpacity
+                  onPress={function() { var p = piliers.find(function(x) { return x.key === 'p1'; }); if (p) setOpenPilier(p); }}
                   activeOpacity={0.8}
                   style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
                 >
@@ -2565,8 +2582,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
             </View>
             <Text style={{ fontSize: 22, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_custom_title}</Text>
             <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.45)", lineHeight: 18, marginBottom: 14 }}>{tr.prog_custom_sub}</Text>
-            <View style={{ borderRadius: 16, overflow: "hidden", height: 230 }}>
-              <LinearGradient colors={["#5a4020", "#8a6830", "#b08840", "#c4a050"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
+            <View style={{ borderRadius: 16, overflow: "hidden", height: 230, borderWidth: 1, borderColor: '#AEEF4D' }}>
+              <LinearGradient colors={["#1a0a2e", "#4a1a6b", "#8b3fa0"]} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
                 <View>
                   <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_custom_card}</Text>
                   <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", lineHeight: 18 }}>{tr.prog_custom_card_sub}</Text>
@@ -2580,6 +2597,41 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
                 </TouchableOpacity>
               </LinearGradient>
             </View>
+
+            {savedPrograms.length > 0 && (
+              <View style={{ marginTop: 24 }}>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', marginBottom: 14 }}>{tr.prog_mes_programmes || 'Mes programmes'}</Text>
+                {savedPrograms.map(function(prog, idx) {
+                  var progPiliers = getPiliers(lang).filter(function(p) { return prog.piliers.includes(p.key); });
+                  return (
+                    <View key={idx} style={{ backgroundColor: 'rgba(0,18,38,0.55)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: '#ffffff' }}>{(tr.prog_custom_card || 'Programme') + ' ' + (idx + 1)}</Text>
+                        <TouchableOpacity onPress={function() { deleteSavedProgram(idx); }} activeOpacity={0.7} style={{ padding: 4 }}>
+                          <Text style={{ fontSize: 12, color: 'rgba(255,100,100,0.7)' }}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                        {progPiliers.map(function(p) {
+                          return (
+                            <View key={p.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.1)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)' }}>
+                              <View style={{ width: 24, height: 24, borderRadius: 12, overflow: 'hidden' }}>
+                                <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} />
+                              </View>
+                              <Text style={{ fontSize: 12, color: '#AEEF4D' }}>{p.label}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 16 }}>
+                        <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.6)' }}>{prog.duree} / {tr.resume_seances ? 'séance' : 'session'}</Text>
+                        <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.6)' }}>{prog.jours}x / {tr.prog_jours_label ? tr.prog_jours_label.toLowerCase() : 'semaine'}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </View>
         )}
         {mcTab === 'explorer' && (function() {
@@ -2620,7 +2672,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
       {openPilier && (
         <PilierPanel pilier={openPilier} done={done[openPilier.key]} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} />
       )}
-      <CreateProgramScreen visible={showCreateProg} onClose={function() { setShowCreateProg(false); }} lang={lang} />
+      <CreateProgramScreen visible={showCreateProg} onClose={function() { setShowCreateProg(false); }} lang={lang} onSaved={loadSavedPrograms} />
     </View>
   );
 }
@@ -2655,7 +2707,7 @@ function getRcPriceString(pkg) {
   return '';
 }
 
-function CreateProgramScreen({ visible, onClose, lang }) {
+function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
   if (!visible) return null;
   var tr = T[lang] || T["fr"];
   var piliers = getPiliers(lang);
@@ -2672,9 +2724,14 @@ function CreateProgramScreen({ visible, onClose, lang }) {
 
   async function saveProg() {
     var prog = { piliers: selected, duree: dureeOptions[duree], jours: joursOptions[jours - 2 < 0 ? 0 : jours - 2], date: new Date().toISOString() };
-    try { await AsyncStorage.setItem('fluid_custom_program', JSON.stringify(prog)); } catch(e) {}
+    try {
+      var raw = await AsyncStorage.getItem('fluid_custom_programs');
+      var list = raw ? JSON.parse(raw) : [];
+      list.push(prog);
+      await AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(list));
+    } catch(e) {}
     setSaved(true);
-    setTimeout(function() { onClose(); setSaved(false); }, 1500);
+    setTimeout(function() { if (onSaved) onSaved(); onClose(); setSaved(false); }, 1500);
   }
 
   return (
@@ -3014,7 +3071,7 @@ function Biblio({ lang }) {
             {articles.map((a, i) => {
               const IconComp = ICONS[a.key];
               return (
-                <TouchableOpacity key={i} onPress={() => setOpenArticle(a)} style={{ backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
+                <TouchableOpacity key={i} onPress={() => setOpenArticle(a)} style={{ backgroundColor: 'rgba(0,18,38,0.55)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                     <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden', borderWidth: 1.5, borderColor: '#AEEF4D', marginRight: 14 }}>
                       <ImageBackground source={PILIER_IMAGES[a.key]} resizeMode="cover" style={{ flex: 1 }} />
@@ -3037,7 +3094,7 @@ function Biblio({ lang }) {
               <Text style={{ fontSize: 14, fontWeight: '200', color: 'rgba(174,239,77,0.7)', lineHeight: 22 }}>{tr.biblio_intro}</Text>
             </View>
             {fiches.map((f, i) => (
-              <TouchableOpacity key={i} onPress={() => setOpenFiche(f)} style={{ backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
+              <TouchableOpacity key={i} onPress={() => setOpenFiche(f)} style={{ backgroundColor: 'rgba(0,18,38,0.55)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                   <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,18,32,0.8)', borderWidth: 1.5, borderColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
                     <Text style={{ fontSize: 16, fontWeight: '600', color: '#AEEF4D' }}>{f.num}</Text>
@@ -3077,11 +3134,12 @@ function ActivityRing({ radius, strokeWidth, progress, color, bgColor }) {
 
 var AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-function ResumeScreen({ done, lang, streak, prenom }) {
+function ResumeScreen({ done, lang, streak, prenom, tensionIdxs }) {
   var tr = T[lang] || T['fr'];
   var piliers = getPiliers(lang);
   var totalDone = Object.values(done).flat().filter(Boolean).length;
   var pct = Math.round(totalDone / 140 * 100);
+  var recommendedPiliers = (tensionIdxs || []).map(function(i) { return ZONE_TO_PILIER[i]; });
   var [hkData, setHkData] = useState({ cal: 0, exMin: 0, standHr: 0 });
 
   useEffect(function() {
@@ -3107,23 +3165,30 @@ function ResumeScreen({ done, lang, streak, prenom }) {
   });
   recentSeances = recentSeances.slice(-5).reverse();
 
+  var sortedPiliers = [].concat(piliers).sort(function(a, b) { return (recommendedPiliers.includes(a.key) ? 0 : 1) - (recommendedPiliers.includes(b.key) ? 0 : 1); });
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#000000' }}>
-      <ScrollView contentContainerStyle={{ paddingTop: 62, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+    <View style={{ flex: 1 }}>
+      <LinearGradient pointerEvents="none" colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
+        {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
+      </View>
+      <FloatingMedusas />
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }} scrollEventThrottle={16} showsVerticalScrollIndicator={false}>
+        <View style={{ paddingTop: 62, paddingHorizontal: 20, marginBottom: 20 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View>
-              <Text style={{ fontSize: 13, color: 'rgba(174,239,77,0.6)', letterSpacing: 1, textTransform: 'uppercase' }}>{dateStr}</Text>
-              <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff', marginTop: 2 }}>{tr.resume_title || 'Résumé'}</Text>
+              <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</Text></Text>
+              <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{dateStr}</Text>
             </View>
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 16, fontWeight: '800', color: '#000000' }}>YT</Text>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#000000' }}>{prenom ? prenom.slice(0, 2).toUpperCase() : 'YT'}</Text>
             </View>
           </View>
         </View>
 
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(30,30,32,0.95)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 20 }}>{tr.resume_activite || 'Activité'}</Text>
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.55)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 14 }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 }}>{tr.resume_activite || 'Activité'}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ width: 140, height: 140, alignItems: 'center', justifyContent: 'center' }}>
               <ActivityRing radius={60} strokeWidth={8} progress={calPct} color="#FF3B30" bgColor="rgba(255,59,48,0.2)" />
@@ -3156,20 +3221,35 @@ function ResumeScreen({ done, lang, streak, prenom }) {
           </View>
         </View>
 
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(30,30,32,0.95)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 14 }}>{tr.resume_seances || 'Séances FluidBody'}</Text>
+        <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 14 }}>
+          <View style={[styles.statCard, { flex: 1 }]}>
+            <Text style={{ fontSize: 28, fontWeight: '200', color: '#AEEF4D' }}>{totalDone}</Text>
+            <Text style={[styles.statLbl, { color: 'rgba(174,239,77,0.6)' }]}>{tr.m_seances}</Text>
+          </View>
+          <View style={[styles.statCard, { flex: 1 }]}>
+            <Text style={{ fontSize: 28, fontWeight: '200', color: '#AEEF4D' }}>{'🔥'} {streak > 0 ? streak : 0}</Text>
+            <Text style={[styles.statLbl, { color: 'rgba(174,239,77,0.6)' }]}>{tr.resume_streak || 'Streak'}</Text>
+          </View>
+          <View style={[styles.statCard, { flex: 1 }]}>
+            <Text style={{ fontSize: 28, fontWeight: '200', color: '#AEEF4D' }}>{pct}%</Text>
+            <Text style={[styles.statLbl, { color: 'rgba(174,239,77,0.6)' }]}>{tr.resume_global || 'Global'}</Text>
+          </View>
+        </View>
+
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.55)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 14 }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.resume_seances || 'Séances FluidBody'}</Text>
           {recentSeances.length === 0 && (
-            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>{tr.resume_no_seance || 'Aucune séance complétée'}</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(174,239,77,0.4)', fontStyle: 'italic' }}>{tr.resume_no_seance || 'Aucune séance complétée'}</Text>
           )}
           {recentSeances.map(function(s, i) {
             return (
-              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: i < recentSeances.length - 1 ? 0.5 : 0, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', marginRight: 12, borderWidth: 1, borderColor: '#AEEF4D' }}>
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: i < recentSeances.length - 1 ? 0.5 : 0, borderBottomColor: 'rgba(174,239,77,0.12)' }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', marginRight: 12, borderWidth: 1.5, borderColor: '#AEEF4D' }}>
                   <ImageBackground source={PILIER_IMAGES[s.pilier.key]} resizeMode="cover" style={{ flex: 1 }} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '500', color: '#ffffff' }}>{s.pilier.label}</Text>
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{'Séance ' + (s.idx + 1)}</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.4)' }}>{'Séance ' + (s.idx + 1)}</Text>
                 </View>
                 <Text style={{ fontSize: 13, color: '#AEEF4D' }}>✓</Text>
               </View>
@@ -3177,22 +3257,30 @@ function ResumeScreen({ done, lang, streak, prenom }) {
           })}
         </View>
 
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(30,30,32,0.95)', borderRadius: 16, padding: 20 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 14 }}>{tr.resume_progression || 'Progression'}</Text>
-          <View style={{ flexDirection: 'row', gap: 16 }}>
-            <View style={{ flex: 1, backgroundColor: 'rgba(174,239,77,0.08)', borderRadius: 12, padding: 16, alignItems: 'center' }}>
-              <Text style={{ fontSize: 32, fontWeight: '800', color: '#AEEF4D' }}>{pct}%</Text>
-              <Text style={{ fontSize: 11, color: 'rgba(174,239,77,0.6)', marginTop: 4 }}>{tr.resume_global || 'Global'}</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: 'rgba(174,239,77,0.08)', borderRadius: 12, padding: 16, alignItems: 'center' }}>
-              <Text style={{ fontSize: 32, fontWeight: '800', color: '#AEEF4D' }}>{'🔥'}{streak > 0 ? streak : 0}</Text>
-              <Text style={{ fontSize: 11, color: 'rgba(174,239,77,0.6)', marginTop: 4 }}>{tr.resume_streak || 'Streak'}</Text>
-            </View>
-          </View>
-          <View style={{ marginTop: 14, height: 6, backgroundColor: 'rgba(174,239,77,0.12)', borderRadius: 3, overflow: 'hidden' }}>
-            <View style={{ height: 6, width: pct + '%', backgroundColor: '#AEEF4D', borderRadius: 3 }} />
-          </View>
-          <Text style={{ fontSize: 11, color: 'rgba(174,239,77,0.5)', textAlign: 'right', marginTop: 4 }}>{totalDone} / 140</Text>
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.55)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20 }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.par_pilier}</Text>
+          {sortedPiliers.map(function(p, idx) {
+            var count = done[p.key].filter(function(v) { return v === true || v === 'true'; }).length;
+            var pct2 = Math.round(count / 20 * 100);
+            var isRec = recommendedPiliers.includes(p.key);
+            return (
+              <View key={p.key} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: idx < sortedPiliers.length - 1 ? 0.5 : 0, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', marginRight: 12, borderWidth: 1.5, borderColor: '#AEEF4D' }}>
+                  <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: '#ffffff' }}>{p.label}{isRec ? ' ★' : ''}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 8 }}>
+                    <View style={{ flex: 1, height: 4, backgroundColor: 'rgba(174,239,77,0.12)', borderRadius: 2, overflow: 'hidden' }}>
+                      <View style={{ height: 4, width: pct2 + '%', backgroundColor: '#AEEF4D', borderRadius: 2 }} />
+                    </View>
+                    <Text style={{ fontSize: 11, color: '#AEEF4D', width: 38 }}>{count}/20</Text>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: '#AEEF4D', marginLeft: 8 }}>{pct2}%</Text>
+              </View>
+            );
+          })}
         </View>
       </ScrollView>
     </View>
@@ -3241,7 +3329,7 @@ function FloatingMedusas() {
   }, []);
   return meds.map(function(m, i) {
     return (
-      <Animated.View key={'bg-m-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.35, left: m.x, top: m.y }}>
+      <Animated.View key={'bg-m-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.6, left: m.x, top: m.y }}>
         <MeduseCornerIcon size={m.size} breathCycleMs={2800 + i * 400} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
       </Animated.View>
     );
@@ -3289,7 +3377,7 @@ function Progresser({ done, lang, tensionIdxs }) {
             const isRec = recommendedPiliers.includes(p.key);
             const pct2 = Math.round(count / 20 * 100);
             return (
-              <View key={p.key} style={{ backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
+              <View key={p.key} style={{ backgroundColor: 'rgba(0,18,38,0.55)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
                   <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden', borderWidth: 1.5, borderColor: '#AEEF4D', marginRight: 14 }}>
                     <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} />
@@ -3314,137 +3402,59 @@ function Progresser({ done, lang, tensionIdxs }) {
 }
 
 // ══════════════════════════════════
-// PARCOURS — Stats + Calendrier
+// PROFIL — Abonnement + Compte
 // ══════════════════════════════════
-function ParcoursScreen({ prenom, done, lang, tensionIdxs, streak, supabase, supaUser, onLogout, isSubscriber, onRestorePurchases }) {
-  const tr = T[lang] || T['fr'];
-  const totalDone = Object.values(done).flat().filter(Boolean).length;
-  const pct = Math.round(totalDone / 140 * 100);
-  const animPct = useRef(new Animated.Value(0)).current;
-  const piliers = getPiliers(lang);
-  const recommendedPiliers = tensionIdxs.map(i => ZONE_TO_PILIER[i]);
-  useEffect(() => { Animated.timing(animPct, { toValue: pct, duration: 1200, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(); }, [pct]);
-
+function ProfilScreen({ prenom, lang, supabase, supaUser, onLogout, isSubscriber, onRestorePurchases }) {
+  var tr = T[lang] || T['fr'];
   return (
-    <View style={{ flex: 1 }}>
-      <LinearGradient pointerEvents="none" colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
-        {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
-      </View>
-      <FloatingMedusas />
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 60 }}
-        scrollEventThrottle={16}
-        showsVerticalScrollIndicator={true}
-      >
-        <View style={{ paddingTop: 62, paddingHorizontal: 24, paddingBottom: 0 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginBottom: 16 }}>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</Text></Text>
+    <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      <ScrollView contentContainerStyle={{ paddingTop: 62, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#000000' }}>{prenom ? prenom.slice(0, 2).toUpperCase() : 'YT'}</Text>
+            </View>
+            <View>
+              <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff' }}>{prenom || 'Profil'}</Text>
+              <Text style={{ fontSize: 13, color: 'rgba(174,239,77,0.6)' }}>FluidBody · Pilates</Text>
+            </View>
           </View>
         </View>
-          <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 16 }}>
-            <View style={[styles.statCard, { flex: 1 }]}>
-              <Text style={{ fontSize: 28, fontWeight: '200', color: '#AEEF4D' }}>{totalDone}</Text>
-              <Text style={[styles.statLbl, { color: 'rgba(174,239,77,0.6)' }]}>{tr.m_seances}</Text>
-            </View>
-            <View style={[styles.statCard, { flex: 1, borderColor: '#AEEF4D' }]}>
-              <Text style={{ fontSize: 28, fontWeight: '200', color: '#AEEF4D' }}>{'🔥'} {streakCountValue(streak)}</Text>
-              <Text style={[styles.statLbl, { color: 'rgba(174,239,77,0.6)' }]}>{tr.m_streak}</Text>
-            </View>
-            <View style={[styles.statCard, { flex: 1 }]}>
-              <Text style={{ fontSize: 28, fontWeight: '200', color: '#AEEF4D' }}>{pct}%</Text>
-              <Text style={[styles.statLbl, { color: 'rgba(174,239,77,0.6)' }]}>{tr.m_progress}</Text>
-            </View>
-          </View>
 
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.prog_globale}</Text>
-              <Text style={{ fontSize: 13, color: '#AEEF4D' }}>{totalDone} / 140</Text>
-            </View>
-            <View style={{ height: 10, backgroundColor: 'rgba(174,239,77,0.12)', borderRadius: 5, overflow: 'hidden', marginBottom: 6 }}>
-              <Animated.View style={{ height: 10, width: animPct.interpolate({ inputRange: [0, 100], outputRange: [0, 300] }), backgroundColor: '#AEEF4D', borderRadius: 5 }} />
-            </View>
-            <Text style={{ fontSize: 11, color: 'rgba(174,239,77,0.6)', textAlign: 'right' }}>
-              {pct < 10 ? `${U_SEED} Début du voyage` : pct < 30 ? `${U_WAVE} En route` : pct < 60 ? `${U_DROP} Bonne progression` : pct < 90 ? `${U_STAR} Presque là` : `${U_JELLY} Maîtrise totale`}
-            </Text>
-          </View>
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(30,30,32,0.95)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 12 }}>{tr.subscription_status_label}</Text>
+          <Text style={{ fontSize: 15, fontWeight: '400', color: '#AEEF4D', marginBottom: 16 }}>{isSubscriber ? tr.subscription_status_active : tr.subscription_status_free}</Text>
+          <TouchableOpacity onPress={onRestorePurchases} style={{ paddingVertical: 13, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.10)', alignItems: 'center' }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>{tr.subscription_reset}</Text>
+          </TouchableOpacity>
+        </View>
 
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14 }}>
-            <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 }}>{tr.par_pilier}</Text>
-            {piliers.map((p, i) => {
-              const count = done[p.key].filter(v => v === true || v === 'true').length;
-              const pct2 = (count / 20) * 100;
-              const IconComp = ICONS[p.key];
-              const isRec = recommendedPiliers.includes(p.key);
-              return (
-                <View key={i} style={{ marginBottom: 12, borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 12 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 7 }}>
-                    <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden', borderWidth: 1.5, borderColor: '#AEEF4D', marginRight: 10 }}><ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} /></View>
-                    <Text style={{ flex: 1, fontSize: 13, fontWeight: '300', color: '#ffffff' }}>{p.label}{isRec ? ' ★' : ''}</Text>
-                    <Text style={{ fontSize: 12, color: '#AEEF4D' }}>{count}/20{count === 20 ? ' ✓' : ''}</Text>
-                  </View>
-                  <View style={{ height: 6, backgroundColor: 'rgba(174,239,77,0.12)', borderRadius: 3, overflow: 'hidden', flexDirection: 'row' }}>
-                    <View style={{ height: 6, flex: pct2 / 100, backgroundColor: '#AEEF4D', borderRadius: 3, opacity: count === 20 ? 1 : 0.7 }} />
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 10, marginBottom: 14, alignItems: 'center' }}>
-            <View style={{ marginTop: 14, marginBottom: 12 }}><MeduseCornerIcon size={65} breathCycleMs={3000} tint="rgba(174,239,77,1)" /></View>
-            <Text style={{ fontSize: 16, fontWeight: '200', color: '#AEEF4D', textAlign: 'center', lineHeight: 24, fontStyle: 'italic' }}>{tr.motivation(streak)}</Text>
-          </View>
-
-          {recommendedPiliers.length > 0 && (
-            <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14 }}>
-              <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>★ {tr.recommande_pour_toi}</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {recommendedPiliers.map(pk => {
-                  const p = piliers.find(x => x.key === pk);
-                  if (!p) return null;
-                  return (
-                    <View key={pk} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: '#AEEF4D', backgroundColor: 'rgba(174,239,77,0.08)' }}>
-                      <View style={{ width: 24, height: 24, borderRadius: 12, overflow: 'hidden' }}><ImageBackground source={PILIER_IMAGES[pk]} resizeMode="cover" style={{ flex: 1 }} /></View>
-                      <Text style={{ fontSize: 12, color: '#AEEF4D' }}>{p.label}</Text>
-                    </View>
-                  );
-                })}
-              </View>
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(30,30,32,0.95)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 14 }}>{tr.mon_compte}</Text>
+          {supaUser && (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>Email</Text>
+              <Text style={{ fontSize: 14, color: '#AEEF4D' }} numberOfLines={1}>{supaUser.email}</Text>
             </View>
           )}
+          {tr.compte_info.map(function(item, i) {
+            return (
+              <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: i < tr.compte_info.length - 1 ? 0.5 : 0, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{item[0]}</Text>
+                <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{item[1]}</Text>
+              </View>
+            );
+          })}
+        </View>
 
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14 }}>
-            <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>{tr.subscription_status_label}</Text>
-            <Text style={{ fontSize: 15, fontWeight: '300', color: '#AEEF4D', marginBottom: 16 }}>{isSubscriber ? tr.subscription_status_active : tr.subscription_status_free}</Text>
-            <TouchableOpacity onPress={onRestorePurchases} style={{ paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(174,239,77,0.35)', backgroundColor: 'rgba(174,239,77,0.10)', alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{tr.subscription_reset}</Text>
+        {supaUser && onLogout && (
+          <View style={{ marginHorizontal: 20 }}>
+            <TouchableOpacity onPress={onLogout} style={{ paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(255,50,50,0.08)', alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,100,100,0.85)' }}>Se déconnecter</Text>
             </TouchableOpacity>
           </View>
-
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22 }}>
-            <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>{tr.mon_compte}</Text>
-            {supaUser && (
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: 0.5, borderBottomColor: 'rgba(174,239,77,0.12)' }}>
-                <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(174,239,77,0.6)' }}>Email</Text>
-                <Text style={{ fontSize: 12, fontWeight: '300', color: '#AEEF4D' }} numberOfLines={1}>{supaUser.email}</Text>
-              </View>
-            )}
-            {tr.compte_info.map(([label, val], i) => (
-              <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: i < 2 ? 0.5 : 0, borderBottomColor: 'rgba(174,239,77,0.12)' }}>
-                <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(174,239,77,0.6)' }}>{label}</Text>
-                <Text style={{ fontSize: 13, fontWeight: '300', color: '#AEEF4D' }}>{val}</Text>
-              </View>
-            ))}
-            {supaUser && onLogout && (
-              <TouchableOpacity onPress={onLogout} style={{ marginTop: 16, paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(174,239,77,0.35)', backgroundColor: 'rgba(174,239,77,0.08)', alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 1 }}>Se déconnecter</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </ScrollView>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -3594,12 +3604,19 @@ function OnboardingScreen({ onDone, initialLang }) {
     });
   }, []);
 
+  useEffect(function() {
+    if (step === 0) {
+      var timer = setTimeout(function() { nextStep(1); }, 3000);
+      return function() { clearTimeout(timer); };
+    }
+  }, [step]);
+
   function nextStep(n) {
     Animated.sequence([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
     ]).start();
-    setTimeout(() => setStep(n), 250);
+    setTimeout(() => setStep(n), 400);
   }
 
   function afterPrenomContinue() {
@@ -3678,13 +3695,13 @@ function OnboardingScreen({ onDone, initialLang }) {
         var s = step === 2 ? m.size * 0.7 : m.size;
         var o = step === 2 ? 0.7 : 1;
         return (
-          <Animated.View key={'fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 1, opacity: o, left: m.x, top: m.y }}>
+          <Animated.View key={'fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: o * 0.7, left: m.x, top: m.y }}>
             <MeduseCornerIcon size={s} breathCycleMs={m.breath} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
           </Animated.View>
         );
       })}
       <View style={{ position: 'absolute', top: 54, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', zIndex: 30, paddingHorizontal: 24 }}>
-        {step > 0 ? (
+        {step > 1 ? (
           <TouchableOpacity onPress={() => nextStep(step - 1)} style={{ position: 'absolute', left: 24, padding: 8 }}>
             <Text style={{ fontSize: 22, color: '#E5FF00' }}>←</Text>
           </TouchableOpacity>
@@ -3695,11 +3712,7 @@ function OnboardingScreen({ onDone, initialLang }) {
       </View>
       <Animated.View style={{ flex: 1, opacity: fadeAnim, alignItems: 'center', justifyContent: step === 1 ? 'center' : 'flex-end', paddingBottom: step === 0 ? 132 : 60, zIndex: 2, elevation: step === 2 ? 4 : 0 }}>
         {step === 0 && (
-          <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }}>
-            <TouchableOpacity onPress={() => nextStep(1)} style={styles.btnCtaLarge}>
-              <Text style={styles.btnCtaLargeTxt}>{tr.ob_cta}</Text>
-            </TouchableOpacity>
-          </View>
+          <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }} />
         )}
         {step === 1 && (
           <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }}>
@@ -4075,11 +4088,10 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
       })()}
       <NavigationContainer>
           <Tab.Navigator tabBar={function(props) { return <CustomTabBar {...props} />; }} screenOptions={{ headerShown: false }}>
-          <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={isSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconProgresser {...props} /> }}>{() => <Progresser done={done} lang={lang} tensionIdxs={tensionIdxs} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[4]} options={{ tabBarIcon: (props) => <TabIconParcours {...props} /> }}>{() => <ParcoursScreen prenom={prenom} done={done} lang={lang} tensionIdxs={tensionIdxs} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={isSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} lang={lang} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} />}</Tab.Screen>
         </Tab.Navigator>
       </NavigationContainer>
     </>
@@ -4265,6 +4277,6 @@ const styles = StyleSheet.create({
   btnCtaLarge: { alignSelf: 'stretch', height: 66, borderRadius: 33, backgroundColor: 'rgba(229,255,0,0.15)', borderWidth: 2, borderColor: '#E5FF00', alignItems: 'center', justifyContent: 'center' },
   btnCtaOff: { opacity: 0.3 },
   btnCtaLargeTxt: { fontSize: 19, fontWeight: '700', color: '#E5FF00', letterSpacing: 3, textTransform: 'uppercase' },
-  statCard: { flex: 1, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 14, alignItems: 'center' },
+  statCard: { flex: 1, backgroundColor: 'rgba(0,18,38,0.55)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 14, alignItems: 'center' },
   statLbl: { fontSize: 9, fontWeight: '200', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(174,239,77,0.6)' },
 });
