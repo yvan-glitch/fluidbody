@@ -18,6 +18,8 @@ let HapticsMod = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
 try { Device = require('expo-device'); } catch(e) {}
 try { HapticsMod = require('expo-haptics'); } catch(e) {}
+let AppleHealthKit = null;
+try { AppleHealthKit = require('react-native-health').default; } catch(e) {}
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Svg, { Path, Circle, Ellipse, Line, Rect, Defs, RadialGradient, Stop, G } from 'react-native-svg';
 import { Video, ResizeMode, Audio } from 'expo-av';
@@ -26,6 +28,48 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// ── HEALTHKIT ──────────────────────────────────────────
+const HK_PERMISSIONS = AppleHealthKit ? {
+  permissions: {
+    read: [],
+    write: [
+      AppleHealthKit.Constants?.Permissions?.ActiveEnergyBurned,
+      AppleHealthKit.Constants?.Permissions?.Workout,
+    ].filter(Boolean),
+  },
+} : null;
+
+let hkInitialized = false;
+
+function initHealthKit() {
+  if (!AppleHealthKit || hkInitialized || Platform.OS !== 'ios') return;
+  AppleHealthKit.initHealthKit(HK_PERMISSIONS, function(err) {
+    if (err) { if (__DEV__) console.log('HealthKit init error:', err); return; }
+    hkInitialized = true;
+    if (__DEV__) console.log('HealthKit initialized');
+  });
+}
+
+function saveHealthKitWorkout(durationMinutes) {
+  if (!AppleHealthKit || !hkInitialized || Platform.OS !== 'ios') return;
+  var now = new Date();
+  var start = new Date(now.getTime() - durationMinutes * 60000);
+  var calories = Math.round(durationMinutes * 5);
+  var options = {
+    type: 'FunctionalStrengthTraining',
+    startDate: start.toISOString(),
+    endDate: now.toISOString(),
+    energyBurned: calories,
+    energyBurnedUnit: 'calorie',
+  };
+  AppleHealthKit.saveWorkout(options, function(err, res) {
+    if (__DEV__) {
+      if (err) console.log('HealthKit workout save error:', err);
+      else console.log('HealthKit workout saved:', durationMinutes + 'min, ' + calories + 'cal');
+    }
+  });
+}
+
 /** Pictogrammes restants (autres que 🔥🔒✓▶) — chaînes UTF-8. */
 const U_JELLY = '\uD83E\uDEBC';
 const U_WAVE = '\uD83C\uDF0A';
@@ -33,7 +77,7 @@ const U_STAR = '\u2B50';
 const U_SEED = '\uD83C\uDF31';
 const U_DROP = '\uD83D\uDCA7';
 
-/** Valeur numérique du streak pour l’affichage à côté de {'🔥'} dans le JSX. */
+/** Valeur numérique du streak pour l'affichage à côté de {'🔥'} dans le JSX. */
 function streakCountValue(streak) {
   const n = Number(streak);
   return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
@@ -133,7 +177,7 @@ const VIDEO_DEMO = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/s
 
 const SUPPORTED_APP_LANGS = ['fr', 'en', 'es', 'it'];
 
-/** Langue d’interface : locale appareil (expo-localization), sinon français. */
+/** Langue d'interface : locale appareil (expo-localization), sinon français. */
 function getAppLangFromLocale() {
   try {
     const locales = getLocales();
@@ -144,8 +188,8 @@ function getAppLangFromLocale() {
   return 'fr';
 }
 
-/** Indices 0 et 1 gratuits ; le reste verrouillé si pas d’abonnement simulé (AsyncStorage `fluid_sub`). */
-const FREE_SEANCE_INDEX = 2;
+/** Indices 0 et 1 gratuits ; le reste verrouillé si pas d'abonnement simulé (AsyncStorage `fluid_sub`). */
+const FREE_SEANCE_INDEX = 0;
 
 const PRODUCT_IDS = {
   monthly: 'com.fluidbody.app.premium.monthly',
@@ -221,29 +265,19 @@ const ZONE_TO_PILIER = { 0: 'p2', 1: 'p1', 2: 'p3', 3: 'p4', 4: 'p5', 5: 'p6' };
 // Choisit une séance non faite selon le jour + profil utilisateur
 function getSeanceDuJour(done, tensionIdxs, lang) {
   const piliers = getPiliers(lang);
-  const recommended = tensionIdxs.map(i => ZONE_TO_PILIER[i]);
   const seances = getSeances(lang);
-
-  // Priorité : piliers recommandés d'abord, puis les autres
-  const orderedKeys = [
-    ...recommended.filter(k => piliers.find(p => p.key === k)),
-    ...piliers.filter(p => !recommended.includes(p.key)).map(p => p.key),
-  ];
-
-  // Déterminisme basé sur le jour → toujours la même séance le même jour
-  const dayIndex = Math.floor(Date.now() / 86400000);
-
-  for (const key of orderedKeys) {
-    const pilierSeances = seances[key] || [];
-    const notDone = pilierSeances
-      .map((s, i) => ({ seance: s, idx: i, key }))
-      .filter(({ idx }) => !done[key]?.[idx]);
-    if (notDone.length > 0) {
-      const pick = notDone[dayIndex % notDone.length];
-      return { ...pick, pilier: piliers.find(p => p.key === key) };
-    }
-  }
-  return null; // toutes les séances terminées
+  const allSeances = [];
+  piliers.forEach(function(p) {
+    var ps = seances[p.key] || [];
+    ps.forEach(function(s, i) {
+      allSeances.push({ seance: s, idx: i, key: p.key, pilier: p });
+    });
+  });
+  if (allSeances.length === 0) return null;
+  // Séance démo basée sur le mois : change chaque mois
+  var monthIndex = new Date().getMonth() + new Date().getFullYear() * 12;
+  var pick = allSeances[monthIndex % allSeances.length];
+  return pick;
 }
 
 
@@ -307,13 +341,31 @@ const T = {
     retour_video: '← Retour',
     video_resume: (t) => `Reprise · ${t}`,
     reprise_badge: 'Reprise',
-    video_load_error: 'La vidéo n’a pas pu être chargée.',
+    video_load_error: `La vidéo n'a pas pu être chargée.`,
     video_retry: 'Réessayer',
     seance_done: '✓  Séance terminée',
     biblio_titre: 'Bibliothèque',
     biblio_sub: 'Comprendre pour mieux ressentir',
     tab_piliers: 'Les 6 piliers',
     tab_methode: 'La méthode',
+    tab_pour_vous: 'Pour vous',
+    tab_explorer: 'Explorer',
+    tab_programmes: 'Programmes',
+    tab_recherche: '\uD83D\uDD0D',
+    explore_free_title: 'Sélection gratuite du mois',
+    explore_free_sub: 'Essayez cette séance une fois, sans abonnement requis',
+    explore_new: 'Nouvelles sélections pour vous',
+    prog_section_title: 'Vos programmes sur mesure',
+    prog_section_sub: 'Programmes prédéfinis pour continuer sur votre lancée ou intensifier votre routine.',
+    prog_debuter: 'Débuter',
+    prog_debuter_sub: 'Épaules, Dos et Mobilité',
+    prog_debuter_duree: '3 JOURS · 10 MIN/JOUR',
+    prog_apercu: 'Aperçu du programme',
+    prog_custom_title: 'Créez votre propre programme',
+    prog_custom_sub: 'Choisissez les activités et définissez votre programme.',
+    prog_custom_card: 'Programme personnalisé',
+    prog_custom_card_sub: 'Vos activités, la durée de vos exercices, vos jours et votre rythme.',
+    prog_custom_btn: 'Créer un programme',
     biblio_intro: 'La méthode FluidBody repose sur 5 étapes progressives. Chaque séance les traverse dans l\'ordre.',
     lire: ' de lecture',
     retour_biblio: '← Bibliothèque',
@@ -326,12 +378,13 @@ const T = {
     compte_info: [['Application', 'FluidBody · Pilates'], ['Version', 'FluidBody Beta 1.0'], ['Méthode', 'Pilates Conscient · 23 ans']],
     progresser_sub: (p) => `${p}% du parcours complété`,
     recommande_pour_toi: 'POUR TOI',
-    seance_du_jour: 'Séance du jour',
+    seance_gratuite: 'Séance gratuite',
     seance_du_jour_sub: "Recommandée pour toi aujourd'hui",
     commencer_seance: 'Commencer →',
     deja_faite: "✓ Déjà faite aujourd'hui",
     notif_title: `FluidBody ${U_JELLY}`,
-    notif_body: "Ta séance du jour t'attend. Ton corps a besoin de toi.",
+    notif_body: "Ta séance démo t'attend. Ton corps a besoin de toi.",
+    demo_limit: "Abonne-toi pour voir la suite",
     motivation: (streak) => streak === 0 ? '"Commence aujourd\'hui.\nTon corps t\'attend."' :
       streak < 3  ? `"${streak} jour${streak > 1 ? 's' : ''} de suite. Continue."` :
       streak < 7  ? `"${streak} jours consécutifs !\nTon corps s\'éveille."` :
@@ -342,8 +395,9 @@ const T = {
     premium_alert_title: 'Contenu Premium',
     premium_alert_simulate: 'Voir les offres',
     premium_alert_later: 'Plus tard',
-    paywall_title: 'Débloquer FluidBody Premium',
-    paywall_sub: 'Accès illimité à toutes les séances.',
+    paywall_title: 'Des exercices pour tout le monde',
+    paywall_sub: "D\u00e9couvrez de nouveaux exercices con\u00e7us pour tous les niveaux.",
+    paywall_yearly_link: "\u00c9conomisez avec l\u2019abonnement annuel \u203a",
     paywall_monthly: 'Mensuel',
     paywall_yearly: 'Annuel',
     paywall_buy_monthly: 'Acheter mensuel',
@@ -352,6 +406,11 @@ const T = {
     paywall_close: 'Fermer',
     paywall_prices_loading: 'Chargement des prix…',
     paywall_not_available: 'Achats indisponibles (Expo Go / simulateur).',
+    paywall_start: 'Commencer',
+    paywall_per_month: '/mois',
+    paywall_try_free: 'Essayer avec la séance du mois gratuite',
+    free_try_once: 'Essayez une fois cet épisode gratuitement',
+    free_go: "C'est parti !",
     subscription_status_label: 'Abonnement vidéos',
     subscription_status_active: 'Actif — toutes les séances',
     subscription_status_free: 'Inactif — séances 1 et 2 gratuites',
@@ -403,7 +462,7 @@ const T = {
     ob_auth_err_email: 'Enter a valid email address.',
     ob_auth_confirm: 'If email confirmation is required, check your inbox then sign in.',
     ob_auth_err_net: 'Network error.',
-    ob_auth_no_cloud: 'Cloud backup isn’t available in this build. Your credentials won’t be saved to a server.',
+    ob_auth_no_cloud: `Cloud backup isn't available in this build. Your credentials won't be saved to a server.`,
     ob_auth_continue_local: 'Continue locally →',
     piliers: ['Shoulders', 'Back', 'Mobility', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates'],
     etapes: { Comprendre: 'Understand', Ressentir: 'Feel', Préparer: 'Prepare', Exécuter: 'Execute', Évoluer: 'Evolve' },
@@ -413,13 +472,31 @@ const T = {
     retour_video: '← Back',
     video_resume: (t) => `Resumed · ${t}`,
     reprise_badge: 'Resume',
-    video_load_error: 'Couldn’t load the video.',
+    video_load_error: `Couldn't load the video.`,
     video_retry: 'Try again',
     seance_done: '✓  Session complete',
     biblio_titre: 'Library',
     biblio_sub: 'Understand to feel better',
     tab_piliers: 'The 6 pillars',
     tab_methode: 'The method',
+    tab_pour_vous: 'For You',
+    tab_explorer: 'Explore',
+    tab_programmes: 'Programs',
+    tab_recherche: '\uD83D\uDD0D',
+    explore_free_title: 'Free pick of the month',
+    explore_free_sub: 'Try this session once, no subscription required',
+    explore_new: 'New picks for you',
+    prog_section_title: 'Your tailored programs',
+    prog_section_sub: 'Pre-built programs to keep your momentum or intensify your routine.',
+    prog_debuter: 'Get started',
+    prog_debuter_sub: 'Shoulders, Back and Mobility',
+    prog_debuter_duree: '3 DAYS · 10 MIN/DAY',
+    prog_apercu: 'Program overview',
+    prog_custom_title: 'Create your own program',
+    prog_custom_sub: 'Choose activities and define your program.',
+    prog_custom_card: 'Custom program',
+    prog_custom_card_sub: 'Your activities, exercise duration, your days and your pace.',
+    prog_custom_btn: 'Create a program',
     biblio_intro: 'The FluidBody method is built on 5 progressive steps. Each session follows them in order.',
     lire: ' read',
     retour_biblio: '← Library',
@@ -432,12 +509,13 @@ const T = {
     compte_info: [['App', 'FluidBody · Pilates'], ['Version', 'FluidBody Beta 1.0'], ['Method', 'Conscious Pilates · 23 years']],
     progresser_sub: (p) => `${p}% of journey completed`,
     recommande_pour_toi: 'FOR YOU',
-    seance_du_jour: 'Session of the day',
+    seance_gratuite: 'Free session',
     seance_du_jour_sub: 'Recommended for you today',
     commencer_seance: 'Start →',
     deja_faite: '✓ Already done today',
     notif_title: `FluidBody ${U_JELLY}`,
-    notif_body: 'Your daily session is waiting. Your body needs you.',
+    notif_body: 'Your demo session is waiting. Your body needs you.',
+    demo_limit: 'Subscribe to see the rest',
     motivation: (streak) => streak === 0 ? '"Start today.\nYour body is waiting."' :
       streak < 3  ? `"${streak} day${streak > 1 ? 's' : ''} in a row. Keep going."` :
       streak < 7  ? `"${streak} days in a row!\nYour body is awakening."` :
@@ -448,8 +526,9 @@ const T = {
     premium_alert_title: 'Premium content',
     premium_alert_simulate: 'See offers',
     premium_alert_later: 'Later',
-    paywall_title: 'Unlock FluidBody Premium',
-    paywall_sub: 'Unlimited access to all sessions.',
+    paywall_title: 'Exercises for everyone',
+    paywall_sub: 'Discover new exercises designed for all levels.',
+    paywall_yearly_link: "Save with an annual subscription \u203a",
     paywall_monthly: 'Monthly',
     paywall_yearly: 'Yearly',
     paywall_buy_monthly: 'Buy monthly',
@@ -458,6 +537,11 @@ const T = {
     paywall_close: 'Close',
     paywall_prices_loading: 'Loading prices…',
     paywall_not_available: 'Purchases unavailable (Expo Go / simulator).',
+    paywall_start: 'Start',
+    paywall_per_month: '/month',
+    paywall_try_free: 'Try the free session of the month',
+    free_try_once: 'Try this episode once for free',
+    free_go: "Let's go!",
     subscription_status_label: 'Video subscription',
     subscription_status_active: 'Active — all sessions',
     subscription_status_free: 'Inactive — sessions 1–2 free',
@@ -526,6 +610,24 @@ const T = {
     biblio_sub: 'Comprender para sentir mejor',
     tab_piliers: 'Los 6 pilares',
     tab_methode: 'El método',
+    tab_pour_vous: 'Para ti',
+    tab_explorer: 'Explorar',
+    tab_programmes: 'Programas',
+    tab_recherche: '\uD83D\uDD0D',
+    explore_free_title: 'Selección gratuita del mes',
+    explore_free_sub: 'Prueba esta sesión una vez, sin suscripción',
+    explore_new: 'Nuevas selecciones para ti',
+    prog_section_title: 'Tus programas a medida',
+    prog_section_sub: 'Programas predefinidos para mantener tu ritmo o intensificar tu rutina.',
+    prog_debuter: 'Empezar',
+    prog_debuter_sub: 'Hombros, Espalda y Movilidad',
+    prog_debuter_duree: '3 DÍAS · 10 MIN/DÍA',
+    prog_apercu: 'Vista del programa',
+    prog_custom_title: 'Crea tu propio programa',
+    prog_custom_sub: 'Elige las actividades y define tu programa.',
+    prog_custom_card: 'Programa personalizado',
+    prog_custom_card_sub: 'Tus actividades, la duración, tus días y tu ritmo.',
+    prog_custom_btn: 'Crear un programa',
     biblio_intro: 'El método FluidBody se basa en 5 pasos progresivos. Cada sesión los recorre en orden.',
     lire: ' de lectura',
     retour_biblio: '← Biblioteca',
@@ -538,12 +640,13 @@ const T = {
     compte_info: [['Aplicación', 'FluidBody · Pilates'], ['Versión', 'FluidBody Beta 1.0'], ['Método', 'Pilates Consciente · 23 años']],
     progresser_sub: (p) => `${p}% del recorrido completado`,
     recommande_pour_toi: 'PARA TI',
-    seance_du_jour: 'Sesión del día',
+    seance_gratuite: 'Sesión gratuita',
     seance_du_jour_sub: 'Recomendada para ti hoy',
     commencer_seance: 'Empezar →',
     deja_faite: '✓ Ya hecha hoy',
     notif_title: `FluidBody ${U_JELLY}`,
-    notif_body: 'Tu sesión del día te espera. Tu cuerpo te necesita.',
+    notif_body: 'Tu sesión demo te espera. Tu cuerpo te necesita.',
+    demo_limit: 'Suscríbete para ver el resto',
     motivation: (streak) => streak === 0 ? '"Empieza hoy.\nTu cuerpo te espera."' :
       streak < 3  ? `"${streak} día${streak > 1 ? 's' : ''} seguido${streak > 1 ? 's' : ''}. Sigue."` :
       streak < 7  ? `"¡${streak} días seguidos!\nTu cuerpo despierta."` :
@@ -554,8 +657,9 @@ const T = {
     premium_alert_title: 'Contenido Premium',
     premium_alert_simulate: 'Ver ofertas',
     premium_alert_later: 'Más tarde',
-    paywall_title: 'Desbloquear FluidBody Premium',
-    paywall_sub: 'Acceso ilimitado a todas las sesiones.',
+    paywall_title: 'Ejercicios para todos',
+    paywall_sub: 'Descubre nuevos ejercicios dise\u00f1ados para todos los niveles.',
+    paywall_yearly_link: "Ahorra con la suscripci\u00f3n anual \u203a",
     paywall_monthly: 'Mensual',
     paywall_yearly: 'Anual',
     paywall_buy_monthly: 'Comprar mensual',
@@ -564,6 +668,11 @@ const T = {
     paywall_close: 'Cerrar',
     paywall_prices_loading: 'Cargando precios…',
     paywall_not_available: 'Compras no disponibles (Expo Go / simulador).',
+    paywall_start: 'Empezar',
+    paywall_per_month: '/mes',
+    paywall_try_free: 'Prueba la sesión gratuita del mes',
+    free_try_once: 'Prueba este episodio una vez gratis',
+    free_go: '¡Vamos!',
     subscription_status_label: 'Suscripción de vídeo',
     subscription_status_active: 'Activa — todas las sesiones',
     subscription_status_free: 'Inactiva — sesiones 1–2 gratis',
@@ -632,6 +741,24 @@ const T = {
     biblio_sub: 'Capire per sentire meglio',
     tab_piliers: 'I 6 pilastri',
     tab_methode: 'Il metodo',
+    tab_pour_vous: 'Per te',
+    tab_explorer: 'Esplora',
+    tab_programmes: 'Programmi',
+    tab_recherche: '\uD83D\uDD0D',
+    explore_free_title: 'Selezione gratuita del mese',
+    explore_free_sub: 'Prova questa sessione una volta, senza abbonamento',
+    explore_new: 'Nuove selezioni per te',
+    prog_section_title: 'I tuoi programmi su misura',
+    prog_section_sub: 'Programmi predefiniti per mantenere il ritmo o intensificare la routine.',
+    prog_debuter: 'Iniziare',
+    prog_debuter_sub: 'Spalle, Schiena e Mobilità',
+    prog_debuter_duree: '3 GIORNI · 10 MIN/GIORNO',
+    prog_apercu: 'Anteprima del programma',
+    prog_custom_title: 'Crea il tuo programma',
+    prog_custom_sub: 'Scegli le attività e definisci il tuo programma.',
+    prog_custom_card: 'Programma personalizzato',
+    prog_custom_card_sub: 'Le tue attività, la durata, i tuoi giorni e il tuo ritmo.',
+    prog_custom_btn: 'Crea un programma',
     biblio_intro: 'Il metodo FluidBody si basa su 5 passaggi progressivi. Ogni sessione li percorre in ordine.',
     lire: ' di lettura',
     retour_biblio: '← Biblioteca',
@@ -644,12 +771,13 @@ const T = {
     compte_info: [['App', 'FluidBody · Pilates'], ['Versione', 'FluidBody Beta 1.0'], ['Metodo', 'Pilates Consapevole · 23 anni']],
     progresser_sub: (p) => `${p}% del percorso completato`,
     recommande_pour_toi: 'PER TE',
-    seance_du_jour: 'Sessione del giorno',
+    seance_gratuite: 'Sessione gratuita',
     seance_du_jour_sub: 'Consigliata per te oggi',
     commencer_seance: 'Inizia →',
     deja_faite: '✓ Già fatta oggi',
     notif_title: `FluidBody ${U_JELLY}`,
-    notif_body: 'La tua sessione del giorno ti aspetta. Il tuo corpo ha bisogno di te.',
+    notif_body: 'La tua sessione demo ti aspetta. Il tuo corpo ha bisogno di te.',
+    demo_limit: 'Abbonati per vedere il resto',
     motivation: (streak) => streak === 0 ? '"Inizia oggi.\nIl tuo corpo ti aspetta."' :
       streak < 3  ? `"${streak} giorno${streak > 1 ? 'i' : ''} di fila. Continua."` :
       streak < 7  ? `"${streak} giorni consecutivi!\nIl tuo corpo si risveglia."` :
@@ -660,12 +788,18 @@ const T = {
     premium_alert_title: 'Contenuto Premium',
     premium_alert_simulate: 'Vedi offerte',
     premium_alert_later: 'Più tardi',
-    paywall_title: 'Sblocca FluidBody Premium',
-    paywall_sub: 'Accesso illimitato a tutte le sessioni.',
+    paywall_title: 'Esercizi per tutti',
+    paywall_sub: 'Scopri nuovi esercizi pensati per tutti i livelli.',
+    paywall_yearly_link: "Risparmia con l\u2019abbonamento annuale \u203a",
     paywall_monthly: 'Mensile',
     paywall_yearly: 'Annuale',
     paywall_buy_monthly: 'Acquista mensile',
     paywall_buy_yearly: 'Acquista annuale',
+    paywall_start: 'Inizia',
+    paywall_per_month: '/mese',
+    paywall_try_free: 'Prova la sessione gratuita del mese',
+    free_try_once: 'Prova questo episodio una volta gratis',
+    free_go: 'Andiamo!',
     paywall_restore: 'Ripristina acquisti',
     paywall_close: 'Chiudi',
     paywall_prices_loading: 'Caricamento prezzi…',
@@ -802,7 +936,7 @@ const ETAPE_COLORS = {
   'Évoluer': 'rgba(185,135,255,0.9)',
 };
 
-/** Couleurs saturées + fonds plus opaques pour lisibilité sur dégradé cyan clair (bas d’écran). */
+/** Couleurs saturées + fonds plus opaques pour lisibilité sur dégradé cyan clair (bas d'écran). */
 const PILIERS_BASE = [
   // Ordre = placement autour du cercle (uniforme).
   { key: 'p7', color: 'rgba(255,35,155,1)', bg: 'rgba(255,35,155,0.42)' },
@@ -868,11 +1002,12 @@ function IconConscience({ color }) { return <Svg width={46} height={46} viewBox=
 function IconMatPilates({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Circle cx="30" cy="28" r="6" stroke={color} strokeWidth="3.5" fill="none"/><Line x1="30" y1="34" x2="30" y2="56" stroke={color} strokeWidth="3.5" strokeLinecap="round"/><Path d="M30 42 L18 36" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Path d="M30 42 L42 36" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Path d="M30 56 L22 70" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Path d="M30 56 L38 70" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Rect x="10" y="72" width="68" height="6" rx="3" stroke={color} strokeWidth="2.5" fill="none" opacity="0.6"/><Path d="M42 36 C54 26 64 20 74 18" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeDasharray="3 3" fill="none" opacity="0.7"/><Circle cx="74" cy="18" r="3.5" fill={color} opacity="0.8"/></Svg>; }
 const ICONS = { p1: IconEpaules, p2: IconDos, p3: IconMobilite, p4: IconPosture, p5: IconRespiration, p6: IconConscience, p7: IconMatPilates };
 
-/** Bulles ancrées en bas ; translateY positif = sous le bord, puis montée jusqu’en hors écran. */
+/** Bulles ancrées en bas ; translateY positif = sous le bord, puis montée jusqu'en hors écran. */
 const BULLE_DEPART_SOUS_BORD = 72;
 
-function Bulle({ delay, x, size, duration }) {
+function Bulle({ delay, x, size, duration, colorIndex }) {
   const a = useRef(new Animated.Value(0)).current;
+  const isWhite = (colorIndex != null ? colorIndex : Math.round(x)) % 2 === 1;
   useEffect(() => { setTimeout(() => { Animated.loop(Animated.timing(a, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true })).start(); }, delay); }, []);
   return (
     <Animated.View
@@ -885,8 +1020,8 @@ function Bulle({ delay, x, size, duration }) {
         height: size,
         borderRadius: size / 2,
         borderWidth: 1.2,
-        borderColor: 'rgba(200, 169, 110, 0.92)',
-        backgroundColor: 'rgba(200, 169, 110, 0.22)',
+        borderColor: isWhite ? 'rgba(255,255,255,0.5)' : 'rgba(0,189,208,0.5)',
+        backgroundColor: isWhite ? 'rgba(255,255,255,0.3)' : 'rgba(0,189,208,0.3)',
         opacity: a.interpolate({ inputRange: [0, 0.04, 0.12, 0.86, 1], outputRange: [0.45, 1, 1, 0.55, 0] }),
         transform: [{
           translateY: a.interpolate({
@@ -1001,7 +1136,7 @@ function blueMeduse(a) {
   return `rgba(0,180,216,${a})`;
 }
 
-function MeduseCornerIcon({ size = 50, breathCycleMs = null, breathMaxScale = 1.08 }) {
+function MeduseCornerIcon({ size = 50, breathCycleMs = null, breathMaxScale = 1.08, tint = null }) {
   const anim = useRef(new Animated.Value(0)).current;
   const breath = useRef(new Animated.Value(1)).current;
   const [tick, setTick] = useState(0);
@@ -1059,13 +1194,15 @@ function MeduseCornerIcon({ size = 50, breathCycleMs = null, breathMaxScale = 1.
   }, [breathCycleMs, breath, breathMaxScale]);
 
   const tentPaths = TENTS2.map(t => tentaclePath(t.sx, t.sy, t.angle, t.len, tick, t.phase, t.amp));
+  var mc = tint ? function(a) { return tint.replace('1)', a + ')').replace('rgb(', 'rgba('); } : blueMeduse;
+  var mcSolid = tint || MEDUSE_CORNER_BLUE;
 
   return (
     <Animated.View style={{ width: size, height: size, overflow: 'visible', transform: [{ translateY: floatY }], alignItems: 'center', justifyContent: 'center' }}>
       <Animated.View style={{ transform: [{ scale: breathCycleMs ? breath : bellScale }] }}>
         <Svg width={size} height={size} viewBox="0 0 280 520" preserveAspectRatio="xMidYMid meet" overflow="visible">
           {tentPaths.map((d, i) => (
-            <Path key={i} d={d} stroke={blueMeduse(0.35 + (i % 7) * 0.02)} strokeWidth={TENTS2[i].w} fill="none" strokeLinecap="round" />
+            <Path key={i} d={d} stroke={mc(0.35 + (i % 7) * 0.02)} strokeWidth={TENTS2[i].w} fill="none" strokeLinecap="round" />
           ))}
           <Defs>
             <RadialGradient id="cornerBellGrad" cx="50%" cy="28%" rx="55%" ry="60%" fx="48%" fy="22%">
@@ -1081,37 +1218,37 @@ function MeduseCornerIcon({ size = 50, breathCycleMs = null, breathMaxScale = 1.
               <Stop offset="100%" stopColor={MEDUSE_CORNER_BLUE} stopOpacity="0" />
             </RadialGradient>
           </Defs>
-          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke={blueMeduse(0.35)} strokeWidth="18" />
-          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke={blueMeduse(0.45)} strokeWidth="10" />
-          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke={blueMeduse(0.55)} strokeWidth="5" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke={mc(0.35)} strokeWidth="18" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke={mc(0.45)} strokeWidth="10" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke={mc(0.55)} strokeWidth="5" />
           <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke="rgba(255,255,255,0.78)" strokeWidth="1.5" />
-          <Path d="M 55 62 C 75 28 115 10 160 14 C 190 17 215 32 232 55" fill="none" stroke={blueMeduse(0.78)} strokeWidth="2.5" strokeLinecap="round" />
-          <Path d="M 62 58 C 82 26 118 9 158 13" fill="none" stroke={blueMeduse(0.55)} strokeWidth="1.2" strokeLinecap="round" />
-          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill={blueMeduse(0.34)} />
+          <Path d="M 55 62 C 75 28 115 10 160 14 C 190 17 215 32 232 55" fill="none" stroke={mc(0.78)} strokeWidth="2.5" strokeLinecap="round" />
+          <Path d="M 62 58 C 82 26 118 9 158 13" fill="none" stroke={mc(0.55)} strokeWidth="1.2" strokeLinecap="round" />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill={mc(0.34)} />
           <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="url(#cornerBellGrad)" />
           <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="url(#cornerTopGlow)" />
-          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke={blueMeduse(0.72)} strokeWidth="1.2" />
-          <Path d="M 140 105 Q 108 88 78  98" stroke={blueMeduse(0.35)} strokeWidth="1.3" fill="none" />
-          <Path d="M 140 105 Q 115 78 100 52" stroke={blueMeduse(0.35)} strokeWidth="1.3" fill="none" />
-          <Path d="M 140 105 Q 132 68 130 38" stroke={blueMeduse(0.32)} strokeWidth="1.2" fill="none" />
-          <Path d="M 140 105 Q 140 66 140 36" stroke={blueMeduse(0.38)} strokeWidth="1.4" fill="none" />
-          <Path d="M 140 105 Q 148 68 150 38" stroke={blueMeduse(0.32)} strokeWidth="1.2" fill="none" />
-          <Path d="M 140 105 Q 165 78 180 52" stroke={blueMeduse(0.35)} strokeWidth="1.3" fill="none" />
-          <Path d="M 140 105 Q 172 88 202 98" stroke={blueMeduse(0.35)} strokeWidth="1.3" fill="none" />
-          <Path d="M 140 105 Q 95  95  68 108" stroke={blueMeduse(0.28)} strokeWidth="1.1" fill="none" />
-          <Path d="M 140 105 Q 185 95 212 108" stroke={blueMeduse(0.28)} strokeWidth="1.1" fill="none" />
-          <Path d="M 46 122 Q 62 136 80 132 Q 96 142 112 138 Q 126 144 140 144 Q 154 144 168 138 Q 184 142 200 132 Q 218 136 234 122" stroke={blueMeduse(0.55)} strokeWidth="1.8" fill="none" />
-          <Path d="M 58 126 Q 68 134 78 130 Q 88 138 100 134 Q 112 142 124 138 Q 132 144 140 143 Q 148 144 156 138 Q 168 142 180 134 Q 192 138 202 130 Q 212 134 222 126" stroke={blueMeduse(0.42)} strokeWidth="1.2" fill="none" />
-          <Path d="M 140 148 C 134 160 126 172 122 186 C 118 198 124 208 130 218 C 124 228 118 240 122 254 C 118 264 112 274 115 288" stroke={blueMeduse(0.58)} strokeWidth="2.2" fill="none" strokeLinecap="round" />
-          <Path d="M 140 148 C 146 160 154 172 158 186 C 162 198 156 208 150 218 C 156 228 162 240 158 254 C 162 264 168 274 165 288" stroke={blueMeduse(0.58)} strokeWidth="2.2" fill="none" strokeLinecap="round" />
-          <Path d="M 140 148 C 140 164 138 178 136 192 C 134 204 138 215 140 225 C 142 215 146 204 144 192 C 142 178 140 164 140 148" stroke={blueMeduse(0.5)} strokeWidth="1.8" fill="none" strokeLinecap="round" />
-          <Circle cx="96" cy="60" r="2.2" fill={blueMeduse(0.88)} />
-          <Circle cx="184" cy="60" r="2.2" fill={blueMeduse(0.88)} />
-          <Circle cx="68" cy="95" r="1.8" fill={blueMeduse(0.72)} />
-          <Circle cx="212" cy="95" r="1.8" fill={blueMeduse(0.72)} />
+          <Path d="M 32 118 C 20 65 55 12 140 8 C 226 12 260 65 248 118 C 238 140 210 152 186 148 C 170 155 155 157 140 157 C 125 157 110 155 94 148 C 70 152 42 140 32 118 Z" fill="none" stroke={mc(0.72)} strokeWidth="1.2" />
+          <Path d="M 140 105 Q 108 88 78  98" stroke={mc(0.35)} strokeWidth="1.3" fill="none" />
+          <Path d="M 140 105 Q 115 78 100 52" stroke={mc(0.35)} strokeWidth="1.3" fill="none" />
+          <Path d="M 140 105 Q 132 68 130 38" stroke={mc(0.32)} strokeWidth="1.2" fill="none" />
+          <Path d="M 140 105 Q 140 66 140 36" stroke={mc(0.38)} strokeWidth="1.4" fill="none" />
+          <Path d="M 140 105 Q 148 68 150 38" stroke={mc(0.32)} strokeWidth="1.2" fill="none" />
+          <Path d="M 140 105 Q 165 78 180 52" stroke={mc(0.35)} strokeWidth="1.3" fill="none" />
+          <Path d="M 140 105 Q 172 88 202 98" stroke={mc(0.35)} strokeWidth="1.3" fill="none" />
+          <Path d="M 140 105 Q 95  95  68 108" stroke={mc(0.28)} strokeWidth="1.1" fill="none" />
+          <Path d="M 140 105 Q 185 95 212 108" stroke={mc(0.28)} strokeWidth="1.1" fill="none" />
+          <Path d="M 46 122 Q 62 136 80 132 Q 96 142 112 138 Q 126 144 140 144 Q 154 144 168 138 Q 184 142 200 132 Q 218 136 234 122" stroke={mc(0.55)} strokeWidth="1.8" fill="none" />
+          <Path d="M 58 126 Q 68 134 78 130 Q 88 138 100 134 Q 112 142 124 138 Q 132 144 140 143 Q 148 144 156 138 Q 168 142 180 134 Q 192 138 202 130 Q 212 134 222 126" stroke={mc(0.42)} strokeWidth="1.2" fill="none" />
+          <Path d="M 140 148 C 134 160 126 172 122 186 C 118 198 124 208 130 218 C 124 228 118 240 122 254 C 118 264 112 274 115 288" stroke={mc(0.58)} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          <Path d="M 140 148 C 146 160 154 172 158 186 C 162 198 156 208 150 218 C 156 228 162 240 158 254 C 162 264 168 274 165 288" stroke={mc(0.58)} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          <Path d="M 140 148 C 140 164 138 178 136 192 C 134 204 138 215 140 225 C 142 215 146 204 144 192 C 142 178 140 164 140 148" stroke={mc(0.5)} strokeWidth="1.8" fill="none" strokeLinecap="round" />
+          <Circle cx="96" cy="60" r="2.2" fill={mc(0.88)} />
+          <Circle cx="184" cy="60" r="2.2" fill={mc(0.88)} />
+          <Circle cx="68" cy="95" r="1.8" fill={mc(0.72)} />
+          <Circle cx="212" cy="95" r="1.8" fill={mc(0.72)} />
           <Circle cx="140" cy="28" r="2.8" fill="rgba(255,255,255,0.92)" />
-          <Circle cx="120" cy="22" r="1.5" fill={blueMeduse(0.78)} />
-          <Circle cx="160" cy="22" r="1.5" fill={blueMeduse(0.78)} />
+          <Circle cx="120" cy="22" r="1.5" fill={mc(0.78)} />
+          <Circle cx="160" cy="22" r="1.5" fill={mc(0.78)} />
         </Svg>
       </Animated.View>
     </Animated.View>
@@ -1230,47 +1367,14 @@ const BULLES = [
   { x: 262, size: 2, delay: 771,   duration: 8796  },
 ];
 
-/** Moins dense qu’avant : 24 bulles × 3 décalages (les autres écrans gardent `BULLES` complet). */
-const BULLES_MONCORPS_BASE = BULLES.slice(0, 24);
+/** Moins dense qu'avant : 24 bulles × 3 décalages (les autres écrans gardent `BULLES` complet). */
+const BULLES_MONCORPS_BASE = BULLES.slice(0, 10);
 const BULLES_MONCORPS = [
   ...BULLES_MONCORPS_BASE,
-  ...BULLES_MONCORPS_BASE.map((b, i) => ({
-    ...b,
-    x: Math.max(0, Math.min(SW - 8, b.x + Math.round(SW * 0.16))),
-    delay: b.delay + 550 + (i % 6) * 70,
-  })),
-  ...BULLES_MONCORPS_BASE.map((b, i) => ({
-    ...b,
-    x: Math.max(0, Math.min(SW - 8, b.x + Math.round(SW * 0.34))),
-    delay: b.delay + 1300 + (i % 8) * 55,
-  })),
 ];
 
 /** Onboarding : quelques vagues décalées + bulles en plus (moins dense que la version max). */
-const BULLES_ONBOARDING = [
-  ...BULLES,
-  ...BULLES.map((b, i) => ({
-    ...b,
-    x: Math.max(0, Math.min(SW - 8, b.x + Math.round(SW * 0.14) + (i % 4) - 2)),
-    delay: b.delay + 820 + (i % 14) * 52,
-    duration: b.duration + (i % 7) * 160,
-  })),
-  ...BULLES.map((b, i) => ({
-    ...b,
-    x: Math.max(0, Math.min(SW - 8, b.x - Math.round(SW * 0.07) + (i % 3))),
-    delay: b.delay + 2380 + (i % 12) * 68,
-    duration: Math.round(b.duration * 1.04),
-  })),
-  ...Array.from({ length: 22 }, (_, i) => {
-    const t = (i * 0.6180339887) % 1;
-    return {
-      x: Math.max(0, Math.min(SW - 8, Math.round(t * (SW - 24)) + 4)),
-      size: 2 + (i % 5),
-      delay: 180 + i * 140 + (i % 9) * 40,
-      duration: 8200 + (i % 11) * 700,
-    };
-  }),
-];
+const BULLES_ONBOARDING = BULLES.slice(0, 12);
 
 function CelebrationOverlay({ visible, onDone, pilier, lang }) {
   const tr = T[lang] || T['fr'];
@@ -1439,7 +1543,7 @@ function VideoPlayPauseIcon({ playing, size = 36 }) {
   );
 }
 
-function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex }) {
+function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, isDemo, onDemoLimit }) {
   const tr = T[lang] || T['fr'];
   const videoRef = useRef(null);
   const lastStatusRef = useRef({});
@@ -1577,7 +1681,7 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
       syncKeepAwake(s);
       console.log('Video playback error:', { uri: uriRef.current, error: s.error });
       if (__DEV__) devWarn('Video playback error', s.error);
-      // Fallback: si l’URL spécifique échoue, basculer sur la démo pour éviter un écran bloqué
+      // Fallback: si l'URL spécifique échoue, basculer sur la démo pour éviter un écran bloqué
       if (hasRealVideo && uriRef.current !== VIDEO_DEMO) {
         setUri(VIDEO_DEMO);
         hasRestoredRef.current = false;
@@ -1588,6 +1692,12 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
       return;
     }
     if (s.isLoaded) setVideoLoadFailed(false);
+    // Demo limit: stop at 120 seconds
+    if (isDemo && s.isLoaded && s.positionMillis >= 120000) {
+      if (videoRef.current) videoRef.current.pauseAsync();
+      if (onDemoLimit) onDemoLimit();
+      return;
+    }
     setStatus(s);
     syncKeepAwake(s);
     maybePersistProgress(s);
@@ -1918,13 +2028,35 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex })
   );
 }
 
-function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isSubscriber, onActivateSubscription }) {
+function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isSubscriber, onActivateSubscription, sdjIndex }) {
   const tr = T[lang] || T['fr'];
   const seances = getSeances(lang)[pilier.key] || [];
   const doneCount = done.filter(Boolean).length;
   const [activeVideo, setActiveVideo] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showDemoLimit, setShowDemoLimit] = useState(false);
   const [resumeIndices, setResumeIndices] = useState(() => new Set());
+
+  var ppMedusas = useRef([
+    { x: new Animated.Value(SW - 80), y: new Animated.Value(40), size: 70 },
+    { x: new Animated.Value(20), y: new Animated.Value(SH * 0.06), size: 54 },
+    { x: new Animated.Value(SW * 0.4), y: new Animated.Value(SH * 0.1), size: 42 },
+  ]).current;
+
+  useEffect(function() {
+    ppMedusas.forEach(function(m) {
+      function drift() {
+        var toX = 10 + Math.random() * (SW - m.size - 20);
+        var toY = 40 + Math.random() * (SH - m.size - 140);
+        var dur = 10000 + Math.random() * 6000;
+        Animated.parallel([
+          Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
+          Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
+        ]).start(function() { drift(); });
+      }
+      setTimeout(function() { drift(); }, Math.random() * 2000);
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -1936,7 +2068,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
   }, [pilier.key, activeVideo]);
 
   function tryOpenSeance(i) {
-    if (!canAccessSeanceIndex(i, isSubscriber)) {
+    if (i !== sdjIndex && !canAccessSeanceIndex(i, isSubscriber)) {
       onActivateSubscription?.();
       return;
     }
@@ -1960,9 +2092,19 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
           pilier={pilier}
           lang={lang}
           seanceIndex={activeVideo}
-          onClose={() => setActiveVideo(null)}
-          onComplete={() => { onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
+          isDemo={activeVideo === sdjIndex && !isSubscriber}
+          onClose={() => { setShowDemoLimit(false); setActiveVideo(null); }}
+          onComplete={() => { var dur = parseInt(seances[activeVideo]?.[1]) || 15; saveHealthKitWorkout(dur); onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
+          onDemoLimit={() => setShowDemoLimit(true)}
         />
+        {showDemoLimit && (
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.85)', paddingVertical: 24, paddingHorizontal: 28, alignItems: 'center', zIndex: 50 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', textAlign: 'center', marginBottom: 12 }}>{tr.demo_limit}</Text>
+            <TouchableOpacity onPress={() => { setShowDemoLimit(false); setActiveVideo(null); if (onActivateSubscription) onActivateSubscription(); }} style={{ backgroundColor: '#E5FF00', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 25 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#000000' }}>{tr.paywall_start}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </Modal>
     );
   }
@@ -1973,14 +2115,18 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
       <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r'+i} delay={b.delay + 2000} x={b.x + SW * 0.35} size={b.size} duration={b.duration} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r2'+i} delay={b.delay + 5000} x={b.x + SW * 0.65} size={b.size} duration={b.duration} />)}
-      <View style={{ paddingTop: 60, paddingHorizontal: 22, paddingBottom: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }} style={{ paddingTop: 8 }}>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(0,220,255,0.78)', letterSpacing: 2.5, textTransform: 'uppercase' }}>{tr.retour}</Text>
+      {ppMedusas.map(function(m, i) {
+        return (
+          <Animated.View key={'ppm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 2, opacity: 0.9, left: m.x, top: m.y }}>
+            <MeduseCornerIcon size={m.size} breathCycleMs={3000 + i * 600} breathMaxScale={1.35} tint="rgba(229,255,0,1)" />
+          </Animated.View>
+        );
+      })}
+      <View style={{ paddingTop: 54, paddingHorizontal: 22, paddingBottom: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }} style={{ paddingVertical: 8, paddingHorizontal: 4 }}>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5FF00', letterSpacing: 1.5, textTransform: 'uppercase' }}>{tr.retour}</Text>
           </TouchableOpacity>
-          <View style={{ width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
-            <MeduseCornerIcon size={90} breathCycleMs={3000} />
-          </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <Text style={{ fontSize: IS_IPAD ? 44 : 40, fontWeight: '200', color: 'rgba(195,242,255,0.94)', letterSpacing: -0.3 }}>{pilier.label}</Text>
@@ -1994,34 +2140,31 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
         <View style={{ height: 3, backgroundColor: 'rgba(0,200,240,0.1)', borderRadius: 2, marginTop: 10, overflow: 'hidden', flexDirection: 'row' }}>
           <View style={{ height: 3, flex: doneCount / 20, backgroundColor: pilier.color, borderRadius: 2 }} />
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }}>
-          {Object.keys(ETAPE_COLORS).map(e => (
-            <View key={e} style={{ marginRight: 8, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, borderWidth: 0.5, borderColor: 'rgba(0,200,240,0.2)', backgroundColor: 'rgba(0,18,32,0.6)' }}>
-              <Text style={{ fontSize: 9, color: ETAPE_COLORS[e], letterSpacing: 1, textTransform: 'uppercase' }}>{tr.etapes[e] || e}</Text>
-            </View>
-          ))}
-        </ScrollView>
       </View>
       <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
         {seances.map(([titre, duree, etape], i) => {
           const isDone = done[i] === true || done[i] === 'true';
-          const locked = !canAccessSeanceIndex(i, isSubscriber);
+          const locked = i !== sdjIndex && !canAccessSeanceIndex(i, isSubscriber);
           return (
-            <TouchableOpacity key={i} onPress={() => tryOpenSeance(i)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDone ? 'rgba(0,30,22,0.7)' : 'rgba(0,18,32,0.7)', borderWidth: 0.5, borderColor: isDone ? 'rgba(0,220,150,0.35)' : locked ? 'rgba(255,200,80,0.25)' : 'rgba(0,195,240,0.12)', borderRadius: 18, marginBottom: 10, padding: 14, opacity: locked ? 0.72 : 1 }}>
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: isDone ? 'rgba(0,200,130,0.2)' : locked ? 'rgba(255,200,80,0.12)' : 'rgba(0,180,235,0.1)', borderWidth: 1, borderColor: isDone ? 'rgba(0,220,150,0.5)' : locked ? 'rgba(255,200,80,0.35)' : 'rgba(0,195,240,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                <Text style={{ fontSize: 12, color: isDone ? 'rgba(0,230,160,0.9)' : locked ? 'rgba(255,210,100,0.95)' : 'rgba(0,210,250,0.7)' }}>{isDone ? '✓' : locked ? '🔒' : '▶'}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '300', color: isDone ? 'rgba(0,220,150,0.8)' : locked ? 'rgba(155,215,240,0.55)' : 'rgba(195,240,255,0.9)', marginBottom: 4 }}>{titre}</Text>
-                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 9, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(0,195,240,0.1)', color: ETAPE_COLORS[etape], borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.2)', letterSpacing: 0.5 }}>{tr.etapes[etape] || etape}</Text>
-                  <Text style={{ fontSize: 9, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(0,195,240,0.1)', color: 'rgba(0,212,248,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.2)' }}>{duree}</Text>
-                  {resumeIndices.has(i) && !locked ? (
-                    <Text style={{ fontSize: 8, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(0,235,200,0.16)', color: 'rgba(0,245,220,0.95)', borderWidth: 0.5, borderColor: 'rgba(0,235,200,0.38)', letterSpacing: 0.4, fontWeight: '600', overflow: 'hidden' }}>{tr.reprise_badge}</Text>
-                  ) : null}
-                </View>
-              </View>
-              <Text style={{ fontSize: 11, color: 'rgba(0,195,240,0.3)', fontWeight: '300' }}>{String(i + 1).padStart(2, '0')}</Text>
+            <TouchableOpacity key={i} onPress={() => tryOpenSeance(i)} activeOpacity={0.88} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 12, height: 110, opacity: locked ? 0.4 : 1 }}>
+              <ImageBackground source={PILIER_IMAGES[pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
+                <LinearGradient colors={isDone ? ['rgba(0,30,22,0.75)', 'rgba(0,30,22,0.85)'] : locked ? ['rgba(0,14,24,0.75)', 'rgba(0,14,24,0.9)'] : ['rgba(0,14,24,0.55)', 'rgba(0,14,24,0.8)']} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                    <Text style={{ fontSize: 18, color: isDone ? 'rgba(0,230,160,0.95)' : '#ffffff' }}>{isDone ? '✓' : '▶'}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: isDone ? 'rgba(0,220,150,0.9)' : '#ffffff', marginBottom: 6 }} numberOfLines={1}>{titre}</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,195,240,0.15)', color: ETAPE_COLORS[etape], letterSpacing: 0.5 }}>{tr.etapes[etape] || etape}</Text>
+                      <Text style={{ fontSize: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,195,240,0.15)', color: 'rgba(0,212,248,0.8)' }}>{duree}</Text>
+                      {resumeIndices.has(i) && !locked ? (
+                        <Text style={{ fontSize: 9, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,235,200,0.2)', color: 'rgba(0,245,220,0.95)', fontWeight: '600' }}>{tr.reprise_badge}</Text>
+                      ) : null}
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', fontWeight: '300' }}>{String(i + 1).padStart(2, '0')}</Text>
+                </LinearGradient>
+              </ImageBackground>
             </TouchableOpacity>
           );
         })}
@@ -2090,8 +2233,7 @@ function PilierCard({ pilier, doneCount, onPress, recommended, lang, imageKey })
                 <Text style={{ fontSize: 8, color: "rgba(0,225,255,0.95)", fontWeight: "700", letterSpacing: 0.5 }}>{"\u2605"} {tr.recommande_pour_toi}</Text>
               </View>
             )}
-            <Text style={{ fontSize: 18, fontWeight: "700", color: "#fff", marginBottom: 4 }}>{pilier.label}</Text>
-            <Text style={{ fontSize: 11, fontWeight: "500", color: "rgba(255,255,255,0.85)" }}>{doneCount}/20 {tr.m_seances}</Text>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: "#fff" }}>{pilier.label}</Text>
           </LinearGradient>
         </ImageBackground>
       </LinearGradient>
@@ -2120,10 +2262,35 @@ function MetricTile({ children }) {
 function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubscriber, onActivateSubscription }) {
   var tr = T[lang] || T["fr"];
   var [openPilier, setOpenPilier] = useState(null);
+  var [mcTab, setMcTab] = useState('pour_vous');
+  var MC_TABS = ['pour_vous', 'explorer', 'programmes', 'recherche'];
+  var mcTabLabels = { pour_vous: tr.tab_pour_vous, explorer: tr.tab_explorer, programmes: tr.tab_programmes, recherche: tr.tab_recherche };
   var piliers = getPiliers(lang);
   var recommendedPiliers = tensionIdxs.map(function(i) { return ZONE_TO_PILIER[i]; });
   var effectiveRecommended = recommendedPiliers.length > 0 ? recommendedPiliers : [];
   var sdj = getSeanceDuJour(done, tensionIdxs, lang);
+
+  var mcMedusas = useRef([
+    { x: new Animated.Value(20), y: new Animated.Value(SH * 0.05), size: 72, speed: 0.8, cx: 20, cy: SH * 0.05 },
+    { x: new Animated.Value(SW * 0.7), y: new Animated.Value(SH * 0.1), size: 58, speed: 0.9, cx: SW * 0.7, cy: SH * 0.1 },
+    { x: new Animated.Value(SW * 0.4), y: new Animated.Value(SH * 0.15), size: 64, speed: 0.85, cx: SW * 0.4, cy: SH * 0.15 },
+    { x: new Animated.Value(SW * 0.85), y: new Animated.Value(SH * 0.08), size: 50, speed: 0.75, cx: SW * 0.85, cy: SH * 0.08 },
+  ]).current;
+
+  useEffect(function() {
+    mcMedusas.forEach(function(m) {
+      function drift() {
+        var toX = 10 + Math.random() * (SW - m.size - 20);
+        var toY = 40 + Math.random() * (SH - m.size - 140);
+        var dur = 12000 + Math.random() * 8000;
+        Animated.parallel([
+          Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
+          Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
+        ]).start(function() { drift(); });
+      }
+      setTimeout(function() { drift(); }, Math.random() * 3000);
+    });
+  }, []);
 
   var sortedPiliers = [...piliers].sort(function(a, b) {
     var aRec = effectiveRecommended.includes(a.key) ? 0 : 1;
@@ -2144,63 +2311,193 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad1-" + i} delay={b.delay + 2000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.35))} size={b.size} duration={b.duration} />; })}
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad2-" + i} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />; })}
       </View>
+      {mcMedusas.map(function(m, i) {
+        return (
+          <Animated.View key={'mcm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 4, opacity: 1, left: m.x, top: m.y }}>
+            <MeduseCornerIcon size={m.size} breathCycleMs={2800 + i * 500} breathMaxScale={1.35} tint="rgba(229,255,0,1)" />
+          </Animated.View>
+        );
+      })}
       <View style={[styles.logoRow, { justifyContent: "flex-start", paddingLeft: 20, paddingTop: 10, marginBottom: 20 }]} pointerEvents="box-none">
         <Text style={styles.logoWordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-          FLUIDBODY<Text style={{ fontWeight: "900", color: "#00BDD0", fontSize: 34 }}>+</Text>
+          FLUIDBODY<Text style={{ fontWeight: "900", color: "#E5FF00", fontSize: 34 }}>+</Text>
         </Text>
-        <View style={{ position: "absolute", top: 26, right: 20 }}>
-          <MeduseCornerIcon size={68} breathCycleMs={3200} />
-        </View>
+      </View>
+      <View style={{ position: "absolute", top: 105, left: 0, right: 0, zIndex: 5, marginTop: 20 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+          {MC_TABS.map(function(t) {
+            var active = mcTab === t;
+            return (
+              <TouchableOpacity
+                key={t}
+                onPress={function() { setMcTab(t); }}
+                activeOpacity={0.8}
+                style={{
+                  paddingHorizontal: 18,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  backgroundColor: active ? "#ffffff" : "rgba(255,255,255,0.12)",
+                }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "600", color: active ? "#000000" : "#ffffff" }}>
+                  {mcTabLabels[t]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
       <ScrollView
+        key={mcTab}
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 3 }}
-        contentContainerStyle={{ paddingTop: 140, paddingBottom: 40, paddingHorizontal: 16, flexDirection: "row", flexWrap: "wrap", gap: 14, justifyContent: "center" }}
+        contentContainerStyle={{ paddingTop: 170, paddingBottom: 40, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
       >
-        {sortedPiliers.map(function(p) {
-          return <PilierCard key={p.key} pilier={p} doneCount={done[p.key] ? done[p.key].filter(Boolean).length : 0} onPress={setOpenPilier} recommended={effectiveRecommended.includes(p.key)} lang={lang} />;
-        })}
-        {sdj && (function() {
-          var alreadyDone = done[sdj.key] && (done[sdj.key][sdj.idx] === true || done[sdj.key][sdj.idx] === "true");
-          var sdjLocked = !alreadyDone && !canAccessSeanceIndex(sdj.idx, isSubscriber);
-          var sdjTitle = sdj.seance[0];
-          var sdjDuree = sdj.seance[1];
-          var sdjLabel = tr.seance_du_jour + " \u00B7 " + sdjDuree + (typeof sdjDuree === "string" && sdjDuree.includes("min") ? "" : " min");
-          var sdjPilier = { ...sdj.pilier, label: sdjTitle };
+        {mcTab === 'pour_vous' && (function() {
+          var gridGap = 6;
+          var fullW = SW - 32;
+          var halfW = Math.floor((fullW - gridGap) / 2);
+          var thirdW = Math.floor((fullW - gridGap * 2) / 3);
+          var rowH1 = Math.floor(halfW * 0.72);
+          var rowH2 = Math.floor(thirdW * 0.82);
+          var mosaicImages = [
+            PILIER_IMAGES.p1, PILIER_IMAGES.p2,
+            PILIER_IMAGES.p3, PILIER_IMAGES.p4, PILIER_IMAGES.p5,
+            PILIER_IMAGES.p6, PILIER_IMAGES.p7,
+          ];
           return (
-            <View key="sdj" style={{ width: CARD_W, opacity: sdjLocked ? 0.85 : 1 }}>
-              <PilierCard
-                pilier={sdjPilier}
-                doneCount={0}
-                onPress={function() {
-                  if (alreadyDone) return;
-                  if (sdjLocked) { onActivateSubscription && onActivateSubscription(); return; }
-                  setOpenPilier(sdj.pilier);
-                }}
-                recommended={false}
-                lang={lang}
-                imageKey="sdj"
-              />
-              <View style={{ position: "absolute", top: 10, left: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.18)", borderWidth: 1, borderColor: "rgba(255,255,255,0.4)" }}>
-                <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.95)", fontWeight: "700", letterSpacing: 0.5 }}>{alreadyDone ? "\u2713" : sdjLocked ? "\uD83D\uDD12" : "\u25B6"} {tr.seance_du_jour}</Text>
+            <View key="pour-vous">
+              <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
+                <View style={{ width: halfW, height: rowH1, borderRadius: 12, overflow: "hidden" }}>
+                  <ImageBackground source={mosaicImages[0]} resizeMode="cover" style={{ flex: 1 }} />
+                </View>
+                <View style={{ width: halfW, height: rowH1, borderRadius: 12, overflow: "hidden" }}>
+                  <ImageBackground source={mosaicImages[1]} resizeMode="cover" style={{ flex: 1 }} />
+                </View>
               </View>
+              <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
+                <View style={{ width: thirdW, height: rowH2, borderRadius: 12, overflow: "hidden" }}>
+                  <ImageBackground source={mosaicImages[2]} resizeMode="cover" style={{ flex: 1 }} />
+                </View>
+                <View style={{ width: thirdW, height: rowH2, borderRadius: 12, overflow: "hidden" }}>
+                  <ImageBackground source={mosaicImages[3]} resizeMode="cover" style={{ flex: 1 }} />
+                </View>
+                <View style={{ width: thirdW, height: rowH2, borderRadius: 12, overflow: "hidden" }}>
+                  <ImageBackground source={mosaicImages[4]} resizeMode="cover" style={{ flex: 1 }} />
+                </View>
+              </View>
+              <View style={{ flexDirection: "row", gap: gridGap, marginBottom: 0 }}>
+                <View style={{ width: halfW, height: rowH1, borderRadius: 12, overflow: "hidden" }}>
+                  <ImageBackground source={mosaicImages[5]} resizeMode="cover" style={{ flex: 1 }} />
+                </View>
+                <View style={{ width: halfW, height: rowH1, borderRadius: 12, overflow: "hidden" }}>
+                  <ImageBackground source={mosaicImages[6]} resizeMode="cover" style={{ flex: 1 }} />
+                </View>
+              </View>
+              <LinearGradient colors={["rgba(28,28,30,0.3)", "rgba(28,28,30,0.85)", "rgba(28,28,30,0.95)"]} locations={[0, 0.3, 1]} style={{ borderRadius: 16, marginTop: -60, paddingTop: 90, paddingBottom: 80, paddingHorizontal: 20, alignItems: "center" }}>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", textAlign: "center", marginBottom: 6 }}>{tr.paywall_title}</Text>
+                <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.55)", textAlign: "center", lineHeight: 17, marginBottom: 14 }}>{tr.paywall_sub}</Text>
+                <TouchableOpacity
+                  onPress={function() { onActivateSubscription && onActivateSubscription(); }}
+                  activeOpacity={0.85}
+                  style={{ alignSelf: "stretch", height: 46, borderRadius: 23, backgroundColor: "#E5FF00", alignItems: "center", justifyContent: "center", marginBottom: 8 }}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: "700", color: "#000000", letterSpacing: 0.3 }}>{tr.paywall_start}</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 10 }}>{tr.paywall_per_month ? "CHF 9.90" + tr.paywall_per_month : ""}</Text>
+                <TouchableOpacity onPress={function() { onActivateSubscription && onActivateSubscription(); }} activeOpacity={0.8}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#ffffff" }}>{tr.paywall_yearly_link}</Text>
+                </TouchableOpacity>
+              </LinearGradient>
             </View>
           );
         })()}
+        {mcTab === 'programmes' && (
+          <View key="programmes">
+            <Text style={{ fontSize: 22, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_section_title}</Text>
+            <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.45)", lineHeight: 18, marginBottom: 20 }}>{tr.prog_section_sub}</Text>
+            <View style={{ borderRadius: 20, overflow: "hidden", marginBottom: 32, height: 280 }}>
+              <LinearGradient colors={["#4a3a8a", "#8a6abf", "#d4a0d0", "#f0c8a8"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, padding: 20, justifyContent: "space-between" }}>
+                <View>
+                  <Text style={{ fontSize: 24, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_debuter}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 6 }}>{tr.prog_debuter_sub}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#E5FF00", letterSpacing: 1 }}>{tr.prog_debuter_duree}</Text>
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={{ alignSelf: "stretch", height: 46, borderRadius: 23, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 }}
+                >
+                  <Text style={{ fontSize: 14, color: "#E5FF00" }}>{"\uD83D\uDCC5"}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: "#E5FF00" }}>{tr.prog_apercu}</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+            <Text style={{ fontSize: 22, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_custom_title}</Text>
+            <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.45)", lineHeight: 18, marginBottom: 20 }}>{tr.prog_custom_sub}</Text>
+            <View style={{ borderRadius: 20, overflow: "hidden", height: 280 }}>
+              <LinearGradient colors={["#8a7040", "#c4a050", "#d4b870", "#a08040"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, padding: 20, justifyContent: "space-between" }}>
+                <View>
+                  <Text style={{ fontSize: 24, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_custom_card}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.7)", lineHeight: 20 }}>{tr.prog_custom_card_sub}</Text>
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={{ alignSelf: "stretch", height: 46, borderRadius: 23, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: "#E5FF00" }}>{tr.prog_custom_btn}</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          </View>
+        )}
+        {mcTab === 'explorer' && (function() {
+          var seancesData = getSeances(lang);
+          var cardH = Math.floor(SW * 0.45);
+          return (
+            <View key="explorer-sections">
+              {piliers.map(function(p) {
+                var ps = seancesData[p.key] || [];
+                var doneCount = done[p.key] ? done[p.key].filter(Boolean).length : 0;
+                return (
+                  <TouchableOpacity
+                    key={"exp-" + p.key}
+                    activeOpacity={0.88}
+                    onPress={function() { setOpenPilier(p); }}
+                    style={{ marginBottom: 16, borderRadius: 16, overflow: "hidden", height: cardH }}
+                  >
+                    <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }}>
+                      <LinearGradient colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.7)"]} style={{ flex: 1, justifyContent: "flex-end", padding: 16 }}>
+                        <Text style={{ fontSize: 24, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{p.label}</Text>
+                        <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{ps.length} {tr.m_seances} · {doneCount}/{ps.length}</Text>
+                      </LinearGradient>
+                    </ImageBackground>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          );
+        })()}
+        {mcTab === 'recherche' && (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14, justifyContent: "center" }}>
+          {sortedPiliers.map(function(p) {
+            return <PilierCard key={p.key} pilier={p} doneCount={done[p.key] ? done[p.key].filter(Boolean).length : 0} onPress={setOpenPilier} recommended={effectiveRecommended.includes(p.key)} lang={lang} />;
+          })}
+        </View>
+        )}
       </ScrollView>
       {openPilier && (
-        <PilierPanel pilier={openPilier} done={done[openPilier.key]} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} />
+        <PilierPanel pilier={openPilier} done={done[openPilier.key]} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} />
       )}
     </View>
   );
 }
 
-/** Abonnement vidéos simulé — pas de module IAP dans l’app. */
+/** Abonnement vidéos simulé — pas de module IAP dans l'app. */
 const FLUID_SUB_KEY = 'fluid_sub';
 const DONE_KEY = 'fluidbody_done';
 const STREAK_KEY = 'fluidbody_streak';
 const STREAK_DATE_KEY = 'fluidbody_streak_date';
-/** Dernière demande OTP email — évite un 2ᵉ envoi si l’utilisateur repasse par « J’ai déjà un compte » ou rouvre l’écran. */
+/** Dernière demande OTP email — évite un 2ᵉ envoi si l'utilisateur repasse par « J'ai déjà un compte » ou rouvre l'écran. */
 const AUTH_OTP_PENDING_KEY = 'fluid_auth_otp_pending_v1';
 const AUTH_OTP_RESEND_COOLDOWN_MS = 90 * 1000;
 const AUTH_OTP_STEP_RESTORE_MS = 25 * 60 * 1000;
@@ -2225,13 +2522,54 @@ function getRcPriceString(pkg) {
   return '';
 }
 
-function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore }) {
+function SeanceDetailModal({ visible, onClose, sdj, lang, onPlay }) {
+  if (!visible || !sdj) return null;
+  var tr = T[lang] || T["fr"];
+  var titre = sdj.seance[0];
+  var duree = sdj.seance[1];
+  var etape = sdj.seance[2];
+  return (
+    <Modal visible animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: "#000000" }}>
+        <View style={{ height: SH * 0.42, width: "100%" }}>
+          <ImageBackground source={PILIER_IMAGES[sdj.pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
+            <LinearGradient colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.7)"]} style={{ flex: 1 }}>
+              <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={{ position: "absolute", top: 56, left: 20, width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 18, color: "#ffffff" }}>{"\u2190"}</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </ImageBackground>
+        </View>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 }}>
+          <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 10 }}>{tr.free_try_once}</Text>
+          <Text style={{ fontSize: 28, fontWeight: "800", color: "#ffffff", marginBottom: 10 }}>{titre}</Text>
+          <Text style={{ fontSize: 15, fontWeight: "600", color: "#00BDD0", marginBottom: 6 }}>{sdj.pilier.label}</Text>
+          <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 24 }}>{duree} · {tr.etapes[etape] || etape}</Text>
+          <TouchableOpacity
+            onPress={function() { onPlay && onPlay(); }}
+            activeOpacity={0.85}
+            style={{ height: 54, borderRadius: 27, backgroundColor: "#E5FF00", alignItems: "center", justifyContent: "center", marginBottom: 14 }}
+          >
+            <Text style={{ fontSize: 17, fontWeight: "700", color: "#000000" }}>{tr.free_go}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore, onTryFree }) {
   var tr = T[lang] || T["fr"];
   var monthlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.monthly];
   var yearlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.yearly];
   var monthlyPrice = getRcPriceString(monthlyPkg);
   var yearlyPrice = getRcPriceString(yearlyPkg);
   var showYearly = !!(yearlyPkg || loadingPrices);
+  var paywallGridImages = [
+    PILIER_IMAGES.p7, PILIER_IMAGES.p5, PILIER_IMAGES.p3,
+    PILIER_IMAGES.p2, PILIER_IMAGES.p6, PILIER_IMAGES.p4,
+  ];
+  var gridItemW = Math.floor((SW - 56 - 16) / 3);
 
   return (
     <Modal visible={!!visible} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
@@ -2240,14 +2578,24 @@ function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPric
           <Text style={{ fontSize: 16, color: "rgba(255,255,255,0.7)", fontWeight: "600" }}>{"\u2715"}</Text>
         </TouchableOpacity>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 100, paddingHorizontal: 28, paddingBottom: 50, alignItems: "center" }}>
-          <MeduseCornerIcon size={80} breathCycleMs={3000} />
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingVertical: 50, alignItems: "center" }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center", paddingHorizontal: 28, marginBottom: 32 }}>
+            {paywallGridImages.map(function(src, i) {
+              return (
+                <View key={"pw-img-" + i} style={{ width: gridItemW, height: gridItemW, borderRadius: 14, overflow: "hidden" }}>
+                  <ImageBackground source={src} resizeMode="cover" style={{ flex: 1 }}>
+                    <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.15)" }} />
+                  </ImageBackground>
+                </View>
+              );
+            })}
+          </View>
 
-          <Text style={{ fontSize: 32, fontWeight: "800", color: "#ffffff", textAlign: "center", marginTop: 28, marginBottom: 10 }}>{tr.paywall_title}</Text>
-          <Text style={{ fontSize: 16, fontWeight: "400", color: "rgba(255,255,255,0.55)", textAlign: "center", lineHeight: 24, marginBottom: 40, paddingHorizontal: 10 }}>{tr.paywall_sub}</Text>
+          <Text style={{ fontSize: 30, fontWeight: "800", color: "#ffffff", textAlign: "center", marginBottom: 12, paddingHorizontal: 28 }}>{tr.paywall_title}</Text>
+          <Text style={{ fontSize: 15, fontWeight: "400", color: "rgba(255,255,255,0.50)", textAlign: "center", lineHeight: 22, marginBottom: 36, paddingHorizontal: 36 }}>{tr.paywall_sub}</Text>
 
           {disabled && (
-            <View style={{ alignSelf: "stretch", marginBottom: 20, backgroundColor: "rgba(255,200,80,0.10)", borderWidth: 1, borderColor: "rgba(255,200,80,0.25)", borderRadius: 16, padding: 14 }}>
+            <View style={{ alignSelf: "stretch", marginHorizontal: 28, marginBottom: 20, backgroundColor: "rgba(255,200,80,0.10)", borderWidth: 1, borderColor: "rgba(255,200,80,0.25)", borderRadius: 16, padding: 14 }}>
               <Text style={{ color: "rgba(255,220,140,0.9)", fontSize: 12, lineHeight: 18, textAlign: "center" }}>{tr.paywall_not_available}</Text>
             </View>
           )}
@@ -2258,42 +2606,68 @@ function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPric
             activeOpacity={0.85}
             style={{
               alignSelf: "stretch",
-              height: 60,
-              borderRadius: 30,
-              backgroundColor: "#00BDD0",
+              marginHorizontal: 28,
+              height: 58,
+              borderRadius: 29,
+              backgroundColor: "#E5FF00",
               alignItems: "center",
               justifyContent: "center",
               marginBottom: 10,
               opacity: (disabled || loadingPrices) ? 0.4 : 1,
             }}
           >
-            <Text style={{ fontSize: 17, fontWeight: "700", color: "#000000", letterSpacing: 1 }}>{tr.paywall_buy_monthly}</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#000000", letterSpacing: 0.5 }}>
+              {tr.paywall_start}{loadingPrices ? "" : (monthlyPrice ? " \u2014 " + monthlyPrice + tr.paywall_per_month : "")}
+            </Text>
           </TouchableOpacity>
 
-          <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 24, textAlign: "center" }}>
-            {loadingPrices ? tr.paywall_prices_loading : (monthlyPrice || "")}
-          </Text>
+          {!loadingPrices && monthlyPrice ? (
+            <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.40)", textAlign: "center", marginBottom: 12 }}>
+              {monthlyPrice}{tr.paywall_per_month}
+            </Text>
+          ) : null}
 
           {showYearly && (
             <TouchableOpacity
               onPress={function() { yearlyPkg && onBuyYearly && onBuyYearly(yearlyPkg); }}
               disabled={disabled || loadingPrices || !yearlyPkg}
               activeOpacity={0.85}
+              style={{ marginBottom: 16 }}
             >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: "#00BDD0", textAlign: "center", marginBottom: 6 }}>{tr.paywall_buy_yearly}</Text>
-              <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", textAlign: "center" }}>
-                {loadingPrices ? tr.paywall_prices_loading : (yearlyPrice || "")}
+              <Text style={{ fontSize: 15, fontWeight: "700", color: "#ffffff", textAlign: "center" }}>
+                {tr.paywall_yearly_link || tr.paywall_buy_yearly}
               </Text>
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
+            onPress={function() { onTryFree && onTryFree(); }}
+            activeOpacity={0.85}
+            style={{
+              alignSelf: "stretch",
+              marginHorizontal: 28,
+              height: 50,
+              borderRadius: 25,
+              backgroundColor: "rgba(0,189,208,0.15)",
+              borderWidth: 1,
+              borderColor: "rgba(0,189,208,0.4)",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 10,
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: "600", color: "#00BDD0", letterSpacing: 0.3 }}>
+              {tr.paywall_try_free}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             onPress={onRestore}
             disabled={disabled}
             activeOpacity={0.7}
-            style={{ marginTop: 36 }}
+            style={{ marginTop: 24 }}
           >
-            <Text style={{ fontSize: 13, fontWeight: "500", color: "rgba(255,255,255,0.35)", textAlign: "center" }}>{tr.paywall_restore}</Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: "rgba(255,255,255,0.30)", textAlign: "center" }}>{tr.paywall_restore}</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -2804,27 +3178,41 @@ function OnboardingScreen({ onDone, initialLang }) {
   const [prenom, setPrenom] = useState('');
   const [tensionIdxs, setTensionIdxs] = useState([]);
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const step3BackRef = useRef(2);
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPass, setAuthPass] = useState('');
-  const [authMode, setAuthMode] = useState('up');
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authErr, setAuthErr] = useState('');
-
   const tr = T[lang] || T.fr;
-  const obStepCount = 4;
-  /** Titre pleine largeur ; petite méduse fixée en haut à gauche. */
-  const obWordmarkPad = 8;
-  const obWordmarkMaxFs = 236;
-  const obWordmarkMaxPlusFs = 260;
-  const obCornerMedusa = 78;
+  const obStepCount = 3;
+  const prenomMeduseAnim = useRef(new Animated.Value(0)).current;
+  const prenomMeduseFloat = prenomMeduseAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 8] });
 
   useEffect(() => {
-    if (step === 3) {
-      setAuthMode('up');
-      setAuthErr('');
-    }
-  }, [step]);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(prenomMeduseAnim, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(prenomMeduseAnim, { toValue: 0, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const floatingMedusas = useRef([
+    { x: new Animated.Value(SW - 80), y: new Animated.Value(SH * 0.12), size: 72, speed: 0.8, breath: 3200, cx: SW - 80, cy: SH * 0.12 },
+    { x: new Animated.Value(30), y: new Animated.Value(SH * 0.4), size: 58, speed: 0.9, breath: 3600, cx: 30, cy: SH * 0.4 },
+    { x: new Animated.Value(SW * 0.5), y: new Animated.Value(SH * 0.65), size: 50, speed: 0.85, breath: 4000, cx: SW * 0.5, cy: SH * 0.65 },
+    { x: new Animated.Value(SW * 0.75), y: new Animated.Value(SH * 0.8), size: 44, speed: 0.75, breath: 3800, cx: SW * 0.75, cy: SH * 0.8 },
+  ]).current;
+
+  useEffect(() => {
+    floatingMedusas.forEach(function(m) {
+      function drift() {
+        var toX = 10 + Math.random() * (SW - m.size - 20);
+        var toY = 60 + Math.random() * (SH - m.size - 160);
+        var dur = 12000 + Math.random() * 8000;
+        Animated.parallel([
+          Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
+          Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
+        ]).start(function() { drift(); });
+      }
+      drift();
+    });
+  }, []);
 
   function nextStep(n) {
     Animated.sequence([
@@ -2834,50 +3222,13 @@ function OnboardingScreen({ onDone, initialLang }) {
     setTimeout(() => setStep(n), 250);
   }
 
-  function goToAuthStep(fromStep) {
-    step3BackRef.current = fromStep;
-    nextStep(3);
-  }
-
   function afterPrenomContinue() {
     if (!prenom.trim()) return;
-    goToAuthStep(2);
-  }
-
-  function afterPrenomAnon() {
-    goToAuthStep(2);
-  }
-
-  function continueOnboardingWithoutCloud() {
     onDone(prenom.trim(), lang, tensionIdxs, { skipCloudAuth: true });
   }
 
-  async function submitAuthStep() {
-    if (!supabase) return;
-    const em = authEmail.trim().toLowerCase();
-    if (!em.includes('@') || em.length < 5) { setAuthErr(tr.ob_auth_err_email); return; }
-    if (authPass.length < 6) { setAuthErr(tr.ob_auth_err_short); return; }
-    setAuthLoading(true); setAuthErr('');
-    try {
-      if (authMode === 'up') {
-        // Inscription cloud — flux onboarding après l’écran prénom
-        const { data, error } = await supabase.auth.signUp({
-          email: em,
-          password: authPass,
-          options: { data: { prenom: prenom.trim() || '' } },
-        });
-        if (error) { setAuthErr(error.message); setAuthLoading(false); return; }
-        if (!data.session) { setAuthErr(tr.ob_auth_confirm); setAuthLoading(false); return; }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: em, password: authPass });
-        if (error) { setAuthErr(error.message); setAuthLoading(false); return; }
-      }
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) onDone(prenom.trim(), lang, tensionIdxs);
-    } catch (e) {
-      setAuthErr(tr.ob_auth_err_net);
-    }
-    setAuthLoading(false);
+  function afterPrenomAnon() {
+    onDone('', lang, tensionIdxs, { skipCloudAuth: true });
   }
 
   function toggleTension(idx) {
@@ -2888,113 +3239,97 @@ function OnboardingScreen({ onDone, initialLang }) {
     <View style={{ flex: 1 }}>
       <LinearGradient colors={['#000e18', '#002d48', '#00bdd0', '#005878', '#001828']} locations={[0, 0.3, 0.52, 0.72, 1]} style={StyleSheet.absoluteFill} />
       {BULLES_ONBOARDING.map((b, i) => <Bulle key={`ob-${i}`} {...b} />)}
-      {/* Méduse centrale : arrière-plan fixe ; très discrète sur l’étape prénom pour ne pas masquer le texte */}
-      <View style={{ position: 'absolute', top: 298, left: 0, right: 0, alignItems: 'center', opacity: step === 2 ? 0.15 : 0.9, zIndex: 0 }} pointerEvents="none">
-        <Meduse />
-      </View>
-      <View style={{ position: 'absolute', top: 98, left: 12, zIndex: 18, overflow: 'visible' }} pointerEvents="none">
-        <MeduseCornerIcon size={obCornerMedusa} breathCycleMs={5200} breathMaxScale={1.14} />
-      </View>
-      <View style={{ position: 'absolute', top: 128, left: 0, right: 0, zIndex: 20, alignItems: 'center', paddingHorizontal: obWordmarkPad, pointerEvents: 'none' }}>
-        <View style={{ width: '100%', maxWidth: SW - obWordmarkPad * 2, alignItems: 'center' }}>
-          <View style={{ width: '100%', paddingHorizontal: 2 }}>
-            <Text
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.2}
-              style={{
-                width: '100%',
-                fontSize: obWordmarkMaxFs,
-                fontWeight: '200',
-                letterSpacing: 10,
-                color: '#FAFEFF',
-                textAlign: 'center',
-                textShadowColor: 'rgba(0, 14, 32, 0.55)',
-                textShadowOffset: { width: 0, height: 5 },
-                textShadowRadius: 24,
-                ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
-              }}
-            >
-              FLUIDBODY<Text
+      {/* Méduse centrale : écran bienvenue (step 0) et écran prénom (step 2) */}
+      {(step === 0 || step === 2) && (
+        <View style={{ position: 'absolute', top: step === 0 ? 298 : 200, left: 0, right: 0, alignItems: 'center', opacity: step === 0 ? 0.9 : 0.25, zIndex: 0 }} pointerEvents="none">
+          <Meduse />
+        </View>
+      )}
+      {/* Grand logo sur step 0, petit header compact sur steps 1-3 */}
+      {step === 0 ? (
+        <View style={{ position: 'absolute', top: 128, left: 0, right: 0, zIndex: 20, alignItems: 'center', paddingHorizontal: 8, pointerEvents: 'none' }}>
+          <View style={{ width: '100%', maxWidth: SW - 16, alignItems: 'center' }}>
+            <View style={{ width: '100%', paddingHorizontal: 2 }}>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.2}
                 style={{
-                  fontWeight: '700',
-                  fontSize: obWordmarkMaxPlusFs,
-                  letterSpacing: 1,
-                  color: '#C8A96E',
-                  textShadowColor: 'rgba(0, 0, 0, 0.4)',
-                  textShadowOffset: { width: 0, height: 3 },
-                  textShadowRadius: 14,
+                  width: '100%',
+                  fontSize: 236,
+                  fontWeight: '200',
+                  letterSpacing: 10,
+                  color: '#FAFEFF',
+                  textAlign: 'center',
+                  textShadowColor: 'rgba(0, 14, 32, 0.55)',
+                  textShadowOffset: { width: 0, height: 5 },
+                  textShadowRadius: 24,
                   ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
                 }}
               >
-                +
+                FLUIDBODY<Text
+                  style={{
+                    fontWeight: '700',
+                    fontSize: 260,
+                    letterSpacing: 1,
+                    color: '#E5FF00',
+                    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+                    textShadowOffset: { width: 0, height: 3 },
+                    textShadowRadius: 14,
+                    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
+                  }}
+                >+</Text>
               </Text>
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', flexWrap: 'nowrap', marginTop: -2, width: '100%', paddingHorizontal: 8 }}>
-            <Text
-              style={{
-                fontSize: 28,
-                fontWeight: '400',
-                color: 'rgba(160, 238, 252, 0.94)',
-                letterSpacing: 16,
-                textTransform: 'uppercase',
-                textShadowColor: 'rgba(0, 12, 28, 0.45)',
-                textShadowOffset: { width: 0, height: 2 },
-                textShadowRadius: 10,
-                ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
-              }}
-            >
-              PILATES
-            </Text>
-            <Text
-              style={{
-                marginLeft: 14,
-                fontSize: 16,
-                fontWeight: '300',
-                color: 'rgba(150, 220, 238, 0.88)',
-                letterSpacing: 2,
-                textShadowColor: 'rgba(0, 12, 28, 0.35)',
-                textShadowOffset: { width: 0, height: 1 },
-                textShadowRadius: 6,
-                ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
-              }}
-            >
-              {'& More'}
-            </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', flexWrap: 'nowrap', marginTop: -2, width: '100%', paddingHorizontal: 8 }}>
+              <Text style={{ fontSize: 28, fontWeight: '400', color: '#E5FF00', letterSpacing: 16, textTransform: 'uppercase', textShadowColor: 'rgba(0, 12, 28, 0.45)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>PILATES</Text>
+              <Text style={{ marginLeft: 14, fontSize: 28, fontWeight: '300', color: '#E5FF00', letterSpacing: 2, textShadowColor: 'rgba(0, 12, 28, 0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>{'& More'}</Text>
+            </View>
           </View>
         </View>
-      </View>
+      ) : (
+        <View style={[styles.logoRow, { justifyContent: "flex-start", paddingLeft: 20, paddingTop: 10, marginBottom: 20, zIndex: 20 }]} pointerEvents="none">
+          <Text style={styles.logoWordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+            FLUIDBODY<Text style={{ fontWeight: "900", color: "#E5FF00", fontSize: 34 }}>+</Text>
+          </Text>
+        </View>
+      )}
+      {floatingMedusas.map(function(m, i) {
+        var s = step === 2 ? m.size * 0.7 : m.size;
+        var o = step === 2 ? 0.7 : 1;
+        return (
+          <Animated.View key={'fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 1, opacity: o, left: m.x, top: m.y }}>
+            <MeduseCornerIcon size={s} breathCycleMs={m.breath} breathMaxScale={1.35} tint="rgba(229,255,0,1)" />
+          </Animated.View>
+        );
+      })}
       <View style={{ position: 'absolute', top: 54, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', zIndex: 30, paddingHorizontal: 24 }}>
         {step > 0 ? (
-          <TouchableOpacity onPress={() => { if (step === 3) nextStep(step3BackRef.current); else nextStep(step - 1); }} style={{ position: 'absolute', left: 24, padding: 8 }}>
-            <Text style={{ fontSize: 22, color: 'rgba(255,255,255,0.6)' }}>←</Text>
+          <TouchableOpacity onPress={() => nextStep(step - 1)} style={{ position: 'absolute', left: 24, padding: 8 }}>
+            <Text style={{ fontSize: 22, color: '#E5FF00' }}>←</Text>
           </TouchableOpacity>
         ) : null}
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          {Array.from({ length: obStepCount }, (_, i) => <View key={i} style={{ width: step === i ? 20 : 6, height: 6, borderRadius: 3, backgroundColor: step === i ? 'rgba(0,225,255,0.9)' : 'rgba(0,200,240,0.25)' }} />)}
+          {Array.from({ length: obStepCount }, (_, i) => <View key={i} style={{ width: step === i ? 20 : 6, height: 6, borderRadius: 3, backgroundColor: step === i ? '#E5FF00' : 'rgba(229,255,0,0.25)' }} />)}
         </View>
       </View>
-      <Animated.View style={{ flex: 1, opacity: fadeAnim, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: step === 0 ? 132 : 60, zIndex: 2, elevation: step === 2 || step === 3 ? 4 : 0 }}>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim, alignItems: 'center', justifyContent: step === 1 ? 'center' : 'flex-end', paddingBottom: step === 0 ? 132 : 60, zIndex: 2, elevation: step === 2 ? 4 : 0 }}>
         {step === 0 && (
           <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }}>
             <TouchableOpacity onPress={() => nextStep(1)} style={styles.btnCtaLarge}>
               <Text style={styles.btnCtaLargeTxt}>{tr.ob_cta}</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => goToAuthStep(0)} style={{ marginTop: 18, paddingVertical: 4 }}>
-              <Text style={{ fontSize: 17, fontWeight: '500', color: 'rgba(0,205,235,0.75)', letterSpacing: 2.5, textTransform: 'uppercase' }}>{tr.ob_compte}</Text>
-            </TouchableOpacity>
           </View>
         )}
         {step === 1 && (
           <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }}>
-            <Text style={{ fontSize: 12, color: 'rgba(0,225,255,0.6)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12 }}>{tr.ob_bilan}</Text>
-            <Text style={{ fontSize: 32, fontWeight: '300', color: 'rgba(215,248,255,0.95)', textAlign: 'center', marginBottom: 8 }}>{tr.ob_tensions}</Text>
-            <Text style={{ fontSize: 14, color: 'rgba(120,195,225,0.6)', marginBottom: 18 }}>{tr.ob_select}</Text>
+            <Text style={{ fontSize: 16, color: '#E5FF00', letterSpacing: 6, textTransform: 'uppercase', marginBottom: 12 }}>{tr.ob_bilan}</Text>
+            <Text style={{ fontSize: 32, fontWeight: '300', color: '#ffffff', textAlign: 'center', marginBottom: 8 }}>{tr.ob_tensions}</Text>
+            <Text style={{ fontSize: 17, color: 'rgba(255,255,255,0.6)', marginBottom: 18 }}>{tr.ob_select}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 28, marginTop: 8 }}>
               {tr.ob_zones.map((zone, idx) => (
-                <TouchableOpacity key={idx} onPress={() => toggleTension(idx)} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 0.5, borderColor: tensionIdxs.includes(idx) ? 'rgba(0,220,255,0.7)' : 'rgba(0,200,240,0.2)', backgroundColor: tensionIdxs.includes(idx) ? 'rgba(0,180,230,0.15)' : 'rgba(0,20,35,0.55)' }}>
-                  <Text style={{ fontSize: 15, color: tensionIdxs.includes(idx) ? 'rgba(0,230,255,0.95)' : 'rgba(120,200,230,0.75)' }}>{zone}</Text>
+                <TouchableOpacity key={idx} onPress={() => toggleTension(idx)} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 0.5, borderColor: tensionIdxs.includes(idx) ? '#E5FF00' : 'rgba(255,255,255,0.2)', backgroundColor: tensionIdxs.includes(idx) ? 'rgba(229,255,0,0.15)' : 'rgba(0,20,35,0.55)' }}>
+                  <Text style={{ fontSize: 15, color: tensionIdxs.includes(idx) ? '#E5FF00' : 'rgba(255,255,255,0.65)' }}>{zone}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -3002,7 +3337,7 @@ function OnboardingScreen({ onDone, initialLang }) {
               <Text style={styles.btnCtaLargeTxt}>{tr.ob_continuer}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => nextStep(2)} style={{ marginTop: 18 }}>
-              <Text style={{ fontSize: 14, color: 'rgba(0,190,230,0.6)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.ob_explorer}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#E5FF00', letterSpacing: 2.5, textTransform: 'uppercase' }}>{tr.ob_explorer}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -3014,15 +3349,15 @@ function OnboardingScreen({ onDone, initialLang }) {
           >
           <ScrollView
             style={{ flex: 1, alignSelf: 'stretch', zIndex: 3 }}
-            contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 188, paddingBottom: 24, flexGrow: 1, justifyContent: 'flex-end' }}
+            contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 120, paddingBottom: 24, flexGrow: 1, justifyContent: 'flex-end' }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             keyboardDismissMode="on-drag"
           >
-            <View style={{ width: '100%', maxWidth: 420, alignSelf: 'center', paddingVertical: 22, paddingHorizontal: 18, borderRadius: 22, backgroundColor: 'rgba(0,10,22,0.78)', borderWidth: 1, borderColor: 'rgba(0,200,240,0.12)' }}>
-              <Text style={{ fontSize: 12, color: 'rgba(0,235,255,0.85)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{tr.ob_prenom_tag}</Text>
-              <Text style={{ fontSize: 32, fontWeight: '300', color: 'rgba(235,252,255,0.99)', textAlign: 'center', marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 10 }}>{tr.ob_prenom}</Text>
-              <Text style={{ fontSize: 15, color: 'rgba(170,220,240,0.92)', marginBottom: 24, textAlign: 'center', lineHeight: 22, textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{tr.ob_prenom_sub}</Text>
+            <View style={{ width: '100%', maxWidth: 420, alignSelf: 'center', paddingVertical: 22, paddingHorizontal: 18, borderRadius: 22, backgroundColor: 'rgba(0,10,22,0.78)', borderWidth: 1, borderColor: 'rgba(229,255,0,0.15)' }}>
+              <Text style={{ fontSize: 12, color: '#E5FF00', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{tr.ob_prenom_tag}</Text>
+              <Text style={{ fontSize: 32, fontWeight: '300', color: '#ffffff', textAlign: 'center', marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 10 }}>{tr.ob_prenom}</Text>
+              <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.75)', marginBottom: 24, textAlign: 'center', lineHeight: 22, textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{tr.ob_prenom_sub}</Text>
               <TextInput
                 value={prenom} onChangeText={setPrenom}
                 placeholder={tr.ob_placeholder}
@@ -3032,14 +3367,11 @@ function OnboardingScreen({ onDone, initialLang }) {
                 autoCorrect={false}
                 keyboardAppearance={Platform.OS === 'ios' ? 'dark' : undefined}
                 onSubmitEditing={() => afterPrenomContinue()}
-                style={{ alignSelf: 'stretch', height: 62, backgroundColor: prenom.trim() ? 'rgba(0,28,48,0.96)' : 'rgba(0,22,38,0.94)', borderWidth: prenom.trim() ? 1.5 : 1, borderColor: prenom.trim() ? 'rgba(0,230,255,0.65)' : 'rgba(0,200,240,0.35)', borderRadius: 16, color: 'rgba(240,252,255,0.98)', fontSize: 20, fontWeight: '400', textAlign: 'center', marginBottom: prenom.trim() ? 10 : 22 }}
+                style={{ alignSelf: 'stretch', height: 62, backgroundColor: prenom.trim() ? 'rgba(0,28,48,0.96)' : 'rgba(0,22,38,0.94)', borderWidth: prenom.trim() ? 1.5 : 1, borderColor: prenom.trim() ? '#E5FF00' : 'rgba(229,255,0,0.35)', borderRadius: 16, color: '#ffffff', fontSize: 20, fontWeight: '400', textAlign: 'center', marginBottom: prenom.trim() ? 10 : 22 }}
               />
               {prenom.trim().length > 0 && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', marginBottom: 14 }}>
-                  <Text style={{ fontSize: 13, color: 'rgba(0,230,255,0.88)', lineHeight: 20 }}>{`${tr.bonjour_mot} ${prenom.trim()}`}</Text>
-                  <View style={{ width: 52, height: 52, marginLeft: 8, overflow: 'visible', alignItems: 'center', justifyContent: 'center', transform: [{ translateY: 10 }] }} pointerEvents="none">
-                    <MeduseCornerIcon size={52} breathCycleMs={3000} />
-                  </View>
+                  <Text style={{ fontSize: 26, fontWeight: '300', color: '#E5FF00', textAlign: 'center', lineHeight: 32 }}>{`${tr.bonjour_mot} ${prenom.trim()}`}</Text>
                 </View>
               )}
               <TouchableOpacity onPress={() => afterPrenomContinue()} style={[styles.btnCtaLarge, prenom.trim() === '' && styles.btnCtaOff]} disabled={prenom.trim() === ''}>
@@ -3047,47 +3379,9 @@ function OnboardingScreen({ onDone, initialLang }) {
               </TouchableOpacity>
             </View>
             <TouchableOpacity onPress={() => afterPrenomAnon()} style={{ marginTop: 18 }}>
-              <Text style={{ fontSize: 14, color: 'rgba(0,190,230,0.6)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.ob_anon}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#E5FF00', letterSpacing: 2.5, textTransform: 'uppercase' }}>{tr.ob_anon}</Text>
             </TouchableOpacity>
           </ScrollView>
-          </KeyboardAvoidingView>
-        )}
-        {/* Étape inscription / connexion (après prénom) — affichée même si le client Supabase n’a pas pu être créé */}
-        {step === 3 && (
-          <KeyboardAvoidingView style={{ flex: 1, alignSelf: 'stretch', width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 52 : 0}>
-            <ScrollView contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 28, paddingTop: 24, paddingBottom: 32, flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <View style={{ width: '100%', maxWidth: 420, paddingVertical: 20, paddingHorizontal: 18, borderRadius: 22, backgroundColor: 'rgba(0,10,22,0.82)', borderWidth: 1, borderColor: 'rgba(0,200,240,0.14)' }}>
-                <Text style={{ fontSize: 12, color: 'rgba(0,235,255,0.85)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 10, textAlign: 'center' }}>{tr.ob_auth_tag}</Text>
-                <Text style={{ fontSize: 26, fontWeight: '300', color: 'rgba(235,252,255,0.98)', textAlign: 'center', marginBottom: 8 }}>{!supabase ? tr.ob_auth_signup_title : (authMode === 'up' ? tr.ob_auth_signup_title : tr.ob_auth_signin_title)}</Text>
-                <Text style={{ fontSize: 14, color: 'rgba(170,220,240,0.9)', textAlign: 'center', marginBottom: 12, lineHeight: 20 }}>{!supabase ? tr.ob_auth_no_cloud : (authMode === 'up' ? tr.ob_auth_sub : tr.ob_auth_sub_signin)}</Text>
-                <TextInput value={authEmail} onChangeText={setAuthEmail} placeholder={tr.ob_email_ph} placeholderTextColor="rgba(0,180,220,0.35)" keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
-                  style={{ height: 50, backgroundColor: 'rgba(0,18,32,0.9)', borderWidth: 1, borderColor: authEmail ? 'rgba(0,220,255,0.4)' : 'rgba(0,200,240,0.2)', borderRadius: 14, color: 'rgba(240,252,255,0.95)', fontSize: 16, paddingHorizontal: 14, marginBottom: 10 }}
-                />
-                <TextInput value={authPass} onChangeText={setAuthPass} placeholder={tr.ob_pass_ph} placeholderTextColor="rgba(0,180,220,0.35)" secureTextEntry autoCapitalize="none" autoCorrect={false}
-                  style={{ height: 50, backgroundColor: 'rgba(0,18,32,0.9)', borderWidth: 1, borderColor: authPass ? 'rgba(0,220,255,0.4)' : 'rgba(0,200,240,0.2)', borderRadius: 14, color: 'rgba(240,252,255,0.95)', fontSize: 16, paddingHorizontal: 14, marginBottom: 10 }}
-                />
-                {authErr ? <Text style={{ color: 'rgba(255,120,120,0.9)', fontSize: 12, marginBottom: 10, textAlign: 'center' }}>{authErr}</Text> : null}
-                {!supabase ? (
-                  <TouchableOpacity onPress={continueOnboardingWithoutCloud} style={styles.btnCtaLarge}>
-                    <Text style={styles.btnCtaLargeTxt}>{tr.ob_auth_continue_local}</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <>
-                    <TouchableOpacity onPress={submitAuthStep} disabled={authLoading || !authEmail.trim() || authPass.length < 6} style={[styles.btnCtaLarge, (authLoading || !authEmail.trim() || authPass.length < 6) && styles.btnCtaOff]}>
-                      <Text style={styles.btnCtaLargeTxt}>{authLoading ? '…' : (authMode === 'up' ? tr.ob_auth_submit_up : tr.ob_auth_submit_in)}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => { setAuthMode(m => (m === 'up' ? 'in' : 'up')); setAuthErr(''); }} style={{ marginTop: 14, paddingVertical: 8, alignItems: 'center' }}>
-                      <Text style={{ fontSize: 13, color: 'rgba(0,220,255,0.82)', textDecorationLine: 'underline' }}>{authMode === 'up' ? tr.ob_auth_toggle_in : tr.ob_auth_toggle_up}</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-              {supabase ? (
-                <TouchableOpacity onPress={() => onDone(prenom.trim(), lang, tensionIdxs, { skipCloudAuth: true })} style={{ marginTop: 20, paddingVertical: 12 }}>
-                  <Text style={{ fontSize: 13, color: 'rgba(0,190,230,0.65)', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center' }}>{tr.ob_auth_skip}</Text>
-                </TouchableOpacity>
-              ) : null}
-            </ScrollView>
           </KeyboardAvoidingView>
         )}
       </Animated.View>
@@ -3156,8 +3450,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
   const [streak, setStreak] = useState(0);
   const [isSubscriber, setIsSubscriber] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
+  const [freeDetailVisible, setFreeDetailVisible] = useState(false);
+  const [freeVideoPlaying, setFreeVideoPlaying] = useState(false);
   const [rcPackagesByProductId, setRcPackagesByProductId] = useState({});
   const [rcLoadingPrices, setRcLoadingPrices] = useState(false);
+
+  useEffect(function() { initHealthKit(); }, []);
 
   const rcSupported = Platform.OS === 'ios';
   const rcDisabled = !Purchases || !rcSupported || (Device && Device.isDevice === false);
@@ -3368,9 +3666,35 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
         onBuyMonthly={(pkg) => purchaseSubscription(pkg)}
         onBuyYearly={(pkg) => purchaseSubscription(pkg)}
         onRestore={() => restoreSubscription()}
+        onTryFree={() => { setPaywallVisible(false); setFreeDetailVisible(true); }}
       />
+      <SeanceDetailModal
+        visible={freeDetailVisible}
+        onClose={() => { setFreeDetailVisible(false); setFreeVideoPlaying(false); }}
+        sdj={getSeanceDuJour(done, tensionIdxs, lang)}
+        lang={lang}
+        onPlay={() => { setFreeDetailVisible(false); setFreeVideoPlaying(true); }}
+      />
+      {freeVideoPlaying && (function() {
+        var sdj = getSeanceDuJour(done, tensionIdxs, lang);
+        if (!sdj) return null;
+        return (
+          <Modal visible animationType="fade" presentationStyle="fullScreen" statusBarTranslucent supportedOrientations={['portrait', 'landscape-left', 'landscape-right']} onRequestClose={() => setFreeVideoPlaying(false)}>
+            <VideoPlayer
+              seance={sdj.seance}
+              pilier={sdj.pilier}
+              lang={lang}
+              seanceIndex={sdj.idx}
+              isDemo={!isSubscriber}
+              onClose={() => setFreeVideoPlaying(false)}
+              onComplete={() => { var dur = parseInt(sdj?.seance?.[1]) || 15; saveHealthKitWorkout(dur); setFreeVideoPlaying(false); }}
+              onDemoLimit={() => { setFreeVideoPlaying(false); setPaywallVisible(true); }}
+            />
+          </Modal>
+        );
+      })()}
       <NavigationContainer>
-          <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { backgroundColor: 'rgba(0,10,20,0.95)', borderTopColor: 'rgba(0,215,255,0.14)', height: 90, paddingBottom: 14, paddingTop: 8 }, tabBarActiveTintColor: 'rgba(0,220,255,0.9)', tabBarInactiveTintColor: 'rgba(0,195,240,0.36)', tabBarLabelStyle: { fontSize: 14, fontWeight: '400', letterSpacing: 0.3 } }}>
+          <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { backgroundColor: 'rgba(28,28,30,0.92)', borderTopWidth: 0, borderTopColor: 'transparent', height: 64, paddingBottom: 8, paddingTop: 4, marginHorizontal: 20, marginBottom: 24, borderRadius: 32, position: 'absolute', left: 0, right: 0, bottom: 0, elevation: 0, shadowOpacity: 0 }, tabBarActiveTintColor: '#E5FF00', tabBarInactiveTintColor: 'rgba(255,255,255,0.5)', tabBarLabelStyle: { fontSize: 11, fontWeight: '500', letterSpacing: 0.3 }, tabBarItemStyle: { paddingVertical: 4 }, tabBarActiveBackgroundColor: 'rgba(255,255,255,0.08)', tabBarItemStyle: { borderRadius: 24, marginHorizontal: 4, paddingVertical: 4 } }}>
           <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={isSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconProgresser {...props} /> }}>{() => <Progresser done={done} lang={lang} tensionIdxs={tensionIdxs} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
@@ -3557,9 +3881,9 @@ const styles = StyleSheet.create({
   metricWebFallback: { backgroundColor: 'rgba(255,255,255,0.14)' },
   mval: { fontSize: 20, fontWeight: '500', color: '#fff' },
   mlbl: { fontSize: 9, fontWeight: '200', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(255,255,255,0.92)', marginTop: 3 },
-  btnCtaLarge: { alignSelf: 'stretch', height: 66, borderRadius: 33, backgroundColor: 'rgba(0,180,235,0.3)', borderWidth: 2, borderColor: 'rgba(0,235,255,0.9)', alignItems: 'center', justifyContent: 'center' },
+  btnCtaLarge: { alignSelf: 'stretch', height: 66, borderRadius: 33, backgroundColor: 'rgba(229,255,0,0.15)', borderWidth: 2, borderColor: '#E5FF00', alignItems: 'center', justifyContent: 'center' },
   btnCtaOff: { opacity: 0.3 },
-  btnCtaLargeTxt: { fontSize: 17, fontWeight: '600', color: 'rgba(230,250,255,1)', letterSpacing: 3, textTransform: 'uppercase' },
+  btnCtaLargeTxt: { fontSize: 19, fontWeight: '700', color: '#E5FF00', letterSpacing: 3, textTransform: 'uppercase' },
   statCard: { flex: 1, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 16, padding: 14, alignItems: 'center' },
   statLbl: { fontSize: 9, fontWeight: '200', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(0,175,215,0.42)' },
 });

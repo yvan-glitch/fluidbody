@@ -20,7 +20,13 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
+        },
+        "NSHealthShareUsageDescription": "FluidBody utilise HealthKit pour enregistrer vos séances et remplir vos anneaux Fitness.",
+        "NSHealthUpdateUsageDescription": "FluidBody enregistre vos séances de Pilates comme exercices dans Santé."
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.background-delivery": false
       }
     },
     "android": {
@@ -41,7 +47,8 @@
       }
     },
     "plugins": [
-      "expo-localization"
+      "expo-localization",
+      "react-native-health"
     ]
   }
 }
