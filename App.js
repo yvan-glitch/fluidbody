@@ -27,6 +27,8 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ViewShot from 'react-native-view-shot';
+import { Linking as RNLinking } from 'react-native';
 
 // ── HEALTHKIT ──────────────────────────────────────────
 const HK_PERMISSIONS = AppleHealthKit ? {
@@ -291,7 +293,7 @@ const IS_IPAD = SW >= 768;
 const SCALE = IS_IPAD ? SW / 390 : 1; // Scale factor relative to iPhone 390px
 const VIDEO_DEMO = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
 
-const SUPPORTED_APP_LANGS = ['fr', 'en', 'es', 'it'];
+const SUPPORTED_APP_LANGS = ['fr', 'en', 'es', 'it', 'de', 'pt', 'zh', 'ja', 'ko'];
 
 /** Langue d'interface : locale appareil (expo-localization), sinon français. */
 function getAppLangFromLocale() {
@@ -375,7 +377,7 @@ function canAccessSeanceIndex(idx, isSubscriber) {
 // MAPPING TENSIONS → PILIERS
 // Index des zones dans ob_zones : 0=Dos/Nuque, 1=Épaules, 2=Hanches, 3=Posture, 4=Respiration, 5=Stress
 // ══════════════════════════════════
-const ZONE_TO_PILIER = { 0: 'p2', 1: 'p1', 2: 'p3', 3: 'p4', 4: 'p5', 5: 'p6' };
+const ZONE_TO_PILIER = { 0: 'p2', 1: 'p1', 2: 'p3', 3: 'p4', 4: 'p5', 5: 'p6', 6: 'p8' };
 
 // ── SÉANCE DU JOUR ──────────────────────────────────────────
 // Choisit une séance non faite selon le jour + profil utilisateur
@@ -417,7 +419,7 @@ const T = {
     ob_bilan: 'Bilan corporel',
     ob_tensions: 'Où ressens-tu\ndes tensions ?',
     ob_select: 'Sélectionne une ou plusieurs zones',
-    ob_zones: ['Dos / Nuque', 'Épaules', 'Hanches', 'Posture', 'Respiration', 'Stress'],
+    ob_zones: ['Dos / Nuque', 'Épaules', 'Hanches', 'Posture', 'Respiration', 'Stress', 'Bureau / Sédentaire'],
     ob_continuer: 'Continuer →',
     ob_explorer: 'Je veux tout explorer',
     ob_rythme_tag: 'Ton rythme',
@@ -449,7 +451,7 @@ const T = {
     ob_auth_err_net: 'Erreur réseau.',
     ob_auth_no_cloud: 'Sauvegarde cloud indisponible sur cet environnement. Tes identifiants ne seront pas enregistrés sur un serveur.',
     ob_auth_continue_local: 'Continuer en local →',
-    piliers: ['Épaules', 'Dos', 'Mobilité', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates'],
+    piliers: ['Épaules', 'Dos', 'Mobilité', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates', 'Office'],
     etapes: { Comprendre: 'Comprendre', Ressentir: 'Ressentir', Préparer: 'Préparer', Exécuter: 'Exécuter', Évoluer: 'Évoluer' },
     retour: '← Mon Corps',
     seances_done: (n) => `${n} / 20 séances complétées`,
@@ -500,7 +502,7 @@ const T = {
     par_pilier: 'Par pilier',
     parcours_langue: 'Langue',
     mon_compte: 'Mon compte',
-    compte_info: [['Application', 'FluidBody · Pilates'], ['Version', 'FluidBody Beta 1.0'], ['Méthode', 'Pilates Conscient · 23 ans']],
+    compte_info: [['Application', 'FluidBody · Pilates'], ['Version', 'FluidBody Beta 1.0'], ['Méthode', 'Pilates Conscient · 30 ans']],
     progresser_sub: (p) => `${p}% du parcours complété`,
     recommande_pour_toi: 'POUR TOI',
     seance_gratuite: 'Séance gratuite',
@@ -509,6 +511,10 @@ const T = {
     deja_faite: "✓ Déjà faite aujourd'hui",
     notif_title: `FluidBody ${U_JELLY}`,
     notif_body: "Ta séance démo t'attend. Ton corps a besoin de toi.",
+    notif_pause_title: 'Pause Active 🪑', notif_pause_body: "C'est le moment de bouger ! 5 min d'étirements au bureau.",
+    coach_title: 'Votre Coach', coach_name: 'Sabrina', coach_subtitle: 'Experte Pilates · 30 ans d\'expérience', coach_bio: 'Passionnée par le mouvement conscient, je vous guide vers un corps plus libre et plus fort.', coach_more: 'En savoir plus', coach_avec: 'Avec Sabrina', coach_exp: '30 ans d\'expérience', coach_quote: '"Je vous accompagne pas à pas vers un corps plus libre."',
+    first_seance_title: 'Bravo !', first_seance_sub: 'Première séance terminée !\nCrée un compte gratuit pour sauvegarder ta progression et ne jamais la perdre.', first_seance_create: 'Créer mon compte', first_seance_later: 'Plus tard',
+    save_progress_title: 'Sauvegarde ta progression', save_progress_sub: 'Crée un compte gratuit pour ne rien perdre',
     demo_limit: "Abonne-toi pour voir la suite",
     motivation: (streak) => streak === 0 ? '"Commence aujourd\'hui.\nTon corps t\'attend."' :
       streak < 3  ? `"${streak} jour${streak > 1 ? 's' : ''} de suite. Continue."` :
@@ -558,7 +564,7 @@ const T = {
     ob_bilan: 'Body assessment',
     ob_tensions: 'Where do you feel\ntension?',
     ob_select: 'Select one or more areas',
-    ob_zones: ['Back / Neck', 'Shoulders', 'Hips', 'Posture', 'Breathing', 'Stress'],
+    ob_zones: ['Back / Neck', 'Shoulders', 'Hips', 'Posture', 'Breathing', 'Stress', 'Office / Sedentary'],
     ob_continuer: 'Continue →',
     ob_explorer: 'I want to explore everything',
     ob_rythme_tag: 'Your rhythm',
@@ -590,7 +596,7 @@ const T = {
     ob_auth_err_net: 'Network error.',
     ob_auth_no_cloud: `Cloud backup isn't available in this build. Your credentials won't be saved to a server.`,
     ob_auth_continue_local: 'Continue locally →',
-    piliers: ['Shoulders', 'Back', 'Mobility', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates'],
+    piliers: ['Shoulders', 'Back', 'Mobility', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates', 'Office'],
     etapes: { Comprendre: 'Understand', Ressentir: 'Feel', Préparer: 'Prepare', Exécuter: 'Execute', Évoluer: 'Evolve' },
     retour: '← My Body',
     seances_done: (n) => `${n} / 20 sessions completed`,
@@ -641,7 +647,7 @@ const T = {
     par_pilier: 'By pillar',
     parcours_langue: 'Language',
     mon_compte: 'My account',
-    compte_info: [['App', 'FluidBody · Pilates'], ['Version', 'FluidBody Beta 1.0'], ['Method', 'Conscious Pilates · 23 years']],
+    compte_info: [['App', 'FluidBody · Pilates'], ['Version', 'FluidBody Beta 1.0'], ['Method', 'Conscious Pilates · 30 years']],
     progresser_sub: (p) => `${p}% of journey completed`,
     recommande_pour_toi: 'FOR YOU',
     seance_gratuite: 'Free session',
@@ -650,6 +656,10 @@ const T = {
     deja_faite: '✓ Already done today',
     notif_title: `FluidBody ${U_JELLY}`,
     notif_body: 'Your demo session is waiting. Your body needs you.',
+    notif_pause_title: 'Active Break 🪑', notif_pause_body: 'Time to move! 5 min desk stretches.',
+    coach_title: 'Your Coach', coach_name: 'Sabrina', coach_subtitle: 'Pilates Expert · 30 years experience', coach_bio: 'Passionate about conscious movement, I guide you towards a freer, stronger body.', coach_more: 'Learn more', coach_avec: 'With Sabrina', coach_exp: '30 years experience', coach_quote: '"I guide you step by step towards a freer body."',
+    first_seance_title: 'Well done!', first_seance_sub: 'First session complete!\nCreate a free account to save your progress.', first_seance_create: 'Create my account', first_seance_later: 'Later',
+    save_progress_title: 'Save your progress', save_progress_sub: 'Create a free account to keep everything',
     demo_limit: 'Subscribe to see the rest',
     motivation: (streak) => streak === 0 ? '"Start today.\nYour body is waiting."' :
       streak < 3  ? `"${streak} day${streak > 1 ? 's' : ''} in a row. Keep going."` :
@@ -699,7 +709,7 @@ const T = {
     ob_bilan: 'Evaluación corporal',
     ob_tensions: '¿Dónde sientes\ntensión?',
     ob_select: 'Selecciona una o varias zonas',
-    ob_zones: ['Espalda / Cuello', 'Hombros', 'Caderas', 'Postura', 'Respiración', 'Estrés'],
+    ob_zones: ['Espalda / Cuello', 'Hombros', 'Caderas', 'Postura', 'Respiración', 'Estrés', 'Oficina / Sedentario'],
     ob_continuer: 'Continuar →',
     ob_explorer: 'Quiero explorarlo todo',
     ob_rythme_tag: 'Tu ritmo',
@@ -731,7 +741,7 @@ const T = {
     ob_auth_err_net: 'Error de red.',
     ob_auth_no_cloud: 'La copia en la nube no está disponible en este entorno. Tus datos no se guardarán en un servidor.',
     ob_auth_continue_local: 'Continuar en local →',
-    piliers: ['Hombros', 'Espalda', 'Movilidad', 'Postura', 'Eldoa', 'Golf', 'Mat Pilates'],
+    piliers: ['Hombros', 'Espalda', 'Movilidad', 'Postura', 'Eldoa', 'Golf', 'Mat Pilates', 'Oficina'],
     etapes: { Comprendre: 'Comprender', Ressentir: 'Sentir', Préparer: 'Preparar', Exécuter: 'Ejecutar', Évoluer: 'Evolucionar' },
     retour: '← Mi Cuerpo',
     seances_done: (n) => `${n} / 20 sesiones completadas`,
@@ -782,7 +792,7 @@ const T = {
     par_pilier: 'Por pilar',
     parcours_langue: 'Idioma',
     mon_compte: 'Mi cuenta',
-    compte_info: [['Aplicación', 'FluidBody · Pilates'], ['Versión', 'FluidBody Beta 1.0'], ['Método', 'Pilates Consciente · 23 años']],
+    compte_info: [['Aplicación', 'FluidBody · Pilates'], ['Versión', 'FluidBody Beta 1.0'], ['Método', 'Pilates Consciente · 30 años']],
     progresser_sub: (p) => `${p}% del recorrido completado`,
     recommande_pour_toi: 'PARA TI',
     seance_gratuite: 'Sesión gratuita',
@@ -791,6 +801,10 @@ const T = {
     deja_faite: '✓ Ya hecha hoy',
     notif_title: `FluidBody ${U_JELLY}`,
     notif_body: 'Tu sesión demo te espera. Tu cuerpo te necesita.',
+    notif_pause_title: 'Pausa Activa 🪑', notif_pause_body: '¡Es hora de moverse! 5 min de estiramientos.',
+    coach_title: 'Tu Coach', coach_name: 'Sabrina', coach_subtitle: 'Experta Pilates · 30 años de experiencia', coach_bio: 'Apasionada por el movimiento consciente, te guío hacia un cuerpo más libre y más fuerte.', coach_more: 'Saber más', coach_avec: 'Con Sabrina', coach_exp: '30 años de experiencia', coach_quote: '"Te acompaño paso a paso hacia un cuerpo más libre."',
+    first_seance_title: '¡Bravo!', first_seance_sub: '¡Primera sesión completada!\nCrea una cuenta gratis para guardar tu progreso.', first_seance_create: 'Crear mi cuenta', first_seance_later: 'Más tarde',
+    save_progress_title: 'Guarda tu progreso', save_progress_sub: 'Crea una cuenta gratis para no perder nada',
     demo_limit: 'Suscríbete para ver el resto',
     motivation: (streak) => streak === 0 ? '"Empieza hoy.\nTu cuerpo te espera."' :
       streak < 3  ? `"${streak} día${streak > 1 ? 's' : ''} seguido${streak > 1 ? 's' : ''}. Sigue."` :
@@ -840,7 +854,7 @@ const T = {
     ob_bilan: 'Valutazione corporea',
     ob_tensions: 'Dove senti\ntensione?',
     ob_select: 'Seleziona una o più zone',
-    ob_zones: ['Schiena / Collo', 'Spalle', 'Fianchi', 'Postura', 'Respirazione', 'Stress'],
+    ob_zones: ['Schiena / Collo', 'Spalle', 'Fianchi', 'Postura', 'Respirazione', 'Stress', 'Ufficio / Sedentario'],
     ob_continuer: 'Continua →',
     ob_explorer: 'Voglio esplorare tutto',
     ob_rythme_tag: 'Il tuo ritmo',
@@ -872,7 +886,7 @@ const T = {
     ob_auth_err_net: 'Errore di rete.',
     ob_auth_no_cloud: 'Il salvataggio cloud non è disponibile in questa build. Le credenziali non verranno salvate su un server.',
     ob_auth_continue_local: 'Continua in locale →',
-    piliers: ['Spalle', 'Schiena', 'Mobilità', 'Postura', 'Eldoa', 'Golf', 'Mat Pilates'],
+    piliers: ['Spalle', 'Schiena', 'Mobilità', 'Postura', 'Eldoa', 'Golf', 'Mat Pilates', 'Ufficio'],
     etapes: { Comprendre: 'Capire', Ressentir: 'Sentire', Préparer: 'Preparare', Exécuter: 'Eseguire', Évoluer: 'Evolvere' },
     retour: '← Il Mio Corpo',
     seances_done: (n) => `${n} / 20 sessioni completate`,
@@ -923,7 +937,7 @@ const T = {
     par_pilier: 'Per pilastro',
     parcours_langue: 'Lingua',
     mon_compte: 'Il mio account',
-    compte_info: [['App', 'FluidBody · Pilates'], ['Versione', 'FluidBody Beta 1.0'], ['Metodo', 'Pilates Consapevole · 23 anni']],
+    compte_info: [['App', 'FluidBody · Pilates'], ['Versione', 'FluidBody Beta 1.0'], ['Metodo', 'Pilates Consapevole · 30 anni']],
     progresser_sub: (p) => `${p}% del percorso completato`,
     recommande_pour_toi: 'PER TE',
     seance_gratuite: 'Sessione gratuita',
@@ -932,6 +946,10 @@ const T = {
     deja_faite: '✓ Già fatta oggi',
     notif_title: `FluidBody ${U_JELLY}`,
     notif_body: 'La tua sessione demo ti aspetta. Il tuo corpo ha bisogno di te.',
+    notif_pause_title: 'Pausa Attiva 🪑', notif_pause_body: 'È ora di muoversi! 5 min di stretching alla scrivania.',
+    coach_title: 'Il Tuo Coach', coach_name: 'Sabrina', coach_subtitle: 'Esperta Pilates · 30 anni di esperienza', coach_bio: 'Appassionata di movimento consapevole, vi guido verso un corpo più libero e più forte.', coach_more: 'Scopri di più', coach_avec: 'Con Sabrina', coach_exp: '30 anni di esperienza', coach_quote: '"Vi accompagno passo dopo passo verso un corpo più libero."',
+    first_seance_title: 'Bravo!', first_seance_sub: 'Prima sessione completata!\nCrea un account gratuito per salvare i tuoi progressi.', first_seance_create: 'Crea il mio account', first_seance_later: 'Più tardi',
+    save_progress_title: 'Salva i tuoi progressi', save_progress_sub: 'Crea un account gratuito per non perdere nulla',
     demo_limit: 'Abbonati per vedere il resto',
     motivation: (streak) => streak === 0 ? '"Inizia oggi.\nIl tuo corpo ti aspetta."' :
       streak < 3  ? `"${streak} giorno${streak > 1 ? 'i' : ''} di fila. Continua."` :
@@ -963,6 +981,721 @@ const T = {
     subscription_status_active: 'Attivo — tutte le sessioni',
     subscription_status_free: 'Inattivo',
     subscription_reset: 'Ripristina acquisti',
+  },
+  de: {
+    lang: 'de', flag: '🇩🇪', nom: 'Deutsch',
+    tabs: ['FluidBody+', 'Zusammenfassung', 'Bibliothek', 'Teilen', 'Profil'],
+    resume_title: 'Zusammenfassung', resume_activite: 'Aktivität', resume_bouger: 'Bewegen', resume_exercice: 'Übung', resume_debout: 'Stehen', resume_seances: 'FluidBody Sitzungen', resume_no_seance: 'Keine Sitzungen abgeschlossen', resume_progression: 'Fortschritt', resume_global: 'Gesamt', resume_streak: 'Serie',
+    bonjour: (p) => p ? `Hallo ${p}` : '',
+    bonjour_mot: 'Hallo',
+    ob_tag: 'Eine neue Art, deinen Körper zu bewohnen',
+    ob_l1: 'Andere Apps zeigen dir ',
+    ob_l1b: 'was du tun sollst.',
+    ob_l2: 'FluidBody zeigt dir ',
+    ob_l2b: 'wie du dich vorbereitest.',
+    ob_sub: 'Denn ein Körper, der sich selbst versteht, kann sich wirklich verändern.',
+    ob_cta: 'Starten →',
+    ob_compte: 'Ich habe bereits ein Konto',
+    ob_bilan: 'Körperbewertung',
+    ob_tensions: 'Wo spürst du\nVerspannungen?',
+    ob_select: 'Wähle eine oder mehrere Zonen',
+    ob_zones: ['Rücken / Nacken', 'Schultern', 'Hüften', 'Haltung', 'Atmung', 'Stress', 'Büro / Sitzend'],
+    ob_continuer: 'Weiter →',
+    ob_explorer: 'Ich möchte alles erkunden',
+    ob_rythme_tag: 'Dein Rhythmus',
+    ob_rythme: 'Wie viel Zeit hast du\njeden Tag?',
+    ob_temps: ['5–10 Min', '15–20 Min', '30 Min', '45 Min +'],
+    ob_varie: 'Variiert',
+    ob_prenom_tag: 'Letzter Schritt',
+    ob_prenom: 'Wie heißt\ndu?',
+    ob_prenom_sub: 'Dein Programm passt sich deinem Profil an.\nFluidBody begleitet dich jeden Tag.',
+    ob_placeholder: 'Dein Vorname...',
+    ob_demarrer: 'Starten →',
+    ob_anon: 'Anonym eintreten',
+    ob_auth_tag: 'FluidBody Konto',
+    ob_auth_title: 'Profil speichern',
+    ob_auth_signup_title: 'Registrierung',
+    ob_auth_signin_title: 'Anmelden',
+    ob_auth_sub: 'E-Mail und Passwort, um deinen Fortschritt in der Cloud zu synchronisieren.',
+    ob_auth_sub_signin: 'Gib deine Daten ein, um deinen Fortschritt wiederherzustellen.',
+    ob_email_ph: 'deine@email.com',
+    ob_pass_ph: 'Passwort (mind. 6 Zeichen)',
+    ob_auth_submit_up: 'Konto erstellen',
+    ob_auth_submit_in: 'Anmelden',
+    ob_auth_toggle_in: 'Ich habe bereits ein Konto →',
+    ob_auth_toggle_up: 'Kein Konto? Registrieren',
+    ob_auth_skip: 'Ohne Cloud-Konto fortfahren →',
+    ob_auth_err_short: 'Passwort muss mindestens 6 Zeichen haben.',
+    ob_auth_err_email: 'Gib eine gültige E-Mail-Adresse ein.',
+    ob_auth_confirm: 'Falls eine Bestätigung erforderlich ist, prüfe dein Postfach und melde dich erneut an.',
+    ob_auth_err_net: 'Netzwerkfehler.',
+    ob_auth_no_cloud: 'Cloud-Sicherung ist in dieser Version nicht verfügbar. Deine Daten werden nicht auf einem Server gespeichert.',
+    ob_auth_continue_local: 'Lokal fortfahren →',
+    piliers: ['Schultern', 'Rücken', 'Mobilität', 'Haltung', 'Eldoa', 'Golf', 'Mat Pilates', 'Büro'],
+    etapes: { Comprendre: 'Verstehen', Ressentir: 'Spüren', Préparer: 'Vorbereiten', Exécuter: 'Ausführen', Évoluer: 'Weiterentwickeln' },
+    retour: '← Mein Körper',
+    seances_done: (n) => `${n} / 20 Sitzungen abgeschlossen`,
+    m_seances: 'Sitzungen', m_streak: 'Serie', m_progress: 'Fortschritt',
+    retour_video: '← Zurück',
+    video_resume: (t) => `Fortgesetzt · ${t}`,
+    reprise_badge: 'Fortsetzen',
+    video_load_error: 'Das Video konnte nicht geladen werden.',
+    video_retry: 'Erneut versuchen',
+    seance_done: '✓  Sitzung abgeschlossen',
+    biblio_titre: 'Bibliothek',
+    biblio_sub: 'Verstehen, um besser zu spüren',
+    tab_piliers: 'Die 6 Säulen',
+    tab_methode: 'Die Methode',
+    tab_pour_vous: 'Für dich',
+    tab_explorer: 'Entdecken',
+    tab_programmes: 'Programme',
+    tab_recherche: '\uD83D\uDD0D',
+    explore_free_title: 'Kostenlose Auswahl des Monats',
+    explore_free_sub: 'Probiere diese Sitzung einmal aus, ohne Abo',
+    explore_new: 'Neue Auswahl für dich',
+    prog_section_title: 'Deine maßgeschneiderten Programme',
+    prog_section_sub: 'Vordefinierte Programme, um deinen Schwung beizubehalten oder deine Routine zu intensivieren.',
+    prog_debuter: 'Anfangen',
+    prog_debuter_sub: 'Schultern, Rücken und Mobilität',
+    prog_debuter_duree: '3 TAGE · 10 MIN/TAG',
+    prog_apercu: 'Programmvorschau',
+    prog_custom_title: 'Erstelle dein eigenes Programm',
+    prog_custom_sub: 'Wähle Aktivitäten und definiere dein Programm.',
+    prog_custom_card: 'Individuelles Programm',
+    prog_custom_card_sub: 'Deine Aktivitäten, die Dauer, deine Tage und dein Rhythmus.',
+    prog_custom_btn: 'Programm erstellen',
+    prog_create_title: 'Programm erstellen',
+    prog_select_piliers: 'Wähle deine Säulen',
+    prog_duree_label: 'Dauer pro Sitzung',
+    prog_jours_label: 'Tage pro Woche',
+    prog_save: 'Speichern',
+    prog_saved: 'Programm gespeichert!',
+    prog_mes_programmes: 'Meine Programme',
+    partage_title: 'Teilen', partage_progression: 'Meinen Fortschritt teilen', partage_btn: 'Teilen', partage_share_msg: 'Mein FluidBody+ Pilates Fortschritt', partage_inviter: 'Freunde einladen', partage_invite_btn: 'Per SMS / E-Mail einladen', partage_invite_msg: 'Komm zu FluidBody+ Pilates!', partage_en_attente: 'Ausstehend', partage_invitation: 'Einladung', partage_defis: 'Challenges', partage_creer_defi: 'Challenge erstellen', partage_choisir_pilier: 'Wähle eine Säule', partage_duree_defi: 'Dauer', partage_lancer: 'Starten',
+    profil_donnees_title: 'Datenschutz', profil_donnees_desc: 'Erfahre, wie deine Daten verwaltet werden. Deine Daten bleiben auf deinem Gerät. Keine persönlichen Daten werden an Drittserver gesendet. Sitzungen, Fortschritt und Einstellungen werden lokal gespeichert. Wenn du dich anmeldest, wird nur deine E-Mail synchronisiert, um dein Profil zu speichern.', profil_donnees_local: 'Daten lokal auf deinem Gerät gespeichert', profil_donnees_no_tracking: 'Kein Werbe-Tracking', profil_donnees_healthkit: 'HealthKit: Daten nur gelesen, nie geteilt',
+    biblio_intro: 'Die FluidBody-Methode basiert auf 5 aufeinander aufbauenden Schritten. Jede Sitzung durchläuft sie der Reihe nach.',
+    lire: ' Lesezeit',
+    retour_biblio: '← Bibliothek',
+    points_cles: 'Kernpunkte',
+    mon_parcours: 'Mein Weg',
+    prog_globale: 'Gesamtfortschritt',
+    par_pilier: 'Nach Säule',
+    parcours_langue: 'Sprache',
+    mon_compte: 'Mein Konto',
+    compte_info: [['App', 'FluidBody · Pilates'], ['Version', 'FluidBody Beta 1.0'], ['Methode', 'Bewusstes Pilates · 30 Jahre']],
+    progresser_sub: (p) => `${p}% des Weges abgeschlossen`,
+    recommande_pour_toi: 'FÜR DICH',
+    seance_gratuite: 'Kostenlose Sitzung',
+    seance_du_jour_sub: 'Heute für dich empfohlen',
+    commencer_seance: 'Starten →',
+    deja_faite: '✓ Heute schon gemacht',
+    notif_title: `FluidBody ${U_JELLY}`,
+    notif_body: 'Deine Demo-Sitzung wartet. Dein Körper braucht dich.',
+    notif_pause_title: 'Aktive Pause 🪑', notif_pause_body: 'Zeit, sich zu bewegen! 5 Min Dehnübungen am Schreibtisch.',
+    coach_title: 'Dein Coach', coach_name: 'Sabrina', coach_subtitle: 'Pilates-Expertin · 30 Jahre Erfahrung', coach_bio: 'Begeistert von bewusster Bewegung, führe ich dich zu einem freieren und stärkeren Körper.', coach_more: 'Mehr erfahren', coach_avec: 'Mit Sabrina', coach_exp: '30 Jahre Erfahrung', coach_quote: '"Ich begleite dich Schritt für Schritt zu einem freieren Körper."',
+    demo_limit: 'Abonniere, um den Rest zu sehen',
+    motivation: (streak) => streak === 0 ? '"Fang heute an.\nDein Körper wartet auf dich."' :
+      streak < 3  ? `"${streak} Tag${streak > 1 ? 'e' : ''} am Stück. Weiter so."` :
+      streak < 7  ? `"${streak} Tage hintereinander!\nDein Körper erwacht."` :
+      streak < 14 ? `"${streak} Tage! Eine echte Gewohnheit\nentsteht."` :
+      `"${streak} Tage. Du bist bemerkenswert. ${U_WAVE}"`,
+    celebration: 'Dein Körper hat Fortschritte gemacht.\nWeiter so! \uD83D\uDCAA',
+    biblio_signature: '— FluidBody',
+    premium_alert_title: 'Premium-Inhalt',
+    premium_alert_simulate: 'Angebote ansehen',
+    premium_alert_later: 'Später',
+    paywall_title: 'Übungen für alle',
+    paywall_sub: 'Entdecke neue Übungen für alle Niveaus.',
+    paywall_yearly_link: 'Spare mit dem Jahresabo \u203a',
+    paywall_monthly: 'Monatlich',
+    paywall_yearly: 'Jährlich',
+    paywall_buy_monthly: 'Monatlich kaufen',
+    paywall_buy_yearly: 'Jährlich kaufen',
+    paywall_restore: 'Käufe wiederherstellen',
+    paywall_close: 'Schließen',
+    paywall_prices_loading: 'Preise werden geladen…',
+    paywall_not_available: 'Käufe nicht verfügbar (Expo Go / Simulator).',
+    paywall_start: 'Starten',
+    paywall_per_month: '/Monat',
+    paywall_try_free: 'Teste die kostenlose Sitzung des Monats',
+    free_try_once: 'Teste diese Episode einmal kostenlos',
+    free_go: 'Los geht\'s!',
+    subscription_status_label: 'FluidBody+ Abonnement',
+    subscription_status_active: 'Aktiv — alle Sitzungen',
+    subscription_status_free: 'Inaktiv',
+    subscription_reset: 'Käufe wiederherstellen',
+  },
+  pt: {
+    lang: 'pt', flag: '🇧🇷', nom: 'Português',
+    tabs: ['FluidBody+', 'Resumo', 'Biblioteca', 'Compartilhar', 'Perfil'],
+    resume_title: 'Resumo', resume_activite: 'Atividade', resume_bouger: 'Movimento', resume_exercice: 'Exercício', resume_debout: 'Em pé', resume_seances: 'Sessões FluidBody', resume_no_seance: 'Nenhuma sessão concluída', resume_progression: 'Progresso', resume_global: 'Geral', resume_streak: 'Sequência',
+    bonjour: (p) => p ? `Olá ${p}` : '',
+    bonjour_mot: 'Olá',
+    ob_tag: 'Uma nova forma de habitar o seu corpo',
+    ob_l1: 'Outros apps mostram ',
+    ob_l1b: 'o que fazer.',
+    ob_l2: 'O FluidBody mostra ',
+    ob_l2b: 'como se preparar.',
+    ob_sub: 'Porque um corpo que se compreende pode realmente mudar.',
+    ob_cta: 'Começar →',
+    ob_compte: 'Já tenho uma conta',
+    ob_bilan: 'Avaliação corporal',
+    ob_tensions: 'Onde você sente\ntensão?',
+    ob_select: 'Selecione uma ou mais áreas',
+    ob_zones: ['Costas / Pescoço', 'Ombros', 'Quadris', 'Postura', 'Respiração', 'Estresse', 'Escritório / Sedentário'],
+    ob_continuer: 'Continuar →',
+    ob_explorer: 'Quero explorar tudo',
+    ob_rythme_tag: 'Seu ritmo',
+    ob_rythme: 'Quanto tempo você tem\ncada dia?',
+    ob_temps: ['5–10 min', '15–20 min', '30 min', '45 min +'],
+    ob_varie: 'Varia',
+    ob_prenom_tag: 'Último passo',
+    ob_prenom: 'Qual é o\nseu nome?',
+    ob_prenom_sub: 'Seu programa se adapta ao seu perfil.\nO FluidBody acompanha você todos os dias.',
+    ob_placeholder: 'Seu nome...',
+    ob_demarrer: 'Começar →',
+    ob_anon: 'Entrar anonimamente',
+    ob_auth_tag: 'Conta FluidBody',
+    ob_auth_title: 'Salvar perfil',
+    ob_auth_signup_title: 'Cadastro',
+    ob_auth_signin_title: 'Entrar',
+    ob_auth_sub: 'E-mail e senha para sincronizar seu progresso na nuvem.',
+    ob_auth_sub_signin: 'Insira suas credenciais para recuperar seu progresso.',
+    ob_email_ph: 'seu@email.com',
+    ob_pass_ph: 'Senha (mín. 6 caracteres)',
+    ob_auth_submit_up: 'Criar conta',
+    ob_auth_submit_in: 'Entrar',
+    ob_auth_toggle_in: 'Já tenho uma conta →',
+    ob_auth_toggle_up: 'Sem conta? Cadastre-se',
+    ob_auth_skip: 'Continuar sem conta na nuvem →',
+    ob_auth_err_short: 'A senha deve ter pelo menos 6 caracteres.',
+    ob_auth_err_email: 'Insira um endereço de e-mail válido.',
+    ob_auth_confirm: 'Se for necessária confirmação, verifique seu e-mail e entre novamente.',
+    ob_auth_err_net: 'Erro de rede.',
+    ob_auth_no_cloud: 'Backup na nuvem não está disponível nesta versão. Suas credenciais não serão salvas em um servidor.',
+    ob_auth_continue_local: 'Continuar localmente →',
+    piliers: ['Ombros', 'Costas', 'Mobilidade', 'Postura', 'Eldoa', 'Golf', 'Mat Pilates', 'Escritório'],
+    etapes: { Comprendre: 'Compreender', Ressentir: 'Sentir', Préparer: 'Preparar', Exécuter: 'Executar', Évoluer: 'Evoluir' },
+    retour: '← Meu Corpo',
+    seances_done: (n) => `${n} / 20 sessões concluídas`,
+    m_seances: 'Sessões', m_streak: 'Sequência', m_progress: 'Progresso',
+    retour_video: '← Voltar',
+    video_resume: (t) => `Retomado · ${t}`,
+    reprise_badge: 'Retomar',
+    video_load_error: 'Não foi possível carregar o vídeo.',
+    video_retry: 'Tentar novamente',
+    seance_done: '✓  Sessão concluída',
+    biblio_titre: 'Biblioteca',
+    biblio_sub: 'Compreender para sentir melhor',
+    tab_piliers: 'Os 6 pilares',
+    tab_methode: 'O método',
+    tab_pour_vous: 'Para você',
+    tab_explorer: 'Explorar',
+    tab_programmes: 'Programas',
+    tab_recherche: '\uD83D\uDD0D',
+    explore_free_title: 'Seleção gratuita do mês',
+    explore_free_sub: 'Experimente esta sessão uma vez, sem assinatura',
+    explore_new: 'Novas seleções para você',
+    prog_section_title: 'Seus programas personalizados',
+    prog_section_sub: 'Programas predefinidos para manter seu ritmo ou intensificar sua rotina.',
+    prog_debuter: 'Começar',
+    prog_debuter_sub: 'Ombros, Costas e Mobilidade',
+    prog_debuter_duree: '3 DIAS · 10 MIN/DIA',
+    prog_apercu: 'Visão geral do programa',
+    prog_custom_title: 'Crie seu próprio programa',
+    prog_custom_sub: 'Escolha atividades e defina seu programa.',
+    prog_custom_card: 'Programa personalizado',
+    prog_custom_card_sub: 'Suas atividades, a duração, seus dias e seu ritmo.',
+    prog_custom_btn: 'Criar um programa',
+    prog_create_title: 'Criar um programa',
+    prog_select_piliers: 'Selecione seus pilares',
+    prog_duree_label: 'Duração por sessão',
+    prog_jours_label: 'Dias por semana',
+    prog_save: 'Salvar',
+    prog_saved: 'Programa salvo!',
+    prog_mes_programmes: 'Meus programas',
+    partage_title: 'Compartilhar', partage_progression: 'Compartilhar meu progresso', partage_btn: 'Compartilhar', partage_share_msg: 'Meu progresso no FluidBody+ Pilates', partage_inviter: 'Convidar amigos', partage_invite_btn: 'Convidar por SMS / E-mail', partage_invite_msg: 'Junte-se a mim no FluidBody+ Pilates!', partage_en_attente: 'Pendente', partage_invitation: 'Convite', partage_defis: 'Desafios', partage_creer_defi: 'Criar um desafio', partage_choisir_pilier: 'Escolha um pilar', partage_duree_defi: 'Duração', partage_lancer: 'Iniciar',
+    profil_donnees_title: 'Privacidade', profil_donnees_desc: 'Saiba como seus dados são gerenciados. Seus dados ficam no seu dispositivo. Nenhum dado pessoal é enviado a servidores de terceiros. Sessões, progresso e preferências são armazenados localmente. Se você entrar, apenas seu e-mail é sincronizado para salvar seu perfil.', profil_donnees_local: 'Dados armazenados localmente no seu dispositivo', profil_donnees_no_tracking: 'Sem rastreamento publicitário', profil_donnees_healthkit: 'HealthKit: dados apenas lidos, nunca compartilhados',
+    biblio_intro: 'O método FluidBody se baseia em 5 etapas progressivas. Cada sessão as percorre em ordem.',
+    lire: ' de leitura',
+    retour_biblio: '← Biblioteca',
+    points_cles: 'Pontos-chave',
+    mon_parcours: 'Meu Percurso',
+    prog_globale: 'Progresso geral',
+    par_pilier: 'Por pilar',
+    parcours_langue: 'Idioma',
+    mon_compte: 'Minha conta',
+    compte_info: [['App', 'FluidBody · Pilates'], ['Versão', 'FluidBody Beta 1.0'], ['Método', 'Pilates Consciente · 30 anos']],
+    progresser_sub: (p) => `${p}% do percurso concluído`,
+    recommande_pour_toi: 'PARA VOCÊ',
+    seance_gratuite: 'Sessão gratuita',
+    seance_du_jour_sub: 'Recomendada para você hoje',
+    commencer_seance: 'Começar →',
+    deja_faite: '✓ Já feita hoje',
+    notif_title: `FluidBody ${U_JELLY}`,
+    notif_body: 'Sua sessão demo está esperando. Seu corpo precisa de você.',
+    notif_pause_title: 'Pausa Ativa 🪑', notif_pause_body: 'Hora de se mover! 5 min de alongamento na mesa.',
+    coach_title: 'Seu Coach', coach_name: 'Sabrina', coach_subtitle: 'Especialista em Pilates · 30 anos de experiência', coach_bio: 'Apaixonada pelo movimento consciente, eu guio você rumo a um corpo mais livre e mais forte.', coach_more: 'Saiba mais', coach_avec: 'Com Sabrina', coach_exp: '30 anos de experiência', coach_quote: '"Eu acompanho você passo a passo rumo a um corpo mais livre."',
+    demo_limit: 'Assine para ver o restante',
+    motivation: (streak) => streak === 0 ? '"Comece hoje.\nSeu corpo está esperando."' :
+      streak < 3  ? `"${streak} dia${streak > 1 ? 's' : ''} seguido${streak > 1 ? 's' : ''}. Continue."` :
+      streak < 7  ? `"${streak} dias seguidos!\nSeu corpo está despertando."` :
+      streak < 14 ? `"${streak} dias! Um hábito real\nestá se formando."` :
+      `"${streak} dias. Você é notável. ${U_WAVE}"`,
+    celebration: 'Seu corpo progrediu.\nContinue assim! \uD83D\uDCAA',
+    biblio_signature: '— FluidBody',
+    premium_alert_title: 'Conteúdo Premium',
+    premium_alert_simulate: 'Ver ofertas',
+    premium_alert_later: 'Mais tarde',
+    paywall_title: 'Exercícios para todos',
+    paywall_sub: 'Descubra novos exercícios pensados para todos os níveis.',
+    paywall_yearly_link: 'Economize com a assinatura anual \u203a',
+    paywall_monthly: 'Mensal',
+    paywall_yearly: 'Anual',
+    paywall_buy_monthly: 'Comprar mensal',
+    paywall_buy_yearly: 'Comprar anual',
+    paywall_restore: 'Restaurar compras',
+    paywall_close: 'Fechar',
+    paywall_prices_loading: 'Carregando preços…',
+    paywall_not_available: 'Compras indisponíveis (Expo Go / simulador).',
+    paywall_start: 'Começar',
+    paywall_per_month: '/mês',
+    paywall_try_free: 'Experimente a sessão gratuita do mês',
+    free_try_once: 'Experimente este episódio uma vez de graça',
+    free_go: 'Vamos lá!',
+    subscription_status_label: 'Assinatura FluidBody+',
+    subscription_status_active: 'Ativa — todas as sessões',
+    subscription_status_free: 'Inativo',
+    subscription_reset: 'Restaurar compras',
+  },
+  zh: {
+    lang: 'zh', flag: '🇨🇳', nom: '中文',
+    tabs: ['FluidBody+', '摘要', '资料库', '分享', '个人'],
+    resume_title: '摘要', resume_activite: '活动', resume_bouger: '运动', resume_exercice: '锻炼', resume_debout: '站立', resume_seances: 'FluidBody 课程', resume_no_seance: '尚未完成任何课程', resume_progression: '进度', resume_global: '总体', resume_streak: '连续',
+    bonjour: (p) => p ? `你好 ${p}` : '',
+    bonjour_mot: '你好',
+    ob_tag: '一种全新的方式来感受你的身体',
+    ob_l1: '其他应用告诉你',
+    ob_l1b: '做什么。',
+    ob_l2: 'FluidBody 告诉你',
+    ob_l2b: '如何准备。',
+    ob_sub: '因为一个理解自己的身体才能真正改变。',
+    ob_cta: '开始 →',
+    ob_compte: '我已有账户',
+    ob_bilan: '身体评估',
+    ob_tensions: '你在哪里感到\n紧张？',
+    ob_select: '选择一个或多个区域',
+    ob_zones: ['背部 / 颈部', '肩膀', '髋部', '姿势', '呼吸', '压力', '办公 / 久坐'],
+    ob_continuer: '继续 →',
+    ob_explorer: '我想全部探索',
+    ob_rythme_tag: '你的节奏',
+    ob_rythme: '你每天有\n多少时间？',
+    ob_temps: ['5–10 分钟', '15–20 分钟', '30 分钟', '45 分钟 +'],
+    ob_varie: '不一定',
+    ob_prenom_tag: '最后一步',
+    ob_prenom: '你叫\n什么名字？',
+    ob_prenom_sub: '你的计划会根据你的档案进行调整。\nFluidBody 每天陪伴你。',
+    ob_placeholder: '你的名字...',
+    ob_demarrer: '开始 →',
+    ob_anon: '匿名进入',
+    ob_auth_tag: 'FluidBody 账户',
+    ob_auth_title: '保存个人资料',
+    ob_auth_signup_title: '注册',
+    ob_auth_signin_title: '登录',
+    ob_auth_sub: '使用电子邮件和密码在云端同步你的进度。',
+    ob_auth_sub_signin: '输入你的凭据以恢复进度。',
+    ob_email_ph: 'your@email.com',
+    ob_pass_ph: '密码（至少6个字符）',
+    ob_auth_submit_up: '创建账户',
+    ob_auth_submit_in: '登录',
+    ob_auth_toggle_in: '我已有账户 →',
+    ob_auth_toggle_up: '没有账户？注册',
+    ob_auth_skip: '不使用云账户继续 →',
+    ob_auth_err_short: '密码至少需要6个字符。',
+    ob_auth_err_email: '请输入有效的电子邮件地址。',
+    ob_auth_confirm: '如需确认，请查看邮箱后重新登录。',
+    ob_auth_err_net: '网络错误。',
+    ob_auth_no_cloud: '此版本不支持云备份。你的凭据不会保存到服务器。',
+    ob_auth_continue_local: '本地继续 →',
+    piliers: ['肩膀', '背部', '灵活性', '姿势', 'Eldoa', '高尔夫', '垫上普拉提', '办公'],
+    etapes: { Comprendre: '理解', Ressentir: '感受', Préparer: '准备', Exécuter: '执行', Évoluer: '进阶' },
+    retour: '← 我的身体',
+    seances_done: (n) => `${n} / 20 节课程已完成`,
+    m_seances: '课程', m_streak: '连续', m_progress: '进度',
+    retour_video: '← 返回',
+    video_resume: (t) => `继续播放 · ${t}`,
+    reprise_badge: '继续',
+    video_load_error: '视频无法加载。',
+    video_retry: '重试',
+    seance_done: '✓  课程完成',
+    biblio_titre: '资料库',
+    biblio_sub: '理解才能更好地感受',
+    tab_piliers: '六大支柱',
+    tab_methode: '方法',
+    tab_pour_vous: '为你推荐',
+    tab_explorer: '探索',
+    tab_programmes: '计划',
+    tab_recherche: '\uD83D\uDD0D',
+    explore_free_title: '本月免费精选',
+    explore_free_sub: '免费试用此课程一次，无需订阅',
+    explore_new: '为你精选的新内容',
+    prog_section_title: '你的定制计划',
+    prog_section_sub: '预设计划，帮助你保持势头或加强日常锻炼。',
+    prog_debuter: '开始',
+    prog_debuter_sub: '肩膀、背部和灵活性',
+    prog_debuter_duree: '3 天 · 每天 10 分钟',
+    prog_apercu: '计划预览',
+    prog_custom_title: '创建你自己的计划',
+    prog_custom_sub: '选择活动并定义你的计划。',
+    prog_custom_card: '自定义计划',
+    prog_custom_card_sub: '你的活动、锻炼时长、天数和节奏。',
+    prog_custom_btn: '创建计划',
+    prog_create_title: '创建计划',
+    prog_select_piliers: '选择你的支柱',
+    prog_duree_label: '每节时长',
+    prog_jours_label: '每周天数',
+    prog_save: '保存',
+    prog_saved: '计划已保存！',
+    prog_mes_programmes: '我的计划',
+    partage_title: '分享', partage_progression: '分享我的进度', partage_btn: '分享', partage_share_msg: '我的 FluidBody+ 普拉提进度', partage_inviter: '邀请朋友', partage_invite_btn: '通过短信/邮件邀请', partage_invite_msg: '加入我的 FluidBody+ 普拉提！', partage_en_attente: '等待中', partage_invitation: '邀请', partage_defis: '挑战', partage_creer_defi: '创建挑战', partage_choisir_pilier: '选择一个支柱', partage_duree_defi: '时长', partage_lancer: '开始',
+    profil_donnees_title: '隐私', profil_donnees_desc: '了解你的数据如何管理。你的数据保留在你的设备上。没有个人数据被发送到第三方服务器。课程、进度和偏好都存储在本地。如果你登录，只有你的电子邮件会被同步以保存你的个人资料。', profil_donnees_local: '数据本地存储在你的设备上', profil_donnees_no_tracking: '无广告追踪', profil_donnees_healthkit: 'HealthKit：仅读取数据，从不分享',
+    biblio_intro: 'FluidBody 方法基于5个渐进步骤。每节课按顺序进行。',
+    lire: ' 阅读时间',
+    retour_biblio: '← 资料库',
+    points_cles: '要点',
+    mon_parcours: '我的旅程',
+    prog_globale: '总体进度',
+    par_pilier: '按支柱',
+    parcours_langue: '语言',
+    mon_compte: '我的账户',
+    compte_info: [['应用', 'FluidBody · 普拉提'], ['版本', 'FluidBody Beta 1.0'], ['方法', '意识普拉提 · 30 年']],
+    progresser_sub: (p) => `${p}% 的旅程已完成`,
+    recommande_pour_toi: '为你推荐',
+    seance_gratuite: '免费课程',
+    seance_du_jour_sub: '今天为你推荐',
+    commencer_seance: '开始 →',
+    deja_faite: '✓ 今天已完成',
+    notif_title: `FluidBody ${U_JELLY}`,
+    notif_body: '你的体验课程正在等你。你的身体需要你。',
+    notif_pause_title: '活力休息 🪑', notif_pause_body: '是时候动一动了！5分钟桌前拉伸。',
+    coach_title: '你的教练', coach_name: 'Sabrina', coach_subtitle: '普拉提专家 · 30年经验', coach_bio: '热爱有意识的运动，我引导你走向更自由、更强健的身体。', coach_more: '了解更多', coach_avec: '与 Sabrina', coach_exp: '30年经验', coach_quote: '"我一步一步引导你走向更自由的身体。"',
+    demo_limit: '订阅以查看更多内容',
+    motivation: (streak) => streak === 0 ? '"从今天开始。\n你的身体在等你。"' :
+      streak < 3  ? `"连续${streak}天。继续加油。"` :
+      streak < 7  ? `"连续${streak}天！\n你的身体正在觉醒。"` :
+      streak < 14 ? `"${streak}天！一个真正的习惯\n正在形成。"` :
+      `"${streak}天。你真了不起。${U_WAVE}"`,
+    celebration: '你的身体有了进步。\n继续加油！\uD83D\uDCAA',
+    biblio_signature: '— FluidBody',
+    premium_alert_title: '高级内容',
+    premium_alert_simulate: '查看优惠',
+    premium_alert_later: '稍后',
+    paywall_title: '适合所有人的锻炼',
+    paywall_sub: '发现为各种水平设计的新练习。',
+    paywall_yearly_link: '年度订阅更优惠 \u203a',
+    paywall_monthly: '月度',
+    paywall_yearly: '年度',
+    paywall_buy_monthly: '购买月度',
+    paywall_buy_yearly: '购买年度',
+    paywall_restore: '恢复购买',
+    paywall_close: '关闭',
+    paywall_prices_loading: '正在加载价格…',
+    paywall_not_available: '购买不可用（Expo Go / 模拟器）。',
+    paywall_start: '开始',
+    paywall_per_month: '/月',
+    paywall_try_free: '试试本月免费课程',
+    free_try_once: '免费试用此集一次',
+    free_go: '开始吧！',
+    subscription_status_label: 'FluidBody+ 订阅',
+    subscription_status_active: '已激活 — 所有课程',
+    subscription_status_free: '未激活',
+    subscription_reset: '恢复购买',
+  },
+  ja: {
+    lang: 'ja', flag: '🇯🇵', nom: '日本語',
+    tabs: ['FluidBody+', '概要', 'ライブラリ', 'シェア', 'プロフィール'],
+    resume_title: '概要', resume_activite: 'アクティビティ', resume_bouger: '運動', resume_exercice: 'エクササイズ', resume_debout: '立位', resume_seances: 'FluidBody セッション', resume_no_seance: '完了したセッションなし', resume_progression: '進捗', resume_global: '全体', resume_streak: '連続',
+    bonjour: (p) => p ? `こんにちは ${p}` : '',
+    bonjour_mot: 'こんにちは',
+    ob_tag: '身体と向き合う新しい方法',
+    ob_l1: '他のアプリは',
+    ob_l1b: '何をすべきか教えます。',
+    ob_l2: 'FluidBody は',
+    ob_l2b: 'どう準備するか教えます。',
+    ob_sub: '自分を理解する身体こそ、本当に変われるから。',
+    ob_cta: 'はじめる →',
+    ob_compte: 'すでにアカウントがあります',
+    ob_bilan: 'ボディ評価',
+    ob_tensions: 'どこに緊張を\n感じますか？',
+    ob_select: '1つ以上のエリアを選択',
+    ob_zones: ['背中 / 首', '肩', '股関節', '姿勢', '呼吸', 'ストレス', 'デスクワーク / 座りがち'],
+    ob_continuer: '続ける →',
+    ob_explorer: 'すべてを探索したい',
+    ob_rythme_tag: 'あなたのリズム',
+    ob_rythme: '毎日どれくらい\n時間がありますか？',
+    ob_temps: ['5〜10分', '15〜20分', '30分', '45分以上'],
+    ob_varie: 'まちまち',
+    ob_prenom_tag: '最後のステップ',
+    ob_prenom: 'お名前は\n何ですか？',
+    ob_prenom_sub: 'プログラムはあなたのプロフィールに合わせて調整されます。\nFluidBody は毎日あなたをサポートします。',
+    ob_placeholder: 'あなたの名前...',
+    ob_demarrer: 'はじめる →',
+    ob_anon: '匿名で入る',
+    ob_auth_tag: 'FluidBody アカウント',
+    ob_auth_title: 'プロフィールを保存',
+    ob_auth_signup_title: '登録',
+    ob_auth_signin_title: 'ログイン',
+    ob_auth_sub: 'メールとパスワードでクラウドに進捗を同期します。',
+    ob_auth_sub_signin: '認証情報を入力して進捗を復元します。',
+    ob_email_ph: 'your@email.com',
+    ob_pass_ph: 'パスワード（6文字以上）',
+    ob_auth_submit_up: 'アカウント作成',
+    ob_auth_submit_in: 'ログイン',
+    ob_auth_toggle_in: 'すでにアカウントがあります →',
+    ob_auth_toggle_up: 'アカウントがない？登録する',
+    ob_auth_skip: 'クラウドアカウントなしで続ける →',
+    ob_auth_err_short: 'パスワードは6文字以上必要です。',
+    ob_auth_err_email: '有効なメールアドレスを入力してください。',
+    ob_auth_confirm: '確認が必要な場合は、受信トレイを確認してから再度ログインしてください。',
+    ob_auth_err_net: 'ネットワークエラー。',
+    ob_auth_no_cloud: 'このビルドではクラウドバックアップは利用できません。認証情報はサーバーに保存されません。',
+    ob_auth_continue_local: 'ローカルで続ける →',
+    piliers: ['肩', '背中', 'モビリティ', '姿勢', 'Eldoa', 'ゴルフ', 'マットピラティス', 'オフィス'],
+    etapes: { Comprendre: '理解する', Ressentir: '感じる', Préparer: '準備する', Exécuter: '実行する', Évoluer: '進化する' },
+    retour: '← マイボディ',
+    seances_done: (n) => `${n} / 20 セッション完了`,
+    m_seances: 'セッション', m_streak: '連続', m_progress: '進捗',
+    retour_video: '← 戻る',
+    video_resume: (t) => `再開 · ${t}`,
+    reprise_badge: '再開',
+    video_load_error: '動画を読み込めませんでした。',
+    video_retry: '再試行',
+    seance_done: '✓  セッション完了',
+    biblio_titre: 'ライブラリ',
+    biblio_sub: '理解することでより良く感じる',
+    tab_piliers: '6つの柱',
+    tab_methode: 'メソッド',
+    tab_pour_vous: 'あなたへ',
+    tab_explorer: '探索',
+    tab_programmes: 'プログラム',
+    tab_recherche: '\uD83D\uDD0D',
+    explore_free_title: '今月の無料セレクション',
+    explore_free_sub: 'サブスク不要で1回お試しいただけます',
+    explore_new: 'あなたへの新しいセレクション',
+    prog_section_title: 'あなた専用のプログラム',
+    prog_section_sub: '勢いを維持、またはルーティンを強化するためのプログラム。',
+    prog_debuter: '始める',
+    prog_debuter_sub: '肩、背中、モビリティ',
+    prog_debuter_duree: '3日間 · 1日10分',
+    prog_apercu: 'プログラム概要',
+    prog_custom_title: '自分だけのプログラムを作る',
+    prog_custom_sub: 'アクティビティを選んでプログラムを定義しましょう。',
+    prog_custom_card: 'カスタムプログラム',
+    prog_custom_card_sub: 'アクティビティ、時間、曜日、ペースを自由に。',
+    prog_custom_btn: 'プログラムを作る',
+    prog_create_title: 'プログラム作成',
+    prog_select_piliers: '柱を選択',
+    prog_duree_label: '1セッションの時間',
+    prog_jours_label: '週の日数',
+    prog_save: '保存',
+    prog_saved: 'プログラムを保存しました！',
+    prog_mes_programmes: 'マイプログラム',
+    partage_title: 'シェア', partage_progression: '進捗をシェア', partage_btn: 'シェア', partage_share_msg: 'FluidBody+ ピラティスの進捗', partage_inviter: '友達を招待', partage_invite_btn: 'SMS / メールで招待', partage_invite_msg: 'FluidBody+ ピラティスに参加しよう！', partage_en_attente: '保留中', partage_invitation: '招待', partage_defis: 'チャレンジ', partage_creer_defi: 'チャレンジを作る', partage_choisir_pilier: '柱を選ぶ', partage_duree_defi: '期間', partage_lancer: '開始',
+    profil_donnees_title: 'プライバシー', profil_donnees_desc: 'データの管理方法をご覧ください。データはお使いのデバイスに保存されます。個人データが第三者サーバーに送信されることはありません。セッション、進捗、設定はローカルに保存されます。ログインした場合、プロフィール保存のためメールのみが同期されます。', profil_donnees_local: 'データはデバイスにローカル保存', profil_donnees_no_tracking: '広告トラッキングなし', profil_donnees_healthkit: 'HealthKit：読み取りのみ、共有なし',
+    biblio_intro: 'FluidBody メソッドは5つの段階的ステップに基づいています。各セッションは順番に進みます。',
+    lire: ' 読了時間',
+    retour_biblio: '← ライブラリ',
+    points_cles: 'ポイント',
+    mon_parcours: 'マイジャーニー',
+    prog_globale: '全体の進捗',
+    par_pilier: '柱ごと',
+    parcours_langue: '言語',
+    mon_compte: 'マイアカウント',
+    compte_info: [['アプリ', 'FluidBody · ピラティス'], ['バージョン', 'FluidBody Beta 1.0'], ['メソッド', '意識的ピラティス · 30年']],
+    progresser_sub: (p) => `旅の${p}%が完了`,
+    recommande_pour_toi: 'あなたへ',
+    seance_gratuite: '無料セッション',
+    seance_du_jour_sub: '今日のおすすめ',
+    commencer_seance: 'はじめる →',
+    deja_faite: '✓ 今日は完了済み',
+    notif_title: `FluidBody ${U_JELLY}`,
+    notif_body: 'デモセッションが待っています。あなたの身体があなたを必要としています。',
+    notif_pause_title: 'アクティブ休憩 🪑', notif_pause_body: '動く時間です！デスクで5分間のストレッチ。',
+    coach_title: 'あなたのコーチ', coach_name: 'Sabrina', coach_subtitle: 'ピラティス専門家 · 30年の経験', coach_bio: '意識的な動きに情熱を注ぎ、より自由で強い身体へと導きます。', coach_more: '詳しく見る', coach_avec: 'Sabrina と', coach_exp: '30年の経験', coach_quote: '"一歩ずつ、より自由な身体へとお導きします。"',
+    demo_limit: '続きを見るにはサブスクリプションが必要です',
+    motivation: (streak) => streak === 0 ? '"今日から始めましょう。\nあなたの身体が待っています。"' :
+      streak < 3  ? `"${streak}日連続。続けましょう。"` :
+      streak < 7  ? `"${streak}日連続！\nあなたの身体が目覚めています。"` :
+      streak < 14 ? `"${streak}日！本物の習慣が\n形成されています。"` :
+      `"${streak}日。あなたは素晴らしい。${U_WAVE}"`,
+    celebration: 'あなたの身体は進歩しました。\nこの調子で！\uD83D\uDCAA',
+    biblio_signature: '— FluidBody',
+    premium_alert_title: 'プレミアムコンテンツ',
+    premium_alert_simulate: 'プランを見る',
+    premium_alert_later: '後で',
+    paywall_title: 'すべての人のためのエクササイズ',
+    paywall_sub: 'すべてのレベル向けに設計された新しいエクササイズを発見。',
+    paywall_yearly_link: '年間サブスクでお得に \u203a',
+    paywall_monthly: '月額',
+    paywall_yearly: '年額',
+    paywall_buy_monthly: '月額を購入',
+    paywall_buy_yearly: '年額を購入',
+    paywall_restore: '購入を復元',
+    paywall_close: '閉じる',
+    paywall_prices_loading: '価格を読み込み中…',
+    paywall_not_available: '購入不可（Expo Go / シミュレーター）。',
+    paywall_start: 'はじめる',
+    paywall_per_month: '/月',
+    paywall_try_free: '今月の無料セッションを試す',
+    free_try_once: 'このエピソードを1回無料でお試し',
+    free_go: 'さあ始めよう！',
+    subscription_status_label: 'FluidBody+ サブスクリプション',
+    subscription_status_active: '有効 — すべてのセッション',
+    subscription_status_free: '無効',
+    subscription_reset: '購入を復元',
+  },
+  ko: {
+    lang: 'ko', flag: '🇰🇷', nom: '한국어',
+    tabs: ['FluidBody+', '요약', '라이브러리', '공유', '프로필'],
+    resume_title: '요약', resume_activite: '활동', resume_bouger: '움직임', resume_exercice: '운동', resume_debout: '서기', resume_seances: 'FluidBody 세션', resume_no_seance: '완료된 세션 없음', resume_progression: '진행', resume_global: '전체', resume_streak: '연속',
+    bonjour: (p) => p ? `안녕하세요 ${p}` : '',
+    bonjour_mot: '안녕하세요',
+    ob_tag: '당신의 몸을 느끼는 새로운 방법',
+    ob_l1: '다른 앱은 ',
+    ob_l1b: '무엇을 할지 알려줍니다.',
+    ob_l2: 'FluidBody는 ',
+    ob_l2b: '어떻게 준비할지 알려줍니다.',
+    ob_sub: '자기 몸을 이해하는 것이 진정한 변화의 시작이니까요.',
+    ob_cta: '시작하기 →',
+    ob_compte: '이미 계정이 있습니다',
+    ob_bilan: '신체 평가',
+    ob_tensions: '어디에서\n긴장을 느끼나요?',
+    ob_select: '하나 이상의 부위를 선택하세요',
+    ob_zones: ['등 / 목', '어깨', '골반', '자세', '호흡', '스트레스', '사무실 / 좌식'],
+    ob_continuer: '계속 →',
+    ob_explorer: '모두 탐색하고 싶어요',
+    ob_rythme_tag: '나의 리듬',
+    ob_rythme: '매일 얼마나\n시간이 있나요?',
+    ob_temps: ['5~10분', '15~20분', '30분', '45분 이상'],
+    ob_varie: '그때그때 달라요',
+    ob_prenom_tag: '마지막 단계',
+    ob_prenom: '이름이\n무엇인가요?',
+    ob_prenom_sub: '프로그램이 프로필에 맞게 조정됩니다.\nFluidBody가 매일 함께합니다.',
+    ob_placeholder: '이름...',
+    ob_demarrer: '시작하기 →',
+    ob_anon: '익명으로 입장',
+    ob_auth_tag: 'FluidBody 계정',
+    ob_auth_title: '프로필 저장',
+    ob_auth_signup_title: '가입',
+    ob_auth_signin_title: '로그인',
+    ob_auth_sub: '이메일과 비밀번호로 클라우드에 진행 상황을 동기화합니다.',
+    ob_auth_sub_signin: '진행 상황을 복원하려면 자격 증명을 입력하세요.',
+    ob_email_ph: 'your@email.com',
+    ob_pass_ph: '비밀번호 (최소 6자)',
+    ob_auth_submit_up: '계정 만들기',
+    ob_auth_submit_in: '로그인',
+    ob_auth_toggle_in: '이미 계정이 있습니다 →',
+    ob_auth_toggle_up: '계정이 없으신가요? 가입하기',
+    ob_auth_skip: '클라우드 계정 없이 계속 →',
+    ob_auth_err_short: '비밀번호는 최소 6자 이상이어야 합니다.',
+    ob_auth_err_email: '유효한 이메일 주소를 입력하세요.',
+    ob_auth_confirm: '확인이 필요한 경우 받은편지함을 확인한 후 다시 로그인하세요.',
+    ob_auth_err_net: '네트워크 오류.',
+    ob_auth_no_cloud: '이 버전에서는 클라우드 백업을 사용할 수 없습니다. 자격 증명은 서버에 저장되지 않습니다.',
+    ob_auth_continue_local: '로컬로 계속 →',
+    piliers: ['어깨', '등', '유연성', '자세', 'Eldoa', '골프', '매트 필라테스', '오피스'],
+    etapes: { Comprendre: '이해하기', Ressentir: '느끼기', Préparer: '준비하기', Exécuter: '실행하기', Évoluer: '발전하기' },
+    retour: '← 내 몸',
+    seances_done: (n) => `${n} / 20 세션 완료`,
+    m_seances: '세션', m_streak: '연속', m_progress: '진행',
+    retour_video: '← 뒤로',
+    video_resume: (t) => `이어보기 · ${t}`,
+    reprise_badge: '이어보기',
+    video_load_error: '동영상을 불러올 수 없습니다.',
+    video_retry: '다시 시도',
+    seance_done: '✓  세션 완료',
+    biblio_titre: '라이브러리',
+    biblio_sub: '이해하면 더 잘 느낄 수 있습니다',
+    tab_piliers: '6개의 기둥',
+    tab_methode: '방법론',
+    tab_pour_vous: '추천',
+    tab_explorer: '탐색',
+    tab_programmes: '프로그램',
+    tab_recherche: '\uD83D\uDD0D',
+    explore_free_title: '이달의 무료 세션',
+    explore_free_sub: '구독 없이 이 세션을 한 번 체험해보세요',
+    explore_new: '새로운 추천 콘텐츠',
+    prog_section_title: '맞춤형 프로그램',
+    prog_section_sub: '흐름을 유지하거나 루틴을 강화하기 위한 프로그램.',
+    prog_debuter: '시작하기',
+    prog_debuter_sub: '어깨, 등, 유연성',
+    prog_debuter_duree: '3일 · 하루 10분',
+    prog_apercu: '프로그램 미리보기',
+    prog_custom_title: '나만의 프로그램 만들기',
+    prog_custom_sub: '활동을 선택하고 프로그램을 정의하세요.',
+    prog_custom_card: '맞춤 프로그램',
+    prog_custom_card_sub: '활동, 운동 시간, 요일, 속도를 자유롭게.',
+    prog_custom_btn: '프로그램 만들기',
+    prog_create_title: '프로그램 만들기',
+    prog_select_piliers: '기둥 선택',
+    prog_duree_label: '세션당 시간',
+    prog_jours_label: '주당 일수',
+    prog_save: '저장',
+    prog_saved: '프로그램이 저장되었습니다!',
+    prog_mes_programmes: '내 프로그램',
+    partage_title: '공유', partage_progression: '내 진행 상황 공유', partage_btn: '공유', partage_share_msg: 'FluidBody+ 필라테스 진행 상황', partage_inviter: '친구 초대', partage_invite_btn: 'SMS / 이메일로 초대', partage_invite_msg: 'FluidBody+ 필라테스에 함께하세요!', partage_en_attente: '대기 중', partage_invitation: '초대', partage_defis: '챌린지', partage_creer_defi: '챌린지 만들기', partage_choisir_pilier: '기둥 선택', partage_duree_defi: '기간', partage_lancer: '시작',
+    profil_donnees_title: '개인정보', profil_donnees_desc: '데이터가 어떻게 관리되는지 알아보세요. 데이터는 기기에 저장됩니다. 개인 데이터가 제3자 서버로 전송되지 않습니다. 세션, 진행 상황, 설정은 로컬에 저장됩니다. 로그인 시 프로필 저장을 위해 이메일만 동기화됩니다.', profil_donnees_local: '데이터는 기기에 로컬 저장', profil_donnees_no_tracking: '광고 추적 없음', profil_donnees_healthkit: 'HealthKit: 읽기 전용, 공유 안 함',
+    biblio_intro: 'FluidBody 방법론은 5개의 단계적 스텝에 기반합니다. 각 세션은 순서대로 진행됩니다.',
+    lire: ' 읽기 시간',
+    retour_biblio: '← 라이브러리',
+    points_cles: '핵심 포인트',
+    mon_parcours: '나의 여정',
+    prog_globale: '전체 진행',
+    par_pilier: '기둥별',
+    parcours_langue: '언어',
+    mon_compte: '내 계정',
+    compte_info: [['앱', 'FluidBody · 필라테스'], ['버전', 'FluidBody Beta 1.0'], ['방법', '의식적 필라테스 · 30년']],
+    progresser_sub: (p) => `여정의 ${p}% 완료`,
+    recommande_pour_toi: '추천',
+    seance_gratuite: '무료 세션',
+    seance_du_jour_sub: '오늘의 추천',
+    commencer_seance: '시작하기 →',
+    deja_faite: '✓ 오늘 이미 완료',
+    notif_title: `FluidBody ${U_JELLY}`,
+    notif_body: '데모 세션이 기다리고 있습니다. 당신의 몸이 당신을 필요로 합니다.',
+    notif_pause_title: '활동적 휴식 🪑', notif_pause_body: '움직일 시간입니다! 책상에서 5분 스트레칭.',
+    coach_title: '당신의 코치', coach_name: 'Sabrina', coach_subtitle: '필라테스 전문가 · 30년 경험', coach_bio: '의식적인 움직임에 열정을 가지고, 더 자유롭고 강한 몸으로 안내합니다.', coach_more: '더 알아보기', coach_avec: 'Sabrina와 함께', coach_exp: '30년 경험', coach_quote: '"한 걸음씩, 더 자유로운 몸으로 안내합니다."',
+    demo_limit: '나머지를 보려면 구독하세요',
+    motivation: (streak) => streak === 0 ? '"오늘부터 시작하세요.\n당신의 몸이 기다리고 있습니다."' :
+      streak < 3  ? `"${streak}일 연속. 계속하세요."` :
+      streak < 7  ? `"${streak}일 연속!\n당신의 몸이 깨어나고 있습니다."` :
+      streak < 14 ? `"${streak}일! 진정한 습관이\n만들어지고 있습니다."` :
+      `"${streak}일. 당신은 대단합니다. ${U_WAVE}"`,
+    celebration: '당신의 몸이 발전했습니다.\n계속 이대로! \uD83D\uDCAA',
+    biblio_signature: '— FluidBody',
+    premium_alert_title: '프리미엄 콘텐츠',
+    premium_alert_simulate: '혜택 보기',
+    premium_alert_later: '나중에',
+    paywall_title: '모두를 위한 운동',
+    paywall_sub: '모든 레벨을 위한 새로운 운동을 발견하세요.',
+    paywall_yearly_link: '연간 구독으로 절약하세요 \u203a',
+    paywall_monthly: '월간',
+    paywall_yearly: '연간',
+    paywall_buy_monthly: '월간 구매',
+    paywall_buy_yearly: '연간 구매',
+    paywall_restore: '구매 복원',
+    paywall_close: '닫기',
+    paywall_prices_loading: '가격 로딩 중…',
+    paywall_not_available: '구매 불가 (Expo Go / 시뮬레이터).',
+    paywall_start: '시작',
+    paywall_per_month: '/월',
+    paywall_try_free: '이달의 무료 세션 체험',
+    free_try_once: '이 에피소드를 한 번 무료로 체험',
+    free_go: '시작합시다!',
+    subscription_status_label: 'FluidBody+ 구독',
+    subscription_status_active: '활성 — 모든 세션',
+    subscription_status_free: '비활성',
+    subscription_reset: '구매 복원',
   },
 };
 
@@ -1003,6 +1736,51 @@ const ARTICLES = {
     { key: 'p6', titre: 'La consapevolezza corporea — sentire per muoversi bene', color: 'rgba(180,140,255,0.9)', duree: '4 min', intro: 'La propriocezione è il senso meno conosciuto — eppure il più fondamentale.', corps: `La consapevolezza corporea si coltiva. Attraverso il movimento lento.\n\nSentire bene è la condizione per muoversi bene.`, citation: 'Il corpo sa. Bisogna solo imparare ad ascoltarlo.' },
     { key: 'p7', titre: 'Mat Pilates — il pavimento come fondamento', color: 'rgba(255,100,180,0.9)', duree: '4 min', intro: 'Il Mat Pilates è la forma più pura del metodo. Senza macchine, senza accessori — solo il corpo, il pavimento e la consapevolezza.', corps: `Joseph Pilates lo chiamava "Contrologia" — l'arte di controllare il corpo con la mente. Il lavoro a terra ne è l'espressione più diretta.\n\nSenza il supporto del Reformer, il corpo impara ad auto-stabilizzarsi. I muscoli profondi diventano i veri protagonisti del movimento.\n\nIl Mat Pilates non è una pratica "facile". È una pratica profonda che richiede totale consapevolezza in ogni istante.`, citation: 'Il pavimento non mente. Rivela esattamente dove sei.' },
   ],
+  de: [
+    { key: 'p1', titre: 'Die Schulter — das freieste Gelenk', color: 'rgba(0,215,168,0.9)', duree: '3 min', intro: 'Die Schulter ist das beweglichste Gelenk des menschlichen Körpers. Diese außergewöhnliche Freiheit hat einen Preis: Stabilität kommt nicht vom Knochen, sondern vollständig von den Muskeln.', corps: `Die Rotatorenmanschette — vier tiefe Muskeln — ist der wahre Dirigent jeder Bewegung. Wenn sie schwach oder schlecht aktiviert ist, setzen sich Verspannungen schleichend im Trapezmuskel, Nacken und manchmal bis in den unteren Rücken fest.\n\nDas Problem ist nie dort, wo es schmerzt.\n\nBevor man stärkt, muss man verstehen. Spüren, wie das Schulterblatt über den Brustkorb gleitet.\n\nAus diesem Bewusstsein entsteht die richtige Bewegung — fließend, mühelos, schmerzfrei.`, citation: 'Eine freie Schulter ist eine, die gelernt hat, sich niederzulassen, bevor sie sich hebt.' },
+    { key: 'p2', titre: 'Der Rücken — warum er wirklich schmerzt', color: 'rgba(255,208,65,0.9)', duree: '4 min', intro: 'Acht von zehn Menschen werden irgendwann in ihrem Leben Rückenschmerzen haben. Doch der Schmerz ist selten dort, wo das Problem liegt.', corps: `Die Wirbelsäule ist ein Meisterwerk: 33 Wirbel, Dutzende Muskeln, Bänder, stoßdämpfende Bandscheiben. Alles ist für Bewegung gemacht — nicht für Stillstand.\n\nDer wahre Feind des Rückens ist das Sitzen. Stundenlanges Sitzen verkürzt den Psoas, bringt das Becken aus dem Gleichgewicht.\n\nDer Rücken heilt nicht durch Ruhe. Er heilt durch bewusste Bewegung.`, citation: 'Ein schmerzender Rücken ist ein Rücken, der gehört werden möchte.' },
+    { key: 'p3', titre: 'Mobilität — die Jugend des Körpers', color: 'rgba(0,200,255,0.9)', duree: '3 min', intro: 'Wir altern nicht zuerst in der Haut, sondern in den Gelenken. Mobilität ist das treueste Maß körperlicher Jugend.', corps: `Die Hüfte ist der Schwerpunkt des Körpers. Wenn sie blockiert, kompensiert alles: der untere Rücken, die Knie, die Schultern.\n\nMobilität ist nicht dasselbe wie Flexibilität. Mobilisieren heißt verjüngen.`, citation: 'Bewegungsfreiheit ist kein Luxus. Sie ist eine lebenswichtige Notwendigkeit.' },
+    { key: 'p4', titre: 'Haltung — der Abdruck unserer Geschichte', color: 'rgba(255,160,50,0.9)', duree: '4 min', intro: 'Die Haltung erzählt, wer wir sind — unsere Gewohnheiten, Emotionen, unsere Beziehung zur Welt.', corps: `Es gibt keine einzige "richtige Haltung". Die beste Haltung ist die, die man verlässt.\n\nDie richtige Haltung entsteht von innen — sie lässt sich nicht von außen aufzwingen.`, citation: 'Aufrecht stehen bedeutet nicht, sich zu versteifen. Es bedeutet, sich auszurichten.' },
+    { key: 'p5', titre: 'Die Atmung — der vergessene Dirigent', color: 'rgba(155,205,255,0.9)', duree: '3 min', intro: 'Wir atmen 20.000 Mal am Tag, ohne darüber nachzudenken. Und genau das ist das Problem.', corps: `Das Zwerchfell ist der wichtigste Atemmuskel. Richtig atmen zu lernen — wirklich — ist einer der transformativsten Akte für den Körper.`, citation: 'In jedem bewussten Atemzug findet der Körper seinen Weg zur Ruhe.' },
+    { key: 'p6', titre: 'Körperbewusstsein — spüren, um richtig zu bewegen', color: 'rgba(180,140,255,0.9)', duree: '4 min', intro: 'Propriozeption ist der am wenigsten bekannte Sinn — und doch der grundlegendste.', corps: `Körperbewusstsein wird kultiviert. Durch langsame Bewegung. Durch Aufmerksamkeit auf Empfindungen.\n\nRichtig spüren ist die Voraussetzung für richtige Bewegung.`, citation: 'Der Körper weiß. Man muss nur lernen, ihm zuzuhören.' },
+    { key: 'p7', titre: 'Mat Pilates — der Boden als Fundament', color: 'rgba(255,100,180,0.9)', duree: '4 min', intro: 'Mat Pilates ist die reinste Form der Methode. Keine Maschine, kein Zubehör — nur der Körper, der Boden und das Bewusstsein.', corps: `Joseph Pilates nannte es "Contrology" — die Kunst, den Körper mit dem Geist zu kontrollieren. Die Bodenarbeit ist ihr direktester Ausdruck.\n\nMat Pilates ist keine "einfache" Praxis. Es ist eine tiefe Praxis, die in jedem Moment vollständige Bewusstheit verlangt.`, citation: 'Der Boden lügt nicht. Er zeigt genau, wo du stehst.' },
+  ],
+  pt: [
+    { key: 'p1', titre: 'O ombro — a articulação mais livre', color: 'rgba(0,215,168,0.9)', duree: '3 min', intro: 'O ombro é a articulação mais móvel do corpo humano. Essa liberdade extraordinária tem um preço: a estabilidade vem não do osso, mas inteiramente dos músculos.', corps: `O manguito rotador — quatro músculos profundos — é o verdadeiro maestro de cada movimento. Quando está fraco ou mal ativado, as tensões se instalam nos trapézios, pescoço e às vezes até a lombar.\n\nO problema nunca está onde dói.\n\nAntes de fortalecer, é preciso entender. Sentir como a escápula desliza sobre a caixa torácica.\n\nDessa consciência nasce o movimento correto — fluido, sem esforço, sem dor.`, citation: 'Um ombro livre é um ombro que aprendeu a pousar antes de se elevar.' },
+    { key: 'p2', titre: 'As costas — por que realmente dói', color: 'rgba(255,208,65,0.9)', duree: '4 min', intro: 'Oito em cada dez pessoas terão dor nas costas em algum momento da vida. No entanto, a dor raramente está onde o problema se encontra.', corps: `A coluna vertebral é uma obra-prima: 33 vértebras, dezenas de músculos, ligamentos, discos amortecedores. Tudo é projetado para o movimento — não para a imobilidade.\n\nAs costas não curam com repouso. Curam com movimento consciente.`, citation: 'Uma coluna que dói é uma coluna que pede para ser ouvida.' },
+    { key: 'p3', titre: 'Mobilidade — a juventude do corpo', color: 'rgba(0,200,255,0.9)', duree: '3 min', intro: 'Não envelhecemos primeiro na pele, mas nas articulações. A mobilidade é a medida mais fiel da juventude corporal.', corps: `O quadril é o centro de gravidade do corpo. Quando bloqueia, tudo compensa.\n\nMobilizar é rejuvenescer.`, citation: 'Liberdade de movimento não é luxo. É uma necessidade vital.' },
+    { key: 'p4', titre: 'A postura — a marca da nossa história', color: 'rgba(255,160,50,0.9)', duree: '4 min', intro: 'A postura conta quem somos — nossos hábitos, emoções, relação com o mundo.', corps: `A postura correta emerge de dentro — não se impõe de fora.`, citation: 'Ficar ereto não significa enrijecer. Significa alinhar-se.' },
+    { key: 'p5', titre: 'A respiração — o maestro esquecido', color: 'rgba(155,205,255,0.9)', duree: '3 min', intro: 'Respiramos 20.000 vezes por dia sem pensar. E esse é exatamente o problema.', corps: `Aprender a respirar — de verdade — é um dos atos mais transformadores que se pode fazer pelo corpo.`, citation: 'Em cada respiração consciente, o corpo encontra seu caminho para a calma.' },
+    { key: 'p6', titre: 'Consciência corporal — sentir para se mover bem', color: 'rgba(180,140,255,0.9)', duree: '4 min', intro: 'A propriocepção é o sentido menos conhecido — e, no entanto, o mais fundamental.', corps: `A consciência corporal se cultiva. Através do movimento lento.\n\nSentir bem é a condição para se mover bem.`, citation: 'O corpo sabe. Basta aprender a ouvi-lo.' },
+    { key: 'p7', titre: 'Mat Pilates — o chão como fundação', color: 'rgba(255,100,180,0.9)', duree: '4 min', intro: 'O Mat Pilates é a forma mais pura do método. Sem máquinas, sem acessórios — apenas o corpo, o chão e a consciência.', corps: `Joseph Pilates chamava de "Contrologia" — a arte de controlar o corpo com a mente. O trabalho no solo é sua expressão mais direta.\n\nO Mat Pilates não é uma prática "fácil". É uma prática profunda que exige consciência total em cada instante.`, citation: 'O chão não mente. Ele revela exatamente onde você está.' },
+  ],
+  zh: [
+    { key: 'p1', titre: '肩膀 — 最自由的关节', color: 'rgba(0,215,168,0.9)', duree: '3 min', intro: '肩膀是人体最灵活的关节。这种非凡的自由是有代价的：稳定性不来自骨骼，而完全来自肌肉。', corps: `肩袖 — 四块深层肌肉 — 是每个动作的真正指挥者。当它虚弱或激活不良时，紧张会悄然蔓延到斜方肌、颈部，甚至腰部。\n\n问题从来不在疼痛的地方。\n\n在加强之前，必须先理解。感受肩胛骨如何在胸廓上滑动。\n\n从这种意识中，正确的动作诞生了 — 流畅、毫不费力、无痛。`, citation: '自由的肩膀是学会先安定再提升的肩膀。' },
+    { key: 'p2', titre: '背部 — 为什么真的会痛', color: 'rgba(255,208,65,0.9)', duree: '4 min', intro: '十个人中有八个会在一生中某个时候经历背痛。然而，疼痛很少出现在问题所在的地方。', corps: `脊柱是一项杰作：33节椎骨、数十块肌肉、韧带、减震椎间盘。一切都是为运动设计的 — 而不是静止。\n\n背部不靠休息痊愈。它靠有意识的运动痊愈。`, citation: '疼痛的背部是一个请求被倾听的背部。' },
+    { key: 'p3', titre: '灵活性 — 身体的青春', color: 'rgba(0,200,255,0.9)', duree: '3 min', intro: '我们不是先从皮肤开始衰老，而是从关节。灵活性是身体青春最忠实的衡量标准。', corps: `髋部是身体的重心。当它锁住时，一切都在代偿。\n\n活动就是重返青春。`, citation: '运动自由不是奢侈。它是生命的必需。' },
+    { key: 'p4', titre: '姿势 — 我们历史的印记', color: 'rgba(255,160,50,0.9)', duree: '4 min', intro: '姿势讲述了我们是谁 — 我们的习惯、情感、与世界的关系。', corps: `正确的姿势从内在产生 — 不能从外部强加。`, citation: '站直不意味着僵硬。它意味着对齐。' },
+    { key: 'p5', titre: '呼吸 — 被遗忘的指挥者', color: 'rgba(155,205,255,0.9)', duree: '3 min', intro: '我们每天呼吸20000次却不加思考。这恰恰就是问题所在。', corps: `学会真正地呼吸 — 是你能为身体做的最具变革性的行为之一。`, citation: '在每一次有意识的呼吸中，身体找到了通往平静的道路。' },
+    { key: 'p6', titre: '身体意识 — 感受以正确运动', color: 'rgba(180,140,255,0.9)', duree: '4 min', intro: '本体感觉是最不为人知的感觉 — 却是最基本的。', corps: `身体意识需要培养。通过缓慢的运动。\n\n正确地感受是正确运动的前提。`, citation: '身体知道。你只需要学会倾听它。' },
+    { key: 'p7', titre: '垫上普拉提 — 以地面为基础', color: 'rgba(255,100,180,0.9)', duree: '4 min', intro: '垫上普拉提是该方法最纯粹的形式。没有器械，没有配件 — 只有身体、地面和意识。', corps: `Joseph Pilates称其为"控制学" — 用心灵控制身体的艺术。地面训练是其最直接的表达。\n\n垫上普拉提不是一种"简单"的练习。它是一种深层练习，要求每时每刻的全面意识。`, citation: '地面不会撒谎。它准确地揭示你所处的位置。' },
+  ],
+  ja: [
+    { key: 'p1', titre: '肩 — 最も自由な関節', color: 'rgba(0,215,168,0.9)', duree: '3 min', intro: '肩は人体で最も可動性の高い関節です。この並外れた自由には代償があります：安定性は骨からではなく、完全に筋肉から生まれます。', corps: `回旋筋腱板 — 4つの深層筋 — はすべての動きの真の指揮者です。弱かったり活性化が不十分だと、緊張は僧帽筋、首、時には腰まで忍び寄ります。\n\n問題は痛みのある場所にはありません。\n\n強化する前に理解すること。肩甲骨が胸郭の上を滑る感覚。\n\nこの意識から正しい動きが生まれます — 流れるように、無理なく、痛みなく。`, citation: '自由な肩とは、上がる前にまず落ち着くことを学んだ肩です。' },
+    { key: 'p2', titre: '背中 — なぜ本当に痛むのか', color: 'rgba(255,208,65,0.9)', duree: '4 min', intro: '10人中8人が人生のどこかで背中の痛みに悩まされます。しかし、痛みの場所と問題の場所は違うことが多いのです。', corps: `脊柱は天才的な構造です：33の椎骨、数十の筋肉、靭帯、衝撃吸収椎間板。すべては動きのために設計されています。\n\n背中は安静では治りません。意識的な動きで治ります。`, citation: '痛む背中は、聞いてほしいと訴えている背中です。' },
+    { key: 'p3', titre: 'モビリティ — 身体の若さ', color: 'rgba(0,200,255,0.9)', duree: '3 min', intro: '私たちは肌からではなく、関節から老化します。モビリティは身体の若さの最も忠実な指標です。', corps: `股関節は体の重心です。固まると、すべてが代償します。\n\n動かすことは若返ること。`, citation: '動きの自由は贅沢ではありません。生命の必需品です。' },
+    { key: 'p4', titre: '姿勢 — 私たちの歴史の刻印', color: 'rgba(255,160,50,0.9)', duree: '4 min', intro: '姿勢は私たちが誰であるかを語ります — 習慣、感情、世界との関係。', corps: `正しい姿勢は内側から生まれます — 外側から押し付けることはできません。`, citation: 'まっすぐ立つとは、硬くなることではありません。整列することです。' },
+    { key: 'p5', titre: '呼吸 — 忘れられた指揮者', color: 'rgba(155,205,255,0.9)', duree: '3 min', intro: '私たちは1日に2万回、考えずに呼吸しています。そして、まさにそれが問題なのです。', corps: `本当の呼吸を学ぶこと — それは身体のためにできる最も変革的な行為の一つです。`, citation: '意識的な一呼吸のたびに、身体は静けさへの道を見つけます。' },
+    { key: 'p6', titre: '身体意識 — 正しく動くために感じる', color: 'rgba(180,140,255,0.9)', duree: '4 min', intro: '固有受容感覚は最も知られていない感覚 — しかし最も基本的な感覚です。', corps: `身体意識は育まれるものです。ゆっくりとした動きを通して。\n\n正しく感じることが、正しく動くための条件です。`, citation: '身体は知っている。ただ耳を傾けることを学ぶだけです。' },
+    { key: 'p7', titre: 'マットピラティス — 床を基盤として', color: 'rgba(255,100,180,0.9)', duree: '4 min', intro: 'マットピラティスはメソッドの最も純粋な形です。マシンなし、器具なし — 身体と床と意識だけ。', corps: `ジョセフ・ピラティスはこれを「コントロロジー」と呼びました — 心で体をコントロールする技術。マット運動はその最も直接的な表現です。\n\nマットピラティスは「簡単な」実践ではありません。毎瞬間の完全な意識を要求する深い実践です。`, citation: '床は嘘をつきません。あなたが今どこにいるかを正確に明らかにします。' },
+  ],
+  ko: [
+    { key: 'p1', titre: '어깨 — 가장 자유로운 관절', color: 'rgba(0,215,168,0.9)', duree: '3 min', intro: '어깨는 인체에서 가장 움직임이 많은 관절입니다. 이 놀라운 자유에는 대가가 있습니다: 안정성은 뼈가 아닌 근육에서 나옵니다.', corps: `회전근개 — 네 개의 심부 근육 — 는 모든 움직임의 진정한 지휘자입니다. 약하거나 제대로 활성화되지 않으면 긴장이 승모근, 목, 때로는 허리까지 은밀히 퍼집니다.\n\n문제는 아픈 곳에 있지 않습니다.\n\n강화하기 전에 이해해야 합니다. 견갑골이 흉곽 위로 미끄러지는 느낌.\n\n이 인식에서 올바른 움직임이 탄생합니다 — 유연하게, 힘들이지 않고, 통증 없이.`, citation: '자유로운 어깨는 올라가기 전에 먼저 안정되는 법을 배운 어깨입니다.' },
+    { key: 'p2', titre: '등 — 왜 정말 아픈가', color: 'rgba(255,208,65,0.9)', duree: '4 min', intro: '10명 중 8명이 살면서 한 번은 허리 통증을 겪습니다. 하지만 통증이 있는 곳이 문제가 있는 곳은 아닙니다.', corps: `척추는 걸작입니다: 33개의 척추뼈, 수십 개의 근육, 인대, 충격 흡수 디스크.\n\n등은 휴식으로 낫지 않습니다. 의식적인 움직임으로 낫습니다.`, citation: '아픈 등은 들어달라고 요청하는 등입니다.' },
+    { key: 'p3', titre: '유연성 — 몸의 젊음', color: 'rgba(0,200,255,0.9)', duree: '3 min', intro: '우리는 피부가 아닌 관절에서 먼저 노화합니다. 유연성은 신체 젊음의 가장 정확한 척도입니다.', corps: `골반은 몸의 무게 중심입니다. 막히면 모든 것이 보상합니다.\n\n움직이는 것이 젊어지는 것입니다.`, citation: '움직임의 자유는 사치가 아닙니다. 생명의 필수입니다.' },
+    { key: 'p4', titre: '자세 — 우리 역사의 흔적', color: 'rgba(255,160,50,0.9)', duree: '4 min', intro: '자세는 우리가 누구인지를 말합니다 — 습관, 감정, 세상과의 관계.', corps: `올바른 자세는 내면에서 나옵니다 — 외부에서 강요할 수 없습니다.`, citation: '곧게 서는 것은 뻣뻣해지는 것이 아닙니다. 정렬하는 것입니다.' },
+    { key: 'p5', titre: '호흡 — 잊혀진 지휘자', color: 'rgba(155,205,255,0.9)', duree: '3 min', intro: '우리는 하루에 2만 번 생각 없이 숨을 쉽니다. 바로 그것이 문제입니다.', corps: `진정으로 호흡하는 법을 배우는 것 — 그것은 몸을 위해 할 수 있는 가장 변혁적인 행위 중 하나입니다.`, citation: '의식적인 호흡 하나하나에서 몸은 평온으로 가는 길을 찾습니다.' },
+    { key: 'p6', titre: '신체 인식 — 올바르게 움직이기 위해 느끼기', color: 'rgba(180,140,255,0.9)', duree: '4 min', intro: '고유수용감각은 가장 잘 알려지지 않은 감각이지만, 가장 근본적인 감각입니다.', corps: `신체 인식은 배양됩니다. 느린 움직임을 통해.\n\n올바르게 느끼는 것이 올바르게 움직이기 위한 조건입니다.`, citation: '몸은 알고 있습니다. 단지 귀 기울이는 법을 배우면 됩니다.' },
+    { key: 'p7', titre: '매트 필라테스 — 바닥을 기반으로', color: 'rgba(255,100,180,0.9)', duree: '4 min', intro: '매트 필라테스는 이 방법의 가장 순수한 형태입니다. 기계도 도구도 없이 — 몸, 바닥, 그리고 인식만으로.', corps: `조셉 필라테스는 이것을 "컨트롤로지"라고 불렀습니다 — 마음으로 몸을 제어하는 기술. 바닥 운동은 그 가장 직접적인 표현입니다.\n\n매트 필라테스는 "쉬운" 수련이 아닙니다. 매 순간 완전한 인식을 요구하는 깊은 수련입니다.`, citation: '바닥은 거짓말을 하지 않습니다. 당신이 어디에 있는지 정확히 보여줍니다.' },
+  ],
 };
 
 const FICHES = {
@@ -1034,6 +1812,41 @@ const FICHES = {
     { etape: 'Eseguire', num: '04', color: 'rgba(255,145,100,0.9)', soustitre: 'Il gesto giusto, non quello forte', description: 'L\'esecuzione nel metodo FluidBody non è mai brusca.', points: ['Mantenere la consapevolezza durante lo sforzo', 'Respirare — non bloccare mai il respiro', 'Lavorare in ampiezza controllata', 'Sentire il muscolo bersaglio, non le compensazioni'] },
     { etape: 'Evolvere', num: '05', color: 'rgba(185,135,255,0.9)', soustitre: 'Progredire senza perdersi', description: 'L\'evoluzione non è una corsa.', points: ['Aumentare l\'ampiezza prima del carico', 'Integrare il movimento nella vita quotidiana', 'Misurare il progresso dalla qualità', 'Tornare alle basi per andare avanti meglio'] },
   ],
+  de: [
+    { etape: 'Verstehen', num: '01', color: 'rgba(0,220,170,0.9)', soustitre: 'Wissen, was man tut und warum', description: 'Bevor man sich bewegt, verstehen. Welches Gelenk arbeitet? Welcher Muskel wird aktiviert?', points: ['Benennen, was man spürt', 'Die Gelenkmechanik verstehen', 'Gewohnheitskompensationen erkennen', 'Die Bewegung visualisieren, bevor man sie ausführt'] },
+    { etape: 'Spüren', num: '02', color: 'rgba(100,190,255,0.9)', soustitre: 'Die innere Landkarte entwickeln', description: 'Augen schließen. Lauschen. Wo ist die Spannung?', points: ['Den Körper ohne Urteil scannen', 'Nützliche von parasitärer Spannung unterscheiden', 'Links/Rechts-Asymmetrien spüren', 'Jeden Körperteil nacheinander bewohnen'] },
+    { etape: 'Vorbereiten', num: '03', color: 'rgba(255,200,80,0.9)', soustitre: 'Aktivieren vor dem Ausführen', description: 'Der Körper geht nicht von 0 auf 100. Vorbereitung weckt die tiefen Stabilisatoren.', points: ['Die betroffenen Gelenke mobilisieren', 'Stabilisierungsmuskeln aktivieren', 'Das Atemmuster etablieren', 'Die Aufmerksamkeit auf den Arbeitsbereich zentrieren'] },
+    { etape: 'Ausführen', num: '04', color: 'rgba(255,145,100,0.9)', soustitre: 'Die richtige Geste, nicht die kräftige', description: 'Ausführung in der FluidBody-Methode ist nie brutal. Qualität vor Quantität.', points: ['Bewusstsein während der Anstrengung beibehalten', 'Atmen — nie den Atem anhalten', 'In kontrolliertem Bewegungsumfang arbeiten', 'Den Zielmuskel spüren, nicht die Kompensationen'] },
+    { etape: 'Weiterentwickeln', num: '05', color: 'rgba(185,135,255,0.9)', soustitre: 'Fortschreiten ohne sich zu verlieren', description: 'Entwicklung ist kein Rennen. Es ist eine aufsteigende Spirale.', points: ['Bewegungsumfang vor Belastung steigern', 'Bewegung in den Alltag integrieren', 'Fortschritt an der Qualität messen', 'Zu den Grundlagen zurückkehren, um besser voranzukommen'] },
+  ],
+  pt: [
+    { etape: 'Compreender', num: '01', color: 'rgba(0,220,170,0.9)', soustitre: 'Saber o que se faz e por quê', description: 'Antes de se mover, compreender. Qual articulação trabalha? Qual músculo se ativa?', points: ['Nomear o que se sente', 'Compreender a mecânica articular', 'Identificar compensações habituais', 'Visualizar o movimento antes de fazê-lo'] },
+    { etape: 'Sentir', num: '02', color: 'rgba(100,190,255,0.9)', soustitre: 'Desenvolver o mapa interior', description: 'Fechar os olhos. Ouvir. Onde está a tensão?', points: ['Escanear o corpo sem julgamento', 'Distinguir tensão útil de tensão parasita', 'Sentir assimetrias esquerda/direita', 'Habitar cada parte do corpo por vez'] },
+    { etape: 'Preparar', num: '03', color: 'rgba(255,200,80,0.9)', soustitre: 'Ativar antes de performar', description: 'O corpo não passa de 0 a 100. A preparação desperta os estabilizadores profundos.', points: ['Mobilizar as articulações envolvidas', 'Ativar os músculos estabilizadores', 'Estabelecer o padrão respiratório', 'Centrar a atenção na área de trabalho'] },
+    { etape: 'Executar', num: '04', color: 'rgba(255,145,100,0.9)', soustitre: 'O gesto certo, não o forçado', description: 'A execução no método FluidBody nunca é brusca. Qualidade acima de quantidade.', points: ['Manter a consciência durante o esforço', 'Respirar — nunca prender a respiração', 'Trabalhar em amplitude controlada', 'Sentir o músculo-alvo, não as compensações'] },
+    { etape: 'Evoluir', num: '05', color: 'rgba(185,135,255,0.9)', soustitre: 'Progredir sem se perder', description: 'Evolução não é uma corrida. É uma espiral ascendente.', points: ['Aumentar a amplitude antes da carga', 'Integrar o movimento no dia a dia', 'Medir o progresso pela qualidade', 'Voltar ao básico para avançar melhor'] },
+  ],
+  zh: [
+    { etape: '理解', num: '01', color: 'rgba(0,220,170,0.9)', soustitre: '知道做什么以及为什么', description: '在运动之前，先理解。哪个关节在工作？哪块肌肉在激活？', points: ['命名你的感受', '理解关节力学', '识别习惯性代偿', '在做动作前先想象它'] },
+    { etape: '感受', num: '02', color: 'rgba(100,190,255,0.9)', soustitre: '发展内在地图', description: '闭上眼睛。倾听。哪里有紧张？', points: ['不带评判地扫描身体', '区分有用的紧张和多余的紧张', '感受左右不对称', '依次感知身体的每个部位'] },
+    { etape: '准备', num: '03', color: 'rgba(255,200,80,0.9)', soustitre: '先激活再执行', description: '身体不会从0直接到100。准备唤醒深层稳定肌。', points: ['活动相关关节', '激活稳定肌群', '建立呼吸模式', '将注意力集中在工作区域'] },
+    { etape: '执行', num: '04', color: 'rgba(255,145,100,0.9)', soustitre: '正确的动作，而非用力的动作', description: 'FluidBody方法中的执行从不粗暴。质量优于数量。', points: ['在用力时保持意识', '呼吸 — 永远不要屏住呼吸', '在可控幅度内工作', '感受目标肌肉，而非代偿'] },
+    { etape: '进阶', num: '05', color: 'rgba(185,135,255,0.9)', soustitre: '进步而不迷失', description: '进化不是竞赛。它是一个上升的螺旋。', points: ['先增加幅度再增加负荷', '将运动融入日常生活', '以质量衡量进步', '回归基础以更好地前进'] },
+  ],
+  ja: [
+    { etape: '理解する', num: '01', color: 'rgba(0,220,170,0.9)', soustitre: '何をなぜ行うのかを知る', description: '動く前にまず理解する。どの関節が働く？どの筋肉が活性化する？', points: ['感じることに名前をつける', '関節の仕組みを理解する', '習慣的な代償を見つける', '動く前に動きをイメージする'] },
+    { etape: '感じる', num: '02', color: 'rgba(100,190,255,0.9)', soustitre: '内なる地図を育てる', description: '目を閉じる。耳を澄ます。どこに緊張がある？', points: ['判断せずに身体をスキャンする', '有用な緊張と不要な緊張を区別する', '左右の非対称を感じる', '身体の各部位を順に意識する'] },
+    { etape: '準備する', num: '03', color: 'rgba(255,200,80,0.9)', soustitre: '実行する前に活性化する', description: '身体は0から100には行けません。準備が深層安定筋を目覚めさせます。', points: ['関連する関節を動かす', '安定筋を活性化する', '呼吸パターンを確立する', '作業領域に注意を集中する'] },
+    { etape: '実行する', num: '04', color: 'rgba(255,145,100,0.9)', soustitre: '正しい動き、力任せではなく', description: 'FluidBodyメソッドの実行は決して乱暴ではありません。量より質。', points: ['努力中も意識を保つ', '呼吸する — 息を止めない', 'コントロールされた範囲で動く', '代償ではなくターゲット筋を感じる'] },
+    { etape: '進化する', num: '05', color: 'rgba(185,135,255,0.9)', soustitre: '迷わずに進歩する', description: '進化はレースではありません。上昇する螺旋です。', points: ['負荷の前に可動域を広げる', '日常生活に動きを取り入れる', '質で進歩を測る', 'より良く進むために基本に戻る'] },
+  ],
+  ko: [
+    { etape: '이해하기', num: '01', color: 'rgba(0,220,170,0.9)', soustitre: '무엇을 왜 하는지 알기', description: '움직이기 전에 이해하기. 어떤 관절이 작동하는가? 어떤 근육이 활성화되는가?', points: ['느끼는 것에 이름 붙이기', '관절 역학 이해하기', '습관적 보상 패턴 파악하기', '동작 전에 움직임 시각화하기'] },
+    { etape: '느끼기', num: '02', color: 'rgba(100,190,255,0.9)', soustitre: '내면의 지도 개발하기', description: '눈을 감으세요. 귀를 기울이세요. 어디에 긴장이 있나요?', points: ['판단 없이 몸을 스캔하기', '유용한 긴장과 불필요한 긴장 구분하기', '좌우 비대칭 느끼기', '몸의 각 부위를 차례로 의식하기'] },
+    { etape: '준비하기', num: '03', color: 'rgba(255,200,80,0.9)', soustitre: '실행 전에 활성화하기', description: '몸은 0에서 100으로 갈 수 없습니다. 준비가 깊은 안정근을 깨웁니다.', points: ['관련 관절 동원하기', '안정근 활성화하기', '호흡 패턴 확립하기', '작업 영역에 주의 집중하기'] },
+    { etape: '실행하기', num: '04', color: 'rgba(255,145,100,0.9)', soustitre: '올바른 동작, 강한 동작이 아닌', description: 'FluidBody 방법의 실행은 결코 거칠지 않습니다. 양보다 질.', points: ['노력 중에도 인식 유지하기', '호흡하기 — 숨을 참지 않기', '제어된 범위에서 작업하기', '보상이 아닌 목표 근육 느끼기'] },
+    { etape: '발전하기', num: '05', color: 'rgba(185,135,255,0.9)', soustitre: '길을 잃지 않고 진보하기', description: '진화는 경주가 아닙니다. 상승하는 나선입니다.', points: ['부하 전에 가동 범위 늘리기', '일상에 움직임 통합하기', '질로 진행 상황 측정하기', '더 나아가기 위해 기본으로 돌아가기'] },
+  ],
 };
 
 const SEANCES_FR = {
@@ -1044,6 +1857,7 @@ const SEANCES_FR = {
   p5: [['Comprendre le souffle', '12 min', 'Comprendre'], ['Le diaphragme', '15 min', 'Comprendre'], ['Respiration & nerfs', '15 min', 'Comprendre'], ['Ressentir son souffle', '10 min', 'Ressentir'], ['Le souffle tridimensionnel', '15 min', 'Ressentir'], ['Cohérence cardiaque I', '12 min', 'Préparer'], ['Libérer le diaphragme', '15 min', 'Préparer'], ['Respiration latérale', '18 min', 'Préparer'], ['Respiration dorsale', '20 min', 'Préparer'], ['Plancher pelvien', '22 min', 'Préparer'], ['Pilates breathing I', '20 min', 'Exécuter'], ['Souffle & mouvement', '25 min', 'Exécuter'], ['Cohérence cardiaque II', '20 min', 'Exécuter'], ['Souffle & gainage', '28 min', 'Exécuter'], ['Séquence souffle complet', '30 min', 'Exécuter'], ['Techniques avancées I', '25 min', 'Évoluer'], ['Souffle & performance', '30 min', 'Évoluer'], ['Respiration & émotions', '32 min', 'Évoluer'], ['Anti-stress respiratoire', '35 min', 'Évoluer'], ['Maître du souffle', '40 min', 'Évoluer']],
   p6: [['Qu\'est-ce que la proprioception', '12 min', 'Comprendre'], ['Le corps dans l\'espace', '15 min', 'Comprendre'], ['Conscience & douleur', '15 min', 'Comprendre'], ['Le scan corporel I', '12 min', 'Ressentir'], ['Sentir sans voir', '15 min', 'Ressentir'], ['Équilibre statique I', '15 min', 'Préparer'], ['Micro-mouvements', '18 min', 'Préparer'], ['Équilibre instable', '20 min', 'Préparer'], ['Le regard intérieur', '22 min', 'Préparer'], ['Mapping corporel', '25 min', 'Préparer'], ['Mouvement lent I', '20 min', 'Exécuter'], ['Coordination fine', '25 min', 'Exécuter'], ['Anticipation & réaction', '28 min', 'Exécuter'], ['Mouvement lent II', '30 min', 'Exécuter'], ['Fluidité consciente', '32 min', 'Exécuter'], ['Méditation en mouvement', '25 min', 'Évoluer'], ['Inversion consciente', '30 min', 'Évoluer'], ['Conscience des fascias', '35 min', 'Évoluer'], ['Intelligence corporelle', '38 min', 'Évoluer'], ['L\'être dans le corps', '45 min', 'Évoluer']],
   p7: [['Joseph Pilates & sa méthode', '12 min', 'Comprendre'], ['Les 6 principes du Mat', '15 min', 'Comprendre'], ['Le centre — powerhouse', '15 min', 'Comprendre'], ['Sentir le tapis sous soi', '12 min', 'Ressentir'], ['Connexion bassin-plancher', '15 min', 'Ressentir'], ['Le Hundred — initiation', '20 min', 'Préparer'], ['Roll-Up conscient', '22 min', 'Préparer'], ['Single Leg Circle', '20 min', 'Préparer'], ['Rolling Like a Ball', '18 min', 'Préparer'], ['Activation du centre', '22 min', 'Préparer'], ['La série des 5', '25 min', 'Exécuter'], ['Spine Stretch Forward', '28 min', 'Exécuter'], ['Open Leg Rocker', '30 min', 'Exécuter'], ['Swan & Child', '28 min', 'Exécuter'], ['Side Kick Series', '32 min', 'Exécuter'], ['Séquence Mat niveau 1', '35 min', 'Évoluer'], ['Séquence Mat niveau 2', '38 min', 'Évoluer'], ['Teaser guidé', '40 min', 'Évoluer'], ['Mat flow complet', '42 min', 'Évoluer'], ['Maîtrise du Mat', '45 min', 'Évoluer']],
+  p8: [['Pourquoi le bureau fatigue', '5 min', 'Comprendre'], ['Nuque & écrans — le vrai danger', '5 min', 'Comprendre'], ['Assis toute la journée — conséquences', '6 min', 'Comprendre'], ['Ressentir ses tensions assises', '5 min', 'Ressentir'], ['Scan corporel sur chaise', '7 min', 'Ressentir'], ['Étirements nuque assis', '5 min', 'Préparer'], ['Poignets & avant-bras — clavier', '6 min', 'Préparer'], ['Épaules au bureau — relâcher', '7 min', 'Préparer'], ['Dos assis — décompression', '8 min', 'Préparer'], ['Hanches assises — libérer', '7 min', 'Préparer'], ['Respiration anti-stress au bureau', '5 min', 'Exécuter'], ['Rotation thoracique sur chaise', '6 min', 'Exécuter'], ['Micro-pause active — 3 min', '3 min', 'Exécuter'], ['Renforcement postural assis', '8 min', 'Exécuter'], ['Circuit bureau express', '10 min', 'Exécuter'], ['Pause active complète I', '8 min', 'Évoluer'], ['Pause active complète II', '10 min', 'Évoluer'], ['Anti-fatigue écran & nuque', '7 min', 'Évoluer'], ['Routine matin au bureau', '8 min', 'Évoluer'], ['Journée sans douleur — protocole', '10 min', 'Évoluer']],
 };
 
 const SEANCES_EN = {
@@ -1054,6 +1868,7 @@ const SEANCES_EN = {
   p5: [['Understanding the breath', '12 min', 'Comprendre'], ['The diaphragm', '15 min', 'Comprendre'], ['Breathing & nerves', '15 min', 'Comprendre'], ['Feeling your breath', '10 min', 'Ressentir'], ['3D breathing', '15 min', 'Ressentir'], ['Cardiac coherence I', '12 min', 'Préparer'], ['Releasing the diaphragm', '15 min', 'Préparer'], ['Lateral breathing', '18 min', 'Préparer'], ['Dorsal breathing', '20 min', 'Préparer'], ['Pelvic floor', '22 min', 'Préparer'], ['Pilates breathing I', '20 min', 'Exécuter'], ['Breath & movement', '25 min', 'Exécuter'], ['Cardiac coherence II', '20 min', 'Exécuter'], ['Breath & core', '28 min', 'Exécuter'], ['Full breath sequence', '30 min', 'Exécuter'], ['Advanced techniques I', '25 min', 'Évoluer'], ['Breath & performance', '30 min', 'Évoluer'], ['Breathing & emotions', '32 min', 'Évoluer'], ['Anti-stress breathing', '35 min', 'Évoluer'], ['Master of breath', '40 min', 'Évoluer']],
   p6: [['What is proprioception', '12 min', 'Comprendre'], ['The body in space', '15 min', 'Comprendre'], ['Awareness & pain', '15 min', 'Comprendre'], ['Body scan I', '12 min', 'Ressentir'], ['Feeling without seeing', '15 min', 'Ressentir'], ['Static balance I', '15 min', 'Préparer'], ['Micro-movements', '18 min', 'Préparer'], ['Unstable balance', '20 min', 'Préparer'], ['The inner gaze', '22 min', 'Préparer'], ['Body mapping', '25 min', 'Préparer'], ['Slow movement I', '20 min', 'Exécuter'], ['Fine coordination', '25 min', 'Exécuter'], ['Anticipation & reaction', '28 min', 'Exécuter'], ['Slow movement II', '30 min', 'Exécuter'], ['Conscious fluidity', '32 min', 'Exécuter'], ['Movement meditation', '25 min', 'Évoluer'], ['Conscious inversion', '30 min', 'Évoluer'], ['Fascia awareness', '35 min', 'Évoluer'], ['Body intelligence', '38 min', 'Évoluer'], ['Being in the body', '45 min', 'Évoluer']],
   p7: [['Joseph Pilates & his method', '12 min', 'Comprendre'], ['The 6 Mat principles', '15 min', 'Comprendre'], ['The center — powerhouse', '15 min', 'Comprendre'], ['Feeling the mat beneath you', '12 min', 'Ressentir'], ['Pelvis-floor connection', '15 min', 'Ressentir'], ['The Hundred — initiation', '20 min', 'Préparer'], ['Conscious Roll-Up', '22 min', 'Préparer'], ['Single Leg Circle', '20 min', 'Préparer'], ['Rolling Like a Ball', '18 min', 'Préparer'], ['Center activation', '22 min', 'Préparer'], ['The series of 5', '25 min', 'Exécuter'], ['Spine Stretch Forward', '28 min', 'Exécuter'], ['Open Leg Rocker', '30 min', 'Exécuter'], ['Swan & Child', '28 min', 'Exécuter'], ['Side Kick Series', '32 min', 'Exécuter'], ['Mat sequence level 1', '35 min', 'Évoluer'], ['Mat sequence level 2', '38 min', 'Évoluer'], ['Guided Teaser', '40 min', 'Évoluer'], ['Full Mat flow', '42 min', 'Évoluer'], ['Mat mastery', '45 min', 'Évoluer']],
+  p8: [['Why the office tires your body', '5 min', 'Comprendre'], ['Neck & screens — the real danger', '5 min', 'Comprendre'], ['Sitting all day — consequences', '6 min', 'Comprendre'], ['Feel your seated tensions', '5 min', 'Ressentir'], ['Body scan on a chair', '7 min', 'Ressentir'], ['Seated neck stretches', '5 min', 'Préparer'], ['Wrists & forearms — keyboard', '6 min', 'Préparer'], ['Shoulders at desk — release', '7 min', 'Préparer'], ['Seated back — decompress', '8 min', 'Préparer'], ['Seated hips — unlock', '7 min', 'Préparer'], ['Anti-stress desk breathing', '5 min', 'Exécuter'], ['Thoracic rotation on chair', '6 min', 'Exécuter'], ['Active micro-break — 3 min', '3 min', 'Exécuter'], ['Seated postural strengthening', '8 min', 'Exécuter'], ['Express desk circuit', '10 min', 'Exécuter'], ['Full active break I', '8 min', 'Évoluer'], ['Full active break II', '10 min', 'Évoluer'], ['Anti-fatigue screen & neck', '7 min', 'Évoluer'], ['Morning office routine', '8 min', 'Évoluer'], ['Pain-free workday — protocol', '10 min', 'Évoluer']],
 };
 
 const SEANCES_ES = {
@@ -1064,6 +1879,7 @@ const SEANCES_ES = {
   p5: [['Entender el aliento', '12 min', 'Comprendre'], ['El diafragma', '15 min', 'Comprendre'], ['Respiración & nervios', '15 min', 'Comprendre'], ['Sentir la respiración', '10 min', 'Ressentir'], ['Respiración 3D', '15 min', 'Ressentir'], ['Coherencia cardíaca I', '12 min', 'Préparer'], ['Liberar el diafragma', '15 min', 'Préparer'], ['Respiración lateral', '18 min', 'Préparer'], ['Respiración dorsal', '20 min', 'Préparer'], ['Suelo pélvico', '22 min', 'Préparer'], ['Pilates breathing I', '20 min', 'Exécuter'], ['Aliento & movimiento', '25 min', 'Exécuter'], ['Coherencia cardíaca II', '20 min', 'Exécuter'], ['Aliento & core', '28 min', 'Exécuter'], ['Secuencia aliento completo', '30 min', 'Exécuter'], ['Técnicas avanzadas I', '25 min', 'Évoluer'], ['Aliento & rendimiento', '30 min', 'Évoluer'], ['Respiración & emociones', '32 min', 'Évoluer'], ['Respiración antiestres', '35 min', 'Évoluer'], ['Maestro del aliento', '40 min', 'Évoluer']],
   p6: [['Qué es la propiocepción', '12 min', 'Comprendre'], ['El cuerpo en el espacio', '15 min', 'Comprendre'], ['Conciencia & dolor', '15 min', 'Comprendre'], ['Scan corporal I', '12 min', 'Ressentir'], ['Sentir sin ver', '15 min', 'Ressentir'], ['Equilibrio estático I', '15 min', 'Préparer'], ['Micro-movimientos', '18 min', 'Préparer'], ['Equilibrio inestable', '20 min', 'Préparer'], ['La mirada interior', '22 min', 'Préparer'], ['Mapeo corporal', '25 min', 'Préparer'], ['Movimiento lento I', '20 min', 'Exécuter'], ['Coordinación fina', '25 min', 'Exécuter'], ['Anticipación & reacción', '28 min', 'Exécuter'], ['Movimiento lento II', '30 min', 'Exécuter'], ['Fluidez consciente', '32 min', 'Exécuter'], ['Meditación en movimiento', '25 min', 'Évoluer'], ['Inversión consciente', '30 min', 'Évoluer'], ['Conciencia de fascias', '35 min', 'Évoluer'], ['Inteligencia corporal', '38 min', 'Évoluer'], ['Ser en el cuerpo', '45 min', 'Évoluer']],
   p7: [['Joseph Pilates & su método', '12 min', 'Comprendre'], ['Los 6 principios del Mat', '15 min', 'Comprendre'], ['El centro — powerhouse', '15 min', 'Comprendre'], ['Sentir la colchoneta', '12 min', 'Ressentir'], ['Conexión pelvis-suelo', '15 min', 'Ressentir'], ['El Hundred — iniciación', '20 min', 'Préparer'], ['Roll-Up consciente', '22 min', 'Préparer'], ['Single Leg Circle', '20 min', 'Préparer'], ['Rolling Like a Ball', '18 min', 'Préparer'], ['Activación del centro', '22 min', 'Préparer'], ['La serie de los 5', '25 min', 'Exécuter'], ['Spine Stretch Forward', '28 min', 'Exécuter'], ['Open Leg Rocker', '30 min', 'Exécuter'], ['Swan & Child', '28 min', 'Exécuter'], ['Side Kick Series', '32 min', 'Exécuter'], ['Secuencia Mat nivel 1', '35 min', 'Évoluer'], ['Secuencia Mat nivel 2', '38 min', 'Évoluer'], ['Teaser guiado', '40 min', 'Évoluer'], ['Flujo Mat completo', '42 min', 'Évoluer'], ['Dominio del Mat', '45 min', 'Évoluer']],
+  p8: [['Por qué la oficina cansa', '5 min', 'Comprendre'], ['Cuello y pantallas — el peligro', '5 min', 'Comprendre'], ['Sentado todo el día — efectos', '6 min', 'Comprendre'], ['Siente tus tensiones sentado', '5 min', 'Ressentir'], ['Escaneo corporal en silla', '7 min', 'Ressentir'], ['Estiramientos de cuello sentado', '5 min', 'Préparer'], ['Muñecas y antebrazos — teclado', '6 min', 'Préparer'], ['Hombros en el escritorio', '7 min', 'Préparer'], ['Espalda sentada — descomprimir', '8 min', 'Préparer'], ['Caderas sentadas — liberar', '7 min', 'Préparer'], ['Respiración anti-estrés', '5 min', 'Exécuter'], ['Rotación torácica en silla', '6 min', 'Exécuter'], ['Micro-pausa activa — 3 min', '3 min', 'Exécuter'], ['Fortalecimiento postural sentado', '8 min', 'Exécuter'], ['Circuito express oficina', '10 min', 'Exécuter'], ['Pausa activa completa I', '8 min', 'Évoluer'], ['Pausa activa completa II', '10 min', 'Évoluer'], ['Anti-fatiga pantalla y cuello', '7 min', 'Évoluer'], ['Rutina matinal de oficina', '8 min', 'Évoluer'], ['Día sin dolor — protocolo', '10 min', 'Évoluer']],
 };
 
 const SEANCES_IT = {
@@ -1074,12 +1890,73 @@ const SEANCES_IT = {
   p5: [['Capire il respiro', '12 min', 'Comprendre'], ['Il diaframma', '15 min', 'Comprendre'], ['Respirazione & nervi', '15 min', 'Comprendre'], ['Sentire il proprio respiro', '10 min', 'Ressentir'], ['Respirazione 3D', '15 min', 'Ressentir'], ['Coerenza cardiaca I', '12 min', 'Préparer'], ['Liberare il diaframma', '15 min', 'Préparer'], ['Respirazione laterale', '18 min', 'Préparer'], ['Respirazione dorsale', '20 min', 'Préparer'], ['Pavimento pelvico', '22 min', 'Préparer'], ['Pilates breathing I', '20 min', 'Exécuter'], ['Respiro & movimento', '25 min', 'Exécuter'], ['Coerenza cardiaca II', '20 min', 'Exécuter'], ['Respiro & core', '28 min', 'Exécuter'], ['Sequenza respiro completo', '30 min', 'Exécuter'], ['Tecniche avanzate I', '25 min', 'Évoluer'], ['Respiro & prestazione', '30 min', 'Évoluer'], ['Respirazione & emozioni', '32 min', 'Évoluer'], ['Anti-stress respiratorio', '35 min', 'Évoluer'], ['Maestro del respiro', '40 min', 'Évoluer']],
   p6: [['Cos\'è la propriocezione', '12 min', 'Comprendre'], ['Il corpo nello spazio', '15 min', 'Comprendre'], ['Consapevolezza & dolore', '15 min', 'Comprendre'], ['Scan corporeo I', '12 min', 'Ressentir'], ['Sentire senza vedere', '15 min', 'Ressentir'], ['Equilibrio statico I', '15 min', 'Préparer'], ['Micro-movimenti', '18 min', 'Préparer'], ['Equilibrio instabile', '20 min', 'Préparer'], ['Lo sguardo interiore', '22 min', 'Préparer'], ['Mappatura corporea', '25 min', 'Préparer'], ['Movimento lento I', '20 min', 'Exécuter'], ['Coordinazione fine', '25 min', 'Exécuter'], ['Anticipazione & reazione', '28 min', 'Exécuter'], ['Movimento lento II', '30 min', 'Exécuter'], ['Fluidità consapevole', '32 min', 'Exécuter'], ['Meditazione in movimento', '25 min', 'Évoluer'], ['Inversione consapevole', '30 min', 'Évoluer'], ['Consapevolezza delle fasce', '35 min', 'Évoluer'], ['Intelligenza corporea', '38 min', 'Évoluer'], ['Essere nel corpo', '45 min', 'Évoluer']],
   p7: [['Joseph Pilates & il suo metodo', '12 min', 'Comprendre'], ['I 6 principi del Mat', '15 min', 'Comprendre'], ['Il centro — powerhouse', '15 min', 'Comprendre'], ['Sentire il tappetino', '12 min', 'Ressentir'], ['Connessione bacino-pavimento', '15 min', 'Ressentir'], ['Il Hundred — iniziazione', '20 min', 'Préparer'], ['Roll-Up consapevole', '22 min', 'Préparer'], ['Single Leg Circle', '20 min', 'Préparer'], ['Rolling Like a Ball', '18 min', 'Préparer'], ['Attivazione del centro', '22 min', 'Préparer'], ['La serie dei 5', '25 min', 'Exécuter'], ['Spine Stretch Forward', '28 min', 'Exécuter'], ['Open Leg Rocker', '30 min', 'Exécuter'], ['Swan & Child', '28 min', 'Exécuter'], ['Side Kick Series', '32 min', 'Exécuter'], ['Sequenza Mat livello 1', '35 min', 'Évoluer'], ['Sequenza Mat livello 2', '38 min', 'Évoluer'], ['Teaser guidato', '40 min', 'Évoluer'], ['Flusso Mat completo', '42 min', 'Évoluer'], ['Maestria del Mat', '45 min', 'Évoluer']],
+  p8: [['Perché l\'ufficio stanca', '5 min', 'Comprendre'], ['Collo e schermi — il vero pericolo', '5 min', 'Comprendre'], ['Seduti tutto il giorno — conseguenze', '6 min', 'Comprendre'], ['Senti le tue tensioni seduto', '5 min', 'Ressentir'], ['Scansione corporea su sedia', '7 min', 'Ressentir'], ['Stretching collo seduto', '5 min', 'Préparer'], ['Polsi e avambracci — tastiera', '6 min', 'Préparer'], ['Spalle alla scrivania — rilascia', '7 min', 'Préparer'], ['Schiena seduta — decomprimere', '8 min', 'Préparer'], ['Anche sedute — sbloccare', '7 min', 'Préparer'], ['Respirazione anti-stress', '5 min', 'Exécuter'], ['Rotazione toracica su sedia', '6 min', 'Exécuter'], ['Micro-pausa attiva — 3 min', '3 min', 'Exécuter'], ['Rinforzo posturale seduto', '8 min', 'Exécuter'], ['Circuito express ufficio', '10 min', 'Exécuter'], ['Pausa attiva completa I', '8 min', 'Évoluer'], ['Pausa attiva completa II', '10 min', 'Évoluer'], ['Anti-fatica schermo e collo', '7 min', 'Évoluer'], ['Routine mattutina ufficio', '8 min', 'Évoluer'], ['Giornata senza dolore — protocollo', '10 min', 'Évoluer']],
+};
+
+const SEANCES_DE = {
+  p1: [['Die Schulter verstehen', '12 min', 'Comprendre'], ['Die Rotatorenmanschette', '15 min', 'Comprendre'], ['Die Schulterblätter spüren', '12 min', 'Ressentir'], ['Das Gewicht des Arms', '15 min', 'Ressentir'], ['Bewusstseinskreise', '18 min', 'Ressentir'], ['Den Trapezmuskel lösen', '20 min', 'Préparer'], ['Die Scapula mobilisieren', '22 min', 'Préparer'], ['Den Serratus aktivieren', '25 min', 'Préparer'], ['Brustöffnung', '28 min', 'Préparer'], ['Schulter-Propriozeption', '30 min', 'Préparer'], ['Die richtige Geste', '25 min', 'Exécuter'], ['Bewusste Elevation', '28 min', 'Exécuter'], ['Geführte Außenrotation', '30 min', 'Exécuter'], ['Ziehen und Drücken', '32 min', 'Exécuter'], ['Kompletter Schulterzirkel', '35 min', 'Exécuter'], ['Kraft & Flexibilität I', '35 min', 'Évoluer'], ['Schulter unter Last', '38 min', 'Évoluer'], ['Schulterblatt-Balance', '40 min', 'Évoluer'], ['Die athletische Schulter', '42 min', 'Évoluer'], ['Totale Meisterschaft', '45 min', 'Évoluer']],
+  p2: [['Der Rücken erklärt', '12 min', 'Comprendre'], ['Warum der Rücken schmerzt', '15 min', 'Comprendre'], ['Der Nacken und seine Spannungen', '15 min', 'Comprendre'], ['Die Wirbelsäule spüren', '12 min', 'Ressentir'], ['Das Kreuzbein als Basis', '18 min', 'Ressentir'], ['Den Psoas lösen', '20 min', 'Préparer'], ['Lumbale Dekompression', '22 min', 'Préparer'], ['Die Brustwirbel mobilisieren', '25 min', 'Préparer'], ['Bewusste Cat-Cow', '20 min', 'Préparer'], ['Den Nacken befreien', '22 min', 'Préparer'], ['Tiefenkräftigung I', '25 min', 'Exécuter'], ['Die bewusste Planke', '28 min', 'Exécuter'], ['Geführte Gesäßbrücke', '28 min', 'Exécuter'], ['Wirbelrotation', '30 min', 'Exécuter'], ['Rückenstreckung', '32 min', 'Exécuter'], ['Anti-Schmerz-Programm I', '30 min', 'Évoluer'], ['Anti-Schmerz-Programm II', '35 min', 'Évoluer'], ['Rücken & Atmung', '38 min', 'Évoluer'], ['Integrierte Wirbelsäule', '40 min', 'Évoluer'], ['Die perfekte Wirbelsäule', '45 min', 'Évoluer']],
+  p3: [['Die Hüfte verstehen', '2 min 10 s', 'Comprendre', 'https://vz-1a4e2cac-0dc.b-cdn.net/596e732b-fa75-4606-aa8a-45fb034d2e0b/playlist.m3u8'], ['Das fragile Knie', '15 min', 'Comprendre'], ['Der vergessene Knöchel', '12 min', 'Comprendre'], ['Die Hüfte spüren', '15 min', 'Ressentir'], ['Kartierung Unterkörper', '20 min', 'Ressentir'], ['Hüftmobilisation I', '20 min', 'Préparer'], ['Beuger lösen', '22 min', 'Préparer'], ['Hüftmobilisation II', '25 min', 'Préparer'], ['Kniemobilität', '20 min', 'Préparer'], ['Der Knöchel in Aktion', '22 min', 'Préparer'], ['Bewusste Kniebeuge I', '25 min', 'Exécuter'], ['Geführter Ausfallschritt', '28 min', 'Exécuter'], ['Brücke & Hüftrotation', '28 min', 'Exécuter'], ['Einbeinstand', '30 min', 'Exécuter'], ['Mobilitätszirkel', '32 min', 'Exécuter'], ['Mobilität & Pilates I', '30 min', 'Évoluer'], ['Hüfttiefe', '35 min', 'Évoluer'], ['Knie & Kraft', '38 min', 'Évoluer'], ['Die hintere Kette', '40 min', 'Évoluer'], ['Freier Unterkörper', '45 min', 'Évoluer']],
+  p4: [['Haltung erklärt', '12 min', 'Comprendre'], ['Die 4 natürlichen Kurven', '15 min', 'Comprendre'], ['Haltung & Schmerz', '15 min', 'Comprendre'], ['Ausrichtung spüren', '12 min', 'Ressentir'], ['Die vertikale Achse', '18 min', 'Ressentir'], ['Den Brustkorb öffnen', '20 min', 'Préparer'], ['Stabilisatoren aktivieren', '22 min', 'Préparer'], ['Das Becken ausbalancieren', '25 min', 'Préparer'], ['Den Nacken ausrichten', '22 min', 'Préparer'], ['Posturale Propriozeption', '25 min', 'Préparer'], ['Bewusst stehen', '25 min', 'Exécuter'], ['Bewusst gehen', '28 min', 'Exécuter'], ['Sitzen ohne Schmerzen', '25 min', 'Exécuter'], ['Spiegelarbeit', '30 min', 'Exécuter'], ['Haltung unter Last', '32 min', 'Exécuter'], ['Büroprogramm I', '25 min', 'Évoluer'], ['Büroprogramm II', '30 min', 'Évoluer'], ['Haltung & Atmung', '35 min', 'Évoluer'], ['Körper im Gleichgewicht', '40 min', 'Évoluer'], ['Perfekte Ausrichtung', '45 min', 'Évoluer']],
+  p5: [['Den Atem verstehen', '12 min', 'Comprendre'], ['Das Zwerchfell', '15 min', 'Comprendre'], ['Atmung & Nerven', '15 min', 'Comprendre'], ['Seinen Atem spüren', '10 min', 'Ressentir'], ['3D-Atmung', '15 min', 'Ressentir'], ['Herzkohärenz I', '12 min', 'Préparer'], ['Das Zwerchfell befreien', '15 min', 'Préparer'], ['Laterale Atmung', '18 min', 'Préparer'], ['Dorsale Atmung', '20 min', 'Préparer'], ['Beckenboden', '22 min', 'Préparer'], ['Pilates-Atmung I', '20 min', 'Exécuter'], ['Atem & Bewegung', '25 min', 'Exécuter'], ['Herzkohärenz II', '20 min', 'Exécuter'], ['Atem & Rumpf', '28 min', 'Exécuter'], ['Vollständige Atemsequenz', '30 min', 'Exécuter'], ['Fortgeschrittene Techniken I', '25 min', 'Évoluer'], ['Atem & Leistung', '30 min', 'Évoluer'], ['Atmung & Emotionen', '32 min', 'Évoluer'], ['Anti-Stress-Atmung', '35 min', 'Évoluer'], ['Meister des Atems', '40 min', 'Évoluer']],
+  p6: [['Was ist Propriozeption', '12 min', 'Comprendre'], ['Der Körper im Raum', '15 min', 'Comprendre'], ['Bewusstsein & Schmerz', '15 min', 'Comprendre'], ['Körperscan I', '12 min', 'Ressentir'], ['Spüren ohne Sehen', '15 min', 'Ressentir'], ['Statisches Gleichgewicht I', '15 min', 'Préparer'], ['Mikrobewegungen', '18 min', 'Préparer'], ['Instabiles Gleichgewicht', '20 min', 'Préparer'], ['Der innere Blick', '22 min', 'Préparer'], ['Körperkartierung', '25 min', 'Préparer'], ['Langsame Bewegung I', '20 min', 'Exécuter'], ['Feinkoordination', '25 min', 'Exécuter'], ['Antizipation & Reaktion', '28 min', 'Exécuter'], ['Langsame Bewegung II', '30 min', 'Exécuter'], ['Bewusste Fluidität', '32 min', 'Exécuter'], ['Bewegungsmeditation', '25 min', 'Évoluer'], ['Bewusste Inversion', '30 min', 'Évoluer'], ['Faszien-Bewusstsein', '35 min', 'Évoluer'], ['Körperintelligenz', '38 min', 'Évoluer'], ['Sein im Körper', '45 min', 'Évoluer']],
+  p7: [['Joseph Pilates & seine Methode', '12 min', 'Comprendre'], ['Die 6 Mat-Prinzipien', '15 min', 'Comprendre'], ['Das Zentrum — Powerhouse', '15 min', 'Comprendre'], ['Die Matte unter sich spüren', '12 min', 'Ressentir'], ['Becken-Boden-Verbindung', '15 min', 'Ressentir'], ['The Hundred — Einführung', '20 min', 'Préparer'], ['Bewusster Roll-Up', '22 min', 'Préparer'], ['Single Leg Circle', '20 min', 'Préparer'], ['Rolling Like a Ball', '18 min', 'Préparer'], ['Zentrumsaktivierung', '22 min', 'Préparer'], ['Die 5er-Serie', '25 min', 'Exécuter'], ['Spine Stretch Forward', '28 min', 'Exécuter'], ['Open Leg Rocker', '30 min', 'Exécuter'], ['Swan & Child', '28 min', 'Exécuter'], ['Side Kick Series', '32 min', 'Exécuter'], ['Mat-Sequenz Level 1', '35 min', 'Évoluer'], ['Mat-Sequenz Level 2', '38 min', 'Évoluer'], ['Geführter Teaser', '40 min', 'Évoluer'], ['Kompletter Mat-Flow', '42 min', 'Évoluer'], ['Mat-Meisterschaft', '45 min', 'Évoluer']],
+  p8: [['Warum das Büro ermüdet', '5 min', 'Comprendre'], ['Nacken & Bildschirme — die echte Gefahr', '5 min', 'Comprendre'], ['Den ganzen Tag sitzen — Folgen', '6 min', 'Comprendre'], ['Sitzspannungen spüren', '5 min', 'Ressentir'], ['Körperscan auf dem Stuhl', '7 min', 'Ressentir'], ['Nackendehnung im Sitzen', '5 min', 'Préparer'], ['Handgelenke & Unterarme — Tastatur', '6 min', 'Préparer'], ['Schultern am Schreibtisch — lösen', '7 min', 'Préparer'], ['Rücken im Sitzen — entlasten', '8 min', 'Préparer'], ['Hüften im Sitzen — befreien', '7 min', 'Préparer'], ['Anti-Stress-Atmung am Schreibtisch', '5 min', 'Exécuter'], ['Brustrotation auf dem Stuhl', '6 min', 'Exécuter'], ['Aktive Mikropause — 3 Min', '3 min', 'Exécuter'], ['Haltungskräftigung im Sitzen', '8 min', 'Exécuter'], ['Express-Bürozirkel', '10 min', 'Exécuter'], ['Komplette aktive Pause I', '8 min', 'Évoluer'], ['Komplette aktive Pause II', '10 min', 'Évoluer'], ['Anti-Müdigkeit Bildschirm & Nacken', '7 min', 'Évoluer'], ['Morgenroutine im Büro', '8 min', 'Évoluer'], ['Schmerzfreier Tag — Protokoll', '10 min', 'Évoluer']],
+};
+
+const SEANCES_PT = {
+  p1: [['Entendendo o ombro', '12 min', 'Comprendre'], ['O manguito rotador', '15 min', 'Comprendre'], ['Sentindo as escápulas', '12 min', 'Ressentir'], ['O peso do braço', '15 min', 'Ressentir'], ['Círculos de consciência', '18 min', 'Ressentir'], ['Liberando o trapézio', '20 min', 'Préparer'], ['Mobilizando a escápula', '22 min', 'Préparer'], ['Ativando o serrátil', '25 min', 'Préparer'], ['Abertura torácica', '28 min', 'Préparer'], ['Propriocepção do ombro', '30 min', 'Préparer'], ['O gesto certo', '25 min', 'Exécuter'], ['Elevação consciente', '28 min', 'Exécuter'], ['Rotação externa guiada', '30 min', 'Exécuter'], ['Puxadas e empurradas', '32 min', 'Exécuter'], ['Circuito completo de ombro', '35 min', 'Exécuter'], ['Força & flexibilidade I', '35 min', 'Évoluer'], ['Ombro sob carga', '38 min', 'Évoluer'], ['Equilíbrio escapular', '40 min', 'Évoluer'], ['O ombro atlético', '42 min', 'Évoluer'], ['Domínio total', '45 min', 'Évoluer']],
+  p2: [['As costas explicadas', '12 min', 'Comprendre'], ['Por que as costas doem', '15 min', 'Comprendre'], ['O pescoço e suas tensões', '15 min', 'Comprendre'], ['Sentindo a coluna', '12 min', 'Ressentir'], ['O sacro como base', '18 min', 'Ressentir'], ['Liberando o psoas', '20 min', 'Préparer'], ['Descompressão lombar', '22 min', 'Préparer'], ['Mobilizando as torácicas', '25 min', 'Préparer'], ['Cat-Cow consciente', '20 min', 'Préparer'], ['Liberando o pescoço', '22 min', 'Préparer'], ['Fortalecimento profundo I', '25 min', 'Exécuter'], ['A prancha consciente', '28 min', 'Exécuter'], ['Ponte glútea guiada', '28 min', 'Exécuter'], ['Rotação vertebral', '30 min', 'Exécuter'], ['Extensão das costas', '32 min', 'Exécuter'], ['Programa antidor I', '30 min', 'Évoluer'], ['Programa antidor II', '35 min', 'Évoluer'], ['Costas & respiração', '38 min', 'Évoluer'], ['Coluna integrada', '40 min', 'Évoluer'], ['A coluna perfeita', '45 min', 'Évoluer']],
+  p3: [['Entendendo o quadril', '2 min 10 s', 'Comprendre', 'https://vz-1a4e2cac-0dc.b-cdn.net/596e732b-fa75-4606-aa8a-45fb034d2e0b/playlist.m3u8'], ['O joelho frágil', '15 min', 'Comprendre'], ['O tornozelo esquecido', '12 min', 'Comprendre'], ['Sentindo o quadril', '15 min', 'Ressentir'], ['Mapeamento da parte inferior', '20 min', 'Ressentir'], ['Mobilização do quadril I', '20 min', 'Préparer'], ['Liberação dos flexores', '22 min', 'Préparer'], ['Mobilização do quadril II', '25 min', 'Préparer'], ['Mobilidade do joelho', '20 min', 'Préparer'], ['O tornozelo em ação', '22 min', 'Préparer'], ['Agachamento consciente I', '25 min', 'Exécuter'], ['Avanço guiado', '28 min', 'Exécuter'], ['Ponte e rotação de quadril', '28 min', 'Exécuter'], ['Apoio unipodal', '30 min', 'Exécuter'], ['Circuito de mobilidade', '32 min', 'Exécuter'], ['Mobilidade & Pilates I', '30 min', 'Évoluer'], ['Profundidade do quadril', '35 min', 'Évoluer'], ['Joelhos & força', '38 min', 'Évoluer'], ['A cadeia posterior', '40 min', 'Évoluer'], ['Corpo livre embaixo', '45 min', 'Évoluer']],
+  p4: [['A postura explicada', '12 min', 'Comprendre'], ['As 4 curvas naturais', '15 min', 'Comprendre'], ['Postura & dor', '15 min', 'Comprendre'], ['Sentindo o alinhamento', '12 min', 'Ressentir'], ['O eixo vertical', '18 min', 'Ressentir'], ['Abrindo a caixa torácica', '20 min', 'Préparer'], ['Ativando estabilizadores', '22 min', 'Préparer'], ['Reequilibrando a pelve', '25 min', 'Préparer'], ['Alinhando o pescoço', '22 min', 'Préparer'], ['Propriocepção postural', '25 min', 'Préparer'], ['Em pé consciente', '25 min', 'Exécuter'], ['Caminhada consciente', '28 min', 'Exécuter'], ['Sentado sem dor', '25 min', 'Exécuter'], ['Trabalho no espelho', '30 min', 'Exécuter'], ['Postura sob carga', '32 min', 'Exécuter'], ['Programa escritório I', '25 min', 'Évoluer'], ['Programa escritório II', '30 min', 'Évoluer'], ['Postura & respiração', '35 min', 'Évoluer'], ['Corpo em equilíbrio', '40 min', 'Évoluer'], ['Alinhamento perfeito', '45 min', 'Évoluer']],
+  p5: [['Entendendo a respiração', '12 min', 'Comprendre'], ['O diafragma', '15 min', 'Comprendre'], ['Respiração & nervos', '15 min', 'Comprendre'], ['Sentindo sua respiração', '10 min', 'Ressentir'], ['Respiração 3D', '15 min', 'Ressentir'], ['Coerência cardíaca I', '12 min', 'Préparer'], ['Liberando o diafragma', '15 min', 'Préparer'], ['Respiração lateral', '18 min', 'Préparer'], ['Respiração dorsal', '20 min', 'Préparer'], ['Assoalho pélvico', '22 min', 'Préparer'], ['Respiração Pilates I', '20 min', 'Exécuter'], ['Respiração & movimento', '25 min', 'Exécuter'], ['Coerência cardíaca II', '20 min', 'Exécuter'], ['Respiração & core', '28 min', 'Exécuter'], ['Sequência respiratória completa', '30 min', 'Exécuter'], ['Técnicas avançadas I', '25 min', 'Évoluer'], ['Respiração & performance', '30 min', 'Évoluer'], ['Respiração & emoções', '32 min', 'Évoluer'], ['Respiração antiestresse', '35 min', 'Évoluer'], ['Mestre da respiração', '40 min', 'Évoluer']],
+  p6: [['O que é propriocepção', '12 min', 'Comprendre'], ['O corpo no espaço', '15 min', 'Comprendre'], ['Consciência & dor', '15 min', 'Comprendre'], ['Scan corporal I', '12 min', 'Ressentir'], ['Sentir sem ver', '15 min', 'Ressentir'], ['Equilíbrio estático I', '15 min', 'Préparer'], ['Micromovimentos', '18 min', 'Préparer'], ['Equilíbrio instável', '20 min', 'Préparer'], ['O olhar interior', '22 min', 'Préparer'], ['Mapeamento corporal', '25 min', 'Préparer'], ['Movimento lento I', '20 min', 'Exécuter'], ['Coordenação fina', '25 min', 'Exécuter'], ['Antecipação & reação', '28 min', 'Exécuter'], ['Movimento lento II', '30 min', 'Exécuter'], ['Fluidez consciente', '32 min', 'Exécuter'], ['Meditação em movimento', '25 min', 'Évoluer'], ['Inversão consciente', '30 min', 'Évoluer'], ['Consciência das fáscias', '35 min', 'Évoluer'], ['Inteligência corporal', '38 min', 'Évoluer'], ['Ser no corpo', '45 min', 'Évoluer']],
+  p7: [['Joseph Pilates & seu método', '12 min', 'Comprendre'], ['Os 6 princípios do Mat', '15 min', 'Comprendre'], ['O centro — powerhouse', '15 min', 'Comprendre'], ['Sentindo o tapete', '12 min', 'Ressentir'], ['Conexão pelve-assoalho', '15 min', 'Ressentir'], ['O Hundred — iniciação', '20 min', 'Préparer'], ['Roll-Up consciente', '22 min', 'Préparer'], ['Single Leg Circle', '20 min', 'Préparer'], ['Rolling Like a Ball', '18 min', 'Préparer'], ['Ativação do centro', '22 min', 'Préparer'], ['A série dos 5', '25 min', 'Exécuter'], ['Spine Stretch Forward', '28 min', 'Exécuter'], ['Open Leg Rocker', '30 min', 'Exécuter'], ['Swan & Child', '28 min', 'Exécuter'], ['Side Kick Series', '32 min', 'Exécuter'], ['Sequência Mat nível 1', '35 min', 'Évoluer'], ['Sequência Mat nível 2', '38 min', 'Évoluer'], ['Teaser guiado', '40 min', 'Évoluer'], ['Fluxo Mat completo', '42 min', 'Évoluer'], ['Domínio do Mat', '45 min', 'Évoluer']],
+  p8: [['Por que o escritório cansa', '5 min', 'Comprendre'], ['Pescoço e telas — o verdadeiro perigo', '5 min', 'Comprendre'], ['Sentado o dia todo — consequências', '6 min', 'Comprendre'], ['Sinta suas tensões sentado', '5 min', 'Ressentir'], ['Scan corporal na cadeira', '7 min', 'Ressentir'], ['Alongamento de pescoço sentado', '5 min', 'Préparer'], ['Pulsos e antebraços — teclado', '6 min', 'Préparer'], ['Ombros na mesa — soltar', '7 min', 'Préparer'], ['Costas sentado — descomprimir', '8 min', 'Préparer'], ['Quadris sentado — liberar', '7 min', 'Préparer'], ['Respiração antiestresse na mesa', '5 min', 'Exécuter'], ['Rotação torácica na cadeira', '6 min', 'Exécuter'], ['Micropausa ativa — 3 min', '3 min', 'Exécuter'], ['Fortalecimento postural sentado', '8 min', 'Exécuter'], ['Circuito express escritório', '10 min', 'Exécuter'], ['Pausa ativa completa I', '8 min', 'Évoluer'], ['Pausa ativa completa II', '10 min', 'Évoluer'], ['Antifadiga tela e pescoço', '7 min', 'Évoluer'], ['Rotina matinal no escritório', '8 min', 'Évoluer'], ['Dia sem dor — protocolo', '10 min', 'Évoluer']],
+};
+
+const SEANCES_ZH = {
+  p1: [['理解肩膀', '12 min', 'Comprendre'], ['肩袖肌群', '15 min', 'Comprendre'], ['感受肩胛骨', '12 min', 'Ressentir'], ['手臂的重量', '15 min', 'Ressentir'], ['意识圈', '18 min', 'Ressentir'], ['释放斜方肌', '20 min', 'Préparer'], ['活动肩胛骨', '22 min', 'Préparer'], ['激活前锯肌', '25 min', 'Préparer'], ['胸廓打开', '28 min', 'Préparer'], ['肩部本体感觉', '30 min', 'Préparer'], ['正确的动作', '25 min', 'Exécuter'], ['有意识的上举', '28 min', 'Exécuter'], ['引导外旋', '30 min', 'Exécuter'], ['拉与推', '32 min', 'Exécuter'], ['完整肩部循环', '35 min', 'Exécuter'], ['力量与柔韧 I', '35 min', 'Évoluer'], ['负重肩部', '38 min', 'Évoluer'], ['肩胛平衡', '40 min', 'Évoluer'], ['运动型肩部', '42 min', 'Évoluer'], ['完全掌控', '45 min', 'Évoluer']],
+  p2: [['背部解析', '12 min', 'Comprendre'], ['为什么背部疼痛', '15 min', 'Comprendre'], ['颈部及其紧张', '15 min', 'Comprendre'], ['感受脊柱', '12 min', 'Ressentir'], ['骶骨作为基础', '18 min', 'Ressentir'], ['释放腰大肌', '20 min', 'Préparer'], ['腰椎减压', '22 min', 'Préparer'], ['活动胸椎', '25 min', 'Préparer'], ['有意识的猫牛式', '20 min', 'Préparer'], ['释放颈部', '22 min', 'Préparer'], ['深层强化 I', '25 min', 'Exécuter'], ['有意识的平板支撑', '28 min', 'Exécuter'], ['引导臀桥', '28 min', 'Exécuter'], ['脊椎旋转', '30 min', 'Exécuter'], ['背部伸展', '32 min', 'Exécuter'], ['止痛方案 I', '30 min', 'Évoluer'], ['止痛方案 II', '35 min', 'Évoluer'], ['背部与呼吸', '38 min', 'Évoluer'], ['整合脊柱', '40 min', 'Évoluer'], ['完美脊柱', '45 min', 'Évoluer']],
+  p3: [['理解髋关节', '2 min 10 s', 'Comprendre', 'https://vz-1a4e2cac-0dc.b-cdn.net/596e732b-fa75-4606-aa8a-45fb034d2e0b/playlist.m3u8'], ['脆弱的膝盖', '15 min', 'Comprendre'], ['被遗忘的脚踝', '12 min', 'Comprendre'], ['感受髋关节', '15 min', 'Ressentir'], ['下半身地图', '20 min', 'Ressentir'], ['髋部活动 I', '20 min', 'Préparer'], ['释放屈肌', '22 min', 'Préparer'], ['髋部活动 II', '25 min', 'Préparer'], ['膝关节灵活性', '20 min', 'Préparer'], ['脚踝动起来', '22 min', 'Préparer'], ['有意识的深蹲 I', '25 min', 'Exécuter'], ['引导弓步', '28 min', 'Exécuter'], ['桥式与髋旋转', '28 min', 'Exécuter'], ['单腿站立', '30 min', 'Exécuter'], ['灵活性循环', '32 min', 'Exécuter'], ['灵活性与普拉提 I', '30 min', 'Évoluer'], ['深层髋部', '35 min', 'Évoluer'], ['膝盖与力量', '38 min', 'Évoluer'], ['后链', '40 min', 'Évoluer'], ['自由下半身', '45 min', 'Évoluer']],
+  p4: [['姿势解析', '12 min', 'Comprendre'], ['4条自然曲线', '15 min', 'Comprendre'], ['姿势与疼痛', '15 min', 'Comprendre'], ['感受对齐', '12 min', 'Ressentir'], ['垂直轴', '18 min', 'Ressentir'], ['打开胸腔', '20 min', 'Préparer'], ['激活稳定肌', '22 min', 'Préparer'], ['重新平衡骨盆', '25 min', 'Préparer'], ['对齐颈部', '22 min', 'Préparer'], ['姿势本体感觉', '25 min', 'Préparer'], ['有意识地站立', '25 min', 'Exécuter'], ['有意识地行走', '28 min', 'Exécuter'], ['无痛坐姿', '25 min', 'Exécuter'], ['镜像练习', '30 min', 'Exécuter'], ['负重姿势', '32 min', 'Exécuter'], ['办公方案 I', '25 min', 'Évoluer'], ['办公方案 II', '30 min', 'Évoluer'], ['姿势与呼吸', '35 min', 'Évoluer'], ['平衡的身体', '40 min', 'Évoluer'], ['完美对齐', '45 min', 'Évoluer']],
+  p5: [['理解呼吸', '12 min', 'Comprendre'], ['横膈膜', '15 min', 'Comprendre'], ['呼吸与神经', '15 min', 'Comprendre'], ['感受你的呼吸', '10 min', 'Ressentir'], ['三维呼吸', '15 min', 'Ressentir'], ['心脏相干 I', '12 min', 'Préparer'], ['释放横膈膜', '15 min', 'Préparer'], ['侧向呼吸', '18 min', 'Préparer'], ['背部呼吸', '20 min', 'Préparer'], ['骨盆底', '22 min', 'Préparer'], ['普拉提呼吸 I', '20 min', 'Exécuter'], ['呼吸与运动', '25 min', 'Exécuter'], ['心脏相干 II', '20 min', 'Exécuter'], ['呼吸与核心', '28 min', 'Exécuter'], ['完整呼吸序列', '30 min', 'Exécuter'], ['高级技术 I', '25 min', 'Évoluer'], ['呼吸与表现', '30 min', 'Évoluer'], ['呼吸与情绪', '32 min', 'Évoluer'], ['减压呼吸', '35 min', 'Évoluer'], ['呼吸大师', '40 min', 'Évoluer']],
+  p6: [['什么是本体感觉', '12 min', 'Comprendre'], ['身体在空间中', '15 min', 'Comprendre'], ['意识与疼痛', '15 min', 'Comprendre'], ['身体扫描 I', '12 min', 'Ressentir'], ['不看也能感受', '15 min', 'Ressentir'], ['静态平衡 I', '15 min', 'Préparer'], ['微运动', '18 min', 'Préparer'], ['不稳定平衡', '20 min', 'Préparer'], ['内在目光', '22 min', 'Préparer'], ['身体地图', '25 min', 'Préparer'], ['缓慢运动 I', '20 min', 'Exécuter'], ['精细协调', '25 min', 'Exécuter'], ['预判与反应', '28 min', 'Exécuter'], ['缓慢运动 II', '30 min', 'Exécuter'], ['有意识的流动', '32 min', 'Exécuter'], ['运动冥想', '25 min', 'Évoluer'], ['有意识的倒转', '30 min', 'Évoluer'], ['筋膜意识', '35 min', 'Évoluer'], ['身体智慧', '38 min', 'Évoluer'], ['存在于身体中', '45 min', 'Évoluer']],
+  p7: [['Joseph Pilates与其方法', '12 min', 'Comprendre'], ['垫上6大原则', '15 min', 'Comprendre'], ['核心 — powerhouse', '15 min', 'Comprendre'], ['感受身下的垫子', '12 min', 'Ressentir'], ['骨盆-底连接', '15 min', 'Ressentir'], ['百次 — 入门', '20 min', 'Préparer'], ['有意识的卷起', '22 min', 'Préparer'], ['单腿画圈', '20 min', 'Préparer'], ['滚球练习', '18 min', 'Préparer'], ['核心激活', '22 min', 'Préparer'], ['五式系列', '25 min', 'Exécuter'], ['脊柱前伸', '28 min', 'Exécuter'], ['打开腿摇摆', '30 min', 'Exécuter'], ['天鹅与婴儿', '28 min', 'Exécuter'], ['侧踢系列', '32 min', 'Exécuter'], ['垫上序列 第1级', '35 min', 'Évoluer'], ['垫上序列 第2级', '38 min', 'Évoluer'], ['引导式Teaser', '40 min', 'Évoluer'], ['完整垫上流', '42 min', 'Évoluer'], ['垫上精通', '45 min', 'Évoluer']],
+  p8: [['为什么办公室让人疲劳', '5 min', 'Comprendre'], ['颈部与屏幕 — 真正的危险', '5 min', 'Comprendre'], ['整天坐着 — 后果', '6 min', 'Comprendre'], ['感受坐姿紧张', '5 min', 'Ressentir'], ['椅上身体扫描', '7 min', 'Ressentir'], ['坐姿颈部拉伸', '5 min', 'Préparer'], ['手腕和前臂 — 键盘', '6 min', 'Préparer'], ['办公桌前放松肩膀', '7 min', 'Préparer'], ['坐姿背部 — 减压', '8 min', 'Préparer'], ['坐姿髋部 — 释放', '7 min', 'Préparer'], ['办公减压呼吸', '5 min', 'Exécuter'], ['椅上胸椎旋转', '6 min', 'Exécuter'], ['活力微休息 — 3分钟', '3 min', 'Exécuter'], ['坐姿姿势强化', '8 min', 'Exécuter'], ['快速办公循环', '10 min', 'Exécuter'], ['完整活力休息 I', '8 min', 'Évoluer'], ['完整活力休息 II', '10 min', 'Évoluer'], ['抗疲劳屏幕与颈部', '7 min', 'Évoluer'], ['办公晨间例程', '8 min', 'Évoluer'], ['无痛工作日 — 方案', '10 min', 'Évoluer']],
+};
+
+const SEANCES_JA = {
+  p1: [['肩を理解する', '12 min', 'Comprendre'], ['回旋筋腱板', '15 min', 'Comprendre'], ['肩甲骨を感じる', '12 min', 'Ressentir'], ['腕の重さ', '15 min', 'Ressentir'], ['意識の円', '18 min', 'Ressentir'], ['僧帽筋を解放する', '20 min', 'Préparer'], ['肩甲骨を動かす', '22 min', 'Préparer'], ['前鋸筋を活性化', '25 min', 'Préparer'], ['胸郭を開く', '28 min', 'Préparer'], ['肩の固有受容感覚', '30 min', 'Préparer'], ['正しい動き', '25 min', 'Exécuter'], ['意識的な挙上', '28 min', 'Exécuter'], ['ガイド付き外旋', '30 min', 'Exécuter'], ['引きと押し', '32 min', 'Exécuter'], ['肩の完全サーキット', '35 min', 'Exécuter'], ['筋力と柔軟性 I', '35 min', 'Évoluer'], ['負荷下の肩', '38 min', 'Évoluer'], ['肩甲骨バランス', '40 min', 'Évoluer'], ['アスリートの肩', '42 min', 'Évoluer'], ['完全なマスタリー', '45 min', 'Évoluer']],
+  p2: [['背中の解説', '12 min', 'Comprendre'], ['なぜ背中が痛むのか', '15 min', 'Comprendre'], ['首とその緊張', '15 min', 'Comprendre'], ['脊柱を感じる', '12 min', 'Ressentir'], ['仙骨を基盤に', '18 min', 'Ressentir'], ['腸腰筋を解放', '20 min', 'Préparer'], ['腰椎の減圧', '22 min', 'Préparer'], ['胸椎を動かす', '25 min', 'Préparer'], ['意識的なキャット・カウ', '20 min', 'Préparer'], ['首を解放する', '22 min', 'Préparer'], ['深層強化 I', '25 min', 'Exécuter'], ['意識的なプランク', '28 min', 'Exécuter'], ['ガイド付きブリッジ', '28 min', 'Exécuter'], ['脊椎回旋', '30 min', 'Exécuter'], ['背中の伸展', '32 min', 'Exécuter'], ['痛み対策プログラム I', '30 min', 'Évoluer'], ['痛み対策プログラム II', '35 min', 'Évoluer'], ['背中と呼吸', '38 min', 'Évoluer'], ['統合された脊柱', '40 min', 'Évoluer'], ['完璧な脊柱', '45 min', 'Évoluer']],
+  p3: [['股関節を理解する', '2 min 10 s', 'Comprendre', 'https://vz-1a4e2cac-0dc.b-cdn.net/596e732b-fa75-4606-aa8a-45fb034d2e0b/playlist.m3u8'], ['脆い膝', '15 min', 'Comprendre'], ['忘れられた足首', '12 min', 'Comprendre'], ['股関節を感じる', '15 min', 'Ressentir'], ['下半身マッピング', '20 min', 'Ressentir'], ['股関節モビリゼーション I', '20 min', 'Préparer'], ['屈筋を解放', '22 min', 'Préparer'], ['股関節モビリゼーション II', '25 min', 'Préparer'], ['膝のモビリティ', '20 min', 'Préparer'], ['足首を活かす', '22 min', 'Préparer'], ['意識的なスクワット I', '25 min', 'Exécuter'], ['ガイド付きランジ', '28 min', 'Exécuter'], ['ブリッジと股関節回旋', '28 min', 'Exécuter'], ['片足立ち', '30 min', 'Exécuter'], ['モビリティサーキット', '32 min', 'Exécuter'], ['モビリティ&ピラティス I', '30 min', 'Évoluer'], ['股関節の深さ', '35 min', 'Évoluer'], ['膝と筋力', '38 min', 'Évoluer'], ['後方チェーン', '40 min', 'Évoluer'], ['自由な下半身', '45 min', 'Évoluer']],
+  p4: [['姿勢の解説', '12 min', 'Comprendre'], ['4つの自然なカーブ', '15 min', 'Comprendre'], ['姿勢と痛み', '15 min', 'Comprendre'], ['整列を感じる', '12 min', 'Ressentir'], ['垂直軸', '18 min', 'Ressentir'], ['胸郭を開く', '20 min', 'Préparer'], ['安定筋を活性化', '22 min', 'Préparer'], ['骨盤のバランス', '25 min', 'Préparer'], ['首の整列', '22 min', 'Préparer'], ['姿勢の固有受容感覚', '25 min', 'Préparer'], ['意識的に立つ', '25 min', 'Exécuter'], ['意識的に歩く', '28 min', 'Exécuter'], ['痛みなく座る', '25 min', 'Exécuter'], ['鏡のワーク', '30 min', 'Exécuter'], ['負荷下の姿勢', '32 min', 'Exécuter'], ['デスクプログラム I', '25 min', 'Évoluer'], ['デスクプログラム II', '30 min', 'Évoluer'], ['姿勢と呼吸', '35 min', 'Évoluer'], ['バランスの取れた身体', '40 min', 'Évoluer'], ['完璧な整列', '45 min', 'Évoluer']],
+  p5: [['呼吸を理解する', '12 min', 'Comprendre'], ['横隔膜', '15 min', 'Comprendre'], ['呼吸と神経', '15 min', 'Comprendre'], ['自分の呼吸を感じる', '10 min', 'Ressentir'], ['3D呼吸', '15 min', 'Ressentir'], ['心臓コヒーレンス I', '12 min', 'Préparer'], ['横隔膜を解放', '15 min', 'Préparer'], ['側方呼吸', '18 min', 'Préparer'], ['背面呼吸', '20 min', 'Préparer'], ['骨盤底', '22 min', 'Préparer'], ['ピラティス呼吸 I', '20 min', 'Exécuter'], ['呼吸と動き', '25 min', 'Exécuter'], ['心臓コヒーレンス II', '20 min', 'Exécuter'], ['呼吸とコア', '28 min', 'Exécuter'], ['完全呼吸シーケンス', '30 min', 'Exécuter'], ['上級テクニック I', '25 min', 'Évoluer'], ['呼吸とパフォーマンス', '30 min', 'Évoluer'], ['呼吸と感情', '32 min', 'Évoluer'], ['アンチストレス呼吸', '35 min', 'Évoluer'], ['呼吸のマスター', '40 min', 'Évoluer']],
+  p6: [['固有受容感覚とは', '12 min', 'Comprendre'], ['空間の中の身体', '15 min', 'Comprendre'], ['意識と痛み', '15 min', 'Comprendre'], ['ボディスキャン I', '12 min', 'Ressentir'], ['見ずに感じる', '15 min', 'Ressentir'], ['静的バランス I', '15 min', 'Préparer'], ['マイクロムーブメント', '18 min', 'Préparer'], ['不安定なバランス', '20 min', 'Préparer'], ['内なる視線', '22 min', 'Préparer'], ['ボディマッピング', '25 min', 'Préparer'], ['ゆっくりした動き I', '20 min', 'Exécuter'], ['精密な協調', '25 min', 'Exécuter'], ['予測と反応', '28 min', 'Exécuter'], ['ゆっくりした動き II', '30 min', 'Exécuter'], ['意識的な流動性', '32 min', 'Exécuter'], ['動く瞑想', '25 min', 'Évoluer'], ['意識的な逆転', '30 min', 'Évoluer'], ['筋膜の意識', '35 min', 'Évoluer'], ['身体知性', '38 min', 'Évoluer'], ['身体の中に在る', '45 min', 'Évoluer']],
+  p7: [['ジョセフ・ピラティスと彼の方法', '12 min', 'Comprendre'], ['マットの6原則', '15 min', 'Comprendre'], ['センター — パワーハウス', '15 min', 'Comprendre'], ['マットを感じる', '12 min', 'Ressentir'], ['骨盤底のつながり', '15 min', 'Ressentir'], ['ザ・ハンドレッド — 入門', '20 min', 'Préparer'], ['意識的なロールアップ', '22 min', 'Préparer'], ['シングルレッグサークル', '20 min', 'Préparer'], ['ローリングライクアボール', '18 min', 'Préparer'], ['センターの活性化', '22 min', 'Préparer'], ['5つのシリーズ', '25 min', 'Exécuter'], ['スパインストレッチフォワード', '28 min', 'Exécuter'], ['オープンレッグロッカー', '30 min', 'Exécuter'], ['スワン&チャイルド', '28 min', 'Exécuter'], ['サイドキックシリーズ', '32 min', 'Exécuter'], ['マットシーケンス レベル1', '35 min', 'Évoluer'], ['マットシーケンス レベル2', '38 min', 'Évoluer'], ['ガイド付きティーザー', '40 min', 'Évoluer'], ['フルマットフロー', '42 min', 'Évoluer'], ['マットマスタリー', '45 min', 'Évoluer']],
+  p8: [['なぜオフィスは疲れるのか', '5 min', 'Comprendre'], ['首と画面 — 本当の危険', '5 min', 'Comprendre'], ['一日中座る — その影響', '6 min', 'Comprendre'], ['座位の緊張を感じる', '5 min', 'Ressentir'], ['椅子でのボディスキャン', '7 min', 'Ressentir'], ['座位の首ストレッチ', '5 min', 'Préparer'], ['手首と前腕 — キーボード', '6 min', 'Préparer'], ['デスクで肩を解放', '7 min', 'Préparer'], ['座位の背中 — 減圧', '8 min', 'Préparer'], ['座位の股関節 — 解放', '7 min', 'Préparer'], ['デスクでの減圧呼吸', '5 min', 'Exécuter'], ['椅子での胸椎回旋', '6 min', 'Exécuter'], ['アクティブマイクロ休憩 — 3分', '3 min', 'Exécuter'], ['座位の姿勢強化', '8 min', 'Exécuter'], ['エクスプレスデスクサーキット', '10 min', 'Exécuter'], ['フルアクティブ休憩 I', '8 min', 'Évoluer'], ['フルアクティブ休憩 II', '10 min', 'Évoluer'], ['抗疲労 画面と首', '7 min', 'Évoluer'], ['オフィス朝のルーティン', '8 min', 'Évoluer'], ['痛みのない一日 — プロトコル', '10 min', 'Évoluer']],
+};
+
+const SEANCES_KO = {
+  p1: [['어깨 이해하기', '12 min', 'Comprendre'], ['회전근개', '15 min', 'Comprendre'], ['견갑골 느끼기', '12 min', 'Ressentir'], ['팔의 무게', '15 min', 'Ressentir'], ['인식의 원', '18 min', 'Ressentir'], ['승모근 풀기', '20 min', 'Préparer'], ['견갑골 움직이기', '22 min', 'Préparer'], ['전거근 활성화', '25 min', 'Préparer'], ['흉곽 열기', '28 min', 'Préparer'], ['어깨 고유수용감각', '30 min', 'Préparer'], ['올바른 동작', '25 min', 'Exécuter'], ['의식적 거상', '28 min', 'Exécuter'], ['가이드 외회전', '30 min', 'Exécuter'], ['당기기와 밀기', '32 min', 'Exécuter'], ['완전한 어깨 서킷', '35 min', 'Exécuter'], ['근력 & 유연성 I', '35 min', 'Évoluer'], ['부하 하의 어깨', '38 min', 'Évoluer'], ['견갑골 균형', '40 min', 'Évoluer'], ['운동형 어깨', '42 min', 'Évoluer'], ['완벽한 마스터리', '45 min', 'Évoluer']],
+  p2: [['등 해설', '12 min', 'Comprendre'], ['왜 등이 아픈가', '15 min', 'Comprendre'], ['목과 그 긴장', '15 min', 'Comprendre'], ['척추 느끼기', '12 min', 'Ressentir'], ['천골을 기반으로', '18 min', 'Ressentir'], ['장요근 풀기', '20 min', 'Préparer'], ['요추 감압', '22 min', 'Préparer'], ['흉추 움직이기', '25 min', 'Préparer'], ['의식적 캣-카우', '20 min', 'Préparer'], ['목 풀기', '22 min', 'Préparer'], ['심층 강화 I', '25 min', 'Exécuter'], ['의식적 플랭크', '28 min', 'Exécuter'], ['가이드 브릿지', '28 min', 'Exécuter'], ['척추 회전', '30 min', 'Exécuter'], ['등 신전', '32 min', 'Exécuter'], ['통증 대응 프로그램 I', '30 min', 'Évoluer'], ['통증 대응 프로그램 II', '35 min', 'Évoluer'], ['등과 호흡', '38 min', 'Évoluer'], ['통합된 척추', '40 min', 'Évoluer'], ['완벽한 척추', '45 min', 'Évoluer']],
+  p3: [['고관절 이해하기', '2 min 10 s', 'Comprendre', 'https://vz-1a4e2cac-0dc.b-cdn.net/596e732b-fa75-4606-aa8a-45fb034d2e0b/playlist.m3u8'], ['취약한 무릎', '15 min', 'Comprendre'], ['잊혀진 발목', '12 min', 'Comprendre'], ['고관절 느끼기', '15 min', 'Ressentir'], ['하체 매핑', '20 min', 'Ressentir'], ['고관절 가동 I', '20 min', 'Préparer'], ['굴곡근 풀기', '22 min', 'Préparer'], ['고관절 가동 II', '25 min', 'Préparer'], ['무릎 유연성', '20 min', 'Préparer'], ['발목 활용하기', '22 min', 'Préparer'], ['의식적 스쿼트 I', '25 min', 'Exécuter'], ['가이드 런지', '28 min', 'Exécuter'], ['브릿지와 고관절 회전', '28 min', 'Exécuter'], ['한 다리 서기', '30 min', 'Exécuter'], ['유연성 서킷', '32 min', 'Exécuter'], ['유연성 & 필라테스 I', '30 min', 'Évoluer'], ['고관절 깊이', '35 min', 'Évoluer'], ['무릎과 근력', '38 min', 'Évoluer'], ['후방 체인', '40 min', 'Évoluer'], ['자유로운 하체', '45 min', 'Évoluer']],
+  p4: [['자세 해설', '12 min', 'Comprendre'], ['4가지 자연 커브', '15 min', 'Comprendre'], ['자세와 통증', '15 min', 'Comprendre'], ['정렬 느끼기', '12 min', 'Ressentir'], ['수직축', '18 min', 'Ressentir'], ['흉곽 열기', '20 min', 'Préparer'], ['안정근 활성화', '22 min', 'Préparer'], ['골반 재균형', '25 min', 'Préparer'], ['목 정렬', '22 min', 'Préparer'], ['자세 고유수용감각', '25 min', 'Préparer'], ['의식적으로 서기', '25 min', 'Exécuter'], ['의식적으로 걷기', '28 min', 'Exécuter'], ['통증 없이 앉기', '25 min', 'Exécuter'], ['거울 작업', '30 min', 'Exécuter'], ['부하 하의 자세', '32 min', 'Exécuter'], ['사무실 프로그램 I', '25 min', 'Évoluer'], ['사무실 프로그램 II', '30 min', 'Évoluer'], ['자세와 호흡', '35 min', 'Évoluer'], ['균형 잡힌 몸', '40 min', 'Évoluer'], ['완벽한 정렬', '45 min', 'Évoluer']],
+  p5: [['호흡 이해하기', '12 min', 'Comprendre'], ['횡격막', '15 min', 'Comprendre'], ['호흡과 신경', '15 min', 'Comprendre'], ['자신의 호흡 느끼기', '10 min', 'Ressentir'], ['3D 호흡', '15 min', 'Ressentir'], ['심장 코히어런스 I', '12 min', 'Préparer'], ['횡격막 해방', '15 min', 'Préparer'], ['측면 호흡', '18 min', 'Préparer'], ['배면 호흡', '20 min', 'Préparer'], ['골반저', '22 min', 'Préparer'], ['필라테스 호흡 I', '20 min', 'Exécuter'], ['호흡과 움직임', '25 min', 'Exécuter'], ['심장 코히어런스 II', '20 min', 'Exécuter'], ['호흡과 코어', '28 min', 'Exécuter'], ['완전 호흡 시퀀스', '30 min', 'Exécuter'], ['고급 기술 I', '25 min', 'Évoluer'], ['호흡과 퍼포먼스', '30 min', 'Évoluer'], ['호흡과 감정', '32 min', 'Évoluer'], ['스트레스 해소 호흡', '35 min', 'Évoluer'], ['호흡의 달인', '40 min', 'Évoluer']],
+  p6: [['고유수용감각이란', '12 min', 'Comprendre'], ['공간 속의 몸', '15 min', 'Comprendre'], ['인식과 통증', '15 min', 'Comprendre'], ['바디 스캔 I', '12 min', 'Ressentir'], ['보지 않고 느끼기', '15 min', 'Ressentir'], ['정적 균형 I', '15 min', 'Préparer'], ['미세 움직임', '18 min', 'Préparer'], ['불안정 균형', '20 min', 'Préparer'], ['내면의 시선', '22 min', 'Préparer'], ['바디 매핑', '25 min', 'Préparer'], ['느린 움직임 I', '20 min', 'Exécuter'], ['세밀한 협응', '25 min', 'Exécuter'], ['예측과 반응', '28 min', 'Exécuter'], ['느린 움직임 II', '30 min', 'Exécuter'], ['의식적 유동성', '32 min', 'Exécuter'], ['움직이는 명상', '25 min', 'Évoluer'], ['의식적 전환', '30 min', 'Évoluer'], ['근막 인식', '35 min', 'Évoluer'], ['신체 지능', '38 min', 'Évoluer'], ['몸 안에 존재하기', '45 min', 'Évoluer']],
+  p7: [['조셉 필라테스와 그의 방법', '12 min', 'Comprendre'], ['매트의 6가지 원칙', '15 min', 'Comprendre'], ['센터 — 파워하우스', '15 min', 'Comprendre'], ['매트를 느끼기', '12 min', 'Ressentir'], ['골반-바닥 연결', '15 min', 'Ressentir'], ['더 헌드레드 — 입문', '20 min', 'Préparer'], ['의식적 롤업', '22 min', 'Préparer'], ['싱글 레그 서클', '20 min', 'Préparer'], ['롤링 라이크 어 볼', '18 min', 'Préparer'], ['센터 활성화', '22 min', 'Préparer'], ['5개 시리즈', '25 min', 'Exécuter'], ['스파인 스트레치 포워드', '28 min', 'Exécuter'], ['오픈 레그 로커', '30 min', 'Exécuter'], ['스완 & 차일드', '28 min', 'Exécuter'], ['사이드 킥 시리즈', '32 min', 'Exécuter'], ['매트 시퀀스 레벨 1', '35 min', 'Évoluer'], ['매트 시퀀스 레벨 2', '38 min', 'Évoluer'], ['가이드 티저', '40 min', 'Évoluer'], ['풀 매트 플로우', '42 min', 'Évoluer'], ['매트 마스터리', '45 min', 'Évoluer']],
+  p8: [['왜 사무실은 피곤하게 하는가', '5 min', 'Comprendre'], ['목과 화면 — 진짜 위험', '5 min', 'Comprendre'], ['하루 종일 앉기 — 그 결과', '6 min', 'Comprendre'], ['앉은 자세의 긴장 느끼기', '5 min', 'Ressentir'], ['의자에서 바디 스캔', '7 min', 'Ressentir'], ['앉은 자세 목 스트레칭', '5 min', 'Préparer'], ['손목과 전완 — 키보드', '6 min', 'Préparer'], ['책상 앞 어깨 — 풀기', '7 min', 'Préparer'], ['앉은 자세 등 — 감압', '8 min', 'Préparer'], ['앉은 자세 골반 — 풀기', '7 min', 'Préparer'], ['사무실 스트레스 해소 호흡', '5 min', 'Exécuter'], ['의자에서 흉추 회전', '6 min', 'Exécuter'], ['활동적 미니 휴식 — 3분', '3 min', 'Exécuter'], ['앉은 자세 자세 강화', '8 min', 'Exécuter'], ['빠른 사무실 서킷', '10 min', 'Exécuter'], ['완전한 활동적 휴식 I', '8 min', 'Évoluer'], ['완전한 활동적 휴식 II', '10 min', 'Évoluer'], ['피로 방지 화면과 목', '7 min', 'Évoluer'], ['사무실 아침 루틴', '8 min', 'Évoluer'], ['통증 없는 하루 — 프로토콜', '10 min', 'Évoluer']],
 };
 
 function getSeances(lang) {
   if (lang === 'en') return SEANCES_EN;
   if (lang === 'es') return SEANCES_ES;
   if (lang === 'it') return SEANCES_IT;
+  if (lang === 'de') return SEANCES_DE;
+  if (lang === 'pt') return SEANCES_PT;
+  if (lang === 'zh') return SEANCES_ZH;
+  if (lang === 'ja') return SEANCES_JA;
+  if (lang === 'ko') return SEANCES_KO;
   return SEANCES_FR;
 }
 
@@ -1101,9 +1978,10 @@ const PILIERS_BASE = [
   { key: 'p5', color: 'rgba(55,130,255,1)', bg: 'rgba(55,130,255,0.44)' },
   { key: 'p1', color: 'rgba(0,170,110,1)', bg: 'rgba(0,170,110,0.40)' },
   { key: 'p2', color: 'rgba(255,155,0,1)', bg: 'rgba(255,155,0,0.42)' },
+  { key: 'p8', color: 'rgba(0,206,209,1)', bg: 'rgba(0,206,209,0.40)' },
 ];
 
-const PILIER_LABEL_IDX = { p1: 0, p2: 1, p3: 2, p4: 3, p5: 4, p6: 5, p7: 6 };
+const PILIER_LABEL_IDX = { p1: 0, p2: 1, p3: 2, p4: 3, p5: 4, p6: 5, p7: 6, p8: 7 };
 function getPiliers(lang) {
   const t = T[lang] || T["fr"];
   return PILIERS_BASE.map((p) => ({ ...p, label: t.piliers[PILIER_LABEL_IDX[p.key]] }));
@@ -1132,6 +2010,60 @@ function tentaclePath(bx, by, angle, length, t, phase, amp) {
   return d;
 }
 
+// ── SUBTITLES (VTT) ──────────────────────────────────────
+var SUBTITLE_LANGS = [
+  { code: 'fr', label: 'Français' }, { code: 'en', label: 'English' }, { code: 'de', label: 'Deutsch' },
+  { code: 'pt', label: 'Português' }, { code: 'zh', label: '中文' }, { code: 'ja', label: '日本語' },
+  { code: 'ko', label: '한국어' }, { code: 'es', label: 'Español' }, { code: 'it', label: 'Italiano' },
+];
+
+function extractVideoId(url) {
+  if (!url) return null;
+  var m = url.match(/\/([0-9a-f-]{36})\//);
+  return m ? m[1] : null;
+}
+
+function getSubtitleUrl(videoUrl, langCode) {
+  var id = extractVideoId(videoUrl);
+  if (!id) return null;
+  return 'https://vz-1a4e2cac-0dc.b-cdn.net/' + id + '/subtitles/' + langCode + '.vtt';
+}
+
+function parseVtt(text) {
+  if (!text) return [];
+  var cues = [];
+  var blocks = text.replace(/\r\n/g, '\n').split('\n\n');
+  blocks.forEach(function(block) {
+    var lines = block.trim().split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].indexOf('-->') !== -1) {
+        var times = lines[i].split('-->');
+        var start = vttTimeToMs(times[0].trim());
+        var end = vttTimeToMs(times[1].trim());
+        var txt = lines.slice(i + 1).join('\n').replace(/<[^>]+>/g, '').trim();
+        if (txt && !isNaN(start) && !isNaN(end)) cues.push({ start: start, end: end, text: txt });
+        break;
+      }
+    }
+  });
+  return cues;
+}
+
+function vttTimeToMs(t) {
+  var parts = t.split(':');
+  if (parts.length === 3) return (parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseFloat(parts[2])) * 1000;
+  if (parts.length === 2) return (parseInt(parts[0]) * 60 + parseFloat(parts[1])) * 1000;
+  return parseFloat(t) * 1000;
+}
+
+function getCurrentCue(cues, posMs) {
+  if (!cues || !cues.length) return null;
+  for (var i = 0; i < cues.length; i++) {
+    if (posMs >= cues[i].start && posMs <= cues[i].end) return cues[i].text;
+  }
+  return null;
+}
+
 const TENTS2 = [
   { sx:42,  sy:122, angle:Math.PI*0.560, len:300, phase:0.0, amp:16, color:'rgba(220,228,255,0.55)', w:0.9 },
   { sx:68,  sy:135, angle:Math.PI*0.535, len:350, phase:1.4, amp:20, color:'rgba(215,225,255,0.50)', w:0.75},
@@ -1155,7 +2087,8 @@ function IconPosture({ color }) { return <Svg width={46} height={46} viewBox="0 
 function IconRespiration({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Path d="M8 44 Q18 22 28 44 Q38 66 44 44 Q50 22 60 44 Q70 66 80 44" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Path d="M16 54 Q24 44 32 54 Q40 64 48 54 Q56 44 64 54 Q70 50 76 54" stroke={color} strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.5"/></Svg>; }
 function IconConscience({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Path d="M14 44 Q28 22 44 44 Q58 66 72 44 Q58 22 44 44 Q28 66 14 44Z" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Circle cx="44" cy="44" r="8" stroke={color} strokeWidth="3.5" fill="none"/><Circle cx="44" cy="44" r="3" fill={color}/></Svg>; }
 function IconMatPilates({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Circle cx="30" cy="28" r="6" stroke={color} strokeWidth="3.5" fill="none"/><Line x1="30" y1="34" x2="30" y2="56" stroke={color} strokeWidth="3.5" strokeLinecap="round"/><Path d="M30 42 L18 36" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Path d="M30 42 L42 36" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Path d="M30 56 L22 70" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Path d="M30 56 L38 70" stroke={color} strokeWidth="3.5" strokeLinecap="round" fill="none"/><Rect x="10" y="72" width="68" height="6" rx="3" stroke={color} strokeWidth="2.5" fill="none" opacity="0.6"/><Path d="M42 36 C54 26 64 20 74 18" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeDasharray="3 3" fill="none" opacity="0.7"/><Circle cx="74" cy="18" r="3.5" fill={color} opacity="0.8"/></Svg>; }
-const ICONS = { p1: IconEpaules, p2: IconDos, p3: IconMobilite, p4: IconPosture, p5: IconRespiration, p6: IconConscience, p7: IconMatPilates };
+function IconOffice({ color }) { return <Svg width={46} height={46} viewBox="0 0 88 88" fill="none"><Path d="M24 72h40" stroke={color} strokeWidth="3.5" strokeLinecap="round"/><Path d="M30 72V52c0-2 1-3 3-3h22c2 0 3 1 3 3v20" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/><Path d="M36 49V38c0-2 2-4 4-6l4-4 4 4c2 2 4 4 4 6v11" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none"/><Circle cx="44" cy="22" r="6" stroke={color} strokeWidth="3.5" fill="none"/><Path d="M28 72c0 0-2-8-4-8" stroke={color} strokeWidth="2.5" strokeLinecap="round" opacity="0.6"/><Path d="M60 72c0 0 2-8 4-8" stroke={color} strokeWidth="2.5" strokeLinecap="round" opacity="0.6"/></Svg>; }
+const ICONS = { p1: IconEpaules, p2: IconDos, p3: IconMobilite, p4: IconPosture, p5: IconRespiration, p6: IconConscience, p7: IconMatPilates, p8: IconOffice };
 
 /** Bulles ancrées en bas ; translateY positif = sous le bord, puis montée jusqu'en hors écran. */
 const BULLE_DEPART_SOUS_BORD = 72;
@@ -1719,6 +2652,26 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, i
   const uriRef = useRef(uri);
   uriRef.current = uri;
   const lastPersistAtRef = useRef(0);
+  var [ccEnabled, setCcEnabled] = useState(false);
+  var [ccLang, setCcLang] = useState(lang || 'fr');
+  var [ccCues, setCcCues] = useState([]);
+  var [ccText, setCcText] = useState(null);
+  var [showCcPicker, setShowCcPicker] = useState(false);
+
+  useEffect(function() {
+    if (!ccEnabled || !hasRealVideo || !videoUrl) { setCcCues([]); return; }
+    var url = getSubtitleUrl(videoUrl, ccLang);
+    if (!url) return;
+    fetch(url).then(function(r) { if (r.ok) return r.text(); throw new Error('no vtt'); })
+      .then(function(txt) { setCcCues(parseVtt(txt)); })
+      .catch(function() { setCcCues([]); });
+  }, [ccEnabled, ccLang, videoUrl]);
+
+  useEffect(function() {
+    if (ccEnabled && ccCues.length > 0 && status.positionMillis != null) {
+      setCcText(getCurrentCue(ccCues, status.positionMillis));
+    } else { setCcText(null); }
+  }, [status.positionMillis, ccEnabled, ccCues]);
 
   function maybePersistProgress(s) {
     if (!hasRealVideo) return;
@@ -1738,6 +2691,9 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, i
       if (__DEV__) devWarn('deactivateKeepAwake', e);
     }
     bumpTimer();
+    if (!completedRef.current && elapsedSec >= 30) {
+      saveExerciseTime(getElapsedMinutes());
+    }
     const s = lastStatusRef.current;
     if (
       hasRealVideo &&
@@ -1898,10 +2854,54 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, i
     return `−${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   }
 
+  var playingRef = useRef(false);
+  var elapsedRef = useRef(0);
+  var lastTickRef = useRef(Date.now());
+  var [elapsedSec, setElapsedSec] = useState(0);
+
+  useEffect(function() {
+    playingRef.current = !!status.isPlaying;
+    if (status.isPlaying) lastTickRef.current = Date.now();
+  }, [status.isPlaying]);
+
+  useEffect(function() {
+    var interval = setInterval(function() {
+      if (playingRef.current) {
+        var now = Date.now();
+        var delta = Math.floor((now - lastTickRef.current) / 1000);
+        if (delta > 0) {
+          elapsedRef.current += delta;
+          lastTickRef.current = now;
+          setElapsedSec(elapsedRef.current);
+        }
+      } else {
+        lastTickRef.current = Date.now();
+      }
+    }, 1000);
+    return function() { clearInterval(interval); };
+  }, []);
+
+  function getElapsedMinutes() { return Math.max(1, Math.round(elapsedSec / 60)); }
+
+  // Save exercise time locally for activity rings
+  async function saveExerciseTime(minutes) {
+    try {
+      var key = 'fluid_exercise_' + new Date().toISOString().slice(0, 10);
+      var raw = await AsyncStorage.getItem(key);
+      var total = raw ? parseInt(raw) : 0;
+      await AsyncStorage.setItem(key, String(total + minutes));
+    } catch(e) {}
+    saveHealthKitWorkout(minutes);
+  }
+
   const progress = status.durationMillis ? status.positionMillis / status.durationMillis : 0;
   const barW = Math.max(40, dims.width - 40);
   const thumbSize = 16;
   const thumbLeft = Math.max(0, Math.min(barW - thumbSize, progress * barW - thumbSize / 2));
+
+  var timerMin = Math.floor(elapsedSec / 60);
+  var timerSec = elapsedSec % 60;
+  var timerStr = String(timerMin).padStart(2, '0') + ':' + String(timerSec).padStart(2, '0');
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, backgroundColor: '#000', width: dims.width, height: dims.height }}>
@@ -1945,6 +2945,67 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, i
             Vidéo bientôt disponible
           </Text>
         </View>
+      )}
+
+      {!videoLoadFailed && (
+        <>
+        <View pointerEvents="none" style={{ position: 'absolute', top: 50, left: 16, zIndex: 210 }}>
+          <View style={{ backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 16, padding: 12, minWidth: 110 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+              <Text style={{ fontSize: 28, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -1 }}>{timerStr}</Text>
+              <View style={{ width: 18, height: 18, marginLeft: 2 }}>
+                <Svg width={18} height={18} viewBox="0 0 18 18">
+                  <Circle cx="9" cy="9" r="7" stroke="rgba(174,239,77,0.3)" strokeWidth={2} fill="none" />
+                  <Path d={'M9 2a7 7 0 0 1 ' + (Math.min(elapsedSec / ((parseInt(duree) || 15) * 60), 1) > 0.5 ? '0 14' : (7 * Math.sin(Math.min(elapsedSec / ((parseInt(duree) || 15) * 60), 1) * Math.PI * 2)).toFixed(1) + ' ' + (7 - 7 * Math.cos(Math.min(elapsedSec / ((parseInt(duree) || 15) * 60), 1) * Math.PI * 2)).toFixed(1))} stroke="#AEEF4D" strokeWidth={2} fill="none" strokeLinecap="round" />
+                </Svg>
+              </View>
+            </View>
+            <Text style={{ fontSize: 22, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'] }}>{Math.round(elapsedSec / 60 * 5)}<Text style={{ fontSize: 14, fontWeight: '800', color: '#FF3B30' }}> KCAL</Text></Text>
+          </View>
+        </View>
+        <View pointerEvents="none" style={{ position: 'absolute', top: 50, right: 16, zIndex: 210 }}>
+          <View style={{ width: 44, height: 44 }}>
+            <Svg width={44} height={44} viewBox="0 0 44 44">
+              <Circle cx="22" cy="22" r="19" stroke="rgba(255,59,48,0.3)" strokeWidth={3} fill="none" />
+              <Circle cx="22" cy="22" r="19" stroke="#FF3B30" strokeWidth={3} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 19} strokeDashoffset={2 * Math.PI * 19 * (1 - Math.min(elapsedSec / 60 * 5 / 400, 1))} transform="rotate(-90 22 22)" />
+              <Circle cx="22" cy="22" r="14" stroke="rgba(48,209,88,0.3)" strokeWidth={3} fill="none" />
+              <Circle cx="22" cy="22" r="14" stroke="#30D158" strokeWidth={3} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 14} strokeDashoffset={2 * Math.PI * 14 * (1 - Math.min(elapsedSec / 60 / 30, 1))} transform="rotate(-90 22 22)" />
+              <Circle cx="22" cy="22" r="9" stroke="rgba(10,132,255,0.3)" strokeWidth={3} fill="none" />
+              <Circle cx="22" cy="22" r="9" stroke="#0A84FF" strokeWidth={3} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 9} strokeDashoffset={2 * Math.PI * 9 * 0.92} transform="rotate(-90 22 22)" />
+            </Svg>
+          </View>
+        </View>
+        </>
+      )}
+
+      {hasRealVideo && !videoLoadFailed && !showControls && (
+        <View pointerEvents="none" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, zIndex: 210 }}>
+          <View style={{ height: 3, width: (progress * 100) + '%', backgroundColor: '#AEEF4D' }} />
+        </View>
+      )}
+
+      {ccEnabled && ccText && (
+        <View pointerEvents="none" style={{ position: 'absolute', bottom: showControls ? 140 : 60, left: 20, right: 20, zIndex: 220, alignItems: 'center' }}>
+          <View style={{ backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8, maxWidth: '90%' }}>
+            <Text style={{ fontSize: 16, fontWeight: '500', color: '#ffffff', textAlign: 'center', lineHeight: 22 }}>{ccText}</Text>
+          </View>
+        </View>
+      )}
+
+      {showCcPicker && (
+        <Pressable onPress={function() { setShowCcPicker(false); }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 230, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'flex-end', paddingTop: 100, paddingRight: 20 }}>
+          <View style={{ backgroundColor: 'rgba(28,28,30,0.95)', borderRadius: 14, padding: 8, width: 160 }}>
+            {SUBTITLE_LANGS.map(function(sl) {
+              var active = ccLang === sl.code;
+              return (
+                <TouchableOpacity key={sl.code} onPress={function() { setCcLang(sl.code); setShowCcPicker(false); bumpTimer(); }} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, backgroundColor: active ? 'rgba(174,239,77,0.15)' : 'transparent' }}>
+                  <Text style={{ fontSize: 14, color: active ? '#AEEF4D' : '#ffffff' }}>{sl.label}</Text>
+                  {active && <Text style={{ fontSize: 12, color: '#AEEF4D' }}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </Pressable>
       )}
 
       {videoLoadFailed && (
@@ -1991,9 +3052,21 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, i
                   {tr.etapes[etape] || etape} · {pilier.label} · {duree}
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={14} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 22, color: '#fff', fontWeight: '300' }}>✕</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                {hasRealVideo && (
+                  <TouchableOpacity onPress={function() { setCcEnabled(!ccEnabled); bumpTimer(); }} hitSlop={10} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: ccEnabled ? '#AEEF4D' : 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: ccEnabled ? '#000' : '#fff' }}>CC</Text>
+                  </TouchableOpacity>
+                )}
+                {hasRealVideo && ccEnabled && (
+                  <TouchableOpacity onPress={function() { setShowCcPicker(!showCcPicker); bumpTimer(); }} hitSlop={10} style={{ height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>{ccLang.toUpperCase()}</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={14} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 22, color: '#fff', fontWeight: '300' }}>✕</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {hasRealVideo && (
@@ -2118,6 +3191,7 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, i
                   ]).start();
                   completedRef.current = true;
                   if (pilier?.key != null && seanceIndex != null) clearVideoResume(pilier.key, seanceIndex);
+                  saveExerciseTime(getElapsedMinutes());
                   onComplete();
                 }}
                 style={{ alignSelf: 'stretch' }}
@@ -2186,7 +3260,7 @@ function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, i
 function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isSubscriber, onActivateSubscription, sdjIndex }) {
   const tr = T[lang] || T['fr'];
   const seances = getSeances(lang)[pilier.key] || [];
-  const doneCount = done.filter(Boolean).length;
+  const doneCount = (done || []).filter(Boolean).length;
   const [activeVideo, setActiveVideo] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [showDemoLimit, setShowDemoLimit] = useState(false);
@@ -2249,7 +3323,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
           seanceIndex={activeVideo}
           isDemo={activeVideo === sdjIndex && !isSubscriber}
           onClose={() => { setShowDemoLimit(false); setActiveVideo(null); }}
-          onComplete={() => { var dur = parseInt(seances[activeVideo]?.[1]) || 15; saveHealthKitWorkout(dur); onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
+          onComplete={() => { onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
           onDemoLimit={() => setShowDemoLimit(true)}
         />
         {showDemoLimit && (
@@ -2341,8 +3415,10 @@ const PILIER_IMAGES = {
   p5: require("./assets/piliers/eldoa.jpg"),
   p6: require("./assets/piliers/golf.jpg"),
   p7: require("./assets/piliers/mat_pilates.jpg"),
+  p8: require("./assets/piliers/office.jpg"),
   sdj: require("./assets/piliers/seance_du_jour.jpg"),
 };
+const COACH_IMAGE = require("./assets/coach.jpg");
 
 function PilierCard({ pilier, doneCount, onPress, recommended, lang, imageKey }) {
   var tr = T[lang] || T["fr"];
@@ -2374,7 +3450,7 @@ function PilierCard({ pilier, doneCount, onPress, recommended, lang, imageKey })
       >
         <ImageBackground
           source={imgSrc}
-          resizeMode="cover"
+          resizeMode={pilier.key === 'p8' ? 'contain' : 'cover'}
           style={{ flex: 1 }}
           imageStyle={{ opacity: 0.70 }}
         >
@@ -2527,7 +3603,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         contentContainerStyle={{ paddingTop: 170, paddingBottom: 120, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
       >
-        {(mcTab === 'pour_vous' || mcTab === 'explorer') && sdj && (
+        {mcTab === 'explorer' && sdj && (
           <TouchableOpacity onPress={function() { if (onTryFreeSession) onTryFreeSession(); }} activeOpacity={0.9} style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#AEEF4D' }}>
             <ImageBackground source={PILIER_IMAGES[sdj.pilier.key]} resizeMode="cover" style={{ height: 100 }}>
               <LinearGradient colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)']} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
@@ -2712,7 +3788,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         )}
       </ScrollView>
       {openPilier && (
-        <PilierPanel pilier={openPilier} done={done[openPilier.key]} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} />
+        <PilierPanel pilier={openPilier} done={done[openPilier.key] || Array(20).fill(false)} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} />
       )}
       <CreateProgramScreen visible={showCreateProg} onClose={function() { setShowCreateProg(false); }} lang={lang} onSaved={loadSavedPrograms} />
     </View>
@@ -2906,7 +3982,17 @@ function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPric
           </View>
 
           <Text style={{ fontSize: 30, fontWeight: "800", color: "#ffffff", textAlign: "center", marginBottom: 12, paddingHorizontal: 28 }}>{tr.paywall_title}</Text>
-          <Text style={{ fontSize: 15, fontWeight: "400", color: "rgba(255,255,255,0.50)", textAlign: "center", lineHeight: 22, marginBottom: 36, paddingHorizontal: 36 }}>{tr.paywall_sub}</Text>
+          <Text style={{ fontSize: 15, fontWeight: "400", color: "rgba(255,255,255,0.50)", textAlign: "center", lineHeight: 22, marginBottom: 20, paddingHorizontal: 36 }}>{tr.paywall_sub}</Text>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: 28, marginBottom: 28, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 16, padding: 14 }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D' }}>
+              <ImageBackground source={COACH_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '300', color: 'rgba(255,255,255,0.8)', lineHeight: 18, fontStyle: 'italic' }}>{tr.coach_quote || '"Je vous accompagne pas à pas vers un corps plus libre."'}</Text>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: '#AEEF4D', marginTop: 4 }}>{tr.coach_avec || 'Avec Sabrina'} · {tr.coach_exp || '30 ans d\'expérience'}</Text>
+            </View>
+          </View>
 
           {disabled && (
             <View style={{ alignSelf: "stretch", marginHorizontal: 28, marginBottom: 20, backgroundColor: "rgba(255,200,80,0.10)", borderWidth: 1, borderColor: "rgba(255,200,80,0.25)", borderRadius: 16, padding: 14 }}>
@@ -3176,17 +4262,23 @@ function ActivityRing({ radius, strokeWidth, progress, color, bgColor }) {
 
 var AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-function ResumeScreen({ done, lang, streak, prenom, tensionIdxs }) {
+function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCreateAccount }) {
   var tr = T[lang] || T['fr'];
   var piliers = getPiliers(lang);
   var totalDone = Object.values(done).flat().filter(Boolean).length;
-  var pct = Math.round(totalDone / 140 * 100);
+  var pct = Math.round(totalDone / 160 * 100);
   var recommendedPiliers = (tensionIdxs || []).map(function(i) { return ZONE_TO_PILIER[i]; });
   var [hkData, setHkData] = useState({ cal: 0, exMin: 0, standHr: 0 });
+  var [localExMin, setLocalExMin] = useState(0);
 
   useEffect(function() {
-    getHealthKitSummary(function(data) { setHkData(data); });
-    var interval = setInterval(function() { getHealthKitSummary(function(data) { setHkData(data); }); }, 60000);
+    function refresh() {
+      getHealthKitSummary(function(data) { setHkData(data); });
+      var key = 'fluid_exercise_' + new Date().toISOString().slice(0, 10);
+      AsyncStorage.getItem(key).then(function(raw) { if (raw) setLocalExMin(parseInt(raw) || 0); });
+    }
+    refresh();
+    var interval = setInterval(refresh, 60000);
     return function() { clearInterval(interval); };
   }, []);
 
@@ -3198,7 +4290,9 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs }) {
   var dateStr = dn + ' ' + now.getDate() + ' ' + mn;
 
   var calGoal = 400; var exGoal = 30; var standGoal = 12;
-  var calPct = hkData.cal / calGoal; var exPct = hkData.exMin / exGoal; var standPct = hkData.standHr / standGoal;
+  var effectiveExMin = Math.max(hkData.exMin, localExMin);
+  var effectiveCal = Math.max(hkData.cal, localExMin * 5);
+  var calPct = effectiveCal / calGoal; var exPct = effectiveExMin / exGoal; var standPct = hkData.standHr / standGoal;
 
   var recentSeances = [];
   piliers.forEach(function(p) {
@@ -3243,14 +4337,14 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs }) {
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF3B30' }} />
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{tr.resume_bouger || 'Bouger'}</Text>
                 </View>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: '#FF3B30', marginTop: 2 }}>{hkData.cal}<Text style={{ fontSize: 13, fontWeight: '400' }}>/{calGoal} cal</Text></Text>
+                <Text style={{ fontSize: 22, fontWeight: '700', color: '#FF3B30', marginTop: 2 }}>{effectiveCal}<Text style={{ fontSize: 13, fontWeight: '400' }}>/{calGoal} cal</Text></Text>
               </View>
               <View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#30D158' }} />
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{tr.resume_exercice || 'Exercice'}</Text>
                 </View>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: '#30D158', marginTop: 2 }}>{hkData.exMin}<Text style={{ fontSize: 13, fontWeight: '400' }}>/{exGoal} min</Text></Text>
+                <Text style={{ fontSize: 22, fontWeight: '700', color: '#30D158', marginTop: 2 }}>{effectiveExMin}<Text style={{ fontSize: 13, fontWeight: '400' }}>/{exGoal} min</Text></Text>
               </View>
               <View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -3324,6 +4418,17 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs }) {
             );
           })}
         </View>
+
+        {!supaUser && totalDone >= 3 && (
+          <TouchableOpacity onPress={function() { if (onCreateAccount) onCreateAccount(); }} activeOpacity={0.85} style={{ marginHorizontal: 20, marginTop: 14, backgroundColor: 'rgba(0,189,208,0.12)', borderWidth: 1, borderColor: 'rgba(0,189,208,0.4)', borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Text style={{ fontSize: 20 }}>💾</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#00BDD0' }}>{tr.save_progress_title || 'Sauvegarde ta progression'}</Text>
+              <Text style={{ fontSize: 11, color: 'rgba(0,189,208,0.6)', marginTop: 2 }}>{tr.save_progress_sub || 'Crée un compte gratuit pour ne rien perdre'}</Text>
+            </View>
+            <Text style={{ fontSize: 16, color: 'rgba(0,189,208,0.5)' }}>›</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -3450,7 +4555,7 @@ function FloatingMedusas() {
 function Progresser({ done, lang, tensionIdxs }) {
   const tr = T[lang] || T['fr'];
   const totalDone = Object.values(done).flat().filter(Boolean).length;
-  const pct = Math.round(totalDone / 140 * 100);
+  const pct = Math.round(totalDone / 160 * 100);
   const piliers = getPiliers(lang);
   const recommendedPiliers = tensionIdxs.map(i => ZONE_TO_PILIER[i]);
   const globalAnim = useRef(new Animated.Value(0)).current;
@@ -3479,7 +4584,7 @@ function Progresser({ done, lang, tensionIdxs }) {
           <View style={{ height: 6, backgroundColor: 'rgba(174,239,77,0.15)', borderRadius: 3, marginTop: 14, overflow: 'hidden' }}>
             <Animated.View style={{ height: 6, width: globalAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 300] }), backgroundColor: '#AEEF4D', borderRadius: 3 }} />
           </View>
-          <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.45)', textAlign: 'right', marginTop: 4 }}>{totalDone} / 140</Text>
+          <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.45)', textAlign: 'right', marginTop: 4 }}>{totalDone} / 160</Text>
         </View>
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
           {sortedPiliers.map((p, idx) => {
@@ -3613,7 +4718,7 @@ function PartageScreen({ done, lang, streak, prenom }) {
   var tr = T[lang] || T['fr'];
   var piliers = getPiliers(lang);
   var totalDone = Object.values(done).flat().filter(Boolean).length;
-  var pct = Math.round(totalDone / 140 * 100);
+  var pct = Math.round(totalDone / 160 * 100);
   var [defis, setDefis] = useState([]);
   var [invites, setInvites] = useState([]);
   var [showCreateDefi, setShowCreateDefi] = useState(false);
@@ -3625,11 +4730,49 @@ function PartageScreen({ done, lang, streak, prenom }) {
     AsyncStorage.getItem('fluid_invites').then(function(raw) { if (raw) try { setInvites(JSON.parse(raw)); } catch(e) {} });
   }, []);
 
-  function shareProgression() {
-    var msg = (tr.partage_share_msg || 'FluidBody+ Pilates') + '\n' +
-      pct + '% · ' + totalDone + ' ' + (tr.m_seances || 'séances') + ' · 🔥' + (streak || 0) + ' streak\n' +
-      'https://apps.apple.com/app/fluidbody/id6746387875';
-    Share.share({ message: msg }).catch(function() {});
+  var shareCardRef = useRef(null);
+  var [capturing, setCapturing] = useState(false);
+
+  async function captureCard() {
+    if (!shareCardRef.current) return null;
+    try {
+      var uri = await shareCardRef.current.capture({ format: 'png', quality: 1 });
+      return uri;
+    } catch(e) { return null; }
+  }
+
+  async function shareProgression() {
+    setCapturing(true);
+    setTimeout(async function() {
+      var uri = await captureCard();
+      setCapturing(false);
+      if (uri) {
+        Share.share({ url: uri, message: 'FluidBody+ Pilates\nhttps://apps.apple.com/app/fluidbody/id6746387875' }).catch(function() {});
+      } else {
+        var msg = (tr.partage_share_msg || 'FluidBody+ Pilates') + '\n' + pct + '% · ' + totalDone + ' ' + (tr.m_seances || 'séances') + ' · 🔥' + (streak || 0) + '\nhttps://apps.apple.com/app/fluidbody/id6746387875';
+        Share.share({ message: msg }).catch(function() {});
+      }
+    }, 300);
+  }
+
+  async function shareInstagram() {
+    setCapturing(true);
+    setTimeout(async function() {
+      var uri = await captureCard();
+      setCapturing(false);
+      if (uri) {
+        Share.share({ url: uri }).catch(function() {});
+      }
+    }, 300);
+  }
+
+  async function shareWhatsApp() {
+    var msg = (tr.partage_share_msg || 'FluidBody+ Pilates') + '\n' + pct + '% · ' + totalDone + ' ' + (tr.m_seances || 'séances') + ' · 🔥' + (streak || 0) + '\nhttps://apps.apple.com/app/fluidbody/id6746387875';
+    try {
+      var canOpen = await RNLinking.canOpenURL('whatsapp://send');
+      if (canOpen) { await RNLinking.openURL('whatsapp://send?text=' + encodeURIComponent(msg)); }
+      else { Share.share({ message: msg }).catch(function() {}); }
+    } catch(e) { Share.share({ message: msg }).catch(function() {}); }
   }
 
   function inviteAmis() {
@@ -3667,7 +4810,7 @@ function PartageScreen({ done, lang, streak, prenom }) {
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
         {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
       </View>
-      <FloatingAvatars />
+      <FloatingMedusas />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingTop: 62, paddingHorizontal: 20, marginBottom: 20 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3677,27 +4820,77 @@ function PartageScreen({ done, lang, streak, prenom }) {
           <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.partage_title || 'Partage'}</Text>
         </View>
 
-        <AvatarConstellation prenom={prenom} />
 
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 14 }}>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>{tr.partage_progression || 'Partager ma progression'}</Text>
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-            <View style={{ flex: 1, backgroundColor: 'rgba(174,239,77,0.08)', borderRadius: 12, padding: 14, alignItems: 'center' }}>
-              <Text style={{ fontSize: 28, fontWeight: '800', color: '#AEEF4D' }}>{pct}%</Text>
-              <Text style={{ fontSize: 9, color: 'rgba(174,239,77,0.6)', marginTop: 2, textTransform: 'uppercase', letterSpacing: 1 }}>{tr.resume_global || 'Global'}</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: 'rgba(174,239,77,0.08)', borderRadius: 12, padding: 14, alignItems: 'center' }}>
-              <Text style={{ fontSize: 28, fontWeight: '800', color: '#AEEF4D' }}>{'🔥'}{streak || 0}</Text>
-              <Text style={{ fontSize: 9, color: 'rgba(174,239,77,0.6)', marginTop: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Streak</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: 'rgba(174,239,77,0.08)', borderRadius: 12, padding: 14, alignItems: 'center' }}>
-              <Text style={{ fontSize: 28, fontWeight: '800', color: '#AEEF4D' }}>{totalDone}</Text>
-              <Text style={{ fontSize: 9, color: 'rgba(174,239,77,0.6)', marginTop: 2, textTransform: 'uppercase', letterSpacing: 1 }}>{tr.m_seances || 'Séances'}</Text>
-            </View>
+        <View style={{ marginHorizontal: 20, marginBottom: 14 }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>{tr.partage_progression || 'Partager ma progression'}</Text>
+
+          <ViewShot ref={shareCardRef} options={{ format: 'png', quality: 1 }}>
+            <LinearGradient colors={['#00bdd0', '#005878', '#002d48', '#000e18']} style={{ borderRadius: 16, padding: 24, overflow: 'hidden' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.5 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</Text></Text>
+                <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D' }}>
+                  <ImageBackground source={COACH_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 30, fontWeight: '800', color: '#ffffff' }}>{pct}%</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>{tr.resume_global || 'Global'}</Text>
+                </View>
+                <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 30, fontWeight: '800', color: '#ffffff' }}>{'🔥'}{streak || 0}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>Streak</Text>
+                </View>
+                <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 30, fontWeight: '800', color: '#ffffff' }}>{totalDone}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>{tr.m_seances || 'Séances'}</Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 12, marginBottom: 16 }}>
+                {(function() {
+                  var bestP = piliers.reduce(function(best, p) { var c = (done[p.key] || []).filter(Boolean).length; return c > best.count ? { p: p, count: c } : best; }, { p: piliers[0], count: 0 });
+                  return (
+                    <>
+                      <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden', borderWidth: 1.5, borderColor: '#AEEF4D', marginRight: 12 }}>
+                        <ImageBackground source={PILIER_IMAGES[bestP.p.key]} resizeMode="cover" style={{ flex: 1 }} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#ffffff' }}>{bestP.p.label}</Text>
+                        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{bestP.count}/20 {tr.m_seances || 'séances'}</Text>
+                      </View>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#AEEF4D' }}>{Math.round(bestP.count / 20 * 100)}%</Text>
+                    </>
+                  );
+                })()}
+              </View>
+
+              <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(255,255,255,0.7)', textAlign: 'center', fontStyle: 'italic', lineHeight: 20 }}>{tr.coach_quote || '"Je vous accompagne pas à pas vers un corps plus libre."'}</Text>
+              <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: 8 }}>fluidbody.app · Pilates & More</Text>
+            </LinearGradient>
+          </ViewShot>
+
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+            <TouchableOpacity onPress={shareProgression} activeOpacity={0.85} style={{ flex: 1, height: 48, borderRadius: 24, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#000000' }}>{tr.partage_btn || 'Partager'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={shareInstagram} activeOpacity={0.85} style={{ height: 48, borderRadius: 24, backgroundColor: 'rgba(225,48,108,0.9)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, gap: 6 }}>
+              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                <Rect x="2" y="2" width="20" height="20" rx="5" stroke="#fff" strokeWidth={1.8} />
+                <Circle cx="12" cy="12" r="5" stroke="#fff" strokeWidth={1.8} />
+                <Circle cx="17.5" cy="6.5" r="1.5" fill="#fff" />
+              </Svg>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff' }}>Story</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={shareWhatsApp} activeOpacity={0.85} style={{ height: 48, borderRadius: 24, backgroundColor: 'rgba(37,211,102,0.9)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, gap: 6 }}>
+              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                <Path d="M12 2C6.48 2 2 6.48 2 12c0 1.77.46 3.43 1.27 4.88L2 22l5.23-1.23A9.96 9.96 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2z" stroke="#fff" strokeWidth={1.6} />
+                <Path d="M8.5 10.5c.4 1.2 1.3 2.4 2.5 3.2l1.5-.5c.3-.1.6 0 .8.2l1.2 1.5c.2.3.1.6-.2.8l-1 .6c-.5.3-1.1.2-1.5-.1-2-1.3-3.5-3.2-4.2-5.2-.1-.4 0-.9.3-1.2l.7-.9c.2-.3.6-.3.8-.1l1.3 1.3c.2.2.2.5.1.7l-.6 1" fill="#fff" opacity={0.9} />
+              </Svg>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff' }}>WhatsApp</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={shareProgression} activeOpacity={0.85} style={{ height: 48, borderRadius: 24, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#000000', letterSpacing: 0.5 }}>{tr.partage_btn || 'Partager'}</Text>
-          </TouchableOpacity>
         </View>
 
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 14 }}>
@@ -3823,6 +5016,23 @@ function ProfilScreen({ prenom, lang, supabase, supaUser, onLogout, isSubscriber
               <Text style={{ fontSize: 13, color: 'rgba(174,239,77,0.6)' }}>FluidBody · Pilates</Text>
             </View>
           </View>
+        </View>
+
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#AEEF4D' }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.coach_title || 'Votre Coach'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+            <View style={{ width: 70, height: 70, borderRadius: 35, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginRight: 14 }}>
+              <ImageBackground source={COACH_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff' }}>{tr.coach_name || 'Sabrina'}</Text>
+              <Text style={{ fontSize: 12, color: '#AEEF4D', marginTop: 2 }}>{tr.coach_subtitle || 'Experte Pilates · 30 ans d\'expérience'}</Text>
+            </View>
+          </View>
+          <Text style={{ fontSize: 13, fontWeight: '300', color: 'rgba(255,255,255,0.7)', lineHeight: 20, fontStyle: 'italic', marginBottom: 14 }}>{tr.coach_bio || 'Passionnée par le mouvement conscient, je vous guide vers un corps plus libre et plus fort.'}</Text>
+          <TouchableOpacity activeOpacity={0.85} style={{ paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center' }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.coach_more || 'En savoir plus'}</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
@@ -4131,6 +5341,15 @@ function OnboardingScreen({ onDone, initialLang }) {
       <Animated.View style={{ flex: 1, opacity: fadeAnim, alignItems: 'center', justifyContent: step === 1 ? 'center' : 'flex-end', paddingBottom: step === 0 ? 132 : 60, zIndex: 2, elevation: step === 2 ? 4 : 0 }}>
         {step === 0 && (
           <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 28, alignSelf: 'center' }}>
+              <View style={{ width: 120, height: 120, borderRadius: 60, overflow: 'hidden', borderWidth: 3, borderColor: '#AEEF4D' }}>
+                <ImageBackground source={COACH_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
+              </View>
+              <View>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#ffffff' }}>{tr.coach_avec || 'Avec Sabrina'}</Text>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{tr.coach_exp || '30 ans d\'expérience'}</Text>
+              </View>
+            </View>
             <TouchableOpacity onPress={() => nextStep(1)} style={styles.btnCtaLarge}>
               <Text style={styles.btnCtaLargeTxt}>{"C'est parti !"}</Text>
             </TouchableOpacity>
@@ -4222,6 +5441,15 @@ async function setupNotifications(lang = 'fr') {
     await Notifications.cancelAllScheduledNotificationsAsync();
     const tr = T[lang] || T['fr'];
     await Notifications.scheduleNotificationAsync({ content: { title: tr.notif_title, body: tr.notif_body, sound: true }, trigger: { hour: 9, minute: 0, repeats: true } });
+    // Pause Active — Office : toutes les heures 9h-18h en semaine
+    for (var h = 9; h <= 17; h++) {
+      for (var wd = 2; wd <= 6; wd++) {
+        await Notifications.scheduleNotificationAsync({
+          content: { title: tr.notif_pause_title || 'Pause Active', body: tr.notif_pause_body || 'C\'est le moment de bouger ! 5 min d\'étirements au bureau.', sound: true },
+          trigger: { weekday: wd, hour: h, minute: 0, repeats: true },
+        });
+      }
+    }
   } catch(e) {}
 }
 
@@ -4260,13 +5488,15 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
   const tr = T[lang] || T['fr'];
   const [done, setDone] = useState({
     p1: Array(20).fill(false), p2: Array(20).fill(false), p3: Array(20).fill(false),
-    p4: Array(20).fill(false), p5: Array(20).fill(false), p6: Array(20).fill(false), p7: Array(20).fill(false),
+    p4: Array(20).fill(false), p5: Array(20).fill(false), p6: Array(20).fill(false), p7: Array(20).fill(false), p8: Array(20).fill(false),
   });
   const [streak, setStreak] = useState(0);
   const [isSubscriber, setIsSubscriber] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [freeDetailVisible, setFreeDetailVisible] = useState(false);
   const [freeVideoPlaying, setFreeVideoPlaying] = useState(false);
+  const [showFirstSeanceModal, setShowFirstSeanceModal] = useState(false);
+  const [showAuthScreen, setShowAuthScreen] = useState(false);
   const [rcPackagesByProductId, setRcPackagesByProductId] = useState({});
   const [rcLoadingPrices, setRcLoadingPrices] = useState(false);
 
@@ -4345,7 +5575,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
         if (savedDone) {
           const parsed = JSON.parse(savedDone);
           const fixed = {};
-          Object.keys(parsed).forEach(k => { fixed[k] = parsed[k].map(v => v === true || v === 'true'); });
+          ['p1','p2','p3','p4','p5','p6','p7','p8'].forEach(function(k) {
+            fixed[k] = parsed[k] ? parsed[k].map(v => v === true || v === 'true') : Array(20).fill(false);
+          });
           setDone(fixed);
         }
         if (supabase && supaUser) {
@@ -4452,6 +5684,13 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
     if (supabase && supaUser) {
       try { await supabase.from('progression').upsert({ user_id: supaUser.id, done: next, updated_at: new Date().toISOString() }); } catch (e) { devWarn('Supabase progression upsert', e); }
     }
+    // First séance modal
+    if (!done[key][idx] && !supaUser) {
+      var prevTotal = Object.values(done).flat().filter(Boolean).length;
+      if (prevTotal === 0) {
+        setTimeout(function() { setShowFirstSeanceModal(true); }, 1500);
+      }
+    }
     // Streak
     if (!done[key][idx]) {
       try {
@@ -4502,16 +5741,39 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
               seanceIndex={sdj.idx}
               isDemo={!isSubscriber}
               onClose={() => setFreeVideoPlaying(false)}
-              onComplete={() => { var dur = parseInt(sdj?.seance?.[1]) || 15; saveHealthKitWorkout(dur); setFreeVideoPlaying(false); }}
+              onComplete={() => { setFreeVideoPlaying(false); }}
               onDemoLimit={() => { setFreeVideoPlaying(false); setPaywallVisible(true); }}
             />
           </Modal>
         );
       })()}
+      {showFirstSeanceModal && (
+        <Modal visible animationType="fade" transparent statusBarTranslucent>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 }}>
+            <View style={{ backgroundColor: '#001828', borderRadius: 24, padding: 28, alignItems: 'center', borderWidth: 1, borderColor: '#AEEF4D', width: '100%', maxWidth: 340 }}>
+              <MeduseCornerIcon size={80} breathCycleMs={2500} tint="rgba(255,215,0,1)" />
+              <Text style={{ fontSize: 32, marginTop: 12 }}>🎉</Text>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', textAlign: 'center', marginTop: 12 }}>{tr.first_seance_title || 'Bravo !'}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '300', color: 'rgba(255,255,255,0.7)', textAlign: 'center', lineHeight: 22, marginTop: 10, marginBottom: 24 }}>{tr.first_seance_sub || 'Première séance terminée !\nCrée un compte gratuit pour sauvegarder ta progression.'}</Text>
+              <TouchableOpacity onPress={function() { setShowFirstSeanceModal(false); setShowAuthScreen(true); }} activeOpacity={0.85} style={{ alignSelf: 'stretch', height: 50, borderRadius: 25, backgroundColor: '#00BDD0', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#ffffff' }}>{tr.first_seance_create || 'Créer mon compte'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={function() { setShowFirstSeanceModal(false); }} activeOpacity={0.7}>
+                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{tr.first_seance_later || 'Plus tard'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+      {showAuthScreen && (
+        <Modal visible animationType="slide" presentationStyle="fullScreen" statusBarTranslucent>
+          <AuthScreen onSkip={function() { setShowAuthScreen(false); }} lang={lang} prenomHint={prenom} langForProfile={lang} tensionIdxsForProfile={tensionIdxs} />
+        </Modal>
+      )}
       <NavigationContainer>
           <Tab.Navigator tabBar={function(props) { return <CustomTabBar {...props} />; }} screenOptions={{ headerShown: false }}>
           <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={isSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={function() { setShowAuthScreen(true); }} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconPartage {...props} /> }}>{() => <PartageScreen done={done} lang={lang} streak={streak} prenom={prenom} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[4]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} lang={lang} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} />}</Tab.Screen>
@@ -4697,9 +5959,9 @@ const styles = StyleSheet.create({
   metricWebFallback: { backgroundColor: 'rgba(255,255,255,0.14)' },
   mval: { fontSize: 20, fontWeight: '500', color: '#fff' },
   mlbl: { fontSize: 9, fontWeight: '200', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(255,255,255,0.92)', marginTop: 3 },
-  btnCtaLarge: { alignSelf: 'stretch', height: 66, borderRadius: 33, backgroundColor: 'rgba(229,255,0,0.15)', borderWidth: 2, borderColor: '#E5FF00', alignItems: 'center', justifyContent: 'center' },
+  btnCtaLarge: { alignSelf: 'stretch', height: 48, borderRadius: 24, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center' },
   btnCtaOff: { opacity: 0.3 },
-  btnCtaLargeTxt: { fontSize: 19, fontWeight: '700', color: '#E5FF00', letterSpacing: 3, textTransform: 'uppercase' },
+  btnCtaLargeTxt: { fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 0.5 },
   statCard: { flex: 1, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 14, alignItems: 'center' },
   statLbl: { fontSize: 9, fontWeight: '200', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(174,239,77,0.6)' },
 });
