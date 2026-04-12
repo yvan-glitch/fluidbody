@@ -532,6 +532,8 @@ const T = {
     coach_title: 'Votre Coach', coach_name: 'Sabrina', coach_subtitle: 'Experte Pilates · 30 ans d\'expérience', coach_bio: 'Passionnée par le mouvement conscient, je vous guide vers un corps plus libre et plus fort.', coach_more: 'En savoir plus', coach_avec: 'Avec Sabrina', coach_exp: '30 ans d\'expérience', coach_quote: '"Je vous accompagne pas à pas vers un corps plus libre."',
     first_seance_title: 'Bravo !', first_seance_sub: 'Première séance terminée !\nCrée un compte gratuit pour sauvegarder ta progression et ne jamais la perdre.', first_seance_create: 'Créer mon compte', first_seance_later: 'Plus tard',
     save_progress_title: 'Sauvegarde ta progression', save_progress_sub: 'Crée un compte gratuit pour ne rien perdre',
+    meduse_card_title: 'Ta méduse',
+    auth_apple: 'Continuer avec Apple', auth_google: 'Continuer avec Google', auth_or: 'ou', auth_social_soon: 'Disponible dans la version App Store.',
     demo_limit: "Abonne-toi pour voir la suite",
     motivation: (streak) => streak === 0 ? '"Commence aujourd\'hui.\nTon corps t\'attend."' :
       streak < 3  ? `"${streak} jour${streak > 1 ? 's' : ''} de suite. Continue."` :
@@ -681,6 +683,8 @@ const T = {
     coach_title: 'Your Coach', coach_name: 'Sabrina', coach_subtitle: 'Pilates Expert · 30 years experience', coach_bio: 'Passionate about conscious movement, I guide you towards a freer, stronger body.', coach_more: 'Learn more', coach_avec: 'With Sabrina', coach_exp: '30 years experience', coach_quote: '"I guide you step by step towards a freer body."',
     first_seance_title: 'Well done!', first_seance_sub: 'First session complete!\nCreate a free account to save your progress.', first_seance_create: 'Create my account', first_seance_later: 'Later',
     save_progress_title: 'Save your progress', save_progress_sub: 'Create a free account to keep everything',
+    meduse_card_title: 'Your jellyfish',
+    auth_apple: 'Continue with Apple', auth_google: 'Continue with Google', auth_or: 'or', auth_social_soon: 'Available in the App Store version.',
     demo_limit: 'Subscribe to see the rest',
     motivation: (streak) => streak === 0 ? '"Start today.\nYour body is waiting."' :
       streak < 3  ? `"${streak} day${streak > 1 ? 's' : ''} in a row. Keep going."` :
@@ -4487,6 +4491,41 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
           </View>
         </View>
 
+        {(function() {
+          var stIdx = getMeduseState(pct, streak);
+          var ms = MEDUSA_STATES[stIdx];
+          var names = MEDUSA_STATE_NAMES[lang] || MEDUSA_STATE_NAMES.fr;
+          var score = Math.min(100, pct * 0.7 + Math.min(streak || 0, 14) * 2);
+          var nextState = stIdx < MEDUSA_STATES.length - 1 ? MEDUSA_STATES[stIdx + 1] : null;
+          var progressToNext = nextState ? Math.min(1, (score - ms.min) / (nextState.min - ms.min)) : 1;
+          var motivTexts = {
+            fr: ['Fais 3 séances pour l\'éveiller !', 'Continue pour la rendre active !', 'Elle brille de plus en plus !', 'Presque rayonnante, encore un effort !', 'Maîtrise totale atteinte !'],
+            en: ['Do 3 sessions to awaken her!', 'Keep going to make her active!', 'She shines more and more!', 'Almost radiant, one more push!', 'Total mastery achieved!'],
+            de: ['Mache 3 Sitzungen, um sie zu wecken!', 'Weiter so, um sie aktiv zu machen!', 'Sie strahlt immer mehr!', 'Fast strahlend, noch eine Anstrengung!', 'Totale Meisterschaft erreicht!'],
+            pt: ['Faça 3 sessões para despertá-la!', 'Continue para torná-la ativa!', 'Ela brilha cada vez mais!', 'Quase radiante, mais um esforço!', 'Domínio total alcançado!'],
+            zh: ['做3节课来唤醒她！', '继续让她变得活跃！', '她越来越闪耀！', '快要闪耀了，再加油！', '完全掌握！'],
+            ja: ['3セッションで目覚めさせよう！', '続けてアクティブに！', 'どんどん輝いている！', 'もう少しで輝く！', '完全制覇！'],
+            ko: ['3세션으로 깨우세요!', '계속하면 활동적이 됩니다!', '점점 빛나고 있어요!', '거의 빛나요, 조금만 더!', '완전 정복!'],
+            es: ['¡Haz 3 sesiones para despertarla!', '¡Sigue para activarla!', '¡Brilla cada vez más!', '¡Casi radiante, un esfuerzo más!', '¡Dominio total!'],
+            it: ['Fai 3 sessioni per svegliarla!', 'Continua per renderla attiva!', 'Brilla sempre di più!', 'Quasi radiante, ancora uno sforzo!', 'Padronanza totale!'],
+          };
+          var motiv = (motivTexts[lang] || motivTexts.fr)[stIdx];
+          return (
+            <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 14, alignItems: 'center' }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16, alignSelf: 'flex-start' }}>{tr.meduse_card_title || 'Ta méduse'}</Text>
+              <LivingMedusa pct={pct} streak={streak} lang={lang} showLabel={false} />
+              <Text style={{ fontSize: 18, fontWeight: '700', color: ms.color.replace('1)', '0.9)'), marginTop: 14 }}>{names[stIdx]}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, alignSelf: 'stretch' }}>
+                <View style={{ flex: 1, height: 4, backgroundColor: 'rgba(174,239,77,0.12)', borderRadius: 2, overflow: 'hidden' }}>
+                  <View style={{ height: 4, width: (progressToNext * 100) + '%', backgroundColor: ms.color, borderRadius: 2 }} />
+                </View>
+                {nextState && <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{names[stIdx + 1]}</Text>}
+              </View>
+              <Text style={{ fontSize: 12, fontWeight: '300', color: 'rgba(255,255,255,0.5)', marginTop: 10, textAlign: 'center', fontStyle: 'italic' }}>{motiv}</Text>
+            </View>
+          );
+        })()}
+
         <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 14 }}>
           <View style={[styles.statCard, { flex: 1 }]}>
             <Text style={{ fontSize: 28, fontWeight: '200', color: '#AEEF4D' }}>{totalDone}</Text>
@@ -4550,13 +4589,18 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
         </View>
 
         {!supaUser && totalDone >= 3 && (
-          <TouchableOpacity onPress={function() { if (onCreateAccount) onCreateAccount(); }} activeOpacity={0.85} style={{ marginHorizontal: 20, marginTop: 14, backgroundColor: 'rgba(0,189,208,0.12)', borderWidth: 1, borderColor: 'rgba(0,189,208,0.4)', borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Text style={{ fontSize: 20 }}>💾</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#00BDD0' }}>{tr.save_progress_title || 'Sauvegarde ta progression'}</Text>
-              <Text style={{ fontSize: 11, color: 'rgba(0,189,208,0.6)', marginTop: 2 }}>{tr.save_progress_sub || 'Crée un compte gratuit pour ne rien perdre'}</Text>
+          <TouchableOpacity onPress={function() { if (onCreateAccount) onCreateAccount(); }} activeOpacity={0.85} style={{ marginHorizontal: 20, marginTop: 14, backgroundColor: 'rgba(174,239,77,0.08)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+              <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                <Path d="M6 18.5c-2.2 0-4-1.6-4-3.5 0-1.6 1.1-3 2.7-3.4C5.1 8.5 7.8 6 11 6c2.7 0 5 1.7 5.8 4.1C19.1 10.3 21 12 21 14.2c0 2.4-2 4.3-4.5 4.3H6z" stroke="#AEEF4D" strokeWidth={1.6} strokeLinejoin="round" />
+                <Path d="M12 13v5M10 16l2 2 2-2" stroke="#AEEF4D" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
             </View>
-            <Text style={{ fontSize: 16, color: 'rgba(0,189,208,0.5)' }}>›</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.save_progress_title || 'Sauvegarde ta progression'}</Text>
+              <Text style={{ fontSize: 11, color: 'rgba(174,239,77,0.5)', marginTop: 2 }}>{tr.save_progress_sub || 'Crée un compte gratuit pour ne rien perdre'}</Text>
+            </View>
+            <Text style={{ fontSize: 16, color: 'rgba(174,239,77,0.4)' }}>›</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -4645,6 +4689,102 @@ function AnimatedFaceIcon({ size = 50, breathCycleMs = 3000, expression = 0, tin
         <Circle cx="72" cy="52" r="6" fill={tint.replace('1)', '0.12)')} />
       </Svg>
     </Animated.View>
+  );
+}
+
+// ══════════════════════════════════
+// MÉDUSE VIVANTE — évolue avec la progression
+// ══════════════════════════════════
+var MEDUSA_STATES = [
+  { name: 'dormante', nameEn: 'dormant', min: 0, color: 'rgba(200,210,230,1)', opacity: 0.35, size: 60, breath: 8000, glowR: 0, particles: 0 },
+  { name: 'éveillée', nameEn: 'awakened', min: 11, color: 'rgba(0,189,208,1)', opacity: 0.6, size: 75, breath: 5000, glowR: 0, particles: 0 },
+  { name: 'active', nameEn: 'active', min: 31, color: 'rgba(0,220,240,1)', opacity: 0.8, size: 90, breath: 3000, glowR: 30, particles: 3 },
+  { name: 'rayonnante', nameEn: 'radiant', min: 61, color: 'rgba(174,239,77,1)', opacity: 0.9, size: 105, breath: 2000, glowR: 50, particles: 5 },
+  { name: 'légendaire', nameEn: 'legendary', min: 91, color: 'rgba(255,215,0,1)', opacity: 1, size: 120, breath: 1500, glowR: 70, particles: 8 },
+];
+
+var MEDUSA_STATE_NAMES = {
+  fr: ['Dormante', 'Éveillée', 'Active', 'Rayonnante', 'Légendaire'],
+  en: ['Dormant', 'Awakened', 'Active', 'Radiant', 'Legendary'],
+  de: ['Schlafend', 'Erwacht', 'Aktiv', 'Strahlend', 'Legendär'],
+  pt: ['Adormecida', 'Desperta', 'Ativa', 'Radiante', 'Lendária'],
+  zh: ['沉睡', '觉醒', '活跃', '闪耀', '传奇'],
+  ja: ['眠り', '覚醒', '活動', '輝き', '伝説'],
+  ko: ['잠든', '깨어난', '활동적', '빛나는', '전설적'],
+  es: ['Dormida', 'Despierta', 'Activa', 'Radiante', 'Legendaria'],
+  it: ['Dormiente', 'Risvegliata', 'Attiva', 'Radiante', 'Leggendaria'],
+};
+
+function getMeduseState(pct, streak) {
+  var score = Math.min(100, pct * 0.7 + Math.min(streak, 14) * 2);
+  for (var i = MEDUSA_STATES.length - 1; i >= 0; i--) {
+    if (score >= MEDUSA_STATES[i].min) return i;
+  }
+  return 0;
+}
+
+function LivingMedusa({ pct, streak, lang, showLabel }) {
+  var stateIdx = getMeduseState(pct, streak || 0);
+  var ms = MEDUSA_STATES[stateIdx];
+  var names = MEDUSA_STATE_NAMES[lang] || MEDUSA_STATE_NAMES.fr;
+  var floatAnim = useRef(new Animated.Value(0)).current;
+  var glowAnim = useRef(new Animated.Value(0)).current;
+  var [particles, setParticles] = useState([]);
+
+  useEffect(function() {
+    Animated.loop(Animated.sequence([
+      Animated.timing(floatAnim, { toValue: 1, duration: ms.breath, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      Animated.timing(floatAnim, { toValue: 0, duration: ms.breath, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+    ])).start();
+    if (ms.glowR > 0) {
+      Animated.loop(Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: ms.breath * 0.8, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(glowAnim, { toValue: 0, duration: ms.breath * 0.8, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      ])).start();
+    }
+    if (ms.particles > 0) {
+      var pts = [];
+      for (var i = 0; i < ms.particles; i++) {
+        pts.push({ angle: (i / ms.particles) * Math.PI * 2, dist: ms.size * 0.5 + 10 + Math.random() * 20, speed: 2000 + Math.random() * 3000, anim: new Animated.Value(0) });
+      }
+      pts.forEach(function(p) {
+        Animated.loop(Animated.sequence([
+          Animated.timing(p.anim, { toValue: 1, duration: p.speed, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+          Animated.timing(p.anim, { toValue: 0, duration: p.speed, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        ])).start();
+      });
+      setParticles(pts);
+    }
+  }, [stateIdx]);
+
+  var translateY = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 10] });
+  var scale = floatAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.95, 1.05, 0.95] });
+  var glowOpacity = ms.glowR > 0 ? glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.4] }) : 0;
+  var rainbowHue = stateIdx === 4 ? floatAnim.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: ['rgba(255,100,100,1)', 'rgba(255,215,0,1)', 'rgba(100,255,100,1)', 'rgba(100,200,255,1)', 'rgba(255,100,255,1)'] }) : null;
+
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <Animated.View style={{ transform: [{ translateY: translateY }, { scale: scale }], alignItems: 'center' }}>
+        {ms.glowR > 0 && (
+          <Animated.View style={{ position: 'absolute', width: ms.size + ms.glowR * 2, height: ms.size + ms.glowR * 2, borderRadius: (ms.size + ms.glowR * 2) / 2, backgroundColor: ms.color.replace('1)', '0.08)'), opacity: glowOpacity, top: -ms.glowR, left: -ms.glowR }} />
+        )}
+        {particles.map(function(p, i) {
+          var px = p.anim.interpolate({ inputRange: [0, 1], outputRange: [Math.cos(p.angle) * p.dist - 2, Math.cos(p.angle) * (p.dist + 8) - 2] });
+          var py = p.anim.interpolate({ inputRange: [0, 1], outputRange: [Math.sin(p.angle) * p.dist - 2, Math.sin(p.angle) * (p.dist + 8) - 2] });
+          var po = p.anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.2, 0.8, 0.2] });
+          return (
+            <Animated.View key={i} style={{ position: 'absolute', width: stateIdx >= 4 ? 5 : 4, height: stateIdx >= 4 ? 5 : 4, borderRadius: 3, backgroundColor: stateIdx >= 4 ? '#FFD700' : '#AEEF4D', opacity: po, left: Animated.add(ms.size / 2, px), top: Animated.add(ms.size / 2, py) }} />
+          );
+        })}
+        <MeduseCornerIcon size={ms.size} breathCycleMs={ms.breath} breathMaxScale={stateIdx >= 3 ? 1.3 : 1.15} tint={stateIdx < 4 ? ms.color : 'rgba(255,215,0,1)'} />
+      </Animated.View>
+      {showLabel && (
+        <View style={{ marginTop: 12, alignItems: 'center' }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: ms.color.replace('1)', '0.9)'), letterSpacing: 1 }}>{names[stateIdx]}</Text>
+          <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{pct}% · 🔥{streak || 0}</Text>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -5316,39 +5456,63 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '', langForProfile = 'fr
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-      {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingVertical: 48 }} keyboardShouldPersistTaps="handled">
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-            <View style={{ width: 88, height: 88, marginRight: 14, overflow: 'visible' }} pointerEvents="none">
-              <MeduseCornerIcon size={88} breathCycleMs={3000} />
-            </View>
-            <View style={{ justifyContent: 'center' }}>
-              <Text style={{ fontSize: 36, fontWeight: '200', color: 'rgba(215,248,255,0.96)', letterSpacing: 6, textTransform: 'uppercase', marginBottom: 2 }}>FluidBody</Text>
-              <Text style={{ fontSize: 11, color: 'rgba(0,210,250,0.6)', letterSpacing: 6, textTransform: 'uppercase' }}>Pilates</Text>
-            </View>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible', opacity: 0.3 }} pointerEvents="none">
+        {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
+      </View>
+      <FloatingMedusas />
+
+      <View style={{ paddingTop: 58, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 }}>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 30 }}>+</Text></Text>
+        <TouchableOpacity onPress={onSkip} style={{ paddingVertical: 6 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1 }}>{tr.first_seance_later || 'Plus tard'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <KeyboardAvoidingView style={{ flex: 1, zIndex: 2 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 20 }} keyboardShouldPersistTaps="handled">
+
+          <MeduseCornerIcon size={70} breathCycleMs={3000} tint="rgba(174,239,77,1)" />
+
+          <Text style={{ fontSize: 12, color: '#AEEF4D', letterSpacing: 3, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 }}>{tr.ob_auth_tag}</Text>
+          <Text style={{ fontSize: 22, fontWeight: '300', color: '#ffffff', textAlign: 'center', marginBottom: 8 }}>{tr.ob_auth_title}</Text>
+          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>{tr.ob_auth_sub}</Text>
+
+          <TouchableOpacity onPress={function() { if (supabase) { Alert.alert('FluidBody+', tr.auth_social_soon || 'Connexion Apple disponible dans la version App Store.'); } }} activeOpacity={0.85} style={{ width: '100%', height: 50, borderRadius: 25, backgroundColor: '#ffffff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 10 }}>
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+              <Path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C3.79 16.17 4.36 9.04 8.72 8.78c1.34.07 2.27.74 3.06.8.93-.19 1.82-.73 2.82-.66 1.19.1 2.09.58 2.68 1.49-2.45 1.47-1.87 4.71.36 5.62-.45 1.17-.66 1.7-1.23 2.73-.82 1.46-1.97 2.92-3.36 2.95.27.18.55.34.84.46.32.13.66.11 1.16.11zM12.13 8.65c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" fill="#000000" />
+            </Svg>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#000000' }}>{tr.auth_apple || 'Continuer avec Apple'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={function() { if (supabase) { Alert.alert('FluidBody+', tr.auth_social_soon || 'Connexion Google disponible dans la version App Store.'); } }} activeOpacity={0.85} style={{ width: '100%', height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
+            <Svg width={18} height={18} viewBox="0 0 24 24">
+              <Path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+              <Path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+              <Path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A11.96 11.96 0 001 12c0 1.94.46 3.77 1.18 5.07l3.66-2.84v-.14z" fill="#FBBC05" />
+              <Path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+            </Svg>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#ffffff' }}>{tr.auth_google || 'Continuer avec Google'}</Text>
+          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 16 }}>
+            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(174,239,77,0.2)' }} />
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginHorizontal: 14 }}>{tr.auth_or || 'ou'}</Text>
+            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(174,239,77,0.2)' }} />
           </View>
-          <Text style={{ fontSize: 12, color: 'rgba(0,225,255,0.6)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 8 }}>{tr.ob_auth_tag}</Text>
-          <Text style={{ fontSize: 22, fontWeight: '300', color: 'rgba(235,252,255,0.95)', textAlign: 'center', marginBottom: 10 }}>{tr.ob_auth_title}</Text>
-          <Text style={{ fontSize: 14, color: 'rgba(170,220,240,0.85)', textAlign: 'center', marginBottom: 22, lineHeight: 21 }}>{tr.ob_auth_sub}</Text>
-          <TextInput value={email} onChangeText={setEmail} placeholder={tr.ob_email_ph} placeholderTextColor="rgba(0,180,220,0.35)" keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
-            style={{ width: '100%', height: 52, backgroundColor: 'rgba(0,18,32,0.88)', borderWidth: 1, borderColor: email ? 'rgba(0,220,255,0.45)' : 'rgba(0,200,240,0.2)', borderRadius: 14, color: 'rgba(240,252,255,0.95)', fontSize: 16, paddingHorizontal: 16, marginBottom: 10 }}
+
+          <TextInput value={email} onChangeText={setEmail} placeholder={tr.ob_email_ph} placeholderTextColor="rgba(174,239,77,0.3)" keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
+            style={{ width: '100%', height: 52, backgroundColor: 'rgba(0,18,32,0.6)', borderWidth: 1, borderColor: email ? '#AEEF4D' : 'rgba(174,239,77,0.2)', borderRadius: 14, color: '#ffffff', fontSize: 16, paddingHorizontal: 16, marginBottom: 10 }}
           />
-          <TextInput value={password} onChangeText={setPassword} placeholder={tr.ob_pass_ph} placeholderTextColor="rgba(0,180,220,0.35)" secureTextEntry autoCapitalize="none" autoCorrect={false}
-            style={{ width: '100%', height: 52, backgroundColor: 'rgba(0,18,32,0.88)', borderWidth: 1, borderColor: password ? 'rgba(0,220,255,0.45)' : 'rgba(0,200,240,0.2)', borderRadius: 14, color: 'rgba(240,252,255,0.95)', fontSize: 16, paddingHorizontal: 16, marginBottom: 12 }}
+          <TextInput value={password} onChangeText={setPassword} placeholder={tr.ob_pass_ph} placeholderTextColor="rgba(174,239,77,0.3)" secureTextEntry autoCapitalize="none" autoCorrect={false}
+            style={{ width: '100%', height: 52, backgroundColor: 'rgba(0,18,32,0.6)', borderWidth: 1, borderColor: password ? '#AEEF4D' : 'rgba(174,239,77,0.2)', borderRadius: 14, color: '#ffffff', fontSize: 16, paddingHorizontal: 16, marginBottom: 12 }}
           />
           {error ? <Text style={{ color: 'rgba(255,120,120,0.9)', fontSize: 12, marginBottom: 10, textAlign: 'center' }}>{error}</Text> : null}
-          <TouchableOpacity onPress={submit} disabled={loading} style={{ width: '100%', height: 52, borderRadius: 26, backgroundColor: email.trim() && password.length >= 6 ? 'rgba(0,180,235,0.35)' : 'rgba(0,100,140,0.12)', borderWidth: 1.5, borderColor: email.trim() && password.length >= 6 ? 'rgba(0,235,255,0.75)' : 'rgba(0,150,190,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-            <Text style={{ fontSize: 15, fontWeight: '500', color: 'rgba(215,248,255,0.92)', letterSpacing: 1 }}>{loading ? '…' : (mode === 'up' ? tr.ob_auth_submit_up : tr.ob_auth_submit_in)}</Text>
+          <TouchableOpacity onPress={submit} disabled={loading} style={{ width: '100%', height: 50, borderRadius: 25, backgroundColor: email.trim() && password.length >= 6 ? '#AEEF4D' : 'rgba(174,239,77,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: email.trim() && password.length >= 6 ? '#000000' : 'rgba(174,239,77,0.5)' }}>{loading ? '…' : (mode === 'up' ? tr.ob_auth_submit_up : tr.ob_auth_submit_in)}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { setMode(m => m === 'up' ? 'in' : 'up'); setError(''); }} style={{ paddingVertical: 10 }}>
-            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.7)', letterSpacing: 0.5 }}>{mode === 'up' ? tr.ob_auth_toggle_in : tr.ob_auth_toggle_up}</Text>
+            <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 0.5 }}>{mode === 'up' ? tr.ob_auth_toggle_in : tr.ob_auth_toggle_up}</Text>
           </TouchableOpacity>
-          <View style={{ width: '100%', borderTopWidth: 0.5, borderTopColor: 'rgba(0,195,240,0.15)', paddingTop: 20, alignItems: 'center', marginTop: 12 }}>
-            <TouchableOpacity onPress={onSkip} style={{ paddingVertical: 14, paddingHorizontal: 32, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(0,195,240,0.3)', backgroundColor: 'rgba(0,18,32,0.5)' }}>
-              <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.75)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.ob_auth_skip}</Text>
-            </TouchableOpacity>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
