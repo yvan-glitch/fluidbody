@@ -1,7 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState, KeyboardAvoidingView, ImageBackground } from 'react-native';
+import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState, KeyboardAvoidingView, ImageBackground, PanResponder } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -31,7 +31,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // ── HEALTHKIT ──────────────────────────────────────────
 const HK_PERMISSIONS = AppleHealthKit ? {
   permissions: {
-    read: [],
+    read: [
+      AppleHealthKit.Constants?.Permissions?.ActiveEnergyBurned,
+      AppleHealthKit.Constants?.Permissions?.AppleExerciseTime,
+      AppleHealthKit.Constants?.Permissions?.AppleStandTime,
+      AppleHealthKit.Constants?.Permissions?.Workout,
+    ].filter(Boolean),
     write: [
       AppleHealthKit.Constants?.Permissions?.ActiveEnergyBurned,
       AppleHealthKit.Constants?.Permissions?.Workout,
@@ -68,6 +73,25 @@ function saveHealthKitWorkout(durationMinutes) {
       else console.log('HealthKit workout saved:', durationMinutes + 'min, ' + calories + 'cal');
     }
   });
+}
+
+function getHealthKitSummary(cb) {
+  if (!AppleHealthKit || !hkInitialized || Platform.OS !== 'ios') { cb({ cal: 0, exMin: 0, standHr: 0 }); return; }
+  var now = new Date();
+  var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  var opts = { startDate: startOfDay, endDate: now.toISOString() };
+  var result = { cal: 0, exMin: 0, standHr: 0 };
+  var remaining = 3;
+  function done() { remaining--; if (remaining <= 0) cb(result); }
+  try {
+    AppleHealthKit.getActiveEnergyBurned(opts, function(err, res) { if (!err && res && res.length) { result.cal = Math.round(res.reduce(function(s, r) { return s + (r.value || 0); }, 0)); } done(); });
+  } catch(e) { done(); }
+  try {
+    AppleHealthKit.getAppleExerciseTime(opts, function(err, res) { if (!err && res && res.length) { result.exMin = Math.round(res.reduce(function(s, r) { return s + (r.value || 0); }, 0)); } done(); });
+  } catch(e) { done(); }
+  try {
+    AppleHealthKit.getAppleStandTime(opts, function(err, res) { if (!err && res && res.length) { result.standHr = Math.round(res.reduce(function(s, r) { return s + (r.value || 0); }, 0) / 60); } done(); });
+  } catch(e) { done(); }
 }
 
 /** Pictogrammes restants (autres que 🔥🔒✓▶) — chaînes UTF-8. */
@@ -109,6 +133,85 @@ function hapticSuccess() {
 
 function tabBarIconTint(color) {
   return color != null && color !== '' ? color : 'rgba(0,220,255,0.9)';
+}
+
+function CustomTabBar({ state, descriptors, navigation }) {
+  var tabCount = state.routes.length;
+  var barW = SW - 40;
+  var tabW = barW / tabCount;
+  var pad = 5;
+  var pillW = tabW - pad * 2;
+  var pillH = 56;
+  var indicatorX = useRef(new Animated.Value(state.index * tabW + pad)).current;
+  var currentIdx = useRef(state.index);
+  var dragStartX = useRef(0);
+
+  useEffect(function() {
+    currentIdx.current = state.index;
+    Animated.spring(indicatorX, { toValue: state.index * tabW + pad, useNativeDriver: true, damping: 18, stiffness: 180, mass: 0.8 }).start();
+  }, [state.index]);
+
+  var panResponder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: function() { return true; },
+    onMoveShouldSetPanResponder: function(_, g) { return Math.abs(g.dx) > 8; },
+    onPanResponderGrant: function(_, g) {
+      dragStartX.current = currentIdx.current * tabW + pad;
+      indicatorX.stopAnimation();
+    },
+    onPanResponderMove: function(_, g) {
+      var newX = Math.max(pad, Math.min(dragStartX.current + g.dx, (tabCount - 1) * tabW + pad));
+      indicatorX.setValue(newX);
+    },
+    onPanResponderRelease: function(_, g) {
+      var rawX = dragStartX.current + g.dx;
+      var newIdx = Math.round(Math.max(0, Math.min(rawX / tabW, tabCount - 1)));
+      if (newIdx !== currentIdx.current) {
+        navigation.navigate(state.routes[newIdx].name);
+      }
+      Animated.spring(indicatorX, { toValue: newIdx * tabW + pad, useNativeDriver: true, damping: 18, stiffness: 180, mass: 0.8 }).start();
+    },
+  })).current;
+
+  return (
+    <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: 66, backgroundColor: 'rgba(28,28,30,0.94)', borderRadius: 33 }} {...panResponder.panHandlers}>
+      <Animated.View style={{ position: 'absolute', top: (66 - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.13)', transform: [{ translateX: indicatorX }] }} />
+      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+        {state.routes.map(function(route, index) {
+          var options = descriptors[route.key].options;
+          var isFocused = state.index === index;
+          var color = isFocused ? '#AEEF4D' : 'rgba(255,255,255,0.45)';
+          var onPress = function() {
+            var event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
+          };
+          var IconComp = options.tabBarIcon;
+          return (
+            <TouchableOpacity key={route.key} onPress={onPress} activeOpacity={0.7} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: 66 }}>
+              {IconComp && IconComp({ color: color, size: 22, focused: isFocused })}
+              <Text style={{ fontSize: 10, fontWeight: '600', color: color, marginTop: 3, letterSpacing: 0.2 }}>{route.name}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function TabIconResume({ color, size }) {
+  var c = tabBarIconTint(color);
+  var s = size ?? 22;
+  return (
+    <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <Circle cx="12" cy="12" r="9" stroke={c} strokeWidth={1.8} opacity={0.3} />
+        <Path d="M12 3a9 9 0 0 1 6.36 15.36" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
+        <Circle cx="12" cy="12" r="6" stroke={c} strokeWidth={1.6} opacity={0.3} />
+        <Path d="M12 6a6 6 0 0 1 4.24 10.24" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+        <Circle cx="12" cy="12" r="3" stroke={c} strokeWidth={1.4} opacity={0.3} />
+        <Path d="M12 9a3 3 0 0 1 2.12 5.12" stroke={c} strokeWidth={1.4} strokeLinecap="round" />
+      </Svg>
+    </View>
+  );
 }
 
 function TabIconMonCorps({ color, size }) {
@@ -287,7 +390,8 @@ function getSeanceDuJour(done, tensionIdxs, lang) {
 const T = {
   fr: {
     lang: 'fr', flag: '🇫🇷', nom: 'Français',
-    tabs: ['Mon Corps', 'Progresser', 'Biblio', 'Parcours'],
+    tabs: ['Résumé', 'Mon Corps', 'Progresser', 'Biblio', 'Parcours'],
+    resume_title: 'Résumé', resume_activite: 'Activité', resume_bouger: 'Bouger', resume_exercice: 'Exercice', resume_debout: 'Debout', resume_seances: 'Séances FluidBody', resume_no_seance: 'Aucune séance complétée', resume_progression: 'Progression', resume_global: 'Global', resume_streak: 'Streak',
     bonjour: (p) => p ? `Bonjour ${p}` : '',
     bonjour_mot: 'Bonjour',
     ob_tag: 'Une nouvelle façon d\'habiter son corps',
@@ -424,7 +528,8 @@ const T = {
   },
   en: {
     lang: 'en', flag: '🇬🇧', nom: 'English',
-    tabs: ['My Body', 'Progress', 'Library', 'Journey'],
+    tabs: ['Summary', 'My Body', 'Progress', 'Library', 'Journey'],
+    resume_title: 'Summary', resume_activite: 'Activity', resume_bouger: 'Move', resume_exercice: 'Exercise', resume_debout: 'Stand', resume_seances: 'FluidBody Sessions', resume_no_seance: 'No sessions completed', resume_progression: 'Progress', resume_global: 'Overall', resume_streak: 'Streak',
     bonjour: (p) => p ? `Hello ${p}` : '',
     bonjour_mot: 'Hello',
     ob_tag: 'A new way to inhabit your body',
@@ -561,7 +666,8 @@ const T = {
   },
   es: {
     lang: 'es', flag: '🇪🇸', nom: 'Español',
-    tabs: ['Mi Cuerpo', 'Progresar', 'Biblioteca', 'Recorrido'],
+    tabs: ['Resumen', 'Mi Cuerpo', 'Progresar', 'Biblioteca', 'Recorrido'],
+    resume_title: 'Resumen', resume_activite: 'Actividad', resume_bouger: 'Movimiento', resume_exercice: 'Ejercicio', resume_debout: 'De pie', resume_seances: 'Sesiones FluidBody', resume_no_seance: 'Ninguna sesión completada', resume_progression: 'Progresión', resume_global: 'Global', resume_streak: 'Racha',
     bonjour: (p) => p ? `Hola ${p}` : '',
     bonjour_mot: 'Hola',
     ob_tag: 'Una nueva forma de habitar tu cuerpo',
@@ -698,7 +804,8 @@ const T = {
   },
   it: {
     lang: 'it', flag: '🇮🇹', nom: 'Italiano',
-    tabs: ['Il Mio Corpo', 'Progredire', 'Biblioteca', 'Percorso'],
+    tabs: ['Riepilogo', 'Il Mio Corpo', 'Progredire', 'Biblioteca', 'Percorso'],
+    resume_title: 'Riepilogo', resume_activite: 'Attività', resume_bouger: 'Movimento', resume_exercice: 'Esercizio', resume_debout: 'In piedi', resume_seances: 'Sessioni FluidBody', resume_no_seance: 'Nessuna sessione completata', resume_progression: 'Progressione', resume_global: 'Globale', resume_streak: 'Serie',
     bonjour: (p) => p ? `Ciao ${p}` : '',
     bonjour_mot: 'Ciao',
     ob_tag: 'Un nuovo modo di abitare il tuo corpo',
@@ -2142,7 +2249,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       {ppMedusas.map(function(m, i) {
         return (
           <Animated.View key={'ppm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 2, opacity: 0.9, left: m.x, top: m.y }}>
-            <MeduseCornerIcon size={m.size} breathCycleMs={3000 + i * 600} breathMaxScale={1.35} tint="rgba(229,255,0,1)" />
+            <MeduseCornerIcon size={m.size} breathCycleMs={3000 + i * 600} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
           </Animated.View>
         );
       })}
@@ -2339,7 +2446,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
       {mcTab !== 'programmes' && mcMedusas.map(function(m, i) {
         return (
           <Animated.View key={'mcm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 4, opacity: 1, left: m.x, top: m.y }}>
-            <MeduseCornerIcon size={m.size} breathCycleMs={2800 + i * 500} breathMaxScale={1.35} tint="rgba(229,255,0,1)" />
+            <MeduseCornerIcon size={m.size} breathCycleMs={2800 + i * 500} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
           </Animated.View>
         );
       })}
@@ -2891,13 +2998,13 @@ function Biblio({ lang }) {
       >
         <View style={{ paddingTop: 62, paddingHorizontal: 6, paddingBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' }}>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#E5FF00', fontSize: 34 }}>+</Text></Text>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</Text></Text>
           </View>
-          <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.42)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.biblio_sub}</Text>
+          <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.biblio_sub}</Text>
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
             {['piliers', 'methode'].map(t => (
-              <TouchableOpacity key={t} onPress={() => setTab(t)} style={{ paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: tab === t ? 'rgba(0,220,255,0.7)' : 'rgba(0,195,240,0.2)', backgroundColor: tab === t ? 'rgba(0,180,230,0.18)' : 'rgba(0,18,32,0.5)' }}>
-                <Text style={{ fontSize: 12, fontWeight: '300', color: tab === t ? 'rgba(0,230,255,0.9)' : 'rgba(0,180,220,0.5)' }}>{t === 'piliers' ? tr.tab_piliers : tr.tab_methode}</Text>
+              <TouchableOpacity key={t} onPress={() => setTab(t)} style={{ paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: tab === t ? 'rgba(174,239,77,0.7)' : 'rgba(174,239,77,0.2)', backgroundColor: tab === t ? 'rgba(174,239,77,0.18)' : 'rgba(0,18,32,0.5)' }}>
+                <Text style={{ fontSize: 12, fontWeight: '300', color: tab === t ? '#AEEF4D' : 'rgba(174,239,77,0.5)' }}>{t === 'piliers' ? tr.tab_piliers : tr.tab_methode}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -2914,11 +3021,11 @@ function Biblio({ lang }) {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 16, fontWeight: '300', color: '#ffffff', lineHeight: 22 }}>{a.titre}</Text>
-                      <Text style={{ fontSize: 10, color: a.color, marginTop: 3 }}>{a.duree}{tr.lire}</Text>
+                      <Text style={{ fontSize: 10, color: '#AEEF4D', marginTop: 3 }}>{a.duree}{tr.lire}</Text>
                     </View>
-                    <Text style={{ fontSize: 18, color: 'rgba(0,195,240,0.3)' }}>›</Text>
+                    <Text style={{ fontSize: 18, color: 'rgba(174,239,77,0.3)' }}>›</Text>
                   </View>
-                  <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(155,215,240,0.55)', lineHeight: 20 }} numberOfLines={2}>{a.intro}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(174,239,77,0.55)', lineHeight: 20 }} numberOfLines={2}>{a.intro}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -2926,26 +3033,167 @@ function Biblio({ lang }) {
         )}
         {tab === 'methode' && (
           <View style={{ gap: 12 }}>
-            <View style={{ backgroundColor: 'rgba(0,18,38,0.7)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 20, padding: 18, marginBottom: 4 }}>
-              <Text style={{ fontSize: 14, fontWeight: '200', color: 'rgba(155,215,240,0.7)', lineHeight: 22 }}>{tr.biblio_intro}</Text>
+            <View style={{ backgroundColor: 'rgba(0,18,38,0.7)', borderWidth: 0.5, borderColor: 'rgba(174,239,77,0.15)', borderRadius: 20, padding: 18, marginBottom: 4 }}>
+              <Text style={{ fontSize: 14, fontWeight: '200', color: 'rgba(174,239,77,0.7)', lineHeight: 22 }}>{tr.biblio_intro}</Text>
             </View>
             {fiches.map((f, i) => (
               <TouchableOpacity key={i} onPress={() => setOpenFiche(f)} style={{ backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                   <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,18,32,0.8)', borderWidth: 1.5, borderColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '600', color: f.color }}>{f.num}</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#AEEF4D' }}>{f.num}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 18, fontWeight: '200', color: f.color }}>{f.etape}</Text>
-                    <Text style={{ fontSize: 11, color: 'rgba(155,215,240,0.5)', marginTop: 2 }}>{f.soustitre}</Text>
+                    <Text style={{ fontSize: 18, fontWeight: '200', color: '#ffffff' }}>{f.etape}</Text>
+                    <Text style={{ fontSize: 11, color: 'rgba(174,239,77,0.5)', marginTop: 2 }}>{f.soustitre}</Text>
                   </View>
-                  <Text style={{ fontSize: 18, color: 'rgba(0,195,240,0.3)' }}>›</Text>
+                  <Text style={{ fontSize: 18, color: 'rgba(174,239,77,0.3)' }}>›</Text>
                 </View>
-                <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(155,215,240,0.55)', lineHeight: 20 }} numberOfLines={2}>{f.description}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(174,239,77,0.55)', lineHeight: 20 }} numberOfLines={2}>{f.description}</Text>
               </TouchableOpacity>
             ))}
           </View>
         )}
+      </ScrollView>
+    </View>
+  );
+}
+
+// ══════════════════════════════════
+// RÉSUMÉ — style Apple Fitness
+// ══════════════════════════════════
+function ActivityRing({ radius, strokeWidth, progress, color, bgColor }) {
+  var circ = 2 * Math.PI * radius;
+  var anim = useRef(new Animated.Value(0)).current;
+  useEffect(function() { Animated.timing(anim, { toValue: Math.min(progress, 1), duration: 1200, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(); }, [progress]);
+  var dashOffset = anim.interpolate({ inputRange: [0, 1], outputRange: [circ, 0] });
+  var size = (radius + strokeWidth) * 2;
+  return (
+    <Svg width={size} height={size} style={{ position: 'absolute', top: 0, left: 0 }}>
+      <Circle cx={radius + strokeWidth} cy={radius + strokeWidth} r={radius} stroke={bgColor || 'rgba(255,255,255,0.08)'} strokeWidth={strokeWidth} fill="none" />
+      <AnimatedCircle cx={radius + strokeWidth} cy={radius + strokeWidth} r={radius} stroke={color} strokeWidth={strokeWidth} fill="none" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={dashOffset} transform={'rotate(-90 ' + (radius + strokeWidth) + ' ' + (radius + strokeWidth) + ')'} />
+    </Svg>
+  );
+}
+
+var AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+function ResumeScreen({ done, lang, streak, prenom }) {
+  var tr = T[lang] || T['fr'];
+  var piliers = getPiliers(lang);
+  var totalDone = Object.values(done).flat().filter(Boolean).length;
+  var pct = Math.round(totalDone / 140 * 100);
+  var [hkData, setHkData] = useState({ cal: 0, exMin: 0, standHr: 0 });
+
+  useEffect(function() {
+    getHealthKitSummary(function(data) { setHkData(data); });
+    var interval = setInterval(function() { getHealthKitSummary(function(data) { setHkData(data); }); }, 60000);
+    return function() { clearInterval(interval); };
+  }, []);
+
+  var now = new Date();
+  var dayNames = { fr: ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'], en: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'], es: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'], it: ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'] };
+  var monthNames = { fr: ['jan.','fév.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'], en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], es: ['ene.','feb.','mar.','abr.','may.','jun.','jul.','ago.','sep.','oct.','nov.','dic.'], it: ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'] };
+  var dn = (dayNames[lang] || dayNames.fr)[now.getDay()];
+  var mn = (monthNames[lang] || monthNames.fr)[now.getMonth()];
+  var dateStr = dn + ' ' + now.getDate() + ' ' + mn;
+
+  var calGoal = 400; var exGoal = 30; var standGoal = 12;
+  var calPct = hkData.cal / calGoal; var exPct = hkData.exMin / exGoal; var standPct = hkData.standHr / standGoal;
+
+  var recentSeances = [];
+  piliers.forEach(function(p) {
+    var d = done[p.key];
+    if (d) d.forEach(function(v, i) { if (v === true || v === 'true') recentSeances.push({ pilier: p, idx: i }); });
+  });
+  recentSeances = recentSeances.slice(-5).reverse();
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      <ScrollView contentContainerStyle={{ paddingTop: 62, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View>
+              <Text style={{ fontSize: 13, color: 'rgba(174,239,77,0.6)', letterSpacing: 1, textTransform: 'uppercase' }}>{dateStr}</Text>
+              <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff', marginTop: 2 }}>{tr.resume_title || 'Résumé'}</Text>
+            </View>
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#000000' }}>YT</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(30,30,32,0.95)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 20 }}>{tr.resume_activite || 'Activité'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ width: 140, height: 140, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityRing radius={60} strokeWidth={8} progress={calPct} color="#FF3B30" bgColor="rgba(255,59,48,0.2)" />
+              <ActivityRing radius={48} strokeWidth={8} progress={exPct} color="#30D158" bgColor="rgba(48,209,88,0.2)" />
+              <ActivityRing radius={36} strokeWidth={8} progress={standPct} color="#0A84FF" bgColor="rgba(10,132,255,0.2)" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 20, gap: 14 }}>
+              <View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF3B30' }} />
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{tr.resume_bouger || 'Bouger'}</Text>
+                </View>
+                <Text style={{ fontSize: 22, fontWeight: '700', color: '#FF3B30', marginTop: 2 }}>{hkData.cal}<Text style={{ fontSize: 13, fontWeight: '400' }}>/{calGoal} cal</Text></Text>
+              </View>
+              <View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#30D158' }} />
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{tr.resume_exercice || 'Exercice'}</Text>
+                </View>
+                <Text style={{ fontSize: 22, fontWeight: '700', color: '#30D158', marginTop: 2 }}>{hkData.exMin}<Text style={{ fontSize: 13, fontWeight: '400' }}>/{exGoal} min</Text></Text>
+              </View>
+              <View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#0A84FF' }} />
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{tr.resume_debout || 'Debout'}</Text>
+                </View>
+                <Text style={{ fontSize: 22, fontWeight: '700', color: '#0A84FF', marginTop: 2 }}>{hkData.standHr}<Text style={{ fontSize: 13, fontWeight: '400' }}>/{standGoal} h</Text></Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(30,30,32,0.95)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 14 }}>{tr.resume_seances || 'Séances FluidBody'}</Text>
+          {recentSeances.length === 0 && (
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>{tr.resume_no_seance || 'Aucune séance complétée'}</Text>
+          )}
+          {recentSeances.map(function(s, i) {
+            return (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: i < recentSeances.length - 1 ? 0.5 : 0, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', marginRight: 12, borderWidth: 1, borderColor: '#AEEF4D' }}>
+                  <ImageBackground source={PILIER_IMAGES[s.pilier.key]} resizeMode="cover" style={{ flex: 1 }} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: '#ffffff' }}>{s.pilier.label}</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{'Séance ' + (s.idx + 1)}</Text>
+                </View>
+                <Text style={{ fontSize: 13, color: '#AEEF4D' }}>✓</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(30,30,32,0.95)', borderRadius: 16, padding: 20 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 14 }}>{tr.resume_progression || 'Progression'}</Text>
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <View style={{ flex: 1, backgroundColor: 'rgba(174,239,77,0.08)', borderRadius: 12, padding: 16, alignItems: 'center' }}>
+              <Text style={{ fontSize: 32, fontWeight: '800', color: '#AEEF4D' }}>{pct}%</Text>
+              <Text style={{ fontSize: 11, color: 'rgba(174,239,77,0.6)', marginTop: 4 }}>{tr.resume_global || 'Global'}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: 'rgba(174,239,77,0.08)', borderRadius: 12, padding: 16, alignItems: 'center' }}>
+              <Text style={{ fontSize: 32, fontWeight: '800', color: '#AEEF4D' }}>{'🔥'}{streak > 0 ? streak : 0}</Text>
+              <Text style={{ fontSize: 11, color: 'rgba(174,239,77,0.6)', marginTop: 4 }}>{tr.resume_streak || 'Streak'}</Text>
+            </View>
+          </View>
+          <View style={{ marginTop: 14, height: 6, backgroundColor: 'rgba(174,239,77,0.12)', borderRadius: 3, overflow: 'hidden' }}>
+            <View style={{ height: 6, width: pct + '%', backgroundColor: '#AEEF4D', borderRadius: 3 }} />
+          </View>
+          <Text style={{ fontSize: 11, color: 'rgba(174,239,77,0.5)', textAlign: 'right', marginTop: 4 }}>{totalDone} / 140</Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -2960,7 +3208,7 @@ function AnimatedBar({ value, max, color, delay = 0 }) {
     setTimeout(() => { Animated.timing(anim, { toValue: value / max, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(); }, delay);
   }, [value]);
   return (
-    <View style={{ height: 7, backgroundColor: 'rgba(0,195,240,0.08)', borderRadius: 4, overflow: 'hidden' }}>
+    <View style={{ height: 7, backgroundColor: 'rgba(174,239,77,0.12)', borderRadius: 4, overflow: 'hidden' }}>
       <Animated.View style={{ height: 7, width: anim.interpolate({ inputRange: [0, 1], outputRange: [0, 300] }), backgroundColor: color, borderRadius: 4, opacity: value === max ? 1 : 0.85 }} />
     </View>
   );
@@ -2993,8 +3241,8 @@ function FloatingMedusas() {
   }, []);
   return meds.map(function(m, i) {
     return (
-      <Animated.View key={'bg-m-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.5, left: m.x, top: m.y }}>
-        <MeduseCornerIcon size={m.size} breathCycleMs={2800 + i * 400} breathMaxScale={1.35} tint="rgba(229,255,0,1)" />
+      <Animated.View key={'bg-m-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.35, left: m.x, top: m.y }}>
+        <MeduseCornerIcon size={m.size} breathCycleMs={2800 + i * 400} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
       </Animated.View>
     );
   });
@@ -3026,13 +3274,13 @@ function Progresser({ done, lang, tensionIdxs }) {
       >
         <View style={{ paddingTop: 65, paddingHorizontal: 24, marginBottom: 24 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' }}>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#E5FF00', fontSize: 34 }}>+</Text></Text>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</Text></Text>
           </View>
-          <Text style={{ fontSize: 10, color: 'rgba(229,255,0,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.progresser_sub(pct)}</Text>
-          <View style={{ height: 6, backgroundColor: 'rgba(229,255,0,0.15)', borderRadius: 3, marginTop: 14, overflow: 'hidden' }}>
-            <Animated.View style={{ height: 6, width: globalAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 300] }), backgroundColor: '#E5FF00', borderRadius: 3 }} />
+          <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.progresser_sub(pct)}</Text>
+          <View style={{ height: 6, backgroundColor: 'rgba(174,239,77,0.15)', borderRadius: 3, marginTop: 14, overflow: 'hidden' }}>
+            <Animated.View style={{ height: 6, width: globalAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 300] }), backgroundColor: '#AEEF4D', borderRadius: 3 }} />
           </View>
-          <Text style={{ fontSize: 10, color: 'rgba(229,255,0,0.45)', textAlign: 'right', marginTop: 4 }}>{totalDone} / 140</Text>
+          <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.45)', textAlign: 'right', marginTop: 4 }}>{totalDone} / 140</Text>
         </View>
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
           {sortedPiliers.map((p, idx) => {
@@ -3049,13 +3297,13 @@ function Progresser({ done, lang, tensionIdxs }) {
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <Text style={{ fontSize: 16, fontWeight: '300', color: '#ffffff' }}>{p.label}</Text>
-                      {isRec && <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(0,215,255,0.15)', borderWidth: 0.5, borderColor: 'rgba(0,215,255,0.5)' }}><Text style={{ fontSize: 8, color: 'rgba(0,215,255,0.9)', letterSpacing: 1 }}>★ {tr.recommande_pour_toi}</Text></View>}
+                      {isRec && <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(174,239,77,0.15)', borderWidth: 0.5, borderColor: 'rgba(174,239,77,0.5)' }}><Text style={{ fontSize: 8, color: '#AEEF4D', letterSpacing: 1 }}>★ {tr.recommande_pour_toi}</Text></View>}
                     </View>
                     <Text style={{ fontSize: 11, color: '#AEEF4D', letterSpacing: 1, marginTop: 3 }}>{count}/20{count === 20 ? ' ✓' : ''}</Text>
                   </View>
                   <Text style={{ fontSize: 22, fontWeight: '200', color: '#AEEF4D' }}>{pct2}%</Text>
                 </View>
-                <AnimatedBar value={count} max={20} color={p.color} delay={idx * 100} />
+                <AnimatedBar value={count} max={20} color={'#AEEF4D'} delay={idx * 100} />
               </View>
             );
           })}
@@ -3092,39 +3340,39 @@ function ParcoursScreen({ prenom, done, lang, tensionIdxs, streak, supabase, sup
       >
         <View style={{ paddingTop: 62, paddingHorizontal: 24, paddingBottom: 0 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginBottom: 16 }}>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#E5FF00', fontSize: 34 }}>+</Text></Text>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</Text></Text>
           </View>
         </View>
           <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 16 }}>
             <View style={[styles.statCard, { flex: 1 }]}>
-              <Text style={{ fontSize: 28, fontWeight: '200', color: 'rgba(0,238,255,0.95)' }}>{totalDone}</Text>
-              <Text style={styles.statLbl}>{tr.m_seances}</Text>
+              <Text style={{ fontSize: 28, fontWeight: '200', color: '#AEEF4D' }}>{totalDone}</Text>
+              <Text style={[styles.statLbl, { color: 'rgba(174,239,77,0.6)' }]}>{tr.m_seances}</Text>
             </View>
-            <View style={[styles.statCard, { flex: 1, borderColor: streak > 6 ? 'rgba(255,160,30,0.5)' : 'rgba(0,195,240,0.15)' }]}>
-              <Text style={{ fontSize: 28, fontWeight: '200', color: streak > 0 ? 'rgba(255,180,40,0.95)' : 'rgba(0,238,255,0.95)' }}>{'🔥'} {streakCountValue(streak)}</Text>
-              <Text style={styles.statLbl}>{tr.m_streak}</Text>
+            <View style={[styles.statCard, { flex: 1, borderColor: '#AEEF4D' }]}>
+              <Text style={{ fontSize: 28, fontWeight: '200', color: '#AEEF4D' }}>{'🔥'} {streakCountValue(streak)}</Text>
+              <Text style={[styles.statLbl, { color: 'rgba(174,239,77,0.6)' }]}>{tr.m_streak}</Text>
             </View>
             <View style={[styles.statCard, { flex: 1 }]}>
-              <Text style={{ fontSize: 28, fontWeight: '200', color: 'rgba(0,238,255,0.95)' }}>{pct}%</Text>
-              <Text style={styles.statLbl}>{tr.m_progress}</Text>
+              <Text style={{ fontSize: 28, fontWeight: '200', color: '#AEEF4D' }}>{pct}%</Text>
+              <Text style={[styles.statLbl, { color: 'rgba(174,239,77,0.6)' }]}>{tr.m_progress}</Text>
             </View>
           </View>
 
           <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.65)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.prog_globale}</Text>
-              <Text style={{ fontSize: 13, color: 'rgba(0,215,255,0.5)' }}>{totalDone} / 140</Text>
+              <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.prog_globale}</Text>
+              <Text style={{ fontSize: 13, color: '#AEEF4D' }}>{totalDone} / 140</Text>
             </View>
-            <View style={{ height: 10, backgroundColor: 'rgba(0,195,240,0.1)', borderRadius: 5, overflow: 'hidden', marginBottom: 6 }}>
-              <Animated.View style={{ height: 10, width: animPct.interpolate({ inputRange: [0, 100], outputRange: [0, 300] }), backgroundColor: 'rgba(0,215,255,0.8)', borderRadius: 5 }} />
+            <View style={{ height: 10, backgroundColor: 'rgba(174,239,77,0.12)', borderRadius: 5, overflow: 'hidden', marginBottom: 6 }}>
+              <Animated.View style={{ height: 10, width: animPct.interpolate({ inputRange: [0, 100], outputRange: [0, 300] }), backgroundColor: '#AEEF4D', borderRadius: 5 }} />
             </View>
-            <Text style={{ fontSize: 11, color: 'rgba(0,195,240,0.35)', textAlign: 'right' }}>
+            <Text style={{ fontSize: 11, color: 'rgba(174,239,77,0.6)', textAlign: 'right' }}>
               {pct < 10 ? `${U_SEED} Début du voyage` : pct < 30 ? `${U_WAVE} En route` : pct < 60 ? `${U_DROP} Bonne progression` : pct < 90 ? `${U_STAR} Presque là` : `${U_JELLY} Maîtrise totale`}
             </Text>
           </View>
 
           <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14 }}>
-            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.65)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 }}>{tr.par_pilier}</Text>
+            <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 }}>{tr.par_pilier}</Text>
             {piliers.map((p, i) => {
               const count = done[p.key].filter(v => v === true || v === 'true').length;
               const pct2 = (count / 20) * 100;
@@ -3137,30 +3385,30 @@ function ParcoursScreen({ prenom, done, lang, tensionIdxs, streak, supabase, sup
                     <Text style={{ flex: 1, fontSize: 13, fontWeight: '300', color: '#ffffff' }}>{p.label}{isRec ? ' ★' : ''}</Text>
                     <Text style={{ fontSize: 12, color: '#AEEF4D' }}>{count}/20{count === 20 ? ' ✓' : ''}</Text>
                   </View>
-                  <View style={{ height: 6, backgroundColor: 'rgba(0,195,240,0.08)', borderRadius: 3, overflow: 'hidden', flexDirection: 'row' }}>
-                    <View style={{ height: 6, flex: pct2 / 100, backgroundColor: p.color, borderRadius: 3, opacity: count === 20 ? 1 : 0.7 }} />
+                  <View style={{ height: 6, backgroundColor: 'rgba(174,239,77,0.12)', borderRadius: 3, overflow: 'hidden', flexDirection: 'row' }}>
+                    <View style={{ height: 6, flex: pct2 / 100, backgroundColor: '#AEEF4D', borderRadius: 3, opacity: count === 20 ? 1 : 0.7 }} />
                   </View>
                 </View>
               );
             })}
           </View>
 
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14, alignItems: 'center' }}>
-            <Text style={{ fontSize: 32, marginBottom: 10 }}>{U_JELLY}</Text>
-            <Text style={{ fontSize: 15, fontWeight: '200', color: 'rgba(215,248,255,0.85)', textAlign: 'center', lineHeight: 24, fontStyle: 'italic' }}>{tr.motivation(streak)}</Text>
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 10, marginBottom: 14, alignItems: 'center' }}>
+            <View style={{ marginTop: 14, marginBottom: 12 }}><MeduseCornerIcon size={65} breathCycleMs={3000} tint="rgba(174,239,77,1)" /></View>
+            <Text style={{ fontSize: 16, fontWeight: '200', color: '#AEEF4D', textAlign: 'center', lineHeight: 24, fontStyle: 'italic' }}>{tr.motivation(streak)}</Text>
           </View>
 
           {recommendedPiliers.length > 0 && (
             <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14 }}>
-              <Text style={{ fontSize: 13, color: 'rgba(0,215,168,0.7)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>★ {tr.recommande_pour_toi}</Text>
+              <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>★ {tr.recommande_pour_toi}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {recommendedPiliers.map(pk => {
                   const p = piliers.find(x => x.key === pk);
                   if (!p) return null;
                   return (
-                    <View key={pk} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: p.color, backgroundColor: p.bg }}>
+                    <View key={pk} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: '#AEEF4D', backgroundColor: 'rgba(174,239,77,0.08)' }}>
                       <View style={{ width: 24, height: 24, borderRadius: 12, overflow: 'hidden' }}><ImageBackground source={PILIER_IMAGES[pk]} resizeMode="cover" style={{ flex: 1 }} /></View>
-                      <Text style={{ fontSize: 12, color: p.color }}>{p.label}</Text>
+                      <Text style={{ fontSize: 12, color: '#AEEF4D' }}>{p.label}</Text>
                     </View>
                   );
                 })}
@@ -3169,30 +3417,30 @@ function ParcoursScreen({ prenom, done, lang, tensionIdxs, streak, supabase, sup
           )}
 
           <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14 }}>
-            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.65)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>{tr.subscription_status_label}</Text>
-            <Text style={{ fontSize: 15, fontWeight: '300', color: isSubscriber ? 'rgba(0,230,255,0.95)' : 'rgba(155,215,240,0.85)', marginBottom: 16 }}>{isSubscriber ? tr.subscription_status_active : tr.subscription_status_free}</Text>
-            <TouchableOpacity onPress={onRestorePurchases} style={{ paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,215,255,0.35)', backgroundColor: 'rgba(0,180,235,0.10)', alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, color: 'rgba(0,230,255,0.9)' }}>{tr.subscription_reset}</Text>
+            <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>{tr.subscription_status_label}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '300', color: '#AEEF4D', marginBottom: 16 }}>{isSubscriber ? tr.subscription_status_active : tr.subscription_status_free}</Text>
+            <TouchableOpacity onPress={onRestorePurchases} style={{ paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(174,239,77,0.35)', backgroundColor: 'rgba(174,239,77,0.10)', alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{tr.subscription_reset}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22 }}>
-            <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.55)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>{tr.mon_compte}</Text>
+            <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>{tr.mon_compte}</Text>
             {supaUser && (
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,195,240,0.08)' }}>
-                <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(155,215,240,0.5)' }}>Email</Text>
-                <Text style={{ fontSize: 12, fontWeight: '300', color: 'rgba(0,215,255,0.7)' }} numberOfLines={1}>{supaUser.email}</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: 0.5, borderBottomColor: 'rgba(174,239,77,0.12)' }}>
+                <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(174,239,77,0.6)' }}>Email</Text>
+                <Text style={{ fontSize: 12, fontWeight: '300', color: '#AEEF4D' }} numberOfLines={1}>{supaUser.email}</Text>
               </View>
             )}
             {tr.compte_info.map(([label, val], i) => (
-              <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: i < 2 ? 0.5 : 0, borderBottomColor: 'rgba(0,195,240,0.08)' }}>
-                <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(155,215,240,0.5)' }}>{label}</Text>
-                <Text style={{ fontSize: 13, fontWeight: '300', color: 'rgba(0,215,255,0.7)' }}>{val}</Text>
+              <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: i < 2 ? 0.5 : 0, borderBottomColor: 'rgba(174,239,77,0.12)' }}>
+                <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(174,239,77,0.6)' }}>{label}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '300', color: '#AEEF4D' }}>{val}</Text>
               </View>
             ))}
             {supaUser && onLogout && (
-              <TouchableOpacity onPress={onLogout} style={{ marginTop: 16, paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,80,80,0.35)', backgroundColor: 'rgba(255,50,50,0.08)', alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: 'rgba(255,120,120,0.85)', letterSpacing: 1 }}>Se déconnecter</Text>
+              <TouchableOpacity onPress={onLogout} style={{ marginTop: 16, paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(174,239,77,0.35)', backgroundColor: 'rgba(174,239,77,0.08)', alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 1 }}>Se déconnecter</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -3431,7 +3679,7 @@ function OnboardingScreen({ onDone, initialLang }) {
         var o = step === 2 ? 0.7 : 1;
         return (
           <Animated.View key={'fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 1, opacity: o, left: m.x, top: m.y }}>
-            <MeduseCornerIcon size={s} breathCycleMs={m.breath} breathMaxScale={1.35} tint="rgba(229,255,0,1)" />
+            <MeduseCornerIcon size={s} breathCycleMs={m.breath} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
           </Animated.View>
         );
       })}
@@ -3826,11 +4074,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
         );
       })()}
       <NavigationContainer>
-          <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { backgroundColor: 'rgba(28,28,30,0.92)', borderTopWidth: 0, borderTopColor: 'transparent', height: 64, paddingBottom: 8, paddingTop: 4, marginHorizontal: 20, marginBottom: 24, borderRadius: 32, position: 'absolute', left: 0, right: 0, bottom: 0, elevation: 0, shadowOpacity: 0 }, tabBarActiveTintColor: '#E5FF00', tabBarInactiveTintColor: 'rgba(255,255,255,0.5)', tabBarLabelStyle: { fontSize: 11, fontWeight: '500', letterSpacing: 0.3 }, tabBarItemStyle: { paddingVertical: 4 }, tabBarActiveBackgroundColor: 'rgba(255,255,255,0.08)', tabBarItemStyle: { borderRadius: 24, marginHorizontal: 4, paddingVertical: 4 } }}>
-          <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={isSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconProgresser {...props} /> }}>{() => <Progresser done={done} lang={lang} tensionIdxs={tensionIdxs} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconParcours {...props} /> }}>{() => <ParcoursScreen prenom={prenom} done={done} lang={lang} tensionIdxs={tensionIdxs} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} />}</Tab.Screen>
+          <Tab.Navigator tabBar={function(props) { return <CustomTabBar {...props} />; }} screenOptions={{ headerShown: false }}>
+          <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={isSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconProgresser {...props} /> }}>{() => <Progresser done={done} lang={lang} tensionIdxs={tensionIdxs} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[4]} options={{ tabBarIcon: (props) => <TabIconParcours {...props} /> }}>{() => <ParcoursScreen prenom={prenom} done={done} lang={lang} tensionIdxs={tensionIdxs} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} />}</Tab.Screen>
         </Tab.Navigator>
       </NavigationContainer>
     </>
@@ -4017,5 +4266,5 @@ const styles = StyleSheet.create({
   btnCtaOff: { opacity: 0.3 },
   btnCtaLargeTxt: { fontSize: 19, fontWeight: '700', color: '#E5FF00', letterSpacing: 3, textTransform: 'uppercase' },
   statCard: { flex: 1, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 14, alignItems: 'center' },
-  statLbl: { fontSize: 9, fontWeight: '200', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(0,175,215,0.42)' },
+  statLbl: { fontSize: 9, fontWeight: '200', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(174,239,77,0.6)' },
 });
