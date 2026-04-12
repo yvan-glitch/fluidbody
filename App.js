@@ -366,6 +366,12 @@ const T = {
     prog_custom_card: 'Programme personnalisé',
     prog_custom_card_sub: 'Vos activités, la durée de vos exercices, vos jours et votre rythme.',
     prog_custom_btn: 'Créer un programme',
+    prog_create_title: 'Créer un programme',
+    prog_select_piliers: 'Sélectionne tes piliers',
+    prog_duree_label: 'Durée par séance',
+    prog_jours_label: 'Jours par semaine',
+    prog_save: 'Enregistrer',
+    prog_saved: 'Programme enregistré !',
     biblio_intro: 'La méthode FluidBody repose sur 5 étapes progressives. Chaque séance les traverse dans l\'ordre.',
     lire: ' de lecture',
     retour_biblio: '← Bibliothèque',
@@ -497,6 +503,12 @@ const T = {
     prog_custom_card: 'Custom program',
     prog_custom_card_sub: 'Your activities, exercise duration, your days and your pace.',
     prog_custom_btn: 'Create a program',
+    prog_create_title: 'Create a program',
+    prog_select_piliers: 'Select your pillars',
+    prog_duree_label: 'Duration per session',
+    prog_jours_label: 'Days per week',
+    prog_save: 'Save',
+    prog_saved: 'Program saved!',
     biblio_intro: 'The FluidBody method is built on 5 progressive steps. Each session follows them in order.',
     lire: ' read',
     retour_biblio: '← Library',
@@ -628,6 +640,12 @@ const T = {
     prog_custom_card: 'Programa personalizado',
     prog_custom_card_sub: 'Tus actividades, la duración, tus días y tu ritmo.',
     prog_custom_btn: 'Crear un programa',
+    prog_create_title: 'Crear un programa',
+    prog_select_piliers: 'Selecciona tus pilares',
+    prog_duree_label: 'Duración por sesión',
+    prog_jours_label: 'Días por semana',
+    prog_save: 'Guardar',
+    prog_saved: '¡Programa guardado!',
     biblio_intro: 'El método FluidBody se basa en 5 pasos progresivos. Cada sesión los recorre en orden.',
     lire: ' de lectura',
     retour_biblio: '← Biblioteca',
@@ -759,6 +777,12 @@ const T = {
     prog_custom_card: 'Programma personalizzato',
     prog_custom_card_sub: 'Le tue attività, la durata, i tuoi giorni e il tuo ritmo.',
     prog_custom_btn: 'Crea un programma',
+    prog_create_title: 'Crea un programma',
+    prog_select_piliers: 'Seleziona i tuoi pilastri',
+    prog_duree_label: 'Durata per sessione',
+    prog_jours_label: 'Giorni a settimana',
+    prog_save: 'Salva',
+    prog_saved: 'Programma salvato!',
     biblio_intro: 'Il metodo FluidBody si basa su 5 passaggi progressivi. Ogni sessione li percorre in ordine.',
     lire: ' di lettura',
     retour_biblio: '← Biblioteca',
@@ -2263,6 +2287,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
   var tr = T[lang] || T["fr"];
   var [openPilier, setOpenPilier] = useState(null);
   var [mcTab, setMcTab] = useState('pour_vous');
+  var [showCreateProg, setShowCreateProg] = useState(false);
   var MC_TABS = ['pour_vous', 'explorer', 'programmes', 'recherche'];
   var mcTabLabels = { pour_vous: tr.tab_pour_vous, explorer: tr.tab_explorer, programmes: tr.tab_programmes, recherche: tr.tab_recherche };
   var piliers = getPiliers(lang);
@@ -2311,7 +2336,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad1-" + i} delay={b.delay + 2000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.35))} size={b.size} duration={b.duration} />; })}
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad2-" + i} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />; })}
       </View>
-      {mcMedusas.map(function(m, i) {
+      {mcTab !== 'programmes' && mcMedusas.map(function(m, i) {
         return (
           <Animated.View key={'mcm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 4, opacity: 1, left: m.x, top: m.y }}>
             <MeduseCornerIcon size={m.size} breathCycleMs={2800 + i * 500} breathMaxScale={1.35} tint="rgba(229,255,0,1)" />
@@ -2350,7 +2375,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
       <ScrollView
         key={mcTab}
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 3 }}
-        contentContainerStyle={{ paddingTop: 170, paddingBottom: 40, paddingHorizontal: 16 }}
+        contentContainerStyle={{ paddingTop: 170, paddingBottom: 120, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
       >
         {mcTab === 'pour_vous' && (function() {
@@ -2415,36 +2440,36 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         {mcTab === 'programmes' && (
           <View key="programmes">
             <Text style={{ fontSize: 22, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_section_title}</Text>
-            <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.45)", lineHeight: 18, marginBottom: 20 }}>{tr.prog_section_sub}</Text>
-            <View style={{ borderRadius: 20, overflow: "hidden", marginBottom: 32, height: 280 }}>
-              <LinearGradient colors={["#4a3a8a", "#8a6abf", "#d4a0d0", "#f0c8a8"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, padding: 20, justifyContent: "space-between" }}>
+            <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.45)", lineHeight: 18, marginBottom: 14 }}>{tr.prog_section_sub}</Text>
+            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 20, height: 230 }}>
+              <LinearGradient colors={["#2a1a5a", "#6a4a9f", "#b080c0", "#d4a8c8"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
                 <View>
-                  <Text style={{ fontSize: 24, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_debuter}</Text>
-                  <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 6 }}>{tr.prog_debuter_sub}</Text>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#E5FF00", letterSpacing: 1 }}>{tr.prog_debuter_duree}</Text>
+                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_debuter}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>{tr.prog_debuter_sub}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff", letterSpacing: 1 }}>{tr.prog_debuter_duree}</Text>
                 </View>
                 <TouchableOpacity
                   activeOpacity={0.8}
-                  style={{ alignSelf: "stretch", height: 46, borderRadius: 23, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 }}
+                  style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
                 >
-                  <Text style={{ fontSize: 14, color: "#E5FF00" }}>{"\uD83D\uDCC5"}</Text>
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: "#E5FF00" }}>{tr.prog_apercu}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
                 </TouchableOpacity>
               </LinearGradient>
             </View>
             <Text style={{ fontSize: 22, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_custom_title}</Text>
-            <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.45)", lineHeight: 18, marginBottom: 20 }}>{tr.prog_custom_sub}</Text>
-            <View style={{ borderRadius: 20, overflow: "hidden", height: 280 }}>
-              <LinearGradient colors={["#8a7040", "#c4a050", "#d4b870", "#a08040"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, padding: 20, justifyContent: "space-between" }}>
+            <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.45)", lineHeight: 18, marginBottom: 14 }}>{tr.prog_custom_sub}</Text>
+            <View style={{ borderRadius: 16, overflow: "hidden", height: 230 }}>
+              <LinearGradient colors={["#5a4020", "#8a6830", "#b08840", "#c4a050"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
                 <View>
-                  <Text style={{ fontSize: 24, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_custom_card}</Text>
-                  <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.7)", lineHeight: 20 }}>{tr.prog_custom_card_sub}</Text>
+                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_custom_card}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", lineHeight: 18 }}>{tr.prog_custom_card_sub}</Text>
                 </View>
                 <TouchableOpacity
+                  onPress={function() { setShowCreateProg(true); }}
                   activeOpacity={0.8}
-                  style={{ alignSelf: "stretch", height: 46, borderRadius: 23, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" }}
+                  style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: "#E5FF00" }}>{tr.prog_custom_btn}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_custom_btn}</Text>
                 </TouchableOpacity>
               </LinearGradient>
             </View>
@@ -2488,6 +2513,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
       {openPilier && (
         <PilierPanel pilier={openPilier} done={done[openPilier.key]} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} />
       )}
+      <CreateProgramScreen visible={showCreateProg} onClose={function() { setShowCreateProg(false); }} lang={lang} />
     </View>
   );
 }
@@ -2520,6 +2546,88 @@ function getRcPriceString(pkg) {
   if (p.price != null && p.currencyCode) return `${p.price} ${p.currencyCode}`;
   if (p.price != null) return String(p.price);
   return '';
+}
+
+function CreateProgramScreen({ visible, onClose, lang }) {
+  if (!visible) return null;
+  var tr = T[lang] || T["fr"];
+  var piliers = getPiliers(lang);
+  var [selected, setSelected] = useState([]);
+  var [duree, setDuree] = useState(1);
+  var [jours, setJours] = useState(3);
+  var [saved, setSaved] = useState(false);
+  var dureeOptions = ['10 min', '15 min', '20 min', '30 min', '45 min'];
+  var joursOptions = [2, 3, 4, 5, 6, 7];
+
+  function togglePilier(key) {
+    setSelected(function(prev) { return prev.includes(key) ? prev.filter(function(k) { return k !== key; }) : [...prev, key]; });
+  }
+
+  async function saveProg() {
+    var prog = { piliers: selected, duree: dureeOptions[duree], jours: joursOptions[jours - 2 < 0 ? 0 : jours - 2], date: new Date().toISOString() };
+    try { await AsyncStorage.setItem('fluid_custom_program', JSON.stringify(prog)); } catch(e) {}
+    setSaved(true);
+    setTimeout(function() { onClose(); setSaved(false); }, 1500);
+  }
+
+  return (
+    <Modal visible animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: "#000e18" }}>
+        <LinearGradient colors={['#000e18', '#002d48', '#005878']} style={StyleSheet.absoluteFill} />
+        <ScrollView contentContainerStyle={{ paddingTop: 60, paddingHorizontal: 24, paddingBottom: 40 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+            <TouchableOpacity onPress={onClose} style={{ paddingVertical: 8 }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5FF00', letterSpacing: 1.5, textTransform: 'uppercase' }}>{tr.retour}</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff', marginBottom: 24 }}>{tr.prog_create_title}</Text>
+
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5FF00', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_select_piliers}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 }}>
+            {piliers.map(function(p) {
+              var active = selected.includes(p.key);
+              return (
+                <TouchableOpacity key={p.key} onPress={function() { togglePilier(p.key); }} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, borderWidth: 1.5, borderColor: active ? '#E5FF00' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(229,255,0,0.12)' : 'rgba(0,18,32,0.6)' }}>
+                  <View style={{ width: 32, height: 32, borderRadius: 16, overflow: 'hidden' }}>
+                    <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} />
+                  </View>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: active ? '#E5FF00' : 'rgba(255,255,255,0.6)' }}>{p.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5FF00', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_duree_label}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 28 }} contentContainerStyle={{ gap: 10 }}>
+            {dureeOptions.map(function(d, i) {
+              var active = duree === i;
+              return (
+                <TouchableOpacity key={i} onPress={function() { setDuree(i); }} style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: active ? '#E5FF00' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(229,255,0,0.12)' : 'rgba(0,18,32,0.6)' }}>
+                  <Text style={{ fontSize: 14, color: active ? '#E5FF00' : 'rgba(255,255,255,0.6)' }}>{d}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5FF00', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_jours_label}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 36 }} contentContainerStyle={{ gap: 10 }}>
+            {joursOptions.map(function(j) {
+              var active = jours === j;
+              return (
+                <TouchableOpacity key={j} onPress={function() { setJours(j); }} style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: active ? '#E5FF00' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(229,255,0,0.12)' : 'rgba(0,18,32,0.6)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: active ? '#E5FF00' : 'rgba(255,255,255,0.6)' }}>{j}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          <TouchableOpacity onPress={saveProg} disabled={selected.length === 0} activeOpacity={0.85} style={{ height: 56, borderRadius: 28, backgroundColor: selected.length > 0 ? '#E5FF00' : 'rgba(229,255,0,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: '#000000' }}>{saved ? tr.prog_saved : tr.prog_save}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
 }
 
 function SeanceDetailModal({ visible, onClose, sdj, lang, onPlay }) {
@@ -2774,6 +2882,7 @@ function Biblio({ lang }) {
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
         {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
       </View>
+      <FloatingMedusas />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 40 }}
@@ -2781,11 +2890,8 @@ function Biblio({ lang }) {
         showsVerticalScrollIndicator={true}
       >
         <View style={{ paddingTop: 62, paddingHorizontal: 6, paddingBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 34, fontWeight: '200', color: 'rgba(215,248,255,0.94)', letterSpacing: 1 }}>{tr.biblio_titre}</Text>
-            <View style={{ marginTop: 14, width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
-              <MeduseCornerIcon size={90} breathCycleMs={3000} />
-            </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' }}>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#E5FF00', fontSize: 34 }}>+</Text></Text>
           </View>
           <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.42)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.biblio_sub}</Text>
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
@@ -2801,13 +2907,13 @@ function Biblio({ lang }) {
             {articles.map((a, i) => {
               const IconComp = ICONS[a.key];
               return (
-                <TouchableOpacity key={i} onPress={() => setOpenArticle(a)} style={{ backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.12)', borderRadius: 20, padding: 18 }}>
+                <TouchableOpacity key={i} onPress={() => setOpenArticle(a)} style={{ backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,18,32,0.8)', borderWidth: 1.5, borderColor: a.color, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-                      <IconComp color={a.color} />
+                    <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden', borderWidth: 1.5, borderColor: '#AEEF4D', marginRight: 14 }}>
+                      <ImageBackground source={PILIER_IMAGES[a.key]} resizeMode="cover" style={{ flex: 1 }} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '300', color: 'rgba(215,248,255,0.92)', lineHeight: 22 }}>{a.titre}</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '300', color: '#ffffff', lineHeight: 22 }}>{a.titre}</Text>
                       <Text style={{ fontSize: 10, color: a.color, marginTop: 3 }}>{a.duree}{tr.lire}</Text>
                     </View>
                     <Text style={{ fontSize: 18, color: 'rgba(0,195,240,0.3)' }}>›</Text>
@@ -2824,10 +2930,10 @@ function Biblio({ lang }) {
               <Text style={{ fontSize: 14, fontWeight: '200', color: 'rgba(155,215,240,0.7)', lineHeight: 22 }}>{tr.biblio_intro}</Text>
             </View>
             {fiches.map((f, i) => (
-              <TouchableOpacity key={i} onPress={() => setOpenFiche(f)} style={{ backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.12)', borderRadius: 20, padding: 18 }}>
+              <TouchableOpacity key={i} onPress={() => setOpenFiche(f)} style={{ backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,18,32,0.8)', borderWidth: 1.5, borderColor: f.color, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '500', color: f.color }}>{f.num}</Text>
+                  <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,18,32,0.8)', borderWidth: 1.5, borderColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: f.color }}>{f.num}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 18, fontWeight: '200', color: f.color }}>{f.etape}</Text>
@@ -2860,6 +2966,40 @@ function AnimatedBar({ value, max, color, delay = 0 }) {
   );
 }
 
+function FloatingMedusas() {
+  var meds = useRef([
+    { x: new Animated.Value(20), y: new Animated.Value(SH * 0.08), size: 62 },
+    { x: new Animated.Value(SW * 0.65), y: new Animated.Value(SH * 0.15), size: 48 },
+    { x: new Animated.Value(SW * 0.3), y: new Animated.Value(SH * 0.35), size: 54 },
+    { x: new Animated.Value(SW * 0.8), y: new Animated.Value(SH * 0.5), size: 40 },
+    { x: new Animated.Value(SW * 0.15), y: new Animated.Value(SH * 0.65), size: 56 },
+    { x: new Animated.Value(SW * 0.5), y: new Animated.Value(SH * 0.78), size: 44 },
+    { x: new Animated.Value(SW * 0.75), y: new Animated.Value(SH * 0.3), size: 36 },
+  ]).current;
+  useEffect(function() {
+    meds.forEach(function(m, i) {
+      var delay = 500 + i * 700;
+      function drift() {
+        var toX = 10 + Math.random() * (SW - m.size - 20);
+        var toY = 40 + Math.random() * (SH - m.size - 140);
+        var dur = 8000 + Math.random() * 7000;
+        Animated.parallel([
+          Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+          Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        ]).start(function() { drift(); });
+      }
+      setTimeout(drift, delay);
+    });
+  }, []);
+  return meds.map(function(m, i) {
+    return (
+      <Animated.View key={'bg-m-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.5, left: m.x, top: m.y }}>
+        <MeduseCornerIcon size={m.size} breathCycleMs={2800 + i * 400} breathMaxScale={1.35} tint="rgba(229,255,0,1)" />
+      </Animated.View>
+    );
+  });
+}
+
 function Progresser({ done, lang, tensionIdxs }) {
   const tr = T[lang] || T['fr'];
   const totalDone = Object.values(done).flat().filter(Boolean).length;
@@ -2877,6 +3017,7 @@ function Progresser({ done, lang, tensionIdxs }) {
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
         {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
       </View>
+      <FloatingMedusas />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
@@ -2884,17 +3025,14 @@ function Progresser({ done, lang, tensionIdxs }) {
         showsVerticalScrollIndicator={true}
       >
         <View style={{ paddingTop: 65, paddingHorizontal: 24, marginBottom: 24 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 34, fontWeight: '200', color: 'rgba(215,248,255,0.94)', letterSpacing: 1 }}>{tr.tabs[1]}</Text>
-            <View style={{ marginTop: 14, width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
-              <MeduseCornerIcon size={90} breathCycleMs={3000} />
-            </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' }}>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#E5FF00', fontSize: 34 }}>+</Text></Text>
           </View>
-          <Text style={{ fontSize: 10, color: 'rgba(0,210,250,0.42)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.progresser_sub(pct)}</Text>
-          <View style={{ height: 6, backgroundColor: 'rgba(0,195,240,0.1)', borderRadius: 3, marginTop: 14, overflow: 'hidden' }}>
-            <Animated.View style={{ height: 6, width: globalAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 300] }), backgroundColor: 'rgba(0,215,255,0.8)', borderRadius: 3 }} />
+          <Text style={{ fontSize: 10, color: 'rgba(229,255,0,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.progresser_sub(pct)}</Text>
+          <View style={{ height: 6, backgroundColor: 'rgba(229,255,0,0.15)', borderRadius: 3, marginTop: 14, overflow: 'hidden' }}>
+            <Animated.View style={{ height: 6, width: globalAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 300] }), backgroundColor: '#E5FF00', borderRadius: 3 }} />
           </View>
-          <Text style={{ fontSize: 10, color: 'rgba(0,195,240,0.35)', textAlign: 'right', marginTop: 4 }}>{totalDone} / 140</Text>
+          <Text style={{ fontSize: 10, color: 'rgba(229,255,0,0.45)', textAlign: 'right', marginTop: 4 }}>{totalDone} / 140</Text>
         </View>
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
           {sortedPiliers.map((p, idx) => {
@@ -2903,19 +3041,19 @@ function Progresser({ done, lang, tensionIdxs }) {
             const isRec = recommendedPiliers.includes(p.key);
             const pct2 = Math.round(count / 20 * 100);
             return (
-              <View key={p.key} style={{ backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: isRec ? 1.5 : 0.5, borderColor: isRec ? p.color : 'rgba(0,195,240,0.12)', borderRadius: 22, padding: 18, shadowColor: isRec ? p.color : 'transparent', shadowOpacity: isRec ? 0.3 : 0, shadowRadius: 8 }}>
+              <View key={p.key} style={{ backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
-                  <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: p.bg, borderWidth: 1.5, borderColor: p.color, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-                    <IconComp color={p.color} />
+                  <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden', borderWidth: 1.5, borderColor: '#AEEF4D', marginRight: 14 }}>
+                    <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '300', color: 'rgba(215,248,255,0.95)' }}>{p.label}</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '300', color: '#ffffff' }}>{p.label}</Text>
                       {isRec && <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(0,215,255,0.15)', borderWidth: 0.5, borderColor: 'rgba(0,215,255,0.5)' }}><Text style={{ fontSize: 8, color: 'rgba(0,215,255,0.9)', letterSpacing: 1 }}>★ {tr.recommande_pour_toi}</Text></View>}
                     </View>
-                    <Text style={{ fontSize: 11, color: p.color, letterSpacing: 1, marginTop: 3 }}>{count}/20{count === 20 ? ' ✓' : ''}</Text>
+                    <Text style={{ fontSize: 11, color: '#AEEF4D', letterSpacing: 1, marginTop: 3 }}>{count}/20{count === 20 ? ' ✓' : ''}</Text>
                   </View>
-                  <Text style={{ fontSize: 22, fontWeight: '200', color: count === 20 ? p.color : 'rgba(155,215,240,0.6)' }}>{pct2}%</Text>
+                  <Text style={{ fontSize: 22, fontWeight: '200', color: '#AEEF4D' }}>{pct2}%</Text>
                 </View>
                 <AnimatedBar value={count} max={20} color={p.color} delay={idx * 100} />
               </View>
@@ -2945,6 +3083,7 @@ function ParcoursScreen({ prenom, done, lang, tensionIdxs, streak, supabase, sup
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
         {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
       </View>
+      <FloatingMedusas />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 60 }}
@@ -2952,14 +3091,8 @@ function ParcoursScreen({ prenom, done, lang, tensionIdxs, streak, supabase, sup
         showsVerticalScrollIndicator={true}
       >
         <View style={{ paddingTop: 62, paddingHorizontal: 24, paddingBottom: 0 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-            <View>
-              <Text style={{ fontSize: 26, fontWeight: '200', color: 'rgba(215,248,255,0.97)', letterSpacing: 2 }}>{prenom || 'FluidBody'}</Text>
-              <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.45)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>{tr.mon_parcours}</Text>
-            </View>
-            <View style={{ marginTop: 14, width: 90, height: 90, overflow: 'visible' }} pointerEvents="none">
-              <MeduseCornerIcon size={90} breathCycleMs={3000} />
-            </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginBottom: 16 }}>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#E5FF00', fontSize: 34 }}>+</Text></Text>
           </View>
         </View>
           <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 16 }}>
@@ -2977,7 +3110,7 @@ function ParcoursScreen({ prenom, done, lang, tensionIdxs, streak, supabase, sup
             </View>
           </View>
 
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22, marginBottom: 14 }}>
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.65)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.prog_globale}</Text>
               <Text style={{ fontSize: 13, color: 'rgba(0,215,255,0.5)' }}>{totalDone} / 140</Text>
@@ -2990,7 +3123,7 @@ function ParcoursScreen({ prenom, done, lang, tensionIdxs, streak, supabase, sup
             </Text>
           </View>
 
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22, marginBottom: 14 }}>
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14 }}>
             <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.65)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 }}>{tr.par_pilier}</Text>
             {piliers.map((p, i) => {
               const count = done[p.key].filter(v => v === true || v === 'true').length;
@@ -2998,11 +3131,11 @@ function ParcoursScreen({ prenom, done, lang, tensionIdxs, streak, supabase, sup
               const IconComp = ICONS[p.key];
               const isRec = recommendedPiliers.includes(p.key);
               return (
-                <View key={i} style={{ marginBottom: 16 }}>
+                <View key={i} style={{ marginBottom: 12, borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 12 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 7 }}>
-                    <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: p.bg, borderWidth: 1, borderColor: p.color, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}><IconComp color={p.color} /></View>
-                    <Text style={{ flex: 1, fontSize: 13, fontWeight: '300', color: isRec ? 'rgba(215,248,255,0.95)' : 'rgba(155,215,240,0.65)' }}>{p.label}{isRec ? ' ★' : ''}</Text>
-                    <Text style={{ fontSize: 12, color: count === 20 ? p.color : 'rgba(0,195,240,0.4)' }}>{count}/20{count === 20 ? ' ✓' : ''}</Text>
+                    <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden', borderWidth: 1.5, borderColor: '#AEEF4D', marginRight: 10 }}><ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} /></View>
+                    <Text style={{ flex: 1, fontSize: 13, fontWeight: '300', color: '#ffffff' }}>{p.label}{isRec ? ' ★' : ''}</Text>
+                    <Text style={{ fontSize: 12, color: '#AEEF4D' }}>{count}/20{count === 20 ? ' ✓' : ''}</Text>
                   </View>
                   <View style={{ height: 6, backgroundColor: 'rgba(0,195,240,0.08)', borderRadius: 3, overflow: 'hidden', flexDirection: 'row' }}>
                     <View style={{ height: 6, flex: pct2 / 100, backgroundColor: p.color, borderRadius: 3, opacity: count === 20 ? 1 : 0.7 }} />
@@ -3012,22 +3145,21 @@ function ParcoursScreen({ prenom, done, lang, tensionIdxs, streak, supabase, sup
             })}
           </View>
 
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,215,255,0.2)', borderRadius: 24, padding: 22, marginBottom: 14, alignItems: 'center' }}>
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14, alignItems: 'center' }}>
             <Text style={{ fontSize: 32, marginBottom: 10 }}>{U_JELLY}</Text>
             <Text style={{ fontSize: 15, fontWeight: '200', color: 'rgba(215,248,255,0.85)', textAlign: 'center', lineHeight: 24, fontStyle: 'italic' }}>{tr.motivation(streak)}</Text>
           </View>
 
           {recommendedPiliers.length > 0 && (
-            <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,215,168,0.3)', borderRadius: 24, padding: 22, marginBottom: 14 }}>
+            <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14 }}>
               <Text style={{ fontSize: 13, color: 'rgba(0,215,168,0.7)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>★ {tr.recommande_pour_toi}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {recommendedPiliers.map(pk => {
                   const p = piliers.find(x => x.key === pk);
                   if (!p) return null;
-                  const IconComp = ICONS[pk];
                   return (
                     <View key={pk} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: p.color, backgroundColor: p.bg }}>
-                      <IconComp color={p.color} />
+                      <View style={{ width: 24, height: 24, borderRadius: 12, overflow: 'hidden' }}><ImageBackground source={PILIER_IMAGES[pk]} resizeMode="cover" style={{ flex: 1 }} /></View>
                       <Text style={{ fontSize: 12, color: p.color }}>{p.label}</Text>
                     </View>
                   );
@@ -3036,7 +3168,7 @@ function ParcoursScreen({ prenom, done, lang, tensionIdxs, streak, supabase, sup
             </View>
           )}
 
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22, marginBottom: 14 }}>
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22, marginBottom: 14 }}>
             <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.65)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>{tr.subscription_status_label}</Text>
             <Text style={{ fontSize: 15, fontWeight: '300', color: isSubscriber ? 'rgba(0,230,255,0.95)' : 'rgba(155,215,240,0.85)', marginBottom: 16 }}>{isSubscriber ? tr.subscription_status_active : tr.subscription_status_free}</Text>
             <TouchableOpacity onPress={onRestorePurchases} style={{ paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,215,255,0.35)', backgroundColor: 'rgba(0,180,235,0.10)', alignItems: 'center' }}>
@@ -3044,7 +3176,7 @@ function ParcoursScreen({ prenom, done, lang, tensionIdxs, streak, supabase, sup
             </TouchableOpacity>
           </View>
 
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 24, padding: 22 }}>
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 22 }}>
             <Text style={{ fontSize: 13, color: 'rgba(0,210,250,0.55)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>{tr.mon_compte}</Text>
             {supaUser && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,195,240,0.08)' }}>
@@ -3884,6 +4016,6 @@ const styles = StyleSheet.create({
   btnCtaLarge: { alignSelf: 'stretch', height: 66, borderRadius: 33, backgroundColor: 'rgba(229,255,0,0.15)', borderWidth: 2, borderColor: '#E5FF00', alignItems: 'center', justifyContent: 'center' },
   btnCtaOff: { opacity: 0.3 },
   btnCtaLargeTxt: { fontSize: 19, fontWeight: '700', color: '#E5FF00', letterSpacing: 3, textTransform: 'uppercase' },
-  statCard: { flex: 1, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 16, padding: 14, alignItems: 'center' },
+  statCard: { flex: 1, backgroundColor: 'rgba(0,18,38,0.75)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 14, alignItems: 'center' },
   statLbl: { fontSize: 9, fontWeight: '200', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(0,175,215,0.42)' },
 });
