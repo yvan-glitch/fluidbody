@@ -4022,7 +4022,7 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
             <TouchableOpacity onPress={function() { setNotifHour(Math.max(5, notifHour - 1)); }} style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.6)' }}>−</Text>
             </TouchableOpacity>
-            <Text style={{ fontSize: 28, fontWeight: '700', color: '#ffffff', width: 70, textAlign: 'center' }}>{String(notifHour).padStart(2, '0')}:00</Text>
+            <Text style={{ fontSize: 24, fontWeight: '700', color: '#ffffff', minWidth: 80, textAlign: 'center' }}>{String(notifHour).padStart(2, '0') + ':00'}</Text>
             <TouchableOpacity onPress={function() { setNotifHour(Math.min(22, notifHour + 1)); }} style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.6)' }}>+</Text>
             </TouchableOpacity>
@@ -4650,33 +4650,66 @@ function AnimatedFaceIcon({ size = 50, breathCycleMs = 3000, expression = 0, tin
 
 function FloatingMedusas() {
   var meds = useRef([
-    { x: new Animated.Value(20), y: new Animated.Value(SH * 0.08), size: 80 },
-    { x: new Animated.Value(SW * 0.65), y: new Animated.Value(SH * 0.15), size: 68 },
-    { x: new Animated.Value(SW * 0.3), y: new Animated.Value(SH * 0.35), size: 74 },
-    { x: new Animated.Value(SW * 0.8), y: new Animated.Value(SH * 0.5), size: 60 },
-    { x: new Animated.Value(SW * 0.15), y: new Animated.Value(SH * 0.65), size: 76 },
-    { x: new Animated.Value(SW * 0.5), y: new Animated.Value(SH * 0.78), size: 64 },
-    { x: new Animated.Value(SW * 0.75), y: new Animated.Value(SH * 0.3), size: 56 },
+    { x: new Animated.Value(20), y: new Animated.Value(SH * 0.08), size: 80, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
+    { x: new Animated.Value(SW * 0.65), y: new Animated.Value(SH * 0.15), size: 68, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
+    { x: new Animated.Value(SW * 0.3), y: new Animated.Value(SH * 0.35), size: 74, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
+    { x: new Animated.Value(SW * 0.8), y: new Animated.Value(SH * 0.5), size: 60, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
+    { x: new Animated.Value(SW * 0.15), y: new Animated.Value(SH * 0.65), size: 76, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
+    { x: new Animated.Value(SW * 0.5), y: new Animated.Value(SH * 0.78), size: 64, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
+    { x: new Animated.Value(SW * 0.75), y: new Animated.Value(SH * 0.3), size: 56, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
   ]).current;
   useEffect(function() {
     meds.forEach(function(m, i) {
-      var delay = 500 + i * 700;
+      // Drift lent à travers l'écran
+      var delay = 300 + i * 500;
       function drift() {
         var toX = 10 + Math.random() * (SW - m.size - 20);
         var toY = 40 + Math.random() * (SH - m.size - 140);
-        var dur = 8000 + Math.random() * 7000;
+        var dur = 12000 + Math.random() * 10000;
         Animated.parallel([
-          Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-          Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+          Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
+          Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
         ]).start(function() { drift(); });
       }
       setTimeout(drift, delay);
+      // Bob (haut/bas sinusoïdal)
+      var bobDur = 2400 + i * 380;
+      Animated.loop(Animated.sequence([
+        Animated.timing(m.bob, { toValue: 1, duration: bobDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(m.bob, { toValue: 0, duration: bobDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      ])).start();
+      // Sway (gauche/droite)
+      var swayDur = 3200 + i * 450;
+      setTimeout(function() {
+        Animated.loop(Animated.sequence([
+          Animated.timing(m.sway, { toValue: 1, duration: swayDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+          Animated.timing(m.sway, { toValue: 0, duration: swayDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        ])).start();
+      }, i * 300);
+      // Rotation douce
+      var rotDur = 4000 + i * 600;
+      Animated.loop(Animated.sequence([
+        Animated.timing(m.rot, { toValue: 1, duration: rotDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(m.rot, { toValue: 0, duration: rotDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      ])).start();
+      // Pulse (scale)
+      var pulseDur = 2800 + i * 350;
+      Animated.loop(Animated.sequence([
+        Animated.timing(m.pulse, { toValue: 1, duration: pulseDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(m.pulse, { toValue: 0, duration: pulseDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      ])).start();
     });
   }, []);
   return meds.map(function(m, i) {
+    var bobAmp = 8 + i * 2;
+    var swayAmp = 5 + i * 1.5;
+    var translateY = m.bob.interpolate({ inputRange: [0, 1], outputRange: [-bobAmp, bobAmp] });
+    var translateX = m.sway.interpolate({ inputRange: [0, 1], outputRange: [-swayAmp, swayAmp] });
+    var rotate = m.rot.interpolate({ inputRange: [0, 1], outputRange: ['-8deg', '8deg'] });
+    var scale = m.pulse.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.08] });
     return (
-      <Animated.View key={'bg-m-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.6, left: m.x, top: m.y }}>
-        <MeduseCornerIcon size={m.size} breathCycleMs={2800 + i * 400} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
+      <Animated.View key={'bg-m-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.6, left: m.x, top: m.y, transform: [{ translateY: translateY }, { translateX: translateX }, { rotate: rotate }, { scale: scale }] }}>
+        <MeduseCornerIcon size={m.size} breathCycleMs={2200 + i * 300} breathMaxScale={1.25} tint="rgba(174,239,77,1)" />
       </Animated.View>
     );
   });
