@@ -287,6 +287,22 @@ function TabIconPartage({ color, size }) {
   );
 }
 
+function TabIconTimer({ color, size }) {
+  var c = tabBarIconTint(color);
+  var s = size ?? 22;
+  return (
+    <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <Circle cx="12" cy="13" r="8" stroke={c} strokeWidth={1.6} />
+        <Path d="M12 5V7" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
+        <Path d="M9.5 3h5" stroke={c} strokeWidth={1.5} strokeLinecap="round" />
+        <Path d="M12 13V9.5" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+        <Path d="M12 13L14.5 15" stroke={c} strokeWidth={1.4} strokeLinecap="round" />
+      </Svg>
+    </View>
+  );
+}
+
 const Tab = createBottomTabNavigator();
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
@@ -404,7 +420,7 @@ function getSeanceDuJour(done, tensionIdxs, lang) {
 const T = {
   fr: {
     lang: 'fr', flag: '🇫🇷', nom: 'Français',
-    tabs: ['FluidBody+', 'Résumé', 'Biblio', 'Partage', 'Profil'],
+    tabs: ['FluidBody+', 'Résumé', 'Biblio', 'Partage', 'Timer', 'Profil'],
     resume_title: 'Résumé', resume_activite: 'Activité', resume_bouger: 'Bouger', resume_exercice: 'Exercice', resume_debout: 'Debout', resume_seances: 'Séances FluidBody', resume_no_seance: 'Aucune séance complétée', resume_progression: 'Progression', resume_global: 'Global', resume_streak: 'Streak',
     bonjour: (p) => p ? `Bonjour ${p}` : '',
     bonjour_mot: 'Bonjour',
@@ -491,6 +507,7 @@ const T = {
     prog_save: 'Enregistrer',
     prog_saved: 'Programme enregistré !',
     prog_mes_programmes: 'Mes programmes',
+    prog_notif_days: 'Jours de rappel', prog_notif_hour: 'Heure de rappel', prog_notif_body: "C'est l'heure de ta séance",
     partage_title: 'Partage', partage_progression: 'Partager ma progression', partage_btn: 'Partager', partage_share_msg: 'Ma progression FluidBody+ Pilates', partage_inviter: 'Inviter des amis', partage_invite_btn: 'Inviter par SMS / Email', partage_invite_msg: 'Rejoins-moi sur FluidBody+ Pilates !', partage_en_attente: 'En attente', partage_invitation: 'Invitation', partage_defis: 'Défis', partage_creer_defi: 'Créer un défi', partage_choisir_pilier: 'Choisis un pilier', partage_duree_defi: 'Durée', partage_lancer: 'Lancer',
     profil_donnees_title: 'Confidentialité', profil_donnees_desc: 'Découvrez comment sont gérées vos données. Vos données restent sur votre appareil. Aucune donnée personnelle n\'est envoyée à des serveurs tiers. Les séances, la progression et les préférences sont stockées localement. Si vous vous connectez, seul votre email est synchronisé pour sauvegarder votre profil.', profil_donnees_local: 'Données stockées localement sur votre appareil', profil_donnees_no_tracking: 'Aucun tracking publicitaire', profil_donnees_healthkit: 'HealthKit : données lues uniquement, jamais partagées',
     biblio_intro: 'La méthode FluidBody repose sur 5 étapes progressives. Chaque séance les traverse dans l\'ordre.',
@@ -526,9 +543,10 @@ const T = {
     premium_alert_title: 'Contenu Premium',
     premium_alert_simulate: 'Voir les offres',
     premium_alert_later: 'Plus tard',
-    paywall_title: 'Des exercices pour tout le monde',
-    paywall_sub: "D\u00e9couvrez de nouveaux exercices con\u00e7us pour tous les niveaux.",
-    paywall_yearly_link: "\u00c9conomisez avec l\u2019abonnement annuel \u203a",
+    paywall_title: 'Du Pilates pour tout le monde',
+    paywall_sub: 'Accès illimité à 160 séances guidées par Sabrina, experte Pilates depuis 30 ans',
+    paywall_badge: '7 JOURS GRATUITS',
+    paywall_yearly_link: '99 CHF/an · Économisez 35%',
     paywall_monthly: 'Mensuel',
     paywall_yearly: 'Annuel',
     paywall_buy_monthly: 'Acheter mensuel',
@@ -537,9 +555,11 @@ const T = {
     paywall_close: 'Fermer',
     paywall_prices_loading: 'Chargement des prix…',
     paywall_not_available: 'Achats indisponibles (Expo Go / simulateur).',
-    paywall_start: 'Commencer',
+    paywall_start: 'Commencer — 7 jours gratuits',
     paywall_per_month: '/mois',
-    paywall_try_free: 'Essayer avec la séance du mois gratuite',
+    paywall_price_detail: 'Puis 12.90 CHF/mois · Annulez quand vous voulez',
+    paywall_access: 'Accès immédiat à tous les piliers · Sans engagement',
+    paywall_try_free: 'Essayer avec la séance gratuite',
     free_try_once: 'Essayez une fois cet épisode gratuitement',
     free_go: "C'est parti !",
     subscription_status_label: 'Abonnement FluidBody+',
@@ -549,7 +569,7 @@ const T = {
   },
   en: {
     lang: 'en', flag: '🇬🇧', nom: 'English',
-    tabs: ['FluidBody+', 'Summary', 'Library', 'Share', 'Profile'],
+    tabs: ['FluidBody+', 'Summary', 'Library', 'Share', 'Timer', 'Profile'],
     resume_title: 'Summary', resume_activite: 'Activity', resume_bouger: 'Move', resume_exercice: 'Exercise', resume_debout: 'Stand', resume_seances: 'FluidBody Sessions', resume_no_seance: 'No sessions completed', resume_progression: 'Progress', resume_global: 'Overall', resume_streak: 'Streak',
     bonjour: (p) => p ? `Hello ${p}` : '',
     bonjour_mot: 'Hello',
@@ -636,6 +656,7 @@ const T = {
     prog_save: 'Save',
     prog_saved: 'Program saved!',
     prog_mes_programmes: 'My programs',
+    prog_notif_days: 'Reminder days', prog_notif_hour: 'Reminder time', prog_notif_body: 'Time for your session',
     partage_title: 'Share', partage_progression: 'Share my progress', partage_btn: 'Share', partage_share_msg: 'My FluidBody+ Pilates progress', partage_inviter: 'Invite friends', partage_invite_btn: 'Invite via SMS / Email', partage_invite_msg: 'Join me on FluidBody+ Pilates!', partage_en_attente: 'Pending', partage_invitation: 'Invitation', partage_defis: 'Challenges', partage_creer_defi: 'Create a challenge', partage_choisir_pilier: 'Choose a pillar', partage_duree_defi: 'Duration', partage_lancer: 'Start',
     profil_donnees_title: 'Privacy', profil_donnees_desc: 'Learn how your data is managed. Your data stays on your device. No personal data is sent to third-party servers. Sessions, progress and preferences are stored locally. If you sign in, only your email is synced to save your profile.', profil_donnees_local: 'Data stored locally on your device', profil_donnees_no_tracking: 'No advertising tracking', profil_donnees_healthkit: 'HealthKit: data read only, never shared',
     biblio_intro: 'The FluidBody method is built on 5 progressive steps. Each session follows them in order.',
@@ -671,9 +692,10 @@ const T = {
     premium_alert_title: 'Premium content',
     premium_alert_simulate: 'See offers',
     premium_alert_later: 'Later',
-    paywall_title: 'Exercises for everyone',
-    paywall_sub: 'Discover new exercises designed for all levels.',
-    paywall_yearly_link: "Save with an annual subscription \u203a",
+    paywall_title: 'Pilates for everyone',
+    paywall_sub: 'Unlimited access to 160 sessions guided by Sabrina, Pilates expert for 30 years',
+    paywall_badge: '7 DAYS FREE',
+    paywall_yearly_link: '99 CHF/year · Save 35%',
     paywall_monthly: 'Monthly',
     paywall_yearly: 'Yearly',
     paywall_buy_monthly: 'Buy monthly',
@@ -682,9 +704,11 @@ const T = {
     paywall_close: 'Close',
     paywall_prices_loading: 'Loading prices…',
     paywall_not_available: 'Purchases unavailable (Expo Go / simulator).',
-    paywall_start: 'Start',
+    paywall_start: 'Start — 7 days free',
     paywall_per_month: '/month',
-    paywall_try_free: 'Try the free session of the month',
+    paywall_price_detail: 'Then 12.90 CHF/month · Cancel anytime',
+    paywall_access: 'Instant access to all pillars · No commitment',
+    paywall_try_free: 'Try the free session',
     free_try_once: 'Try this episode once for free',
     free_go: "Let's go!",
     subscription_status_label: 'FluidBody+ Subscription',
@@ -694,7 +718,7 @@ const T = {
   },
   es: {
     lang: 'es', flag: '🇪🇸', nom: 'Español',
-    tabs: ['FluidBody+', 'Resumen', 'Biblioteca', 'Compartir', 'Perfil'],
+    tabs: ['FluidBody+', 'Resumen', 'Biblioteca', 'Compartir', 'Timer', 'Perfil'],
     resume_title: 'Resumen', resume_activite: 'Actividad', resume_bouger: 'Movimiento', resume_exercice: 'Ejercicio', resume_debout: 'De pie', resume_seances: 'Sesiones FluidBody', resume_no_seance: 'Ninguna sesión completada', resume_progression: 'Progresión', resume_global: 'Global', resume_streak: 'Racha',
     bonjour: (p) => p ? `Hola ${p}` : '',
     bonjour_mot: 'Hola',
@@ -781,6 +805,7 @@ const T = {
     prog_save: 'Guardar',
     prog_saved: '¡Programa guardado!',
     prog_mes_programmes: 'Mis programas',
+    prog_notif_days: 'Días de recordatorio', prog_notif_hour: 'Hora de recordatorio', prog_notif_body: 'Es hora de tu sesión',
     partage_title: 'Compartir', partage_progression: 'Compartir mi progreso', partage_btn: 'Compartir', partage_share_msg: 'Mi progreso en FluidBody+ Pilates', partage_inviter: 'Invitar amigos', partage_invite_btn: 'Invitar por SMS / Email', partage_invite_msg: '¡Únete a FluidBody+ Pilates!', partage_en_attente: 'Pendiente', partage_invitation: 'Invitación', partage_defis: 'Desafíos', partage_creer_defi: 'Crear un desafío', partage_choisir_pilier: 'Elige un pilar', partage_duree_defi: 'Duración', partage_lancer: 'Iniciar',
     profil_donnees_title: 'Privacidad', profil_donnees_desc: 'Descubre cómo se gestionan tus datos. Tus datos permanecen en tu dispositivo. Ningún dato personal se envía a servidores de terceros. Las sesiones, el progreso y las preferencias se almacenan localmente. Si inicias sesión, solo tu email se sincroniza para guardar tu perfil.', profil_donnees_local: 'Datos almacenados localmente en tu dispositivo', profil_donnees_no_tracking: 'Sin seguimiento publicitario', profil_donnees_healthkit: 'HealthKit: datos solo de lectura, nunca compartidos',
     biblio_intro: 'El método FluidBody se basa en 5 pasos progresivos. Cada sesión los recorre en orden.',
@@ -816,9 +841,10 @@ const T = {
     premium_alert_title: 'Contenido Premium',
     premium_alert_simulate: 'Ver ofertas',
     premium_alert_later: 'Más tarde',
-    paywall_title: 'Ejercicios para todos',
-    paywall_sub: 'Descubre nuevos ejercicios dise\u00f1ados para todos los niveles.',
-    paywall_yearly_link: "Ahorra con la suscripci\u00f3n anual \u203a",
+    paywall_title: 'Pilates para todos',
+    paywall_sub: 'Acceso ilimitado a 160 sesiones guiadas por Sabrina, experta Pilates desde hace 30 años',
+    paywall_badge: '7 DÍAS GRATIS',
+    paywall_yearly_link: '99 CHF/año · Ahorra 35%',
     paywall_monthly: 'Mensual',
     paywall_yearly: 'Anual',
     paywall_buy_monthly: 'Comprar mensual',
@@ -827,9 +853,11 @@ const T = {
     paywall_close: 'Cerrar',
     paywall_prices_loading: 'Cargando precios…',
     paywall_not_available: 'Compras no disponibles (Expo Go / simulador).',
-    paywall_start: 'Empezar',
+    paywall_start: 'Empezar — 7 días gratis',
     paywall_per_month: '/mes',
-    paywall_try_free: 'Prueba la sesión gratuita del mes',
+    paywall_price_detail: 'Luego 12.90 CHF/mes · Cancela cuando quieras',
+    paywall_access: 'Acceso inmediato a todos los pilares · Sin compromiso',
+    paywall_try_free: 'Prueba la sesión gratuita',
     free_try_once: 'Prueba este episodio una vez gratis',
     free_go: '¡Vamos!',
     subscription_status_label: 'Suscripción FluidBody+',
@@ -839,7 +867,7 @@ const T = {
   },
   it: {
     lang: 'it', flag: '🇮🇹', nom: 'Italiano',
-    tabs: ['FluidBody+', 'Riepilogo', 'Biblioteca', 'Condividi', 'Profilo'],
+    tabs: ['FluidBody+', 'Riepilogo', 'Biblioteca', 'Condividi', 'Timer', 'Profilo'],
     resume_title: 'Riepilogo', resume_activite: 'Attività', resume_bouger: 'Movimento', resume_exercice: 'Esercizio', resume_debout: 'In piedi', resume_seances: 'Sessioni FluidBody', resume_no_seance: 'Nessuna sessione completata', resume_progression: 'Progressione', resume_global: 'Globale', resume_streak: 'Serie',
     bonjour: (p) => p ? `Ciao ${p}` : '',
     bonjour_mot: 'Ciao',
@@ -926,6 +954,7 @@ const T = {
     prog_save: 'Salva',
     prog_saved: 'Programma salvato!',
     prog_mes_programmes: 'I miei programmi',
+    prog_notif_days: 'Giorni promemoria', prog_notif_hour: 'Ora promemoria', prog_notif_body: 'È ora della tua sessione',
     partage_title: 'Condividi', partage_progression: 'Condividi i miei progressi', partage_btn: 'Condividi', partage_share_msg: 'I miei progressi su FluidBody+ Pilates', partage_inviter: 'Invita amici', partage_invite_btn: 'Invita via SMS / Email', partage_invite_msg: 'Unisciti a FluidBody+ Pilates!', partage_en_attente: 'In attesa', partage_invitation: 'Invito', partage_defis: 'Sfide', partage_creer_defi: 'Crea una sfida', partage_choisir_pilier: 'Scegli un pilastro', partage_duree_defi: 'Durata', partage_lancer: 'Inizia',
     profil_donnees_title: 'Privacy', profil_donnees_desc: 'Scopri come vengono gestiti i tuoi dati. I tuoi dati restano sul tuo dispositivo. Nessun dato personale viene inviato a server di terze parti. Le sessioni, i progressi e le preferenze sono memorizzati localmente. Se accedi, solo la tua email viene sincronizzata per salvare il profilo.', profil_donnees_local: 'Dati memorizzati localmente sul dispositivo', profil_donnees_no_tracking: 'Nessun tracciamento pubblicitario', profil_donnees_healthkit: 'HealthKit: dati solo in lettura, mai condivisi',
     biblio_intro: 'Il metodo FluidBody si basa su 5 passaggi progressivi. Ogni sessione li percorre in ordine.',
@@ -961,16 +990,19 @@ const T = {
     premium_alert_title: 'Contenuto Premium',
     premium_alert_simulate: 'Vedi offerte',
     premium_alert_later: 'Più tardi',
-    paywall_title: 'Esercizi per tutti',
-    paywall_sub: 'Scopri nuovi esercizi pensati per tutti i livelli.',
-    paywall_yearly_link: "Risparmia con l\u2019abbonamento annuale \u203a",
+    paywall_title: 'Pilates per tutti',
+    paywall_sub: 'Accesso illimitato a 160 sessioni guidate da Sabrina, esperta Pilates da 30 anni',
+    paywall_badge: '7 GIORNI GRATIS',
+    paywall_yearly_link: '99 CHF/anno · Risparmia 35%',
     paywall_monthly: 'Mensile',
     paywall_yearly: 'Annuale',
     paywall_buy_monthly: 'Acquista mensile',
     paywall_buy_yearly: 'Acquista annuale',
-    paywall_start: 'Inizia',
+    paywall_start: 'Inizia — 7 giorni gratis',
     paywall_per_month: '/mese',
-    paywall_try_free: 'Prova la sessione gratuita del mese',
+    paywall_price_detail: 'Poi 12.90 CHF/mese · Cancella quando vuoi',
+    paywall_access: 'Accesso immediato a tutti i pilastri · Senza impegno',
+    paywall_try_free: 'Prova la sessione gratuita',
     free_try_once: 'Prova questo episodio una volta gratis',
     free_go: 'Andiamo!',
     paywall_restore: 'Ripristina acquisti',
@@ -984,7 +1016,7 @@ const T = {
   },
   de: {
     lang: 'de', flag: '🇩🇪', nom: 'Deutsch',
-    tabs: ['FluidBody+', 'Zusammenfassung', 'Bibliothek', 'Teilen', 'Profil'],
+    tabs: ['FluidBody+', 'Zusammenfassung', 'Bibliothek', 'Teilen', 'Timer', 'Profil'],
     resume_title: 'Zusammenfassung', resume_activite: 'Aktivität', resume_bouger: 'Bewegen', resume_exercice: 'Übung', resume_debout: 'Stehen', resume_seances: 'FluidBody Sitzungen', resume_no_seance: 'Keine Sitzungen abgeschlossen', resume_progression: 'Fortschritt', resume_global: 'Gesamt', resume_streak: 'Serie',
     bonjour: (p) => p ? `Hallo ${p}` : '',
     bonjour_mot: 'Hallo',
@@ -1071,6 +1103,7 @@ const T = {
     prog_save: 'Speichern',
     prog_saved: 'Programm gespeichert!',
     prog_mes_programmes: 'Meine Programme',
+    prog_notif_days: 'Erinnerungstage', prog_notif_hour: 'Erinnerungszeit', prog_notif_body: 'Zeit für deine Sitzung',
     partage_title: 'Teilen', partage_progression: 'Meinen Fortschritt teilen', partage_btn: 'Teilen', partage_share_msg: 'Mein FluidBody+ Pilates Fortschritt', partage_inviter: 'Freunde einladen', partage_invite_btn: 'Per SMS / E-Mail einladen', partage_invite_msg: 'Komm zu FluidBody+ Pilates!', partage_en_attente: 'Ausstehend', partage_invitation: 'Einladung', partage_defis: 'Challenges', partage_creer_defi: 'Challenge erstellen', partage_choisir_pilier: 'Wähle eine Säule', partage_duree_defi: 'Dauer', partage_lancer: 'Starten',
     profil_donnees_title: 'Datenschutz', profil_donnees_desc: 'Erfahre, wie deine Daten verwaltet werden. Deine Daten bleiben auf deinem Gerät. Keine persönlichen Daten werden an Drittserver gesendet. Sitzungen, Fortschritt und Einstellungen werden lokal gespeichert. Wenn du dich anmeldest, wird nur deine E-Mail synchronisiert, um dein Profil zu speichern.', profil_donnees_local: 'Daten lokal auf deinem Gerät gespeichert', profil_donnees_no_tracking: 'Kein Werbe-Tracking', profil_donnees_healthkit: 'HealthKit: Daten nur gelesen, nie geteilt',
     biblio_intro: 'Die FluidBody-Methode basiert auf 5 aufeinander aufbauenden Schritten. Jede Sitzung durchläuft sie der Reihe nach.',
@@ -1104,9 +1137,10 @@ const T = {
     premium_alert_title: 'Premium-Inhalt',
     premium_alert_simulate: 'Angebote ansehen',
     premium_alert_later: 'Später',
-    paywall_title: 'Übungen für alle',
-    paywall_sub: 'Entdecke neue Übungen für alle Niveaus.',
-    paywall_yearly_link: 'Spare mit dem Jahresabo \u203a',
+    paywall_title: 'Pilates für alle',
+    paywall_sub: 'Unbegrenzter Zugang zu 160 Sitzungen mit Sabrina, Pilates-Expertin seit 30 Jahren',
+    paywall_badge: '7 TAGE KOSTENLOS',
+    paywall_yearly_link: '99 CHF/Jahr · 35% sparen',
     paywall_monthly: 'Monatlich',
     paywall_yearly: 'Jährlich',
     paywall_buy_monthly: 'Monatlich kaufen',
@@ -1115,9 +1149,11 @@ const T = {
     paywall_close: 'Schließen',
     paywall_prices_loading: 'Preise werden geladen…',
     paywall_not_available: 'Käufe nicht verfügbar (Expo Go / Simulator).',
-    paywall_start: 'Starten',
+    paywall_start: 'Starten — 7 Tage kostenlos',
     paywall_per_month: '/Monat',
-    paywall_try_free: 'Teste die kostenlose Sitzung des Monats',
+    paywall_price_detail: 'Dann 12.90 CHF/Monat · Jederzeit kündbar',
+    paywall_access: 'Sofortiger Zugang zu allen Säulen · Ohne Bindung',
+    paywall_try_free: 'Kostenlose Sitzung testen',
     free_try_once: 'Teste diese Episode einmal kostenlos',
     free_go: 'Los geht\'s!',
     subscription_status_label: 'FluidBody+ Abonnement',
@@ -1127,7 +1163,7 @@ const T = {
   },
   pt: {
     lang: 'pt', flag: '🇧🇷', nom: 'Português',
-    tabs: ['FluidBody+', 'Resumo', 'Biblioteca', 'Compartilhar', 'Perfil'],
+    tabs: ['FluidBody+', 'Resumo', 'Biblioteca', 'Compartilhar', 'Timer', 'Perfil'],
     resume_title: 'Resumo', resume_activite: 'Atividade', resume_bouger: 'Movimento', resume_exercice: 'Exercício', resume_debout: 'Em pé', resume_seances: 'Sessões FluidBody', resume_no_seance: 'Nenhuma sessão concluída', resume_progression: 'Progresso', resume_global: 'Geral', resume_streak: 'Sequência',
     bonjour: (p) => p ? `Olá ${p}` : '',
     bonjour_mot: 'Olá',
@@ -1214,6 +1250,7 @@ const T = {
     prog_save: 'Salvar',
     prog_saved: 'Programa salvo!',
     prog_mes_programmes: 'Meus programas',
+    prog_notif_days: 'Dias de lembrete', prog_notif_hour: 'Hora do lembrete', prog_notif_body: 'Hora da sua sessão',
     partage_title: 'Compartilhar', partage_progression: 'Compartilhar meu progresso', partage_btn: 'Compartilhar', partage_share_msg: 'Meu progresso no FluidBody+ Pilates', partage_inviter: 'Convidar amigos', partage_invite_btn: 'Convidar por SMS / E-mail', partage_invite_msg: 'Junte-se a mim no FluidBody+ Pilates!', partage_en_attente: 'Pendente', partage_invitation: 'Convite', partage_defis: 'Desafios', partage_creer_defi: 'Criar um desafio', partage_choisir_pilier: 'Escolha um pilar', partage_duree_defi: 'Duração', partage_lancer: 'Iniciar',
     profil_donnees_title: 'Privacidade', profil_donnees_desc: 'Saiba como seus dados são gerenciados. Seus dados ficam no seu dispositivo. Nenhum dado pessoal é enviado a servidores de terceiros. Sessões, progresso e preferências são armazenados localmente. Se você entrar, apenas seu e-mail é sincronizado para salvar seu perfil.', profil_donnees_local: 'Dados armazenados localmente no seu dispositivo', profil_donnees_no_tracking: 'Sem rastreamento publicitário', profil_donnees_healthkit: 'HealthKit: dados apenas lidos, nunca compartilhados',
     biblio_intro: 'O método FluidBody se baseia em 5 etapas progressivas. Cada sessão as percorre em ordem.',
@@ -1247,9 +1284,10 @@ const T = {
     premium_alert_title: 'Conteúdo Premium',
     premium_alert_simulate: 'Ver ofertas',
     premium_alert_later: 'Mais tarde',
-    paywall_title: 'Exercícios para todos',
-    paywall_sub: 'Descubra novos exercícios pensados para todos os níveis.',
-    paywall_yearly_link: 'Economize com a assinatura anual \u203a',
+    paywall_title: 'Pilates para todos',
+    paywall_sub: 'Acesso ilimitado a 160 sessões guiadas por Sabrina, especialista em Pilates há 30 anos',
+    paywall_badge: '7 DIAS GRÁTIS',
+    paywall_yearly_link: '99 CHF/ano · Economize 35%',
     paywall_monthly: 'Mensal',
     paywall_yearly: 'Anual',
     paywall_buy_monthly: 'Comprar mensal',
@@ -1258,9 +1296,11 @@ const T = {
     paywall_close: 'Fechar',
     paywall_prices_loading: 'Carregando preços…',
     paywall_not_available: 'Compras indisponíveis (Expo Go / simulador).',
-    paywall_start: 'Começar',
+    paywall_start: 'Começar — 7 dias grátis',
     paywall_per_month: '/mês',
-    paywall_try_free: 'Experimente a sessão gratuita do mês',
+    paywall_price_detail: 'Depois 12.90 CHF/mês · Cancele quando quiser',
+    paywall_access: 'Acesso imediato a todos os pilares · Sem compromisso',
+    paywall_try_free: 'Experimente a sessão gratuita',
     free_try_once: 'Experimente este episódio uma vez de graça',
     free_go: 'Vamos lá!',
     subscription_status_label: 'Assinatura FluidBody+',
@@ -1270,7 +1310,7 @@ const T = {
   },
   zh: {
     lang: 'zh', flag: '🇨🇳', nom: '中文',
-    tabs: ['FluidBody+', '摘要', '资料库', '分享', '个人'],
+    tabs: ['FluidBody+', '摘要', '资料库', '分享', '计时器', '个人'],
     resume_title: '摘要', resume_activite: '活动', resume_bouger: '运动', resume_exercice: '锻炼', resume_debout: '站立', resume_seances: 'FluidBody 课程', resume_no_seance: '尚未完成任何课程', resume_progression: '进度', resume_global: '总体', resume_streak: '连续',
     bonjour: (p) => p ? `你好 ${p}` : '',
     bonjour_mot: '你好',
@@ -1357,6 +1397,7 @@ const T = {
     prog_save: '保存',
     prog_saved: '计划已保存！',
     prog_mes_programmes: '我的计划',
+    prog_notif_days: '提醒日', prog_notif_hour: '提醒时间', prog_notif_body: '该做课程了',
     partage_title: '分享', partage_progression: '分享我的进度', partage_btn: '分享', partage_share_msg: '我的 FluidBody+ 普拉提进度', partage_inviter: '邀请朋友', partage_invite_btn: '通过短信/邮件邀请', partage_invite_msg: '加入我的 FluidBody+ 普拉提！', partage_en_attente: '等待中', partage_invitation: '邀请', partage_defis: '挑战', partage_creer_defi: '创建挑战', partage_choisir_pilier: '选择一个支柱', partage_duree_defi: '时长', partage_lancer: '开始',
     profil_donnees_title: '隐私', profil_donnees_desc: '了解你的数据如何管理。你的数据保留在你的设备上。没有个人数据被发送到第三方服务器。课程、进度和偏好都存储在本地。如果你登录，只有你的电子邮件会被同步以保存你的个人资料。', profil_donnees_local: '数据本地存储在你的设备上', profil_donnees_no_tracking: '无广告追踪', profil_donnees_healthkit: 'HealthKit：仅读取数据，从不分享',
     biblio_intro: 'FluidBody 方法基于5个渐进步骤。每节课按顺序进行。',
@@ -1390,9 +1431,10 @@ const T = {
     premium_alert_title: '高级内容',
     premium_alert_simulate: '查看优惠',
     premium_alert_later: '稍后',
-    paywall_title: '适合所有人的锻炼',
-    paywall_sub: '发现为各种水平设计的新练习。',
-    paywall_yearly_link: '年度订阅更优惠 \u203a',
+    paywall_title: '人人都能练的普拉提',
+    paywall_sub: '无限畅享160节由30年经验的普拉提专家Sabrina指导的课程',
+    paywall_badge: '免费试用7天',
+    paywall_yearly_link: '99 CHF/年 · 节省35%',
     paywall_monthly: '月度',
     paywall_yearly: '年度',
     paywall_buy_monthly: '购买月度',
@@ -1401,9 +1443,11 @@ const T = {
     paywall_close: '关闭',
     paywall_prices_loading: '正在加载价格…',
     paywall_not_available: '购买不可用（Expo Go / 模拟器）。',
-    paywall_start: '开始',
+    paywall_start: '开始 — 免费7天',
     paywall_per_month: '/月',
-    paywall_try_free: '试试本月免费课程',
+    paywall_price_detail: '之后12.90 CHF/月 · 随时取消',
+    paywall_access: '立即访问所有课程 · 无需承诺',
+    paywall_try_free: '试试免费课程',
     free_try_once: '免费试用此集一次',
     free_go: '开始吧！',
     subscription_status_label: 'FluidBody+ 订阅',
@@ -1413,7 +1457,7 @@ const T = {
   },
   ja: {
     lang: 'ja', flag: '🇯🇵', nom: '日本語',
-    tabs: ['FluidBody+', '概要', 'ライブラリ', 'シェア', 'プロフィール'],
+    tabs: ['FluidBody+', '概要', 'ライブラリ', 'シェア', 'タイマー', 'プロフィール'],
     resume_title: '概要', resume_activite: 'アクティビティ', resume_bouger: '運動', resume_exercice: 'エクササイズ', resume_debout: '立位', resume_seances: 'FluidBody セッション', resume_no_seance: '完了したセッションなし', resume_progression: '進捗', resume_global: '全体', resume_streak: '連続',
     bonjour: (p) => p ? `こんにちは ${p}` : '',
     bonjour_mot: 'こんにちは',
@@ -1500,6 +1544,7 @@ const T = {
     prog_save: '保存',
     prog_saved: 'プログラムを保存しました！',
     prog_mes_programmes: 'マイプログラム',
+    prog_notif_days: 'リマインダー曜日', prog_notif_hour: 'リマインダー時間', prog_notif_body: 'セッションの時間です',
     partage_title: 'シェア', partage_progression: '進捗をシェア', partage_btn: 'シェア', partage_share_msg: 'FluidBody+ ピラティスの進捗', partage_inviter: '友達を招待', partage_invite_btn: 'SMS / メールで招待', partage_invite_msg: 'FluidBody+ ピラティスに参加しよう！', partage_en_attente: '保留中', partage_invitation: '招待', partage_defis: 'チャレンジ', partage_creer_defi: 'チャレンジを作る', partage_choisir_pilier: '柱を選ぶ', partage_duree_defi: '期間', partage_lancer: '開始',
     profil_donnees_title: 'プライバシー', profil_donnees_desc: 'データの管理方法をご覧ください。データはお使いのデバイスに保存されます。個人データが第三者サーバーに送信されることはありません。セッション、進捗、設定はローカルに保存されます。ログインした場合、プロフィール保存のためメールのみが同期されます。', profil_donnees_local: 'データはデバイスにローカル保存', profil_donnees_no_tracking: '広告トラッキングなし', profil_donnees_healthkit: 'HealthKit：読み取りのみ、共有なし',
     biblio_intro: 'FluidBody メソッドは5つの段階的ステップに基づいています。各セッションは順番に進みます。',
@@ -1533,9 +1578,10 @@ const T = {
     premium_alert_title: 'プレミアムコンテンツ',
     premium_alert_simulate: 'プランを見る',
     premium_alert_later: '後で',
-    paywall_title: 'すべての人のためのエクササイズ',
-    paywall_sub: 'すべてのレベル向けに設計された新しいエクササイズを発見。',
-    paywall_yearly_link: '年間サブスクでお得に \u203a',
+    paywall_title: 'みんなのピラティス',
+    paywall_sub: '30年の経験を持つピラティス専門家Sabrinaが指導する160セッションに無制限アクセス',
+    paywall_badge: '7日間無料',
+    paywall_yearly_link: '99 CHF/年 · 35%お得',
     paywall_monthly: '月額',
     paywall_yearly: '年額',
     paywall_buy_monthly: '月額を購入',
@@ -1544,9 +1590,11 @@ const T = {
     paywall_close: '閉じる',
     paywall_prices_loading: '価格を読み込み中…',
     paywall_not_available: '購入不可（Expo Go / シミュレーター）。',
-    paywall_start: 'はじめる',
+    paywall_start: 'はじめる — 7日間無料',
     paywall_per_month: '/月',
-    paywall_try_free: '今月の無料セッションを試す',
+    paywall_price_detail: 'その後12.90 CHF/月 · いつでもキャンセル可能',
+    paywall_access: 'すべてのコースに即時アクセス · 縛りなし',
+    paywall_try_free: '無料セッションを試す',
     free_try_once: 'このエピソードを1回無料でお試し',
     free_go: 'さあ始めよう！',
     subscription_status_label: 'FluidBody+ サブスクリプション',
@@ -1556,7 +1604,7 @@ const T = {
   },
   ko: {
     lang: 'ko', flag: '🇰🇷', nom: '한국어',
-    tabs: ['FluidBody+', '요약', '라이브러리', '공유', '프로필'],
+    tabs: ['FluidBody+', '요약', '라이브러리', '공유', '타이머', '프로필'],
     resume_title: '요약', resume_activite: '활동', resume_bouger: '움직임', resume_exercice: '운동', resume_debout: '서기', resume_seances: 'FluidBody 세션', resume_no_seance: '완료된 세션 없음', resume_progression: '진행', resume_global: '전체', resume_streak: '연속',
     bonjour: (p) => p ? `안녕하세요 ${p}` : '',
     bonjour_mot: '안녕하세요',
@@ -1643,6 +1691,7 @@ const T = {
     prog_save: '저장',
     prog_saved: '프로그램이 저장되었습니다!',
     prog_mes_programmes: '내 프로그램',
+    prog_notif_days: '알림 요일', prog_notif_hour: '알림 시간', prog_notif_body: '세션 시간입니다',
     partage_title: '공유', partage_progression: '내 진행 상황 공유', partage_btn: '공유', partage_share_msg: 'FluidBody+ 필라테스 진행 상황', partage_inviter: '친구 초대', partage_invite_btn: 'SMS / 이메일로 초대', partage_invite_msg: 'FluidBody+ 필라테스에 함께하세요!', partage_en_attente: '대기 중', partage_invitation: '초대', partage_defis: '챌린지', partage_creer_defi: '챌린지 만들기', partage_choisir_pilier: '기둥 선택', partage_duree_defi: '기간', partage_lancer: '시작',
     profil_donnees_title: '개인정보', profil_donnees_desc: '데이터가 어떻게 관리되는지 알아보세요. 데이터는 기기에 저장됩니다. 개인 데이터가 제3자 서버로 전송되지 않습니다. 세션, 진행 상황, 설정은 로컬에 저장됩니다. 로그인 시 프로필 저장을 위해 이메일만 동기화됩니다.', profil_donnees_local: '데이터는 기기에 로컬 저장', profil_donnees_no_tracking: '광고 추적 없음', profil_donnees_healthkit: 'HealthKit: 읽기 전용, 공유 안 함',
     biblio_intro: 'FluidBody 방법론은 5개의 단계적 스텝에 기반합니다. 각 세션은 순서대로 진행됩니다.',
@@ -1676,9 +1725,10 @@ const T = {
     premium_alert_title: '프리미엄 콘텐츠',
     premium_alert_simulate: '혜택 보기',
     premium_alert_later: '나중에',
-    paywall_title: '모두를 위한 운동',
-    paywall_sub: '모든 레벨을 위한 새로운 운동을 발견하세요.',
-    paywall_yearly_link: '연간 구독으로 절약하세요 \u203a',
+    paywall_title: '모두를 위한 필라테스',
+    paywall_sub: '30년 경력의 필라테스 전문가 Sabrina가 안내하는 160개 세션 무제한 이용',
+    paywall_badge: '7일 무료',
+    paywall_yearly_link: '99 CHF/년 · 35% 절약',
     paywall_monthly: '월간',
     paywall_yearly: '연간',
     paywall_buy_monthly: '월간 구매',
@@ -1687,9 +1737,11 @@ const T = {
     paywall_close: '닫기',
     paywall_prices_loading: '가격 로딩 중…',
     paywall_not_available: '구매 불가 (Expo Go / 시뮬레이터).',
-    paywall_start: '시작',
+    paywall_start: '시작 — 7일 무료',
     paywall_per_month: '/월',
-    paywall_try_free: '이달의 무료 세션 체험',
+    paywall_price_detail: '이후 12.90 CHF/월 · 언제든 해지 가능',
+    paywall_access: '모든 코스 즉시 이용 · 약정 없음',
+    paywall_try_free: '무료 세션 체험',
     free_try_once: '이 에피소드를 한 번 무료로 체험',
     free_go: '시작합시다!',
     subscription_status_label: 'FluidBody+ 구독',
@@ -3509,6 +3561,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
     });
   }
   function deleteSavedProgram(idx) {
+    var prog = savedPrograms[idx];
+    if (prog && prog.notifIds) cancelProgNotifications(prog.notifIds);
     var updated = savedPrograms.filter(function(_, i) { return i !== idx; });
     setSavedPrograms(updated);
     AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(updated));
@@ -3605,14 +3659,18 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
       >
         {mcTab === 'explorer' && sdj && (
           <TouchableOpacity onPress={function() { if (onTryFreeSession) onTryFreeSession(); }} activeOpacity={0.9} style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#AEEF4D' }}>
-            <ImageBackground source={PILIER_IMAGES[sdj.pilier.key]} resizeMode="cover" style={{ height: 100 }}>
-              <LinearGradient colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)']} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
-                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-                  <Text style={{ fontSize: 18, color: '#000000' }}>▶</Text>
+            <ImageBackground source={PILIER_IMAGES[sdj.pilier.key]} resizeMode="cover" style={{ height: 110 }}>
+              <LinearGradient colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.85)']} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
+                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                  <Text style={{ fontSize: 20, color: '#000000' }}>▶</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 10, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 3 }}>{tr.seance_gratuite || 'Séance gratuite'}</Text>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#ffffff' }}>{sdj.seance[0]}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                    <View style={{ backgroundColor: '#FF3B30', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#ffffff', letterSpacing: 1 }}>NOUVEAU</Text>
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 17, fontWeight: '700', color: '#ffffff' }}>{sdj.seance[0]}</Text>
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{sdj.pilier.label} · {sdj.seance[1]}</Text>
                 </View>
               </LinearGradient>
@@ -3767,7 +3825,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
                     onPress={function() { setOpenPilier(p); }}
                     style={{ marginBottom: 16, borderRadius: 16, overflow: "hidden", height: cardH }}
                   >
-                    <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }}>
+                    <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} imageStyle={p.key === 'p8' ? { top: -20 } : undefined}>
                       <LinearGradient colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.7)"]} style={{ flex: 1, justifyContent: "flex-end", padding: 16 }}>
                         <Text style={{ fontSize: 24, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{p.label}</Text>
                         <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{ps.length} {tr.m_seances} · {doneCount}/{ps.length}</Text>
@@ -3825,6 +3883,41 @@ function getRcPriceString(pkg) {
   return '';
 }
 
+var JOUR_LABELS = { fr: ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'], en: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], de: ['Mo','Di','Mi','Do','Fr','Sa','So'], pt: ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'], zh: ['一','二','三','四','五','六','日'], ja: ['月','火','水','木','金','土','日'], ko: ['월','화','수','목','금','토','일'], es: ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'], it: ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'] };
+
+async function scheduleProgNotifications(prog, idx, lang) {
+  if (!Notifications) return [];
+  try {
+    var status = await Notifications.requestPermissionsAsync();
+    if (status.status !== 'granted') return [];
+  } catch(e) { return []; }
+  var tr = T[lang] || T['fr'];
+  var pilierNames = getPiliers(lang).filter(function(p) { return prog.piliers.includes(p.key); }).map(function(p) { return p.label; });
+  var pilierStr = pilierNames.join(', ');
+  var hour = prog.notifHour || 8;
+  var ids = [];
+  var selectedDays = prog.selectedDays || [1, 2, 3, 4, 5];
+  for (var d = 0; d < selectedDays.length; d++) {
+    try {
+      var weekday = selectedDays[d] + 1;
+      if (weekday > 7) weekday = 1;
+      var id = await Notifications.scheduleNotificationAsync({
+        content: { title: 'FluidBody+ 💪', body: (tr.prog_notif_body || "C'est l'heure de ta séance") + ' ' + pilierStr + ' · ' + prog.duree, sound: true },
+        trigger: { weekday: weekday, hour: hour, minute: 0, repeats: true },
+      });
+      ids.push(id);
+    } catch(e) {}
+  }
+  return ids;
+}
+
+async function cancelProgNotifications(notifIds) {
+  if (!Notifications || !notifIds) return;
+  for (var i = 0; i < notifIds.length; i++) {
+    try { await Notifications.cancelScheduledNotificationAsync(notifIds[i]); } catch(e) {}
+  }
+}
+
 function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
   if (!visible) return null;
   var tr = T[lang] || T["fr"];
@@ -3833,15 +3926,24 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
   var [duree, setDuree] = useState(1);
   var [jours, setJours] = useState(3);
   var [saved, setSaved] = useState(false);
+  var [notifHour, setNotifHour] = useState(8);
+  var [selectedDays, setSelectedDays] = useState([1, 2, 3, 4, 5]);
   var dureeOptions = ['10 min', '15 min', '20 min', '30 min', '45 min'];
   var joursOptions = [2, 3, 4, 5, 6, 7];
+  var jourLabels = JOUR_LABELS[lang] || JOUR_LABELS.fr;
 
   function togglePilier(key) {
     setSelected(function(prev) { return prev.includes(key) ? prev.filter(function(k) { return k !== key; }) : [...prev, key]; });
   }
 
+  function toggleDay(d) {
+    setSelectedDays(function(prev) { return prev.includes(d) ? prev.filter(function(x) { return x !== d; }) : [].concat(prev, [d]).sort(); });
+  }
+
   async function saveProg() {
-    var prog = { piliers: selected, duree: dureeOptions[duree], jours: joursOptions[jours - 2 < 0 ? 0 : jours - 2], date: new Date().toISOString() };
+    var prog = { piliers: selected, duree: dureeOptions[duree], jours: joursOptions[jours - 2 < 0 ? 0 : jours - 2], date: new Date().toISOString(), notifHour: notifHour, selectedDays: selectedDays };
+    var notifIds = await scheduleProgNotifications(prog, 0, lang);
+    prog.notifIds = notifIds;
     try {
       var raw = await AsyncStorage.getItem('fluid_custom_programs');
       var list = raw ? JSON.parse(raw) : [];
@@ -3902,6 +4004,29 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
               );
             })}
           </ScrollView>
+
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5FF00', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_notif_days || 'Jours de rappel'}</Text>
+          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 28, flexWrap: 'wrap' }}>
+            {[1, 2, 3, 4, 5, 6, 0].map(function(d, i) {
+              var active = selectedDays.includes(d);
+              return (
+                <TouchableOpacity key={d} onPress={function() { toggleDay(d); }} style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: active ? '#E5FF00' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(229,255,0,0.12)' : 'rgba(0,18,32,0.6)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#E5FF00' : 'rgba(255,255,255,0.6)' }}>{jourLabels[i]}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5FF00', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_notif_hour || 'Heure de rappel'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 36 }}>
+            <TouchableOpacity onPress={function() { setNotifHour(Math.max(5, notifHour - 1)); }} style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.6)' }}>−</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 28, fontWeight: '700', color: '#ffffff', width: 70, textAlign: 'center' }}>{String(notifHour).padStart(2, '0')}:00</Text>
+            <TouchableOpacity onPress={function() { setNotifHour(Math.min(22, notifHour + 1)); }} style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.6)' }}>+</Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity onPress={saveProg} disabled={selected.length === 0} activeOpacity={0.85} style={{ height: 56, borderRadius: 28, backgroundColor: selected.length > 0 ? '#E5FF00' : 'rgba(229,255,0,0.2)', alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontSize: 17, fontWeight: '700', color: '#000000' }}>{saved ? tr.prog_saved : tr.prog_save}</Text>
@@ -3969,7 +4094,12 @@ function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPric
         </TouchableOpacity>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingVertical: 50, alignItems: "center" }}>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center", paddingHorizontal: 28, marginBottom: 32 }}>
+
+          <View style={{ backgroundColor: '#AEEF4D', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginBottom: 24 }}>
+            <Text style={{ fontSize: 13, fontWeight: '800', color: '#000000', letterSpacing: 1 }}>{tr.paywall_badge || '7 JOURS GRATUITS'}</Text>
+          </View>
+
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center", paddingHorizontal: 28, marginBottom: 28 }}>
             {paywallGridImages.map(function(src, i) {
               return (
                 <View key={"pw-img-" + i} style={{ width: gridItemW, height: gridItemW, borderRadius: 14, overflow: "hidden" }}>
@@ -3981,67 +4111,53 @@ function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPric
             })}
           </View>
 
-          <Text style={{ fontSize: 30, fontWeight: "800", color: "#ffffff", textAlign: "center", marginBottom: 12, paddingHorizontal: 28 }}>{tr.paywall_title}</Text>
-          <Text style={{ fontSize: 15, fontWeight: "400", color: "rgba(255,255,255,0.50)", textAlign: "center", lineHeight: 22, marginBottom: 20, paddingHorizontal: 36 }}>{tr.paywall_sub}</Text>
+          <Text style={{ fontSize: 28, fontWeight: "800", color: "#ffffff", textAlign: "center", marginBottom: 10, paddingHorizontal: 28 }}>{tr.paywall_title}</Text>
+          <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.55)", textAlign: "center", lineHeight: 21, marginBottom: 24, paddingHorizontal: 32 }}>{tr.paywall_sub}</Text>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: 28, marginBottom: 28, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 16, padding: 14 }}>
-            <View style={{ width: 56, height: 56, borderRadius: 28, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D' }}>
+            <View style={{ width: 60, height: 60, borderRadius: 30, overflow: 'hidden', borderWidth: 2.5, borderColor: '#AEEF4D' }}>
               <ImageBackground source={COACH_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '300', color: 'rgba(255,255,255,0.8)', lineHeight: 18, fontStyle: 'italic' }}>{tr.coach_quote || '"Je vous accompagne pas à pas vers un corps plus libre."'}</Text>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: '#AEEF4D', marginTop: 4 }}>{tr.coach_avec || 'Avec Sabrina'} · {tr.coach_exp || '30 ans d\'expérience'}</Text>
+              <Text style={{ fontSize: 13, fontWeight: '300', color: 'rgba(255,255,255,0.85)', lineHeight: 18, fontStyle: 'italic' }}>{tr.coach_quote || '"Je vous accompagne pas à pas vers un corps plus libre et plus fort."'}</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#AEEF4D', marginTop: 6 }}>{tr.coach_avec || 'Avec Sabrina'} · {tr.coach_exp || '30 ans d\'expérience'}</Text>
             </View>
           </View>
 
           {disabled && (
-            <View style={{ alignSelf: "stretch", marginHorizontal: 28, marginBottom: 20, backgroundColor: "rgba(255,200,80,0.10)", borderWidth: 1, borderColor: "rgba(255,200,80,0.25)", borderRadius: 16, padding: 14 }}>
+            <View style={{ alignSelf: "stretch", marginHorizontal: 28, marginBottom: 16, backgroundColor: "rgba(255,200,80,0.10)", borderWidth: 1, borderColor: "rgba(255,200,80,0.25)", borderRadius: 16, padding: 14 }}>
               <Text style={{ color: "rgba(255,220,140,0.9)", fontSize: 12, lineHeight: 18, textAlign: "center" }}>{tr.paywall_not_available}</Text>
             </View>
           )}
 
           <TouchableOpacity
-            onPress={function() { monthlyPkg && onBuyMonthly && onBuyMonthly(monthlyPkg); }}
-            disabled={disabled || loadingPrices || !monthlyPkg}
+            onPress={function() { if (monthlyPkg) { onBuyMonthly && onBuyMonthly(monthlyPkg); } else { Alert.alert('FluidBody+', 'Abonnement disponible dans la version App Store.'); } }}
+            disabled={false}
             activeOpacity={0.85}
             style={{
               alignSelf: "stretch",
               marginHorizontal: 28,
-              height: 58,
-              borderRadius: 29,
-              backgroundColor: "#E5FF00",
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: "#AEEF4D",
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: 10,
+              marginBottom: 8,
               opacity: (disabled || loadingPrices) ? 0.4 : 1,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#000000", letterSpacing: 0.5 }}>
-              {tr.paywall_start}{loadingPrices ? "" : (monthlyPrice ? " \u2014 " + monthlyPrice + tr.paywall_per_month : "")}
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#000000", letterSpacing: 0.3 }}>
+              {tr.paywall_start}
             </Text>
           </TouchableOpacity>
 
-          {!loadingPrices && monthlyPrice ? (
-            <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.40)", textAlign: "center", marginBottom: 12 }}>
-              {monthlyPrice}{tr.paywall_per_month}
-            </Text>
-          ) : null}
-
-          {showYearly && (
-            <TouchableOpacity
-              onPress={function() { yearlyPkg && onBuyYearly && onBuyYearly(yearlyPkg); }}
-              disabled={disabled || loadingPrices || !yearlyPkg}
-              activeOpacity={0.85}
-              style={{ marginBottom: 16 }}
-            >
-              <Text style={{ fontSize: 15, fontWeight: "700", color: "#ffffff", textAlign: "center" }}>
-                {tr.paywall_yearly_link || tr.paywall_buy_yearly}
-              </Text>
-            </TouchableOpacity>
-          )}
+          <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.40)", textAlign: "center", marginBottom: 16 }}>
+            {tr.paywall_price_detail || 'Puis 12.90 CHF/mois · Annulez quand vous voulez'}
+          </Text>
 
           <TouchableOpacity
-            onPress={function() { onTryFree && onTryFree(); }}
+            onPress={function() { if (yearlyPkg) { onBuyYearly && onBuyYearly(yearlyPkg); } else { Alert.alert('FluidBody+', 'Abonnement disponible dans la version App Store.'); } }}
+            disabled={false}
             activeOpacity={0.85}
             style={{
               alignSelf: "stretch",
@@ -4050,24 +4166,28 @@ function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPric
               borderRadius: 25,
               backgroundColor: "rgba(0,189,208,0.15)",
               borderWidth: 1,
-              borderColor: "rgba(0,189,208,0.4)",
+              borderColor: "#00BDD0",
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: 10,
+              marginBottom: 8,
             }}
           >
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#00BDD0", letterSpacing: 0.3 }}>
-              {tr.paywall_try_free}
+            <Text style={{ fontSize: 14, fontWeight: "700", color: "#00BDD0" }}>
+              {tr.paywall_yearly_link}
             </Text>
           </TouchableOpacity>
+
+          <Text style={{ fontSize: 11, fontWeight: "400", color: "rgba(255,255,255,0.30)", textAlign: "center", marginBottom: 20, paddingHorizontal: 40 }}>
+            {tr.paywall_access || 'Accès immédiat à tous les piliers · Sans engagement'}
+          </Text>
 
           <TouchableOpacity
             onPress={onRestore}
             disabled={disabled}
             activeOpacity={0.7}
-            style={{ marginTop: 24 }}
+            style={{ marginTop: 8 }}
           >
-            <Text style={{ fontSize: 13, fontWeight: "500", color: "rgba(255,255,255,0.30)", textAlign: "center" }}>{tr.paywall_restore}</Text>
+            <Text style={{ fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.25)", textAlign: "center" }}>{tr.paywall_restore}</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -4100,13 +4220,18 @@ function ArticleDetail({ article, onClose, lang }) {
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}>
       <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-      <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.15} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible', opacity: 0.3 }} pointerEvents="none">
+        {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
+      </View>
+      <ScrollView style={{ zIndex: 2 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
         <View style={{ paddingTop: 58, paddingHorizontal: 22 }}>
-          <TouchableOpacity onPress={onClose} style={{ marginBottom: 20 }}><Text style={{ fontSize: 10, color: 'rgba(0,205,248,0.44)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.retour_biblio}</Text></TouchableOpacity>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <TouchableOpacity onPress={onClose} style={{ paddingVertical: 6 }}><Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1 }}>{tr.retour_biblio}</Text></TouchableOpacity>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 30 }}>+</Text></Text>
+          </View>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
-            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(0,18,32,0.7)', borderWidth: 0.5, borderColor: article.color }}>
-              <Text style={{ fontSize: 9, color: article.color, letterSpacing: 1 }}>{article.duree}{tr.lire}</Text>
+            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(0,18,32,0.7)', borderWidth: 0.5, borderColor: '#AEEF4D' }}>
+              <Text style={{ fontSize: 9, color: '#AEEF4D', letterSpacing: 1 }}>{article.duree}{tr.lire}</Text>
             </View>
           </View>
           <Text style={{ fontSize: 22, fontWeight: '200', color: 'rgba(215,248,255,0.95)', lineHeight: 36, marginBottom: 20 }}>{article.titre}</Text>
@@ -4127,11 +4252,16 @@ function FicheDetail({ fiche, onClose, lang }) {
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}>
       <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-      <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.15} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible', opacity: 0.3 }} pointerEvents="none">
+        {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
+      </View>
+      <ScrollView style={{ zIndex: 2 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
         <View style={{ paddingTop: 58, paddingHorizontal: 22 }}>
-          <TouchableOpacity onPress={onClose} style={{ marginBottom: 20 }}><Text style={{ fontSize: 10, color: 'rgba(0,205,248,0.44)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.retour_biblio}</Text></TouchableOpacity>
-          <Text style={{ fontSize: 72, fontWeight: '200', color: fiche.color, opacity: 0.3, lineHeight: 80 }}>{fiche.num}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <TouchableOpacity onPress={onClose} style={{ paddingVertical: 6 }}><Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1 }}>{tr.retour_biblio}</Text></TouchableOpacity>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 30 }}>+</Text></Text>
+          </View>
+          <Text style={{ fontSize: 72, fontWeight: '200', color: '#AEEF4D', opacity: 0.3, lineHeight: 80 }}>{fiche.num}</Text>
           <Text style={{ fontSize: 32, fontWeight: '200', color: 'rgba(215,248,255,0.95)', lineHeight: 40, marginBottom: 8 }}>{fiche.etape}</Text>
           <Text style={{ fontSize: 16, fontWeight: '300', color: fiche.color, marginBottom: 24, fontStyle: 'italic' }}>{fiche.soustitre}</Text>
           <View style={{ backgroundColor: 'rgba(0,18,38,0.7)', borderWidth: 0.5, borderColor: 'rgba(0,195,240,0.15)', borderRadius: 18, padding: 20, marginBottom: 24 }}>
@@ -5484,6 +5614,349 @@ try {
 // ══════════════════════════════════
 // MAIN APP
 // ══════════════════════════════════
+// ══════════════════════════════════
+// STRETCH TIMER
+// ══════════════════════════════════
+var TIMER_BEEP = null;
+try { TIMER_BEEP = require('./assets/timer-beep.mp3'); } catch(e) {}
+
+function StretchTimerModal({ visible, onClose, lang }) {
+  var tr = T[lang] || T['fr'];
+  var [duration, setDuration] = useState(30);
+  var [reps, setReps] = useState(1);
+  var [phase, setPhase] = useState('idle');
+  var [remaining, setRemaining] = useState(0);
+  var [currentRep, setCurrentRep] = useState(1);
+  var [paused, setPaused] = useState(false);
+  var intervalRef = useRef(null);
+  var startRef = useRef(0);
+  var elapsedBeforePause = useRef(0);
+  var progressAnim = useRef(new Animated.Value(1)).current;
+  var soundRef = useRef(null);
+
+  var durations = [15, 30, 45, 60, 90, 120, 180, 300];
+  var durLabels = { 15: '15s', 30: '30s', 45: '45s', 60: '1 min', 90: '1m30', 120: '2 min', 180: '3 min', 300: '5 min' };
+
+  async function playBeep() {
+    try {
+      if (soundRef.current) { await soundRef.current.unloadAsync().catch(function() {}); }
+      if (TIMER_BEEP) {
+        var result = await Audio.Sound.createAsync(TIMER_BEEP);
+        soundRef.current = result.sound;
+        await result.sound.setVolumeAsync(1.0);
+        await result.sound.playAsync();
+      }
+    } catch(e) {}
+    hapticSuccess();
+    hapticSuccess();
+  }
+
+  function runCycle(dur, rep) {
+    setRemaining(dur);
+    setCurrentRep(rep);
+    setPhase('running');
+    setPaused(false);
+    elapsedBeforePause.current = 0;
+    startRef.current = Date.now();
+    progressAnim.setValue(1);
+    Animated.timing(progressAnim, { toValue: 0, duration: dur * 1000, easing: Easing.linear, useNativeDriver: false }).start();
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(function() {
+      var elapsed = elapsedBeforePause.current + Math.floor((Date.now() - startRef.current) / 1000);
+      var rem = dur - elapsed;
+      if (rem <= 0) {
+        clearInterval(intervalRef.current);
+        setRemaining(0);
+        playBeep();
+        if (rep < reps) {
+          setPhase('rest');
+          var restCount = 6;
+          setRemaining(restCount);
+          var restInterval = setInterval(function() {
+            restCount--;
+            setRemaining(restCount);
+            if (restCount <= 0) { clearInterval(restInterval); runCycle(dur, rep + 1); }
+          }, 1000);
+          intervalRef.current = restInterval;
+        } else {
+          setPhase('done');
+        }
+      } else {
+        setRemaining(rem);
+      }
+    }, 250);
+  }
+
+  function startTimer() { runCycle(duration, 1); }
+
+  function pauseTimer() {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    elapsedBeforePause.current += Math.floor((Date.now() - startRef.current) / 1000);
+    progressAnim.stopAnimation();
+    setPaused(true);
+  }
+
+  function resumeTimer() {
+    setPaused(false);
+    startRef.current = Date.now();
+    var rem = remaining;
+    Animated.timing(progressAnim, { toValue: 0, duration: rem * 1000, easing: Easing.linear, useNativeDriver: false }).start();
+    intervalRef.current = setInterval(function() {
+      var elapsed = elapsedBeforePause.current + Math.floor((Date.now() - startRef.current) / 1000);
+      var r = duration - elapsed;
+      if (r <= 0) {
+        clearInterval(intervalRef.current);
+        setRemaining(0);
+        playBeep();
+        if (currentRep < reps) {
+          setPhase('rest');
+          var rc = 6; setRemaining(rc);
+          var ri = setInterval(function() { rc--; setRemaining(rc); if (rc <= 0) { clearInterval(ri); runCycle(duration, currentRep + 1); } }, 1000);
+          intervalRef.current = ri;
+        } else { setPhase('done'); }
+      } else { setRemaining(r); }
+    }, 250);
+  }
+
+  function resetTimer() {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setPhase('idle');
+    setRemaining(0);
+    setCurrentRep(1);
+    setPaused(false);
+    elapsedBeforePause.current = 0;
+    progressAnim.setValue(1);
+  }
+
+  useEffect(function() { return function() { if (intervalRef.current) clearInterval(intervalRef.current); if (soundRef.current) soundRef.current.unloadAsync().catch(function() {}); }; }, []);
+
+  var circR = 100;
+  var circC = 2 * Math.PI * circR;
+  var dashOffset = progressAnim.interpolate({ inputRange: [0, 1], outputRange: [circC, 0] });
+  var remMin = Math.floor(remaining / 60);
+  var remSec = remaining % 60;
+  var isActive = phase === 'running' || phase === 'rest';
+
+  if (!visible) return null;
+  return (
+    <Modal visible animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { resetTimer(); onClose(); }}>
+      <View style={{ flex: 1 }}>
+        <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible', opacity: 0.3 }} pointerEvents="none">
+          {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
+        </View>
+
+        <FloatingMedusas />
+
+        <View style={{ paddingTop: 58, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 }}>
+          <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 30 }}>+</Text></Text>
+          <TouchableOpacity onPress={function() { resetTimer(); onClose(); }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)' }}>✕</Text></TouchableOpacity>
+        </View>
+
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 30, zIndex: 2, paddingHorizontal: 20 }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>{tr.timer_title || 'Minuteur Stretching'}</Text>
+          <Text style={{ fontSize: 12, fontWeight: '300', color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 18, marginBottom: 16, paddingHorizontal: 20 }}>{tr.timer_desc || 'Maintenez chaque étirement pendant la durée choisie. Respirez profondément et relâchez à chaque bip.'}</Text>
+          <View style={{ backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 24, padding: 28, alignItems: 'center', width: '100%' }}>
+
+            <View style={{ width: (circR + 12) * 2, height: (circR + 12) * 2, alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+              <Svg width={(circR + 12) * 2} height={(circR + 12) * 2}>
+                <Circle cx={circR + 12} cy={circR + 12} r={circR} stroke="rgba(174,239,77,0.12)" strokeWidth={6} fill="none" />
+                <AnimatedCircle cx={circR + 12} cy={circR + 12} r={circR} stroke={phase === 'rest' ? '#00BDD0' : '#AEEF4D'} strokeWidth={6} fill="none" strokeLinecap="round" strokeDasharray={circC} strokeDashoffset={isActive ? dashOffset : 0} transform={'rotate(-90 ' + (circR + 12) + ' ' + (circR + 12) + ')'} />
+              </Svg>
+              <View style={{ position: 'absolute', alignItems: 'center' }}>
+                {phase === 'rest' ? (
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: '#00BDD0', marginBottom: 4 }}>{tr.timer_rest || 'Repos'}</Text>
+                ) : null}
+                <Text style={{ fontSize: 48, fontWeight: '200', color: '#ffffff', fontVariant: ['tabular-nums'] }}>
+                  {isActive || phase === 'done' ? <>{String(remMin).padStart(2, '0')}:<Text style={{ color: '#FF3B30' }}>{String(remSec).padStart(2, '0')}</Text></> : durLabels[duration] || duration + 's'}
+                </Text>
+                {isActive && reps > 1 && <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', marginTop: 4 }}>{currentRep} / {reps}</Text>}
+                {phase === 'done' && <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', marginTop: 4 }}>{tr.timer_done || 'Terminé !'}</Text>}
+              </View>
+            </View>
+
+            {phase === 'idle' && (
+              <>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>{tr.timer_duree || 'Durée'}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20, maxHeight: 40 }} contentContainerStyle={{ gap: 8 }}>
+                  {durations.map(function(d) {
+                    var active = duration === d;
+                    return (
+                      <TouchableOpacity key={d} onPress={function() { setDuration(d); }} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.12)', backgroundColor: active ? 'rgba(174,239,77,0.15)' : 'transparent' }}>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.4)' }}>{durLabels[d]}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>{tr.timer_reps || 'Répétitions'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, marginBottom: 24 }}>
+                  <TouchableOpacity onPress={function() { setReps(Math.max(1, reps - 1)); }} style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 20, fontWeight: '300', color: 'rgba(255,255,255,0.5)' }}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={{ fontSize: 28, fontWeight: '700', color: '#ffffff', width: 50, textAlign: 'center' }}>{reps}x</Text>
+                  <TouchableOpacity onPress={function() { setReps(Math.min(10, reps + 1)); }} style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 20, fontWeight: '300', color: 'rgba(255,255,255,0.5)' }}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+            <View style={{ flexDirection: 'row', gap: 10, alignSelf: 'stretch' }}>
+            {phase === 'idle' && (
+              <TouchableOpacity onPress={startTimer} activeOpacity={0.85} style={{ flex: 1, height: 56, borderRadius: 28, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#000000', letterSpacing: 0.5 }}>START</Text>
+              </TouchableOpacity>
+            )}
+            {phase === 'running' && !paused && (
+              <TouchableOpacity onPress={pauseTimer} activeOpacity={0.85} style={{ flex: 1, height: 48, borderRadius: 24, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>PAUSE</Text>
+              </TouchableOpacity>
+            )}
+            {phase === 'running' && paused && (
+              <>
+                <TouchableOpacity onPress={resumeTimer} activeOpacity={0.85} style={{ flex: 1, height: 56, borderRadius: 28, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#000000', letterSpacing: 0.5 }}>REPRENDRE</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={resetTimer} activeOpacity={0.85} style={{ height: 56, width: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.5)' }}>↺</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {(phase === 'done' || phase === 'rest') && (
+              <TouchableOpacity onPress={resetTimer} activeOpacity={0.85} style={{ flex: 1, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#ffffff', letterSpacing: 0.5 }}>RESET</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function TimerScreenTab({ lang }) {
+  return (
+    <View style={{ flex: 1 }}>
+      <LinearGradient pointerEvents="none" colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible', opacity: 0.3 }} pointerEvents="none">
+        {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
+      </View>
+      <FloatingMedusas />
+      <StretchTimerInline lang={lang} />
+    </View>
+  );
+}
+
+function StretchTimerInline({ lang }) {
+  var tr = T[lang] || T['fr'];
+  var [duration, setDuration] = useState(30);
+  var [reps, setReps] = useState(1);
+  var [phase, setPhase] = useState('idle');
+  var [remaining, setRemaining] = useState(0);
+  var [currentRep, setCurrentRep] = useState(1);
+  var [paused, setPaused] = useState(false);
+  var intervalRef = useRef(null);
+  var startRef = useRef(0);
+  var elapsedBeforePause = useRef(0);
+  var progressAnim = useRef(new Animated.Value(1)).current;
+  var soundRef = useRef(null);
+
+  var durations = [15, 30, 45, 60, 90, 120, 180, 300];
+  var durLabels = { 15: '15s', 30: '30s', 45: '45s', 60: '1 min', 90: '1m30', 120: '2 min', 180: '3 min', 300: '5 min' };
+
+  async function playBeep() {
+    try { if (soundRef.current) await soundRef.current.unloadAsync().catch(function() {}); if (TIMER_BEEP) { var r = await Audio.Sound.createAsync(TIMER_BEEP); soundRef.current = r.sound; await r.sound.setVolumeAsync(1.0); await r.sound.playAsync(); } } catch(e) {}
+    hapticSuccess(); hapticSuccess();
+  }
+
+  function runCycle(dur, rep) {
+    setRemaining(dur); setCurrentRep(rep); setPhase('running'); setPaused(false); elapsedBeforePause.current = 0; startRef.current = Date.now();
+    progressAnim.setValue(1); Animated.timing(progressAnim, { toValue: 0, duration: dur * 1000, easing: Easing.linear, useNativeDriver: false }).start();
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(function() {
+      var el = elapsedBeforePause.current + Math.floor((Date.now() - startRef.current) / 1000); var rem = dur - el;
+      if (rem <= 0) { clearInterval(intervalRef.current); setRemaining(0); playBeep();
+        if (rep < reps) { setPhase('rest'); var rc = 6; setRemaining(rc); var ri = setInterval(function() { rc--; setRemaining(rc); if (rc <= 0) { clearInterval(ri); runCycle(dur, rep + 1); } }, 1000); intervalRef.current = ri; }
+        else { setPhase('done'); }
+      } else { setRemaining(rem); }
+    }, 250);
+  }
+
+  function startTimer() { runCycle(duration, 1); }
+  function pauseTimer() { if (intervalRef.current) clearInterval(intervalRef.current); elapsedBeforePause.current += Math.floor((Date.now() - startRef.current) / 1000); progressAnim.stopAnimation(); setPaused(true); }
+  function resumeTimer() { setPaused(false); startRef.current = Date.now(); Animated.timing(progressAnim, { toValue: 0, duration: remaining * 1000, easing: Easing.linear, useNativeDriver: false }).start();
+    intervalRef.current = setInterval(function() { var el = elapsedBeforePause.current + Math.floor((Date.now() - startRef.current) / 1000); var r = duration - el;
+      if (r <= 0) { clearInterval(intervalRef.current); setRemaining(0); playBeep(); if (currentRep < reps) { setPhase('rest'); var rc = 6; setRemaining(rc); var ri = setInterval(function() { rc--; setRemaining(rc); if (rc <= 0) { clearInterval(ri); runCycle(duration, currentRep + 1); } }, 1000); intervalRef.current = ri; } else { setPhase('done'); } } else { setRemaining(r); }
+    }, 250);
+  }
+  function resetTimer() { if (intervalRef.current) clearInterval(intervalRef.current); setPhase('idle'); setRemaining(0); setCurrentRep(1); setPaused(false); elapsedBeforePause.current = 0; progressAnim.setValue(1); }
+  useEffect(function() { return function() { if (intervalRef.current) clearInterval(intervalRef.current); if (soundRef.current) soundRef.current.unloadAsync().catch(function() {}); }; }, []);
+
+  var circR = 90; var circC = 2 * Math.PI * circR;
+  var dashOffset = progressAnim.interpolate({ inputRange: [0, 1], outputRange: [circC, 0] });
+  var remMin = Math.floor(remaining / 60); var remSec = remaining % 60;
+  var isActive = phase === 'running' || phase === 'rest';
+
+  return (
+    <ScrollView style={{ flex: 1, zIndex: 2 }} contentContainerStyle={{ paddingTop: 62, paddingBottom: 120, alignItems: 'center' }} showsVerticalScrollIndicator={false}>
+      <View style={{ paddingHorizontal: 20, alignSelf: 'stretch', marginBottom: 16 }}>
+        <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</Text></Text>
+        <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.timer_title || 'Minuteur Stretching'}</Text>
+      </View>
+      <Text style={{ fontSize: 12, fontWeight: '300', color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 18, marginBottom: 20, paddingHorizontal: 32 }}>{tr.timer_desc || 'Maintenez chaque étirement pendant la durée choisie. Respirez profondément et relâchez à chaque bip.'}</Text>
+
+      <View style={{ backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 24, padding: 24, alignItems: 'center', marginHorizontal: 20, alignSelf: 'stretch' }}>
+        <View style={{ width: (circR + 10) * 2, height: (circR + 10) * 2, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <Svg width={(circR + 10) * 2} height={(circR + 10) * 2}>
+            <Circle cx={circR + 10} cy={circR + 10} r={circR} stroke="rgba(174,239,77,0.12)" strokeWidth={5} fill="none" />
+            <AnimatedCircle cx={circR + 10} cy={circR + 10} r={circR} stroke={phase === 'rest' ? '#00BDD0' : '#AEEF4D'} strokeWidth={5} fill="none" strokeLinecap="round" strokeDasharray={circC} strokeDashoffset={isActive ? dashOffset : 0} transform={'rotate(-90 ' + (circR + 10) + ' ' + (circR + 10) + ')'} />
+          </Svg>
+          <View style={{ position: 'absolute', alignItems: 'center' }}>
+            {phase === 'rest' && <Text style={{ fontSize: 14, fontWeight: '600', color: '#00BDD0', marginBottom: 4 }}>{tr.timer_rest || 'Repos'}</Text>}
+            <Text style={{ fontSize: 44, fontWeight: '200', color: '#ffffff', fontVariant: ['tabular-nums'] }}>
+              {isActive || phase === 'done' ? <>{String(remMin).padStart(2, '0')}:<Text style={{ color: '#FF3B30' }}>{String(remSec).padStart(2, '0')}</Text></> : durLabels[duration] || duration + 's'}
+            </Text>
+            {isActive && reps > 1 && <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D', marginTop: 4 }}>{currentRep} / {reps}</Text>}
+            {phase === 'done' && <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D', marginTop: 4 }}>{tr.timer_done || 'Terminé !'}</Text>}
+          </View>
+        </View>
+
+        {phase === 'idle' && (
+          <>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>{tr.timer_duree || 'Durée'}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 18, maxHeight: 38 }} contentContainerStyle={{ gap: 6 }}>
+              {durations.map(function(d) { var active = duration === d; return (
+                <TouchableOpacity key={d} onPress={function() { setDuration(d); }} style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 14, borderWidth: 1, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.12)', backgroundColor: active ? 'rgba(174,239,77,0.15)' : 'transparent' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.4)' }}>{durLabels[d]}</Text>
+                </TouchableOpacity>);
+              })}
+            </ScrollView>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>{tr.timer_reps || 'Répétitions'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+              <TouchableOpacity onPress={function() { setReps(Math.max(1, reps - 1)); }} style={{ width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.5)' }}>−</Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 24, fontWeight: '700', color: '#ffffff', width: 45, textAlign: 'center' }}>{reps}x</Text>
+              <TouchableOpacity onPress={function() { setReps(Math.min(10, reps + 1)); }} style={{ width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.5)' }}>+</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        <View style={{ flexDirection: 'row', gap: 10, alignSelf: 'stretch' }}>
+          {phase === 'idle' && <TouchableOpacity onPress={startTimer} activeOpacity={0.85} style={{ flex: 1, height: 50, borderRadius: 25, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 16, fontWeight: '800', color: '#000000' }}>START</Text></TouchableOpacity>}
+          {phase === 'running' && !paused && <TouchableOpacity onPress={pauseTimer} activeOpacity={0.85} style={{ flex: 1, height: 48, borderRadius: 24, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>PAUSE</Text></TouchableOpacity>}
+          {phase === 'running' && paused && <><TouchableOpacity onPress={resumeTimer} activeOpacity={0.85} style={{ flex: 1, height: 50, borderRadius: 25, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 16, fontWeight: '800', color: '#000000' }}>REPRENDRE</Text></TouchableOpacity><TouchableOpacity onPress={resetTimer} activeOpacity={0.85} style={{ height: 50, width: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>↺</Text></TouchableOpacity></>}
+          {(phase === 'done' || phase === 'rest') && <TouchableOpacity onPress={resetTimer} activeOpacity={0.85} style={{ flex: 1, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 16, fontWeight: '800', color: '#ffffff' }}>RESET</Text></TouchableOpacity>}
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
 function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
   const tr = T[lang] || T['fr'];
   const [done, setDone] = useState({
@@ -5497,6 +5970,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
   const [freeVideoPlaying, setFreeVideoPlaying] = useState(false);
   const [showFirstSeanceModal, setShowFirstSeanceModal] = useState(false);
   const [showAuthScreen, setShowAuthScreen] = useState(false);
+  const [showStretchTimer, setShowStretchTimer] = useState(false);
   const [rcPackagesByProductId, setRcPackagesByProductId] = useState({});
   const [rcLoadingPrices, setRcLoadingPrices] = useState(false);
 
@@ -5776,9 +6250,11 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
           <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={function() { setShowAuthScreen(true); }} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconPartage {...props} /> }}>{() => <PartageScreen done={done} lang={lang} streak={streak} prenom={prenom} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[4]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} lang={lang} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[4]} options={{ tabBarIcon: (props) => <TabIconTimer {...props} /> }}>{() => <TimerScreenTab lang={lang} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[5]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} lang={lang} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} />}</Tab.Screen>
         </Tab.Navigator>
       </NavigationContainer>
+      <StretchTimerModal visible={showStretchTimer} onClose={function() { setShowStretchTimer(false); }} lang={lang} />
     </>
   );
 }
