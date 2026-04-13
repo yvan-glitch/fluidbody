@@ -4477,44 +4477,101 @@ var BODY_ZONES = [
 
 function BodyMapVisual({ done, lang }) {
   var piliers = getPiliers(lang);
+  function zoneColor(key) {
+    var count = (done[key] || []).filter(Boolean).length;
+    var p = count / 20;
+    if (p === 0) return 'rgba(255,70,70,0.3)';
+    if (p < 0.25) return 'rgba(255,140,60,0.45)';
+    if (p < 0.5) return 'rgba(255,210,60,0.5)';
+    if (p < 0.75) return 'rgba(174,239,77,0.55)';
+    return 'rgba(174,239,77,0.8)';
+  }
+  function zonePct(key) { return ((done[key] || []).filter(Boolean).length / 20 * 100).toFixed(0); }
+  var tr = T[lang] || T['fr'];
   return (
     <View style={{ alignItems: 'center' }}>
-      <Svg width={160} height={180} viewBox="0 0 80 90">
-        {/* Tête */}
-        <Circle cx="40" cy="14" r="8" fill="rgba(255,255,255,0.08)" stroke="rgba(174,239,77,0.3)" strokeWidth={0.8} />
-        {/* Cou */}
-        <Rect x="38" y="22" width="4" height="6" fill="rgba(255,255,255,0.06)" rx="1" />
-        {/* Corps outline */}
-        <Path d="M28 28Q22 32 20 42L22 62L28 78L32 86L36 86L38 80L40 86L42 80L44 86L48 86L52 78L58 62L60 42Q58 32 52 28L46 26L40 24L34 26Z" fill="rgba(255,255,255,0.04)" stroke="rgba(174,239,77,0.15)" strokeWidth={0.6} />
-        {/* Bras gauche */}
-        <Path d="M28 34L18 50L16 60L20 60L22 52L28 42" fill="rgba(255,255,255,0.04)" stroke="rgba(174,239,77,0.12)" strokeWidth={0.5} />
-        {/* Bras droit */}
-        <Path d="M52 34L62 50L64 60L60 60L58 52L52 42" fill="rgba(255,255,255,0.04)" stroke="rgba(174,239,77,0.12)" strokeWidth={0.5} />
-        {/* Zones colorées selon progression */}
-        {piliers.map(function(p) {
-          var count = (done[p.key] || []).filter(Boolean).length;
-          var pctZone = count / 20;
-          var zone = BODY_ZONES.find(function(z) { return z.key === p.key; });
-          if (!zone) return null;
-          var color = pctZone === 0 ? 'rgba(255,60,60,0.25)' : pctZone < 0.3 ? 'rgba(255,180,60,0.35)' : pctZone < 0.6 ? 'rgba(174,239,77,0.4)' : 'rgba(174,239,77,0.7)';
-          return (
-            <G key={p.key}>
-              <Path d={zone.path} fill={color} />
-              {pctZone > 0 && <Circle cx={zone.cx} cy={zone.cy} r={2} fill="#AEEF4D" opacity={pctZone} />}
-            </G>
-          );
-        })}
-        {/* Tête couleur p1 (épaules liées) */}
-        <Circle cx="40" cy="14" r="7" fill={((done.p1 || []).filter(Boolean).length / 20) > 0.3 ? 'rgba(174,239,77,0.3)' : 'rgba(255,60,60,0.15)'} />
-      </Svg>
-      <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 0 }}>
+        {/* Labels gauche */}
+        <View style={{ width: 65, paddingTop: 30, gap: 2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p1') }} />
+            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p1'})||{}).label} {zonePct('p1')}%</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p2') }} />
+            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p2'})||{}).label} {zonePct('p2')}%</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p4') }} />
+            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p4'})||{}).label} {zonePct('p4')}%</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p8') }} />
+            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p8'})||{}).label} {zonePct('p8')}%</Text>
+          </View>
+        </View>
+        {/* Silhouette */}
+        <Svg width={120} height={220} viewBox="0 0 120 260">
+          {/* Tête */}
+          <Ellipse cx="60" cy="22" rx="14" ry="16" fill="rgba(255,255,255,0.06)" stroke="rgba(174,239,77,0.25)" strokeWidth={1} />
+          {/* Cou */}
+          <Path d="M54 38L54 48L66 48L66 38" fill="rgba(255,255,255,0.04)" stroke="rgba(174,239,77,0.15)" strokeWidth={0.8} />
+          {/* Épaules p1 */}
+          <Path d="M54 48Q42 48 30 56L26 62L34 62Q40 54 54 52Z" fill={zoneColor('p1')} stroke="rgba(174,239,77,0.2)" strokeWidth={0.6} />
+          <Path d="M66 48Q78 48 90 56L94 62L86 62Q80 54 66 52Z" fill={zoneColor('p1')} stroke="rgba(174,239,77,0.2)" strokeWidth={0.6} />
+          {/* Torse / Dos p2 */}
+          <Path d="M42 52L38 80L42 100L50 104L60 106L70 104L78 100L82 80L78 52Z" fill={zoneColor('p2')} stroke="rgba(174,239,77,0.2)" strokeWidth={0.6} />
+          {/* Centre / Posture p4 overlay */}
+          <Path d="M50 65L48 85L52 95L60 98L68 95L72 85L70 65Z" fill={zoneColor('p4')} opacity={0.5} />
+          {/* Ligne colonne vertébrale */}
+          <Line x1="60" y1="48" x2="60" y2="106" stroke="rgba(174,239,77,0.15)" strokeWidth={0.5} strokeDasharray="3 2" />
+          {/* Bras gauche */}
+          <Path d="M30 56L22 72L18 90L14 108L18 110L22 108L24 92L28 76L34 62" fill="rgba(255,255,255,0.03)" stroke="rgba(174,239,77,0.18)" strokeWidth={0.7} strokeLinejoin="round" />
+          {/* Bras droit */}
+          <Path d="M90 56L98 72L102 90L106 108L102 110L98 108L96 92L92 76L86 62" fill="rgba(255,255,255,0.03)" stroke="rgba(174,239,77,0.18)" strokeWidth={0.7} strokeLinejoin="round" />
+          {/* Bassin / Hanches p3 */}
+          <Path d="M42 100L38 112L42 120L52 124L60 126L68 124L78 120L82 112L78 100Z" fill={zoneColor('p3')} stroke="rgba(174,239,77,0.2)" strokeWidth={0.6} />
+          {/* Jambe gauche */}
+          <Path d="M46 124L42 158L40 190L38 218L36 240L42 242L44 220L46 192L48 162L52 126" fill="rgba(255,255,255,0.03)" stroke="rgba(174,239,77,0.18)" strokeWidth={0.7} />
+          {/* Jambe droite */}
+          <Path d="M74 124L78 158L80 190L82 218L84 240L78 242L76 220L74 192L72 162L68 126" fill="rgba(255,255,255,0.03)" stroke="rgba(174,239,77,0.18)" strokeWidth={0.7} />
+          {/* Office overlay bassin */}
+          <Ellipse cx="60" cy="112" rx="12" ry="6" fill={zoneColor('p8')} opacity={0.4} />
+          {/* Points lumineux sur zones actives */}
+          {(done.p1||[]).filter(Boolean).length > 0 && <Circle cx="38" cy="55" r="3" fill="#AEEF4D" opacity={0.6} />}
+          {(done.p1||[]).filter(Boolean).length > 0 && <Circle cx="82" cy="55" r="3" fill="#AEEF4D" opacity={0.6} />}
+          {(done.p2||[]).filter(Boolean).length > 0 && <Circle cx="60" cy="75" r="3" fill="#AEEF4D" opacity={0.6} />}
+          {(done.p3||[]).filter(Boolean).length > 0 && <Circle cx="60" cy="115" r="3" fill="#AEEF4D" opacity={0.6} />}
+          {(done.p4||[]).filter(Boolean).length > 0 && <Circle cx="60" cy="85" r="2.5" fill="#AEEF4D" opacity={0.5} />}
+        </Svg>
+        {/* Labels droite */}
+        <View style={{ width: 65, paddingTop: 30, gap: 2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18, justifyContent: 'flex-end' }}>
+            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{zonePct('p3')}% {(piliers.find(function(x){return x.key==='p3'})||{}).label}</Text>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p3') }} />
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18, justifyContent: 'flex-end' }}>
+            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{zonePct('p5')}% {(piliers.find(function(x){return x.key==='p5'})||{}).label}</Text>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p5') }} />
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18, justifyContent: 'flex-end' }}>
+            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{zonePct('p6')}% {(piliers.find(function(x){return x.key==='p6'})||{}).label}</Text>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p6') }} />
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{zonePct('p7')}% {(piliers.find(function(x){return x.key==='p7'})||{}).label}</Text>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p7') }} />
+          </View>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 16, marginTop: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,60,60,0.4)' }} />
-          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>À travailler</Text>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,70,70,0.4)' }} />
+          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>{tr.body_neglected || 'À travailler'}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,180,60,0.5)' }} />
-          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>En progrès</Text>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,210,60,0.6)' }} />
+          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>{tr.body_progress || 'En progrès'}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#AEEF4D' }} />
