@@ -129,21 +129,21 @@ var BODY_ZONES = [
 function BodyMapVisual({ done, lang }) {
   var piliers = getPiliers(lang);
   function zoneColor(key) {
-    var count = (done[key] || []).filter(Boolean).length;
-    var p = count / 20;
+    var count = Math.min((done[key] || []).filter(Boolean).length, 5);
+    var p = count / 5;
     if (p === 0) return 'rgba(255,70,70,0.3)';
-    if (p < 0.25) return 'rgba(255,140,60,0.45)';
-    if (p < 0.5) return 'rgba(255,210,60,0.5)';
-    if (p < 0.75) return 'rgba(174,239,77,0.55)';
+    if (p < 0.4) return 'rgba(255,140,60,0.45)';
+    if (p < 0.8) return 'rgba(255,210,60,0.5)';
+    if (p < 1) return 'rgba(174,239,77,0.55)';
     return 'rgba(174,239,77,0.8)';
   }
-  function zonePct(key) { return ((done[key] || []).filter(Boolean).length / 20 * 100).toFixed(0); }
+  function zonePct(key) { return (Math.min((done[key] || []).filter(Boolean).length, 5) / 5 * 100).toFixed(0); }
   var tr = T[lang] || T['fr'];
   return (
     <View style={{ alignItems: 'center' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 0 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
         {/* Labels gauche */}
-        <View style={{ width: 80, paddingTop: 30, gap: 2 }}>
+        <View style={{ width: 90, paddingTop: 30, paddingRight: 4, gap: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18 }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p1') }} />
             <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p1'})||{}).label} {zonePct('p1')}%</Text>
@@ -196,7 +196,7 @@ function BodyMapVisual({ done, lang }) {
           </View>
         </View>
         {/* Labels droite */}
-        <View style={{ width: 80, paddingTop: 30, gap: 2 }}>
+        <View style={{ width: 90, paddingTop: 30, paddingLeft: 4, gap: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18, justifyContent: 'flex-end' }}>
             <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{zonePct('p3')}% {(piliers.find(function(x){return x.key==='p3'})||{}).label}</Text>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p3') }} />
@@ -405,9 +405,12 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
               </View>
               <Text style={{ fontSize: 12, fontWeight: '300', color: 'rgba(255,255,255,0.5)', marginTop: 10, textAlign: 'center', fontStyle: 'italic' }}>{motiv}</Text>
               {!meduseName && !showNameInput && (
-                <TouchableOpacity onPress={function() { setShowNameInput(true); }} activeOpacity={0.85} style={{ marginTop: 14, paddingVertical: 8, paddingHorizontal: 20, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#AEEF4D' }}>{tr.meduse_name_btn || 'Donne-lui un nom'}</Text>
-                </TouchableOpacity>
+                <View style={{ alignItems: 'center', marginTop: 14 }}>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 10, lineHeight: 18 }}>{tr.meduse_name_hint || 'Ta m\u00E9duse \u00E9volue avec toi.\nDonne-lui un nom pour la personnaliser !'}</Text>
+                  <TouchableOpacity onPress={function() { setShowNameInput(true); }} activeOpacity={0.85} style={{ paddingVertical: 8, paddingHorizontal: 20, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#AEEF4D' }}>{tr.meduse_name_btn || 'Donne-lui un nom'}</Text>
+                  </TouchableOpacity>
+                </View>
               )}
               {showNameInput && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, alignSelf: 'stretch' }}>
@@ -419,7 +422,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
               )}
               {meduseName && (
                 <TouchableOpacity onPress={function() { setShowNameInput(true); setNameInput(meduseName); }} activeOpacity={0.7} style={{ marginTop: 6 }}>
-                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{tr.meduse_rename || 'Renommer'}</Text>
+                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>{tr.meduse_rename || 'Renommer'}</Text>
                 </TouchableOpacity>
               )}
             </View>

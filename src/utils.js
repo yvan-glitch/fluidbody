@@ -37,6 +37,7 @@ function getPiliers(lang) {
 
 function canAccessSeanceIndex(idx, isSubscriber) {
   if (idx >= 5) return false; // séances 6-20 coming soon
+  if (idx === 0) return true; // séance 1 gratuite pour tous
   return isSubscriber;
 }
 

@@ -223,7 +223,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
         );
       })}
       <View style={{ paddingTop: 54, paddingHorizontal: 22, paddingBottom: 10 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 10 }}>
           <Text style={{ fontSize: 22, fontWeight: '900', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</Text></Text>
         </View>
         <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }} style={{ marginBottom: 8 }}>
@@ -252,9 +252,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
               <View key={i} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 12, height: 110 }}>
                 <ImageBackground source={PILIER_IMAGES[pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
                   <LinearGradient colors={['rgba(0,14,24,0.55)', 'rgba(0,14,24,0.8)']} style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
-                    <View style={{ alignItems: 'flex-start', marginBottom: 6 }}>
-                      <Text style={{ fontSize: 10, fontWeight: '900', color: 'rgba(255,255,255,0.25)' }}>FLUIDBODY<Text style={{ color: 'rgba(174,239,77,0.3)' }}>+</Text></Text>
-                    </View>
+                    <Text style={{ fontSize: 10, fontWeight: '900', color: 'rgba(255,255,255,0.25)', alignSelf: 'flex-end', marginBottom: 6 }}>FLUIDBODY<Text style={{ color: 'rgba(174,239,77,0.3)' }}>+</Text></Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                       <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
                         <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.15)' }}>{'\u25B6'}</Text>
@@ -269,8 +267,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                       <Text style={{ fontSize: 13, color: 'rgba(174,239,77,0.2)', fontWeight: '300' }}>{String(i + 1).padStart(2, '0')}</Text>
                     </View>
                   </LinearGradient>
-                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 12 }}>
-                    <MeduseCornerIcon size={50} breathCycleMs={3000} breathMaxScale={1.2} tint="rgba(174,239,77,1)" />
+                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D' }}>{tr.coming_soon || 'Bient\u00F4t disponible'}</Text>
                   </View>
                 </ImageBackground>
@@ -281,9 +278,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
             <TouchableOpacity key={i} onPress={() => tryOpenSeance(i)} activeOpacity={0.88} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 12, height: 110, opacity: locked ? 0.4 : 1 }}>
               <ImageBackground source={PILIER_IMAGES[pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
                 <LinearGradient colors={isDone ? ['rgba(0,30,22,0.75)', 'rgba(0,30,22,0.85)'] : locked ? ['rgba(0,14,24,0.75)', 'rgba(0,14,24,0.9)'] : ['rgba(0,14,24,0.55)', 'rgba(0,14,24,0.8)']} style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
-                  <View style={{ alignItems: 'flex-start', marginBottom: 6 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '900', color: '#ffffff' }}>FLUIDBODY<Text style={{ color: '#AEEF4D' }}>+</Text></Text>
-                  </View>
+                  <Text style={{ fontSize: 10, fontWeight: '900', color: '#ffffff', alignSelf: 'flex-end', marginBottom: 6 }}>FLUIDBODY<Text style={{ color: '#AEEF4D' }}>+</Text></Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
                       <Text style={{ fontSize: 18, color: isDone ? '#AEEF4D' : '#ffffff' }}>{isDone ? '\u2713' : '\u25B6'}</Text>
@@ -293,6 +288,9 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                         <Text style={{ fontSize: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,189,208,0.15)', color: '#00BDD0', letterSpacing: 0.5 }}>{tr.etapes[etape] || etape}</Text>
                         <Text style={{ fontSize: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)', color: '#ffffff' }}>{duree}</Text>
+                        {i === 0 && !isSubscriber ? (
+                          <Text style={{ fontSize: 9, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,189,208,0.2)', color: '#00BDD0', fontWeight: '700', letterSpacing: 0.5 }}>{tr.gratuit_badge || 'GRATUIT'}</Text>
+                        ) : null}
                         {resumeIndices.has(i) && !locked ? (
                           <Text style={{ fontSize: 9, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(174,239,77,0.15)', color: '#AEEF4D', fontWeight: '600' }}>{tr.reprise_badge}</Text>
                         ) : null}
