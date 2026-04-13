@@ -76,6 +76,10 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
             </View>
           )}
 
+          <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.50)", textAlign: "center", marginBottom: 14, paddingHorizontal: 40 }}>
+            {tr.paywall_free_seance || '1 s\u00E9ance gratuite par pilier \u00B7 sans carte bleue'}
+          </Text>
+
           <TouchableOpacity
             onPress={function() { if (monthlyPkg) { onBuyMonthly && onBuyMonthly(monthlyPkg); } else { Alert.alert('FluidBody+', 'Abonnement disponible dans la version App Store.'); } }}
             disabled={false}
