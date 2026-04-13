@@ -143,22 +143,22 @@ function BodyMapVisual({ done, lang }) {
     <View style={{ alignItems: 'center' }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 0 }}>
         {/* Labels gauche */}
-        <View style={{ width: 65, paddingTop: 30, gap: 2 }}>
+        <View style={{ width: 80, paddingTop: 30, gap: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18 }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p1') }} />
-            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p1'})||{}).label} {zonePct('p1')}%</Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p1'})||{}).label} {zonePct('p1')}%</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18 }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p2') }} />
-            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p2'})||{}).label} {zonePct('p2')}%</Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p2'})||{}).label} {zonePct('p2')}%</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18 }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p4') }} />
-            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p4'})||{}).label} {zonePct('p4')}%</Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p4'})||{}).label} {zonePct('p4')}%</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p8') }} />
-            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p8'})||{}).label} {zonePct('p8')}%</Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p8'})||{}).label} {zonePct('p8')}%</Text>
           </View>
         </View>
         {/* Mannequin image + zones colorées */}
@@ -179,8 +179,8 @@ function BodyMapVisual({ done, lang }) {
           <Ellipse cx="36" cy="82" rx="5" ry="12" fill={zoneColor('p5')} opacity={0.35} />
           <Ellipse cx="64" cy="82" rx="5" ry="12" fill={zoneColor('p5')} opacity={0.35} />
           {/* Bras p7 */}
-          <Ellipse cx="24" cy="80" rx="5" ry="18" fill={zoneColor('p7')} opacity={0.45} />
-          <Ellipse cx="76" cy="80" rx="5" ry="18" fill={zoneColor('p7')} opacity={0.45} />
+          <Ellipse cx="24" cy="72" rx="5" ry="14" fill={zoneColor('p7')} opacity={0.45} />
+          <Ellipse cx="76" cy="72" rx="5" ry="14" fill={zoneColor('p7')} opacity={0.45} />
           {/* Avant-bras p8 */}
           <Ellipse cx="22" cy="115" rx="4" ry="14" fill={zoneColor('p8')} opacity={0.35} />
           <Ellipse cx="78" cy="115" rx="4" ry="14" fill={zoneColor('p8')} opacity={0.35} />
@@ -196,21 +196,21 @@ function BodyMapVisual({ done, lang }) {
           </View>
         </View>
         {/* Labels droite */}
-        <View style={{ width: 65, paddingTop: 30, gap: 2 }}>
+        <View style={{ width: 80, paddingTop: 30, gap: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18, justifyContent: 'flex-end' }}>
-            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{zonePct('p3')}% {(piliers.find(function(x){return x.key==='p3'})||{}).label}</Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{zonePct('p3')}% {(piliers.find(function(x){return x.key==='p3'})||{}).label}</Text>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p3') }} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18, justifyContent: 'flex-end' }}>
-            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{zonePct('p5')}% {(piliers.find(function(x){return x.key==='p5'})||{}).label}</Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{zonePct('p5')}% {(piliers.find(function(x){return x.key==='p5'})||{}).label}</Text>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p5') }} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 18, justifyContent: 'flex-end' }}>
-            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{zonePct('p6')}% {(piliers.find(function(x){return x.key==='p6'})||{}).label}</Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{zonePct('p6')}% {(piliers.find(function(x){return x.key==='p6'})||{}).label}</Text>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p6') }} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
-            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{zonePct('p7')}% {(piliers.find(function(x){return x.key==='p7'})||{}).label}</Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{zonePct('p7')}% {(piliers.find(function(x){return x.key==='p7'})||{}).label}</Text>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: zoneColor('p7') }} />
           </View>
         </View>
@@ -218,15 +218,15 @@ function BodyMapVisual({ done, lang }) {
       <View style={{ flexDirection: 'row', gap: 16, marginTop: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,70,70,0.4)' }} />
-          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>{tr.body_neglected || 'À travailler'}</Text>
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{tr.body_neglected || 'À travailler'}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,210,60,0.6)' }} />
-          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>{tr.body_progress || 'En progrès'}</Text>
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{tr.body_progress || 'En progrès'}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#AEEF4D' }} />
-          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Maîtrisé</Text>
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Maîtrisé</Text>
         </View>
       </View>
     </View>

@@ -565,27 +565,6 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         contentContainerStyle={{ paddingTop: 170, paddingBottom: 120, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
       >
-        {mcTab === 'pour_vous' && (
-          <TouchableOpacity onPress={function() { var p = piliers.find(function(x) { return x.key === 'p8'; }); if (p) setOpenPilier(p); }} activeOpacity={0.9} style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,206,209,0.5)' }}>
-            <LinearGradient colors={['rgba(0,206,209,0.2)', 'rgba(0,18,38,0.8)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 }}>
-              <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,206,209,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                  <Path d="M4 18h16M6 18V10c0-1 1-2 2-2h8c1 0 2 1 2 2v8" stroke="#00CED1" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
-                  <Circle cx="12" cy="5" r="3" stroke="#00CED1" strokeWidth={1.5} />
-                  <Path d="M9 14h6" stroke="#00CED1" strokeWidth={1.4} strokeLinecap="round" />
-                </Svg>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 10, color: '#00CED1', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 2 }}>{tr.pause_bureau_tag || 'Pause active'}</Text>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff' }}>{tr.pause_bureau_title || '5 min au bureau'}</Text>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{tr.pause_bureau_sub || '\u00C9tire-toi sans quitter ta chaise'}</Text>
-              </View>
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#00CED1', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 16, color: '#000' }}>{'\u25B6'}</Text>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
         {mcTab === 'explorer' && sdj && (
           <TouchableOpacity onPress={function() { if (onTryFreeSession) onTryFreeSession(); }} activeOpacity={0.9} style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#AEEF4D' }}>
             <ImageBackground source={PILIER_IMAGES[sdj.pilier.key]} resizeMode="cover" style={{ height: 110 }}>
@@ -667,6 +646,25 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         })()}
         {mcTab === 'programmes' && (
           <View key="programmes">
+            <TouchableOpacity onPress={function() { var p = piliers.find(function(x) { return x.key === 'p8'; }); if (p) setOpenPilier(p); }} activeOpacity={0.9} style={{ marginBottom: 20, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,206,209,0.5)' }}>
+              <LinearGradient colors={['rgba(0,206,209,0.2)', 'rgba(0,18,38,0.8)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 }}>
+                <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,206,209,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path d="M4 18h16M6 18V10c0-1 1-2 2-2h8c1 0 2 1 2 2v8" stroke="#00CED1" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+                    <Circle cx="12" cy="5" r="3" stroke="#00CED1" strokeWidth={1.5} />
+                    <Path d="M9 14h6" stroke="#00CED1" strokeWidth={1.4} strokeLinecap="round" />
+                  </Svg>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 10, color: '#00CED1', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 2 }}>{tr.pause_bureau_tag || 'Pause active'}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff' }}>{tr.pause_bureau_title || '5 min au bureau'}</Text>
+                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{tr.pause_bureau_sub || '\u00C9tire-toi sans quitter ta chaise'}</Text>
+                </View>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#00CED1', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 16, color: '#000' }}>{'\u25B6'}</Text>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
             <Text style={{ fontSize: 22, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_section_title}</Text>
             <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.45)", lineHeight: 18, marginBottom: 14 }}>{tr.prog_section_sub}</Text>
             <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 20, height: 230, borderWidth: 1, borderColor: '#AEEF4D' }}>
