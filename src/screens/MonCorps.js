@@ -8,7 +8,7 @@ import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES } from '../constants/
 import { Bulle, Rayon, MeduseCornerIcon, BULLES, BULLES_MONCORPS } from '../components/Meduse';
 import VideoPlayer from '../components/VideoPlayer';
 import PilierCard from '../components/PilierCard';
-import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight } from '../utils';
+import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, isComingSoon, getResumeIndicesForPilier, hapticLight } from '../utils';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
@@ -166,7 +166,8 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
   }, [pilier.key, activeVideo]);
 
   function tryOpenSeance(i) {
-    if (i !== sdjIndex && !canAccessSeanceIndex(i, isSubscriber)) {
+    if (isComingSoon(i)) return;
+    if (!canAccessSeanceIndex(i, isSubscriber)) {
       onActivateSubscription?.();
       return;
     }
@@ -223,45 +224,82 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       })}
       <View style={{ paddingTop: 54, paddingHorizontal: 22, paddingBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }} style={{ paddingVertical: 8, paddingHorizontal: 4 }}>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5FF00', letterSpacing: 1.5, textTransform: 'uppercase' }}>{tr.retour}</Text>
-          </TouchableOpacity>
+          <Text style={{ fontSize: 22, fontWeight: '900', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</Text></Text>
         </View>
+        <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }} style={{ marginBottom: 8 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>{tr.retour}</Text>
+        </TouchableOpacity>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <Text style={{ fontSize: IS_IPAD ? 44 : 40, fontWeight: '200', color: 'rgba(195,242,255,0.94)', letterSpacing: -0.3 }}>{pilier.label}</Text>
+          <Text style={{ fontSize: IS_IPAD ? 38 : 34, fontWeight: '200', color: '#ffffff', letterSpacing: -0.3 }}>{pilier.label}</Text>
           {isRecommended && (
             <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(0,215,255,0.2)', borderWidth: 1, borderColor: 'rgba(0,215,255,0.7)' }}>
-              <Text style={{ fontSize: 9, color: 'rgba(0,220,255,0.9)', letterSpacing: 1 }}>★ {tr.recommande_pour_toi}</Text>
+              <Text style={{ fontSize: 9, color: 'rgba(0,220,255,0.9)', letterSpacing: 1 }}>{'\u2605'} {tr.recommande_pour_toi}</Text>
             </View>
           )}
         </View>
-        <Text style={{ fontSize: 10, color: pilier.color, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.seances_done(doneCount)}</Text>
+        <Text style={{ fontSize: 10, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.seances_available || '5 S\u00C9ANCES \u00B7 PLUS \u00C0 VENIR'}</Text>
         <View style={{ height: 3, backgroundColor: 'rgba(0,200,240,0.1)', borderRadius: 2, marginTop: 10, overflow: 'hidden', flexDirection: 'row' }}>
-          <View style={{ height: 3, flex: doneCount / 20, backgroundColor: pilier.color, borderRadius: 2 }} />
+          <View style={{ height: 3, flex: doneCount / 5, backgroundColor: pilier.color, borderRadius: 2 }} />
         </View>
       </View>
       <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
         {seances.map(([titre, duree, etape], i) => {
           const isDone = done[i] === true || done[i] === 'true';
-          const locked = i !== sdjIndex && !canAccessSeanceIndex(i, isSubscriber);
+          const coming = isComingSoon(i);
+          const locked = !coming && !canAccessSeanceIndex(i, isSubscriber);
+          if (coming) {
+            return (
+              <View key={i} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 12, height: 110 }}>
+                <ImageBackground source={PILIER_IMAGES[pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
+                  <LinearGradient colors={['rgba(0,14,24,0.55)', 'rgba(0,14,24,0.8)']} style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
+                    <View style={{ alignItems: 'flex-start', marginBottom: 6 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '900', color: 'rgba(255,255,255,0.25)' }}>FLUIDBODY<Text style={{ color: 'rgba(174,239,77,0.3)' }}>+</Text></Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                        <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.15)' }}>{'\u25B6'}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: 'rgba(255,255,255,0.35)', marginBottom: 6 }} numberOfLines={1}>{titre}</Text>
+                        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <Text style={{ fontSize: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,189,208,0.08)', color: 'rgba(0,189,208,0.3)', letterSpacing: 0.5 }}>{tr.etapes[etape] || etape}</Text>
+                          <Text style={{ fontSize: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.25)' }}>{duree}</Text>
+                        </View>
+                      </View>
+                      <Text style={{ fontSize: 13, color: 'rgba(174,239,77,0.2)', fontWeight: '300' }}>{String(i + 1).padStart(2, '0')}</Text>
+                    </View>
+                  </LinearGradient>
+                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 12 }}>
+                    <MeduseCornerIcon size={50} breathCycleMs={3000} breathMaxScale={1.2} tint="rgba(174,239,77,1)" />
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D' }}>{tr.coming_soon || 'Bient\u00F4t disponible'}</Text>
+                  </View>
+                </ImageBackground>
+              </View>
+            );
+          }
           return (
             <TouchableOpacity key={i} onPress={() => tryOpenSeance(i)} activeOpacity={0.88} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 12, height: 110, opacity: locked ? 0.4 : 1 }}>
               <ImageBackground source={PILIER_IMAGES[pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
-                <LinearGradient colors={isDone ? ['rgba(0,30,22,0.75)', 'rgba(0,30,22,0.85)'] : locked ? ['rgba(0,14,24,0.75)', 'rgba(0,14,24,0.9)'] : ['rgba(0,14,24,0.55)', 'rgba(0,14,24,0.8)']} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
-                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-                    <Text style={{ fontSize: 18, color: isDone ? 'rgba(0,230,160,0.95)' : '#ffffff' }}>{isDone ? '✓' : '▶'}</Text>
+                <LinearGradient colors={isDone ? ['rgba(0,30,22,0.75)', 'rgba(0,30,22,0.85)'] : locked ? ['rgba(0,14,24,0.75)', 'rgba(0,14,24,0.9)'] : ['rgba(0,14,24,0.55)', 'rgba(0,14,24,0.8)']} style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
+                  <View style={{ alignItems: 'flex-start', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '900', color: '#ffffff' }}>FLUIDBODY<Text style={{ color: '#AEEF4D' }}>+</Text></Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '600', color: isDone ? 'rgba(0,220,150,0.9)' : '#ffffff', marginBottom: 6 }} numberOfLines={1}>{titre}</Text>
-                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <Text style={{ fontSize: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,195,240,0.15)', color: ETAPE_COLORS[etape], letterSpacing: 0.5 }}>{tr.etapes[etape] || etape}</Text>
-                      <Text style={{ fontSize: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,195,240,0.15)', color: 'rgba(0,212,248,0.8)' }}>{duree}</Text>
-                      {resumeIndices.has(i) && !locked ? (
-                        <Text style={{ fontSize: 9, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,235,200,0.2)', color: 'rgba(0,245,220,0.95)', fontWeight: '600' }}>{tr.reprise_badge}</Text>
-                      ) : null}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                      <Text style={{ fontSize: 18, color: isDone ? '#AEEF4D' : '#ffffff' }}>{isDone ? '\u2713' : '\u25B6'}</Text>
                     </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff', marginBottom: 6 }} numberOfLines={1}>{titre}</Text>
+                      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,189,208,0.15)', color: '#00BDD0', letterSpacing: 0.5 }}>{tr.etapes[etape] || etape}</Text>
+                        <Text style={{ fontSize: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)', color: '#ffffff' }}>{duree}</Text>
+                        {resumeIndices.has(i) && !locked ? (
+                          <Text style={{ fontSize: 9, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(174,239,77,0.15)', color: '#AEEF4D', fontWeight: '600' }}>{tr.reprise_badge}</Text>
+                        ) : null}
+                      </View>
+                    </View>
+                    <Text style={{ fontSize: 13, color: '#AEEF4D', fontWeight: '300' }}>{String(i + 1).padStart(2, '0')}</Text>
                   </View>
-                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', fontWeight: '300' }}>{String(i + 1).padStart(2, '0')}</Text>
                 </LinearGradient>
               </ImageBackground>
             </TouchableOpacity>
@@ -755,7 +793,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
                     <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} imageStyle={p.key === 'p8' ? { top: -20 } : undefined}>
                       <LinearGradient colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.7)"]} style={{ flex: 1, justifyContent: "flex-end", padding: 16 }}>
                         <Text style={{ fontSize: 24, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{p.label}</Text>
-                        <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{ps.length} {tr.m_seances} {'\u00B7'} {doneCount}/{ps.length}</Text>
+                        <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>5 {tr.m_seances} {'\u00B7'} {tr.coming_soon_more || 'Plus \u00E0 venir'}</Text>
                       </LinearGradient>
                     </ImageBackground>
                   </TouchableOpacity>
