@@ -13,7 +13,7 @@ export const T = {
   fr: {
     lang: 'fr', flag: '🇫🇷', nom: 'Français',
     tabs: ['FluidBody+', 'Résumé', 'Biblio', 'Profil'],
-    cest_parti: "C'est parti ! 🌊",
+    cest_parti: "C'est parti !",
     resume_title: 'Résumé', resume_activite: 'Activité', resume_bouger: 'Bouger', resume_exercice: 'Exercice', resume_debout: 'Debout', resume_seances: 'Séances FluidBody', resume_no_seance: 'Aucune séance complétée', resume_progression: 'Progression', resume_global: 'Global', resume_streak: 'Streak',
     bonjour: (p) => p ? `Bonjour ${p}` : '',
     bonjour_mot: 'Bonjour',
@@ -169,7 +169,7 @@ export const T = {
   en: {
     lang: 'en', flag: '🇬🇧', nom: 'English',
     tabs: ['FluidBody+', 'Summary', 'Library', 'Profile'],
-    cest_parti: "Let's go! 🌊",
+    cest_parti: "Let's go!",
     resume_title: 'Summary', resume_activite: 'Activity', resume_bouger: 'Move', resume_exercice: 'Exercise', resume_debout: 'Stand', resume_seances: 'FluidBody Sessions', resume_no_seance: 'No sessions completed', resume_progression: 'Progress', resume_global: 'Overall', resume_streak: 'Streak',
     bonjour: (p) => p ? `Hello ${p}` : '',
     bonjour_mot: 'Hello',
@@ -325,7 +325,7 @@ export const T = {
   es: {
     lang: 'es', flag: '🇪🇸', nom: 'Español',
     tabs: ['FluidBody+', 'Resumen', 'Biblioteca', 'Perfil'],
-    cest_parti: '¡Vamos! 🌊',
+    cest_parti: '\u00A1Vamos!',
     resume_title: 'Resumen', resume_activite: 'Actividad', resume_bouger: 'Movimiento', resume_exercice: 'Ejercicio', resume_debout: 'De pie', resume_seances: 'Sesiones FluidBody', resume_no_seance: 'Ninguna sesión completada', resume_progression: 'Progresión', resume_global: 'Global', resume_streak: 'Racha',
     bonjour: (p) => p ? `Hola ${p}` : '',
     bonjour_mot: 'Hola',
@@ -475,7 +475,7 @@ export const T = {
   it: {
     lang: 'it', flag: '🇮🇹', nom: 'Italiano',
     tabs: ['FluidBody+', 'Riepilogo', 'Biblioteca', 'Profilo'],
-    cest_parti: 'Andiamo! 🌊',
+    cest_parti: 'Andiamo!',
     resume_title: 'Riepilogo', resume_activite: 'Attività', resume_bouger: 'Movimento', resume_exercice: 'Esercizio', resume_debout: 'In piedi', resume_seances: 'Sessioni FluidBody', resume_no_seance: 'Nessuna sessione completata', resume_progression: 'Progressione', resume_global: 'Globale', resume_streak: 'Serie',
     bonjour: (p) => p ? `Ciao ${p}` : '',
     bonjour_mot: 'Ciao',
@@ -625,7 +625,7 @@ export const T = {
   de: {
     lang: 'de', flag: '🇩🇪', nom: 'Deutsch',
     tabs: ['FluidBody+', 'Zusammenfassung', 'Bibliothek', 'Profil'],
-    cest_parti: "Los geht's! 🌊",
+    cest_parti: "Los geht's!",
     resume_title: 'Zusammenfassung', resume_activite: 'Aktivität', resume_bouger: 'Bewegen', resume_exercice: 'Übung', resume_debout: 'Stehen', resume_seances: 'FluidBody Sitzungen', resume_no_seance: 'Keine Sitzungen abgeschlossen', resume_progression: 'Fortschritt', resume_global: 'Gesamt', resume_streak: 'Serie',
     bonjour: (p) => p ? `Hallo ${p}` : '',
     bonjour_mot: 'Hallo',
@@ -773,7 +773,7 @@ export const T = {
   pt: {
     lang: 'pt', flag: '🇧🇷', nom: 'Português',
     tabs: ['FluidBody+', 'Resumo', 'Biblioteca', 'Perfil'],
-    cest_parti: 'Vamos lá! 🌊',
+    cest_parti: 'Vamos l\u00E1!',
     resume_title: 'Resumo', resume_activite: 'Atividade', resume_bouger: 'Movimento', resume_exercice: 'Exercício', resume_debout: 'Em pé', resume_seances: 'Sessões FluidBody', resume_no_seance: 'Nenhuma sessão concluída', resume_progression: 'Progresso', resume_global: 'Geral', resume_streak: 'Sequência',
     bonjour: (p) => p ? `Olá ${p}` : '',
     bonjour_mot: 'Olá',
@@ -921,7 +921,7 @@ export const T = {
   zh: {
     lang: 'zh', flag: '🇨🇳', nom: '中文',
     tabs: ['FluidBody+', '摘要', '资料库', '个人'],
-    cest_parti: '出发！🌊',
+    cest_parti: '\u51FA\u53D1\uFF01',
     resume_title: '摘要', resume_activite: '活动', resume_bouger: '运动', resume_exercice: '锻炼', resume_debout: '站立', resume_seances: 'FluidBody 课程', resume_no_seance: '尚未完成任何课程', resume_progression: '进度', resume_global: '总体', resume_streak: '连续',
     bonjour: (p) => p ? `你好 ${p}` : '',
     bonjour_mot: '你好',
@@ -1069,7 +1069,7 @@ export const T = {
   ja: {
     lang: 'ja', flag: '🇯🇵', nom: '日本語',
     tabs: ['FluidBody+', '概要', 'ライブラリ', 'プロフィール'],
-    cest_parti: '始めよう！🌊',
+    cest_parti: '\u59CB\u3081\u3088\u3046\uFF01',
     resume_title: '概要', resume_activite: 'アクティビティ', resume_bouger: '運動', resume_exercice: 'エクササイズ', resume_debout: '立位', resume_seances: 'FluidBody セッション', resume_no_seance: '完了したセッションなし', resume_progression: '進捗', resume_global: '全体', resume_streak: '連続',
     bonjour: (p) => p ? `こんにちは ${p}` : '',
     bonjour_mot: 'こんにちは',
@@ -1217,7 +1217,7 @@ export const T = {
   ko: {
     lang: 'ko', flag: '🇰🇷', nom: '한국어',
     tabs: ['FluidBody+', '요약', '라이브러리', '프로필'],
-    cest_parti: '시작! 🌊',
+    cest_parti: '\uC2DC\uC791!',
     resume_title: '요약', resume_activite: '활동', resume_bouger: '움직임', resume_exercice: '운동', resume_debout: '서기', resume_seances: 'FluidBody 세션', resume_no_seance: '완료된 세션 없음', resume_progression: '진행', resume_global: '전체', resume_streak: '연속',
     bonjour: (p) => p ? `안녕하세요 ${p}` : '',
     bonjour_mot: '안녕하세요',
