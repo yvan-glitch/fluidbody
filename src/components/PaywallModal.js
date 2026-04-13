@@ -139,6 +139,13 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
           >
             <Text style={{ fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.25)", textAlign: "center" }}>{tr.paywall_restore}</Text>
           </TouchableOpacity>
+
+          <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.20)", textAlign: "center", marginTop: 20, paddingHorizontal: 28, lineHeight: 15 }}>
+            {tr.paywall_legal || "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la p\u00E9riode. Le paiement est d\u00E9bit\u00E9 via votre compte Apple. G\u00E9rez ou annulez dans R\u00E9glages > Apple ID > Abonnements."}
+          </Text>
+          <TouchableOpacity onPress={function() { var RNLinking = require('react-native').Linking; RNLinking.openURL('https://fluidbody.app/privacy'); }} activeOpacity={0.7} style={{ marginTop: 8, marginBottom: 20 }}>
+            <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", textAlign: "center", textDecorationLine: "underline" }}>{tr.paywall_privacy_link || "Politique de confidentialit\u00E9"}</Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
     </Modal>
