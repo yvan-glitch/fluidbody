@@ -791,7 +791,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
                     <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} imageStyle={p.key === 'p8' ? { top: -20 } : undefined}>
                       <LinearGradient colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.7)"]} style={{ flex: 1, justifyContent: "flex-end", padding: 16 }}>
                         <Text style={{ fontSize: 24, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{p.label}</Text>
-                        <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>5 {tr.m_seances} {'\u00B7'} {tr.coming_soon_more || 'Plus \u00E0 venir'}</Text>
+                        <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{tr.m_seances} {'\u00B7'} {tr.coming_soon_more || 'Plus \u00E0 venir'}</Text>
                       </LinearGradient>
                     </ImageBackground>
                   </TouchableOpacity>
