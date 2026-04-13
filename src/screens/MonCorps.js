@@ -704,6 +704,104 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
                 </View>
               </LinearGradient>
             </TouchableOpacity>
+            <Text style={{ fontSize: 22, fontWeight: "800", color: "#ffffff", marginBottom: 14 }}>{tr.prog_thematiques_title || 'Programmes thématiques'}</Text>
+            <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.45)", lineHeight: 18, marginBottom: 14 }}>{tr.prog_thematiques_sub || 'Des parcours ciblés pour tes objectifs'}</Text>
+
+            {/* Réveil Matinal */}
+            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
+              <LinearGradient colors={['#1a0a28', '#8b3a62', '#e8784a']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
+                <View>
+                  <Text style={{ fontSize: 28 }}>🌅</Text>
+                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_reveil || 'Réveil Matinal'}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>10 min pour réveiller ton corps en douceur</Text>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff", letterSpacing: 1 }}>7 JOURS · 10 MIN/JOUR</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={function() { var p = piliers.find(function(x) { return x.key === 'p4'; }); if (p) setOpenPilier(p); }}
+                  activeOpacity={0.8}
+                  style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+
+            {/* Mal de dos */}
+            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
+              <LinearGradient colors={['#0a1628', '#1a3a5c', '#2d6a8f']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
+                <View>
+                  <Text style={{ fontSize: 28 }}>🔥</Text>
+                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_dos || 'Mal de dos'}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Soulage et renforce ton dos en 21 jours</Text>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff", letterSpacing: 1 }}>21 JOURS · 15 MIN/JOUR</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={function() { var p = piliers.find(function(x) { return x.key === 'p2'; }); if (p) setOpenPilier(p); }}
+                  activeOpacity={0.8}
+                  style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+
+            {/* Post-travail */}
+            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
+              <LinearGradient colors={['#1a0a2e', '#3d2a5c', '#6b4a8a']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
+                <View>
+                  <Text style={{ fontSize: 28 }}>💆</Text>
+                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_posttravail || 'Post-travail'}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Décompresse après une journée assise</Text>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff", letterSpacing: 1 }}>5 JOURS · 15 MIN/JOUR</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={function() { var p = piliers.find(function(x) { return x.key === 'p1'; }); if (p) setOpenPilier(p); }}
+                  activeOpacity={0.8}
+                  style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+
+            {/* Core & Plancher */}
+            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
+              <LinearGradient colors={['#0a1a12', '#1a4a2e', '#2d8a4f']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
+                <View>
+                  <Text style={{ fontSize: 28 }}>💪</Text>
+                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_core || 'Core & Plancher'}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Renforce ton centre et ta stabilité</Text>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff", letterSpacing: 1 }}>14 JOURS · 12 MIN/JOUR</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={function() { var p = piliers.find(function(x) { return x.key === 'p7'; }); if (p) setOpenPilier(p); }}
+                  activeOpacity={0.8}
+                  style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+
+            {/* Souplesse totale */}
+            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
+              <LinearGradient colors={['#0a1828', '#0d4a5c', '#1a8a7a']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
+                <View>
+                  <Text style={{ fontSize: 28 }}>🧘</Text>
+                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_souplesse || 'Souplesse totale'}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Gagne en mobilité sur tout le corps</Text>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff", letterSpacing: 1 }}>14 JOURS · 20 MIN/JOUR</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={function() { var p = piliers.find(function(x) { return x.key === 'p3'; }); if (p) setOpenPilier(p); }}
+                  activeOpacity={0.8}
+                  style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+
             <Text style={{ fontSize: 22, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_section_title}</Text>
             <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.45)", lineHeight: 18, marginBottom: 14 }}>{tr.prog_section_sub}</Text>
             <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 20, height: 230, borderWidth: 1, borderColor: '#AEEF4D' }}>
