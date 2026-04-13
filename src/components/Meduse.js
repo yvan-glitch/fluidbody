@@ -253,25 +253,25 @@ function MeduseCornerIcon({ size = 50, breathCycleMs = null, breathMaxScale = 1.
         <Svg width={size} height={size} viewBox="0 0 280 520" preserveAspectRatio="xMidYMid meet" overflow="visible">
           {/* Tentacules fines et ondulantes */}
           {tentPaths.map((d, i) => (
-            <Path key={i} d={d} stroke={mc(0.18 + (i % 5) * 0.04)} strokeWidth={TENTS2[i].w * 0.7} fill="none" strokeLinecap="round" />
+            <Path key={i} d={d} stroke={mc(0.4 + (i % 5) * 0.05)} strokeWidth={TENTS2[i].w * 0.8} fill="none" strokeLinecap="round" />
           ))}
           {/* Tentacules centraux organiques */}
-          <Path d="M 140 155 C 136 175 130 200 126 230 C 122 260 128 280 132 310 C 128 330 122 360 125 390" stroke={mc(0.25)} strokeWidth="1.8" fill="none" strokeLinecap="round" />
-          <Path d="M 140 155 C 144 175 150 200 154 230 C 158 260 152 280 148 310 C 152 330 158 360 155 390" stroke={mc(0.25)} strokeWidth="1.8" fill="none" strokeLinecap="round" />
-          <Path d="M 140 155 C 140 180 138 210 136 245 C 134 275 140 300 140 330 C 140 355 138 380 140 410" stroke={mc(0.2)} strokeWidth="1.2" fill="none" strokeLinecap="round" />
-          <Path d="M 120 150 C 115 180 108 215 102 250 C 96 285 100 310 105 345" stroke={mc(0.15)} strokeWidth="1.0" fill="none" strokeLinecap="round" />
-          <Path d="M 160 150 C 165 180 172 215 178 250 C 184 285 180 310 175 345" stroke={mc(0.15)} strokeWidth="1.0" fill="none" strokeLinecap="round" />
-          <Path d="M 100 145 C 92 175 82 210 78 250 C 74 280 80 305 85 330" stroke={mc(0.12)} strokeWidth="0.8" fill="none" strokeLinecap="round" />
-          <Path d="M 180 145 C 188 175 198 210 202 250 C 206 280 200 305 195 330" stroke={mc(0.12)} strokeWidth="0.8" fill="none" strokeLinecap="round" />
+          <Path d="M 140 155 C 136 175 130 200 126 230 C 122 260 128 280 132 310 C 128 330 122 360 125 390" stroke={mc(0.5)} strokeWidth="2.0" fill="none" strokeLinecap="round" />
+          <Path d="M 140 155 C 144 175 150 200 154 230 C 158 260 152 280 148 310 C 152 330 158 360 155 390" stroke={mc(0.5)} strokeWidth="2.0" fill="none" strokeLinecap="round" />
+          <Path d="M 140 155 C 140 180 138 210 136 245 C 134 275 140 300 140 330 C 140 355 138 380 140 410" stroke={mc(0.4)} strokeWidth="1.5" fill="none" strokeLinecap="round" />
+          <Path d="M 120 150 C 115 180 108 215 102 250 C 96 285 100 310 105 345" stroke={mc(0.35)} strokeWidth="1.2" fill="none" strokeLinecap="round" />
+          <Path d="M 160 150 C 165 180 172 215 178 250 C 184 285 180 310 175 345" stroke={mc(0.35)} strokeWidth="1.2" fill="none" strokeLinecap="round" />
+          <Path d="M 100 145 C 92 175 82 210 78 250 C 74 280 80 305 85 330" stroke={mc(0.28)} strokeWidth="1.0" fill="none" strokeLinecap="round" />
+          <Path d="M 180 145 C 188 175 198 210 202 250 C 206 280 200 305 195 330" stroke={mc(0.28)} strokeWidth="1.0" fill="none" strokeLinecap="round" />
           <Defs>
             {/* Dégradé principal de la cloche — plus translucide */}
             <RadialGradient id="cBellMain" cx="50%" cy="30%" rx="55%" ry="58%" fx="45%" fy="25%">
-              <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.85" />
-              <Stop offset="15%" stopColor="#f0f8ff" stopOpacity="0.6" />
-              <Stop offset="35%" stopColor={mcSolid} stopOpacity="0.35" />
-              <Stop offset="60%" stopColor={mcSolid} stopOpacity="0.18" />
-              <Stop offset="85%" stopColor={mcSolid} stopOpacity="0.08" />
-              <Stop offset="100%" stopColor={mcSolid} stopOpacity="0.02" />
+              <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+              <Stop offset="15%" stopColor="#f0f8ff" stopOpacity="0.75" />
+              <Stop offset="35%" stopColor={mcSolid} stopOpacity="0.55" />
+              <Stop offset="60%" stopColor={mcSolid} stopOpacity="0.35" />
+              <Stop offset="85%" stopColor={mcSolid} stopOpacity="0.18" />
+              <Stop offset="100%" stopColor={mcSolid} stopOpacity="0.06" />
             </RadialGradient>
             {/* Reflet lumineux en haut */}
             <RadialGradient id="cTopGlow" cx="38%" cy="18%" rx="30%" ry="25%">
@@ -287,39 +287,39 @@ function MeduseCornerIcon({ size = 50, breathCycleMs = null, breathMaxScale = 1.
             </RadialGradient>
           </Defs>
           {/* Halo externe doux */}
-          <Ellipse cx="140" cy="90" rx="120" ry="80" fill={mc(0.04)} />
+          <Ellipse cx="140" cy="90" rx="120" ry="80" fill={mc(0.1)} />
           {/* Cloche — contour externe flou */}
-          <Path d="M 38 120 C 26 68 58 15 140 10 C 222 15 254 68 242 120 C 234 142 208 154 186 150 C 170 157 155 160 140 160 C 125 160 110 157 94 150 C 72 154 46 142 38 120 Z" fill="none" stroke={mc(0.12)} strokeWidth="16" />
+          <Path d="M 38 120 C 26 68 58 15 140 10 C 222 15 254 68 242 120 C 234 142 208 154 186 150 C 170 157 155 160 140 160 C 125 160 110 157 94 150 C 72 154 46 142 38 120 Z" fill="none" stroke={mc(0.25)} strokeWidth="16" />
           {/* Cloche — contour moyen */}
-          <Path d="M 38 120 C 26 68 58 15 140 10 C 222 15 254 68 242 120 C 234 142 208 154 186 150 C 170 157 155 160 140 160 C 125 160 110 157 94 150 C 72 154 46 142 38 120 Z" fill="none" stroke={mc(0.22)} strokeWidth="6" />
+          <Path d="M 38 120 C 26 68 58 15 140 10 C 222 15 254 68 242 120 C 234 142 208 154 186 150 C 170 157 155 160 140 160 C 125 160 110 157 94 150 C 72 154 46 142 38 120 Z" fill="none" stroke={mc(0.4)} strokeWidth="6" />
           {/* Cloche — remplissage translucide */}
           <Path d="M 38 120 C 26 68 58 15 140 10 C 222 15 254 68 242 120 C 234 142 208 154 186 150 C 170 157 155 160 140 160 C 125 160 110 157 94 150 C 72 154 46 142 38 120 Z" fill="url(#cBellMain)" />
           {/* Reflet lumineux */}
           <Path d="M 38 120 C 26 68 58 15 140 10 C 222 15 254 68 242 120 C 234 142 208 154 186 150 C 170 157 155 160 140 160 C 125 160 110 157 94 150 C 72 154 46 142 38 120 Z" fill="url(#cTopGlow)" />
           {/* Contour fin */}
-          <Path d="M 38 120 C 26 68 58 15 140 10 C 222 15 254 68 242 120 C 234 142 208 154 186 150 C 170 157 155 160 140 160 C 125 160 110 157 94 150 C 72 154 46 142 38 120 Z" fill="none" stroke={mc(0.45)} strokeWidth="1.2" />
+          <Path d="M 38 120 C 26 68 58 15 140 10 C 222 15 254 68 242 120 C 234 142 208 154 186 150 C 170 157 155 160 140 160 C 125 160 110 157 94 150 C 72 154 46 142 38 120 Z" fill="none" stroke={mc(0.7)} strokeWidth="1.5" />
           {/* Reflet arc en haut */}
           <Path d="M 60 60 C 80 28 115 12 155 14 C 185 16 210 30 228 52" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2.5" strokeLinecap="round" />
           <Path d="M 68 56 C 85 30 115 15 148 16" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2" strokeLinecap="round" />
           {/* Organes internes — canaux radiaux */}
-          <Path d="M 140 108 Q 110 90 82 100" stroke={mc(0.2)} strokeWidth="1.2" fill="none" />
-          <Path d="M 140 108 Q 118 80 105 55" stroke={mc(0.18)} strokeWidth="1.0" fill="none" />
-          <Path d="M 140 108 Q 135 70 132 40" stroke={mc(0.15)} strokeWidth="0.9" fill="none" />
-          <Path d="M 140 108 Q 140 68 140 38" stroke={mc(0.2)} strokeWidth="1.2" fill="none" />
-          <Path d="M 140 108 Q 145 70 148 40" stroke={mc(0.15)} strokeWidth="0.9" fill="none" />
-          <Path d="M 140 108 Q 162 80 175 55" stroke={mc(0.18)} strokeWidth="1.0" fill="none" />
-          <Path d="M 140 108 Q 170 90 198 100" stroke={mc(0.2)} strokeWidth="1.2" fill="none" />
+          <Path d="M 140 108 Q 110 90 82 100" stroke={mc(0.4)} strokeWidth="1.4" fill="none" />
+          <Path d="M 140 108 Q 118 80 105 55" stroke={mc(0.35)} strokeWidth="1.2" fill="none" />
+          <Path d="M 140 108 Q 135 70 132 40" stroke={mc(0.3)} strokeWidth="1.1" fill="none" />
+          <Path d="M 140 108 Q 140 68 140 38" stroke={mc(0.4)} strokeWidth="1.4" fill="none" />
+          <Path d="M 140 108 Q 145 70 148 40" stroke={mc(0.3)} strokeWidth="1.1" fill="none" />
+          <Path d="M 140 108 Q 162 80 175 55" stroke={mc(0.35)} strokeWidth="1.2" fill="none" />
+          <Path d="M 140 108 Q 170 90 198 100" stroke={mc(0.4)} strokeWidth="1.4" fill="none" />
           {/* Organe central (estomac) */}
           <Ellipse cx="140" cy="100" rx="18" ry="14" fill="url(#cOrgan)" />
-          <Ellipse cx="140" cy="100" rx="10" ry="8" fill={mc(0.2)} />
+          <Ellipse cx="140" cy="100" rx="10" ry="8" fill={mc(0.4)} />
           {/* Bord festonné — plus organique */}
-          <Path d="M 48 124 Q 60 138 78 133 Q 92 143 108 139 Q 122 146 140 146 Q 158 146 172 139 Q 188 143 202 133 Q 220 138 232 124" stroke={mc(0.35)} strokeWidth="1.6" fill="none" />
-          <Path d="M 55 128 Q 65 136 76 132 Q 86 140 98 136 Q 110 144 122 140 Q 132 146 140 145 Q 148 146 158 140 Q 170 144 182 136 Q 194 140 204 132 Q 215 136 225 128" stroke={mc(0.25)} strokeWidth="1.0" fill="none" />
+          <Path d="M 48 124 Q 60 138 78 133 Q 92 143 108 139 Q 122 146 140 146 Q 158 146 172 139 Q 188 143 202 133 Q 220 138 232 124" stroke={mc(0.55)} strokeWidth="2.0" fill="none" />
+          <Path d="M 55 128 Q 65 136 76 132 Q 86 140 98 136 Q 110 144 122 140 Q 132 146 140 145 Q 148 146 158 140 Q 170 144 182 136 Q 194 140 204 132 Q 215 136 225 128" stroke={mc(0.4)} strokeWidth="1.2" fill="none" />
           {/* Points lumineux — gonades */}
-          <Circle cx="100" cy="62" r="2.5" fill={mc(0.7)} />
-          <Circle cx="180" cy="62" r="2.5" fill={mc(0.7)} />
-          <Circle cx="74" cy="96" r="2.0" fill={mc(0.5)} />
-          <Circle cx="206" cy="96" r="2.0" fill={mc(0.5)} />
+          <Circle cx="100" cy="62" r="3.0" fill={mc(0.85)} />
+          <Circle cx="180" cy="62" r="3.0" fill={mc(0.85)} />
+          <Circle cx="74" cy="96" r="2.5" fill={mc(0.7)} />
+          <Circle cx="206" cy="96" r="2.5" fill={mc(0.7)} />
           {/* Reflet sommet */}
           <Circle cx="140" cy="26" r="3.5" fill="rgba(255,255,255,0.8)" />
           <Circle cx="122" cy="24" r="1.8" fill="rgba(255,255,255,0.5)" />

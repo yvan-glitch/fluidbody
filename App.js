@@ -191,12 +191,26 @@ function TabIconMonCorps({ color, size }) {
   return (
     <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-        <Path d="M6 10C5 7 7 3 12 3s7 4 6 7c-0.5 1.2-2 2-3.5 1.8C13.5 12.2 12.8 12.5 12 12.5s-1.5-0.3-2.5-0.7C8 12 6.5 11.2 6 10Z" fill={c} opacity={0.35} />
-        <Path d="M6 10C5 7 7 3 12 3s7 4 6 7c-0.5 1.2-2 2-3.5 1.8C13.5 12.2 12.8 12.5 12 12.5s-1.5-0.3-2.5-0.7C8 12 6.5 11.2 6 10Z" stroke={c} strokeWidth={1.2} strokeLinecap="round" />
-        <Path d="M10 12.5c-0.3 1.5-1 3-1.5 4.5" stroke={c} strokeWidth={1} strokeLinecap="round" opacity={0.6} />
-        <Path d="M12 12.5c0 1.5 0 3.5-0.2 5" stroke={c} strokeWidth={1} strokeLinecap="round" opacity={0.6} />
-        <Path d="M14 12.5c0.3 1.5 1 3 1.5 4.5" stroke={c} strokeWidth={1} strokeLinecap="round" opacity={0.6} />
-        <Path d="M9 6.5Q10.5 5.5 12 5.5" stroke={c} strokeWidth={0.8} strokeLinecap="round" opacity={0.5} />
+        {/* Cloche translucide */}
+        <Path d="M5.5 10.5C4.5 7 6.5 2.5 12 2.5s7.5 4.5 6.5 8c-0.4 1.3-1.8 2.2-3.3 2C14 12.8 13 13 12 13s-2-0.2-3.2-0.5C7.3 12.7 5.9 11.8 5.5 10.5Z" fill={c} opacity={0.2} />
+        <Path d="M5.5 10.5C4.5 7 6.5 2.5 12 2.5s7.5 4.5 6.5 8c-0.4 1.3-1.8 2.2-3.3 2C14 12.8 13 13 12 13s-2-0.2-3.2-0.5C7.3 12.7 5.9 11.8 5.5 10.5Z" stroke={c} strokeWidth={1} strokeLinecap="round" />
+        {/* Reflet haut */}
+        <Path d="M8 5.5Q10 4 12.5 4" stroke={c} strokeWidth={0.7} strokeLinecap="round" opacity={0.6} />
+        {/* Bord festonné */}
+        <Path d="M7 11.5Q8.5 12.8 10 12.2Q11 12.8 12 12.8Q13 12.8 14 12.2Q15.5 12.8 17 11.5" stroke={c} strokeWidth={0.7} strokeLinecap="round" opacity={0.5} fill="none" />
+        {/* Canaux internes */}
+        <Path d="M10 8Q11 7 12 7" stroke={c} strokeWidth={0.5} strokeLinecap="round" opacity={0.3} />
+        <Path d="M14 8Q13 7 12 7" stroke={c} strokeWidth={0.5} strokeLinecap="round" opacity={0.3} />
+        {/* Tentacules ondulants */}
+        <Path d="M9.5 13C9 14.5 8.5 16 8 18" stroke={c} strokeWidth={0.8} strokeLinecap="round" opacity={0.5} />
+        <Path d="M12 13C12 14.5 11.8 16.5 11.5 19" stroke={c} strokeWidth={0.8} strokeLinecap="round" opacity={0.5} />
+        <Path d="M14.5 13C15 14.5 15.5 16 16 18" stroke={c} strokeWidth={0.8} strokeLinecap="round" opacity={0.5} />
+        <Path d="M10.5 13C10.2 15 9.8 17 10 19.5" stroke={c} strokeWidth={0.5} strokeLinecap="round" opacity={0.3} />
+        <Path d="M13.5 13C13.8 15 14.2 17 14 19.5" stroke={c} strokeWidth={0.5} strokeLinecap="round" opacity={0.3} />
+        {/* Points lumineux */}
+        <Circle cx="9.5" cy="6.5" r="0.5" fill={c} opacity={0.6} />
+        <Circle cx="14.5" cy="6.5" r="0.5" fill={c} opacity={0.6} />
+        <Circle cx="12" cy="4" r="0.6" fill={c} opacity={0.8} />
       </Svg>
     </View>
   );

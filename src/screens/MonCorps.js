@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, ImageBackground } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path, Circle, Ellipse } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, Rayon, MeduseCornerIcon, BULLES, BULLES_MONCORPS } from '../components/Meduse';
@@ -553,7 +553,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad1-" + i} delay={b.delay + 2000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.35))} size={b.size} duration={b.duration} />; })}
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad2-" + i} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />; })}
       </View>
-      {mcTab !== 'programmes' && mcMedusas.map(function(m, i) {
+      {mcMedusas.map(function(m, i) {
         return (
           <Animated.View key={'mcm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 4, opacity: 1, left: m.x, top: m.y }}>
             <MeduseCornerIcon size={m.size} breathCycleMs={2800 + i * 500} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
@@ -561,9 +561,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         );
       })}
       <View style={[localStyles.logoRow, { justifyContent: "space-between", paddingLeft: 20, paddingRight: 20, paddingTop: 10, marginBottom: 20, flexDirection: 'row', alignItems: 'center' }]} pointerEvents="box-none">
-        <Text style={localStyles.logoWordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-          FLUIDBODY<Text style={{ fontWeight: "900", color: "#AEEF4D", fontSize: 34 }}>+</Text>
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <MeduseCornerIcon size={56} breathCycleMs={4000} breathMaxScale={1.1} tint="rgba(174,239,77,1)" />
+          <Text style={[localStyles.logoWordmark, { marginLeft: -4 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+            FLUIDBODY<Text style={{ fontWeight: "900", color: "#AEEF4D", fontSize: 34 }}>+</Text>
+          </Text>
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           {prenom ? <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(174,239,77,0.6)' }}>{tr.bonjour(prenom)}</Text> : null}
           <TouchableOpacity onPress={onOpenTimer} activeOpacity={0.7} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center' }}>
@@ -818,7 +821,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
 
 const localStyles = StyleSheet.create({
   screen: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  logoRow: { position: 'absolute', top: 58, left: 0, right: 0, zIndex: 10, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', paddingHorizontal: 8, gap: 10 },
+  logoRow: { position: 'absolute', top: 54, left: 0, right: 0, zIndex: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, gap: 10 },
   logoWordmark: { fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 },
   metricShell: {
     flex: 1,
