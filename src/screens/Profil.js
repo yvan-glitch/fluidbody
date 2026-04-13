@@ -1,5 +1,6 @@
 import { useRef } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground, Share } from 'react-native';
+import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground, Share, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import ViewShot from 'react-native-view-shot';
@@ -12,7 +13,7 @@ const COACH_IMAGE = require('../../assets/coach.jpg');
 // ══════════════════════════════════
 // PROFIL — Abonnement + Compte
 // ══════════════════════════════════
-function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, isSubscriber, onRestorePurchases }) {
+function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, isSubscriber, onRestorePurchases, onReset }) {
   var tr = T[lang] || T['fr'];
   var shareRef = useRef(null);
   var totalDoneVal = done ? Object.values(done).flat().filter(Boolean).length : 0;
@@ -149,6 +150,23 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
             <TouchableOpacity onPress={onLogout} style={{ paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(255,50,50,0.08)', alignItems: 'center' }}>
               <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,100,100,0.85)' }}>Se déconnecter</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!supaUser && (
+          <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
+            <TouchableOpacity onPress={function() {
+              Alert.alert(
+                tr.reset_title || 'R\u00E9initialiser',
+                tr.reset_confirm || 'Toutes tes donn\u00E9es seront effac\u00E9es : progression, nom de m\u00E9duse, pr\u00E9nom. Cette action est irr\u00E9versible.',
+                [
+                  { text: tr.reset_cancel || 'Annuler', style: 'cancel' },
+                  { text: tr.reset_ok || 'R\u00E9initialiser', style: 'destructive', onPress: function() { if (onReset) onReset(); } },
+                ]
+              );
+            }} style={{ paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(255,50,50,0.08)', alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,100,100,0.85)' }}>{tr.reset_btn || 'R\u00E9initialiser toutes les donn\u00E9es'}</Text>
             </TouchableOpacity>
           </View>
         )}

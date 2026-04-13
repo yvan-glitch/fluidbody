@@ -433,7 +433,7 @@ function Progresser({ done, lang, tensionIdxs }) {
                     </View>
                     <Text style={{ fontSize: 11, color: '#AEEF4D', letterSpacing: 1, marginTop: 3 }}>{count}/5{count === 5 ? ' \u2713' : ''}</Text>
                   </View>
-                  <Text style={{ fontSize: pct2 === 0 ? 16 : 22, fontWeight: pct2 === 0 ? '600' : '200', color: pct2 === 0 ? '#00BDD0' : '#AEEF4D' }}>{pct2 === 0 ? (tr.cest_parti || "C'est parti ! \uD83C\uDF0A") : pct2 + '%'}</Text>
+                  <Text style={{ fontSize: pct2 === 0 ? 16 : 22, fontWeight: pct2 === 0 ? '600' : '200', color: '#AEEF4D' }}>{pct2 === 0 ? (tr.cest_parti || "C'est parti !") : pct2 + '%'}</Text>
                 </View>
                 <AnimatedBar value={count} max={5} color={'#AEEF4D'} delay={idx * 100} />
               </View>
@@ -877,6 +877,9 @@ async function setupNotifications(lang = 'fr') {
   } catch(e) {}
 }
 
+const FLUID_SUB_KEY = 'fluid_sub';
+const DONE_KEY = 'fluidbody_done';
+
 // ══════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════
@@ -1101,6 +1104,17 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
     };
   }, []);
 
+  async function resetAllData() {
+    try {
+      var keys = await AsyncStorage.getAllKeys();
+      var fluidKeys = keys.filter(function(k) { return k.startsWith('fluid') || k === DONE_KEY || k === 'is_subscription_active'; });
+      if (fluidKeys.length > 0) await AsyncStorage.multiRemove(fluidKeys);
+    } catch(e) {}
+    setDone({ p1: Array(20).fill(false), p2: Array(20).fill(false), p3: Array(20).fill(false), p4: Array(20).fill(false), p5: Array(20).fill(false), p6: Array(20).fill(false), p7: Array(20).fill(false), p8: Array(20).fill(false) });
+    setStreak(0);
+    setIsSubscriber(false);
+  }
+
   async function toggleDone(key, idx) {
     const next = { ...done, [key]: [...done[key]] };
     next[key][idx] = !next[key][idx];
@@ -1213,7 +1227,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
           <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={isSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} onOpenTimer={() => setShowStretchTimer(true)} saveHealthKitWorkout={saveHealthKitWorkout} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={function() { setShowAuthScreen(true); }} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} />}</Tab.Screen>
         </Tab.Navigator>
       </NavigationContainer>
       <StretchTimerModal visible={showStretchTimer} onClose={function() { setShowStretchTimer(false); }} lang={lang} />

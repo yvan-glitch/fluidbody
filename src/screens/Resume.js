@@ -268,8 +268,8 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
   var [showNameInput, setShowNameInput] = useState(false);
   var [nameInput, setNameInput] = useState('');
   useEffect(function() {
-    AsyncStorage.getItem('fluid_meduse_name').then(function(n) { if (n) setMeduseName(n); });
-  }, []);
+    AsyncStorage.getItem('fluid_meduse_name').then(function(n) { setMeduseName(n || ''); setNameInput(''); setShowNameInput(false); });
+  }, [done]);
   function saveMeduseName() {
     var name = nameInput.trim();
     if (!name) return;
@@ -563,7 +563,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
                     <Text style={{ fontSize: 11, color: '#AEEF4D', width: 38 }}>{count}/5</Text>
                   </View>
                 </View>
-                <Text style={{ fontSize: pct2 === 0 ? 13 : 16, fontWeight: '600', color: pct2 === 0 ? '#00BDD0' : '#AEEF4D', marginLeft: 8 }}>{pct2 === 0 ? (tr.cest_parti || "C'est parti ! \uD83C\uDF0A") : pct2 + '%'}</Text>
+                <Text style={{ fontSize: pct2 === 0 ? 13 : 16, fontWeight: '600', color: '#AEEF4D', marginLeft: 8 }}>{pct2 === 0 ? (tr.cest_parti || "C'est parti !") : pct2 + '%'}</Text>
               </View>
             );
           })}
