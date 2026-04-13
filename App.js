@@ -279,6 +279,8 @@ const ALL_PRODUCT_IDS = Object.values(PRODUCT_IDS);
 const RC_ENTITLEMENT_ID = 'Fluidbody Pilates Pro';
 const RC_API_KEY_IOS = 'appl_hqCGakwrJAfotXKNQtMBAgLnqcX';
 
+const COACH_IMAGE = require('./assets/coach.jpg');
+
 // getResumeIndicesForPilier and canAccessSeanceIndex moved to src/utils.js
 
 
@@ -451,6 +453,45 @@ function Progresser({ done, lang, tensionIdxs }) {
 // ProfilScreen moved to src/screens/Profil.js
 import ProfilScreen from './src/screens/Profil';
 
+
+// ══════════════════════════════════
+// SEANCE DETAIL MODAL
+// ══════════════════════════════════
+function SeanceDetailModal({ visible, onClose, sdj, lang, onPlay }) {
+  if (!visible || !sdj) return null;
+  var tr = T[lang] || T["fr"];
+  var titre = sdj.seance[0];
+  var duree = sdj.seance[1];
+  var etape = sdj.seance[2];
+  return (
+    <Modal visible animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: "#000000" }}>
+        <View style={{ height: SH * 0.42, width: "100%" }}>
+          <ImageBackground source={PILIER_IMAGES[sdj.pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
+            <LinearGradient colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.7)"]} style={{ flex: 1 }}>
+              <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={{ position: "absolute", top: 56, left: 20, width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 18, color: "#ffffff" }}>{"\u2190"}</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </ImageBackground>
+        </View>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 }}>
+          <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 10 }}>{tr.free_try_once}</Text>
+          <Text style={{ fontSize: 28, fontWeight: "800", color: "#ffffff", marginBottom: 10 }}>{titre}</Text>
+          <Text style={{ fontSize: 15, fontWeight: "600", color: "#00BDD0", marginBottom: 6 }}>{sdj.pilier.label}</Text>
+          <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 24 }}>{duree} · {tr.etapes[etape] || etape}</Text>
+          <TouchableOpacity
+            onPress={function() { onPlay && onPlay(); }}
+            activeOpacity={0.85}
+            style={{ height: 54, borderRadius: 27, backgroundColor: "#E5FF00", alignItems: "center", justifyContent: "center", marginBottom: 14 }}
+          >
+            <Text style={{ fontSize: 17, fontWeight: "700", color: "#000000" }}>{tr.free_go}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
 
 // ══════════════════════════════════
 // AUTH SCREEN — Email + mot de passe (Supabase), après onboarding si pas de session
