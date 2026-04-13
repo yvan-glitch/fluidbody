@@ -79,8 +79,8 @@ function saveHealthKitWorkout(durationMinutes) {
   };
   AppleHealthKit.saveWorkout(options, function(err, res) {
     if (__DEV__) {
-      if (err) console.log('HealthKit workout save error:', err);
-      else console.log('HealthKit workout saved:', durationMinutes + 'min, ' + calories + 'cal');
+      if (__DEV__ && err) console.log('HealthKit workout save error:', err);
+      else if (__DEV__) console.log('HealthKit workout saved:', durationMinutes + 'min, ' + calories + 'cal');
     }
   });
 }
@@ -507,7 +507,7 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '', langForProfile = 'fr
   async function submit() {
     if (!supabase) return;
     const em = email.trim().toLowerCase();
-    if (!em.includes('@') || em.length < 5) { setError(tr.ob_auth_err_email); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { setError(tr.ob_auth_err_email); return; }
     if (password.length < 6) { setError(tr.ob_auth_err_short); return; }
     setLoading(true); setError('');
     try {
@@ -515,7 +515,7 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '', langForProfile = 'fr
         const { data, error: err } = await supabase.auth.signUp({
           email: em,
           password,
-          options: { data: { prenom: String(prenomHint || '').trim() } },
+          options: { data: { prenom: String(prenomHint || '').trim().slice(0, 50).replace(/[<>]/g, '') } },
         });
         if (err) { setError(err.message); setLoading(false); return; }
         if (!data.session) {
@@ -883,8 +883,8 @@ const DONE_KEY = 'fluidbody_done';
 // ══════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════
-const SUPABASE_URL = 'https://ctvtjeidkqpdsmhsjsij.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0dnRqZWlka3FwZHNtaHNqc2lqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODk0MzksImV4cCI6MjA4OTc2NTQzOX0.TlgVvI3znB7T5uEY4LSUGkdNnpZKah1c9ooDSr1iB_8';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
 let supabase = null;
 try {
@@ -902,10 +902,10 @@ try {
     },
     realtime: { transport: () => null },
   });
-  console.log('Supabase créé avec succès');
+  if (__DEV__) console.log('Supabase créé avec succès');
 } catch (e) {
   supabase = null;
-  console.error('Erreur Supabase:', e?.message != null ? e.message : String(e));
+  if (__DEV__) console.error('Erreur Supabase:', e?.message != null ? e.message : String(e));
 }
 
 // ══════════════════════════════════
@@ -952,7 +952,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
       await setSubscriptionActive(active);
       return { info, active };
     } catch (e) {
-      console.log('IAP Error:', e);
+      if (__DEV__) console.log('IAP Error:', e);
       devWarn('RevenueCat getCustomerInfo', e);
       return { info: null, active: false };
     }
@@ -966,7 +966,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
       await setSubscriptionActive(active);
       setPaywallVisible(false);
     } catch (e) {
-      console.log('IAP Error:', e);
+      if (__DEV__) console.log('IAP Error:', e);
       devWarn('RevenueCat purchasePackage', e);
     }
   }
@@ -978,7 +978,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
       const active = !!info?.entitlements?.active?.[RC_ENTITLEMENT_ID];
       await setSubscriptionActive(active);
     } catch (e) {
-      console.log('IAP Error:', e);
+      if (__DEV__) console.log('IAP Error:', e);
       devWarn('RevenueCat restorePurchases', e);
     }
   }
@@ -986,19 +986,24 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
   useEffect(() => {
     async function loadData() {
       try {
-        let sub = await AsyncStorage.getItem(FLUID_SUB_KEY);
-        if (sub === null) {
-          const legacyA = await AsyncStorage.getItem('fluid_subscription_active');
-          const legacyB = await AsyncStorage.getItem('fluidbody_is_subscriber');
-          if (legacyA === 'true' || legacyB === 'true') {
-            try {
-              await AsyncStorage.setItem(FLUID_SUB_KEY, 'true');
-              await AsyncStorage.multiRemove(['fluid_subscription_active', 'fluidbody_is_subscriber']);
-            } catch (e2) {}
-            sub = 'true';
+        // Vérification abonnement : RevenueCat d'abord, cache AsyncStorage en fallback offline
+        var subVerified = false;
+        try {
+          if (Purchases && !rcDisabled) {
+            var info = await Purchases.getCustomerInfo();
+            subVerified = !!(info?.entitlements?.active?.[RC_ENTITLEMENT_ID]);
+            await AsyncStorage.setItem(FLUID_SUB_KEY, subVerified ? 'true' : 'false');
+          } else {
+            // Offline fallback : cache local (non fiable, mais mieux que rien)
+            var cached = await AsyncStorage.getItem(FLUID_SUB_KEY);
+            subVerified = cached === 'true';
           }
+        } catch(rcErr) {
+          // Erreur réseau : utiliser le cache
+          var cached = await AsyncStorage.getItem(FLUID_SUB_KEY);
+          subVerified = cached === 'true';
         }
-        if (sub === 'true') setIsSubscriber(true);
+        if (subVerified) setIsSubscriber(true);
         const savedDone = await AsyncStorage.getItem(DONE_KEY);
         if (savedDone) {
           const parsed = JSON.parse(savedDone);
@@ -1040,7 +1045,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
       try {
         Purchases.configure({ apiKey: RC_API_KEY_IOS });
       } catch (e) {
-        console.log('IAP Error:', e);
+        if (__DEV__) console.log('IAP Error:', e);
         devWarn('RevenueCat configure', e);
         return;
       }
@@ -1060,7 +1065,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
       } catch (e) {}
 
       try {
-        console.log('Loading products...', PRODUCT_IDS);
+        if (__DEV__) console.log('Loading products...', PRODUCT_IDS);
         setRcLoadingPrices(true);
         const offerings = await Purchases.getOfferings();
         const current = offerings?.current;
@@ -1087,10 +1092,10 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
         }
         if (mounted) {
           setRcPackagesByProductId(map);
-          console.log('Products loaded:', map);
+          if (__DEV__) console.log('Products loaded:', map);
         }
       } catch (e) {
-        console.log('IAP Error:', e);
+        if (__DEV__) console.log('IAP Error:', e);
         devWarn('RevenueCat getOfferings', e);
       } finally {
         if (mounted) setRcLoadingPrices(false);
