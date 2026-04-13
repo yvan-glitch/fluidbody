@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "fluidbody",
+    "name": "FluidBody+",
     "slug": "fluidbody",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000e18"
     },
     "ios": {
       "supportsTablet": true,
@@ -19,7 +19,11 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true
+          "NSAllowsArbitraryLoads": false,
+          "NSExceptionDomains": {
+            "b-cdn.net": { "NSIncludesSubdomains": true, "NSTemporaryExceptionAllowsInsecureHTTPLoads": false, "NSExceptionAllowsInsecureHTTPLoads": false },
+            "supabase.co": { "NSIncludesSubdomains": true, "NSTemporaryExceptionAllowsInsecureHTTPLoads": false }
+          }
         },
         "NSHealthShareUsageDescription": "FluidBody utilise HealthKit pour enregistrer vos séances et remplir vos anneaux Fitness.",
         "NSHealthUpdateUsageDescription": "FluidBody enregistre vos séances de Pilates comme exercices dans Santé."
