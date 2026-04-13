@@ -534,6 +534,9 @@ const T = {
     save_progress_title: 'Sauvegarde ta progression', save_progress_sub: 'Crée un compte gratuit pour ne rien perdre',
     meduse_card_title: 'Ta méduse',
     calendar_title: 'Activité récente', recommended_next: 'Recommandée pour toi', weekly_goal: 'Objectif semaine', weekly_done: 'Objectif atteint ! 🎉', weekly_remaining: 'séance(s) restante(s)',
+    body_map_title: 'Bilan corporel', streak_protect_title: 'Protège ton streak !', streak_protect_sub: 'Fais une micro-séance de 2 min pour ne pas perdre tes jours',
+    pause_bureau_tag: 'Pause active', pause_bureau_title: '5 min au bureau', pause_bureau_sub: 'Étire-toi sans quitter ta chaise',
+    meduse_name_btn: 'Donne-lui un nom', meduse_name_ph: 'Nom de ta méduse', meduse_rename: 'Renommer',
     auth_apple: 'Continuer avec Apple', auth_google: 'Continuer avec Google', auth_or: 'ou', auth_social_soon: 'Disponible dans la version App Store.',
     demo_limit: "Abonne-toi pour voir la suite",
     motivation: (streak) => streak === 0 ? '"Commence aujourd\'hui.\nTon corps t\'attend."' :
@@ -548,7 +551,7 @@ const T = {
     premium_alert_later: 'Plus tard',
     paywall_title: 'Du Pilates pour tout le monde',
     paywall_sub: 'Accès illimité à 160 séances guidées par Sabrina, experte Pilates depuis 30 ans',
-    paywall_badge: '14 JOURS GRATUITS',
+    paywall_badge: '7 JOURS GRATUITS',
     paywall_yearly_link: '99 CHF/an · Économisez 35%',
     paywall_monthly: 'Mensuel',
     paywall_yearly: 'Annuel',
@@ -558,7 +561,7 @@ const T = {
     paywall_close: 'Fermer',
     paywall_prices_loading: 'Chargement des prix…',
     paywall_not_available: 'Achats indisponibles (Expo Go / simulateur).',
-    paywall_start: 'Commencer — 14 jours gratuits',
+    paywall_start: 'Commencer — 7 jours gratuits',
     paywall_per_month: '/mois',
     paywall_price_detail: 'Puis 12.90 CHF/mois · Annulez quand vous voulez',
     paywall_access: 'Accès immédiat à tous les piliers · Sans engagement',
@@ -686,6 +689,9 @@ const T = {
     save_progress_title: 'Save your progress', save_progress_sub: 'Create a free account to keep everything',
     meduse_card_title: 'Your jellyfish',
     calendar_title: 'Recent activity', recommended_next: 'Recommended for you', weekly_goal: 'Weekly goal', weekly_done: 'Goal reached! 🎉', weekly_remaining: 'session(s) remaining',
+    body_map_title: 'Body assessment', streak_protect_title: 'Protect your streak!', streak_protect_sub: 'Do a 2-min micro-session to keep your days',
+    pause_bureau_tag: 'Active break', pause_bureau_title: '5 min at your desk', pause_bureau_sub: 'Stretch without leaving your chair',
+    meduse_name_btn: 'Give it a name', meduse_name_ph: 'Your jellyfish name', meduse_rename: 'Rename',
     auth_apple: 'Continue with Apple', auth_google: 'Continue with Google', auth_or: 'or', auth_social_soon: 'Available in the App Store version.',
     demo_limit: 'Subscribe to see the rest',
     motivation: (streak) => streak === 0 ? '"Start today.\nYour body is waiting."' :
@@ -700,7 +706,7 @@ const T = {
     premium_alert_later: 'Later',
     paywall_title: 'Pilates for everyone',
     paywall_sub: 'Unlimited access to 160 sessions guided by Sabrina, Pilates expert for 30 years',
-    paywall_badge: '14 DAYS FREE',
+    paywall_badge: '7 DAYS FREE',
     paywall_yearly_link: '99 CHF/year · Save 35%',
     paywall_monthly: 'Monthly',
     paywall_yearly: 'Yearly',
@@ -710,7 +716,7 @@ const T = {
     paywall_close: 'Close',
     paywall_prices_loading: 'Loading prices…',
     paywall_not_available: 'Purchases unavailable (Expo Go / simulator).',
-    paywall_start: 'Start — 14 days free',
+    paywall_start: 'Start — 7 days free',
     paywall_per_month: '/month',
     paywall_price_detail: 'Then 12.90 CHF/month · Cancel anytime',
     paywall_access: 'Instant access to all pillars · No commitment',
@@ -849,7 +855,7 @@ const T = {
     premium_alert_later: 'Más tarde',
     paywall_title: 'Pilates para todos',
     paywall_sub: 'Acceso ilimitado a 160 sesiones guiadas por Sabrina, experta Pilates desde hace 30 años',
-    paywall_badge: '14 DÍAS GRATIS',
+    paywall_badge: '7 DÍAS GRATIS',
     paywall_yearly_link: '99 CHF/año · Ahorra 35%',
     paywall_monthly: 'Mensual',
     paywall_yearly: 'Anual',
@@ -859,7 +865,7 @@ const T = {
     paywall_close: 'Cerrar',
     paywall_prices_loading: 'Cargando precios…',
     paywall_not_available: 'Compras no disponibles (Expo Go / simulador).',
-    paywall_start: 'Empezar — 14 días gratis',
+    paywall_start: 'Empezar — 7 días gratis',
     paywall_per_month: '/mes',
     paywall_price_detail: 'Luego 12.90 CHF/mes · Cancela cuando quieras',
     paywall_access: 'Acceso inmediato a todos los pilares · Sin compromiso',
@@ -998,13 +1004,13 @@ const T = {
     premium_alert_later: 'Più tardi',
     paywall_title: 'Pilates per tutti',
     paywall_sub: 'Accesso illimitato a 160 sessioni guidate da Sabrina, esperta Pilates da 30 anni',
-    paywall_badge: '14 GIORNI GRATIS',
+    paywall_badge: '7 GIORNI GRATIS',
     paywall_yearly_link: '99 CHF/anno · Risparmia 35%',
     paywall_monthly: 'Mensile',
     paywall_yearly: 'Annuale',
     paywall_buy_monthly: 'Acquista mensile',
     paywall_buy_yearly: 'Acquista annuale',
-    paywall_start: 'Inizia — 14 giorni gratis',
+    paywall_start: 'Inizia — 7 giorni gratis',
     paywall_per_month: '/mese',
     paywall_price_detail: 'Poi 12.90 CHF/mese · Cancella quando vuoi',
     paywall_access: 'Accesso immediato a tutti i pilastri · Senza impegno',
@@ -1145,7 +1151,7 @@ const T = {
     premium_alert_later: 'Später',
     paywall_title: 'Pilates für alle',
     paywall_sub: 'Unbegrenzter Zugang zu 160 Sitzungen mit Sabrina, Pilates-Expertin seit 30 Jahren',
-    paywall_badge: '14 TAGE KOSTENLOS',
+    paywall_badge: '7 TAGE KOSTENLOS',
     paywall_yearly_link: '99 CHF/Jahr · 35% sparen',
     paywall_monthly: 'Monatlich',
     paywall_yearly: 'Jährlich',
@@ -1155,7 +1161,7 @@ const T = {
     paywall_close: 'Schließen',
     paywall_prices_loading: 'Preise werden geladen…',
     paywall_not_available: 'Käufe nicht verfügbar (Expo Go / Simulator).',
-    paywall_start: 'Starten — 14 Tage kostenlos',
+    paywall_start: 'Starten — 7 Tage kostenlos',
     paywall_per_month: '/Monat',
     paywall_price_detail: 'Dann 12.90 CHF/Monat · Jederzeit kündbar',
     paywall_access: 'Sofortiger Zugang zu allen Säulen · Ohne Bindung',
@@ -1292,7 +1298,7 @@ const T = {
     premium_alert_later: 'Mais tarde',
     paywall_title: 'Pilates para todos',
     paywall_sub: 'Acesso ilimitado a 160 sessões guiadas por Sabrina, especialista em Pilates há 30 anos',
-    paywall_badge: '14 DIAS GRÁTIS',
+    paywall_badge: '7 DIAS GRÁTIS',
     paywall_yearly_link: '99 CHF/ano · Economize 35%',
     paywall_monthly: 'Mensal',
     paywall_yearly: 'Anual',
@@ -1302,7 +1308,7 @@ const T = {
     paywall_close: 'Fechar',
     paywall_prices_loading: 'Carregando preços…',
     paywall_not_available: 'Compras indisponíveis (Expo Go / simulador).',
-    paywall_start: 'Começar — 14 dias grátis',
+    paywall_start: 'Começar — 7 dias grátis',
     paywall_per_month: '/mês',
     paywall_price_detail: 'Depois 12.90 CHF/mês · Cancele quando quiser',
     paywall_access: 'Acesso imediato a todos os pilares · Sem compromisso',
@@ -1449,7 +1455,7 @@ const T = {
     paywall_close: '关闭',
     paywall_prices_loading: '正在加载价格…',
     paywall_not_available: '购买不可用（Expo Go / 模拟器）。',
-    paywall_start: '开始 — 免费14天',
+    paywall_start: '开始 — 免费7天',
     paywall_per_month: '/月',
     paywall_price_detail: '之后12.90 CHF/月 · 随时取消',
     paywall_access: '立即访问所有课程 · 无需承诺',
@@ -1586,7 +1592,7 @@ const T = {
     premium_alert_later: '後で',
     paywall_title: 'みんなのピラティス',
     paywall_sub: '30年の経験を持つピラティス専門家Sabrinaが指導する160セッションに無制限アクセス',
-    paywall_badge: '14日間無料',
+    paywall_badge: '7日間無料',
     paywall_yearly_link: '99 CHF/年 · 35%お得',
     paywall_monthly: '月額',
     paywall_yearly: '年額',
@@ -1596,7 +1602,7 @@ const T = {
     paywall_close: '閉じる',
     paywall_prices_loading: '価格を読み込み中…',
     paywall_not_available: '購入不可（Expo Go / シミュレーター）。',
-    paywall_start: 'はじめる — 14日間無料',
+    paywall_start: 'はじめる — 7日間無料',
     paywall_per_month: '/月',
     paywall_price_detail: 'その後12.90 CHF/月 · いつでもキャンセル可能',
     paywall_access: 'すべてのコースに即時アクセス · 縛りなし',
@@ -1733,7 +1739,7 @@ const T = {
     premium_alert_later: '나중에',
     paywall_title: '모두를 위한 필라테스',
     paywall_sub: '30년 경력의 필라테스 전문가 Sabrina가 안내하는 160개 세션 무제한 이용',
-    paywall_badge: '14일 무료',
+    paywall_badge: '7일 무료',
     paywall_yearly_link: '99 CHF/년 · 35% 절약',
     paywall_monthly: '월간',
     paywall_yearly: '연간',
@@ -1743,7 +1749,7 @@ const T = {
     paywall_close: '닫기',
     paywall_prices_loading: '가격 로딩 중…',
     paywall_not_available: '구매 불가 (Expo Go / 시뮬레이터).',
-    paywall_start: '시작 — 14일 무료',
+    paywall_start: '시작 — 7일 무료',
     paywall_per_month: '/월',
     paywall_price_detail: '이후 12.90 CHF/월 · 언제든 해지 가능',
     paywall_access: '모든 코스 즉시 이용 · 약정 없음',
@@ -3664,6 +3670,27 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         contentContainerStyle={{ paddingTop: 170, paddingBottom: 120, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
       >
+        {mcTab === 'pour_vous' && (
+          <TouchableOpacity onPress={function() { var p = piliers.find(function(x) { return x.key === 'p8'; }); if (p) setOpenPilier(p); }} activeOpacity={0.9} style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,206,209,0.5)' }}>
+            <LinearGradient colors={['rgba(0,206,209,0.2)', 'rgba(0,18,38,0.8)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 }}>
+              <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,206,209,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                  <Path d="M4 18h16M6 18V10c0-1 1-2 2-2h8c1 0 2 1 2 2v8" stroke="#00CED1" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+                  <Circle cx="12" cy="5" r="3" stroke="#00CED1" strokeWidth={1.5} />
+                  <Path d="M9 14h6" stroke="#00CED1" strokeWidth={1.4} strokeLinecap="round" />
+                </Svg>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 10, color: '#00CED1', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 2 }}>{tr.pause_bureau_tag || 'Pause active'}</Text>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff' }}>{tr.pause_bureau_title || '5 min au bureau'}</Text>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{tr.pause_bureau_sub || 'Étire-toi sans quitter ta chaise'}</Text>
+              </View>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#00CED1', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 16, color: '#000' }}>▶</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
         {mcTab === 'explorer' && sdj && (
           <TouchableOpacity onPress={function() { if (onTryFreeSession) onTryFreeSession(); }} activeOpacity={0.9} style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#AEEF4D' }}>
             <ImageBackground source={PILIER_IMAGES[sdj.pilier.key]} resizeMode="cover" style={{ height: 110 }}>
@@ -4103,7 +4130,7 @@ function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPric
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingVertical: 50, alignItems: "center" }}>
 
           <View style={{ backgroundColor: '#AEEF4D', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginBottom: 24 }}>
-            <Text style={{ fontSize: 13, fontWeight: '800', color: '#000000', letterSpacing: 1 }}>{tr.paywall_badge || '14 JOURS GRATUITS'}</Text>
+            <Text style={{ fontSize: 13, fontWeight: '800', color: '#000000', letterSpacing: 1 }}>{tr.paywall_badge || '7 JOURS GRATUITS'}</Text>
           </View>
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center", paddingHorizontal: 28, marginBottom: 28 }}>
@@ -4437,6 +4464,79 @@ function ActivityCalendar({ lang }) {
   );
 }
 
+// ══════════════════════════════════
+// BILAN CORPOREL VISUEL
+// ══════════════════════════════════
+var BODY_ZONES = [
+  { key: 'p1', label: 'Épaules', path: 'M38 28L32 34L30 42L34 42L38 36L42 36L46 42L50 42L48 34L42 28Z', cx: 40, cy: 35 },
+  { key: 'p2', label: 'Dos', path: 'M36 42L34 60L38 60L40 48L42 48L44 60L48 60L46 42Z', cx: 40, cy: 50 },
+  { key: 'p3', label: 'Mobilité', path: 'M34 60L30 78L36 78L38 68L42 68L44 78L50 78L46 60Z', cx: 40, cy: 70 },
+  { key: 'p4', label: 'Posture', path: 'M38 42L36 48L38 48L40 45L42 48L44 48L42 42Z', cx: 40, cy: 45 },
+  { key: 'p8', label: 'Office', path: 'M36 48L34 56L38 56L40 52L42 56L46 56L44 48Z', cx: 40, cy: 52 },
+];
+
+function BodyMapVisual({ done, lang }) {
+  var piliers = getPiliers(lang);
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <Svg width={160} height={180} viewBox="0 0 80 90">
+        {/* Tête */}
+        <Circle cx="40" cy="14" r="8" fill="rgba(255,255,255,0.08)" stroke="rgba(174,239,77,0.3)" strokeWidth={0.8} />
+        {/* Cou */}
+        <Rect x="38" y="22" width="4" height="6" fill="rgba(255,255,255,0.06)" rx="1" />
+        {/* Corps outline */}
+        <Path d="M28 28Q22 32 20 42L22 62L28 78L32 86L36 86L38 80L40 86L42 80L44 86L48 86L52 78L58 62L60 42Q58 32 52 28L46 26L40 24L34 26Z" fill="rgba(255,255,255,0.04)" stroke="rgba(174,239,77,0.15)" strokeWidth={0.6} />
+        {/* Bras gauche */}
+        <Path d="M28 34L18 50L16 60L20 60L22 52L28 42" fill="rgba(255,255,255,0.04)" stroke="rgba(174,239,77,0.12)" strokeWidth={0.5} />
+        {/* Bras droit */}
+        <Path d="M52 34L62 50L64 60L60 60L58 52L52 42" fill="rgba(255,255,255,0.04)" stroke="rgba(174,239,77,0.12)" strokeWidth={0.5} />
+        {/* Zones colorées selon progression */}
+        {piliers.map(function(p) {
+          var count = (done[p.key] || []).filter(Boolean).length;
+          var pctZone = count / 20;
+          var zone = BODY_ZONES.find(function(z) { return z.key === p.key; });
+          if (!zone) return null;
+          var color = pctZone === 0 ? 'rgba(255,60,60,0.25)' : pctZone < 0.3 ? 'rgba(255,180,60,0.35)' : pctZone < 0.6 ? 'rgba(174,239,77,0.4)' : 'rgba(174,239,77,0.7)';
+          return (
+            <G key={p.key}>
+              <Path d={zone.path} fill={color} />
+              {pctZone > 0 && <Circle cx={zone.cx} cy={zone.cy} r={2} fill="#AEEF4D" opacity={pctZone} />}
+            </G>
+          );
+        })}
+        {/* Tête couleur p1 (épaules liées) */}
+        <Circle cx="40" cy="14" r="7" fill={((done.p1 || []).filter(Boolean).length / 20) > 0.3 ? 'rgba(174,239,77,0.3)' : 'rgba(255,60,60,0.15)'} />
+      </Svg>
+      <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,60,60,0.4)' }} />
+          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>À travailler</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,180,60,0.5)' }} />
+          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>En progrès</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#AEEF4D' }} />
+          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Maîtrisé</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ══════════════════════════════════
+// STREAK PROTECTOR
+// ══════════════════════════════════
+function getStreakStatus(streak, lastStreakDate) {
+  if (!lastStreakDate) return 'none';
+  var today = new Date().toDateString();
+  var yesterday = new Date(Date.now() - 86400000).toDateString();
+  if (lastStreakDate === today) return 'safe';
+  if (lastStreakDate === yesterday) return 'at_risk';
+  return 'lost';
+}
+
 function getSmartRecommendation(done, tensionIdxs, lang) {
   var piliers = getPiliers(lang);
   var seances = getSeances(lang);
@@ -4456,6 +4556,19 @@ function getSmartRecommendation(done, tensionIdxs, lang) {
 function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCreateAccount }) {
   var tr = T[lang] || T['fr'];
   var piliers = getPiliers(lang);
+  var [meduseName, setMeduseName] = useState('');
+  var [showNameInput, setShowNameInput] = useState(false);
+  var [nameInput, setNameInput] = useState('');
+  useEffect(function() {
+    AsyncStorage.getItem('fluid_meduse_name').then(function(n) { if (n) setMeduseName(n); });
+  }, []);
+  function saveMeduseName() {
+    var name = nameInput.trim();
+    if (!name) return;
+    setMeduseName(name);
+    setShowNameInput(false);
+    AsyncStorage.setItem('fluid_meduse_name', name);
+  }
   var totalDone = Object.values(done).flat().filter(Boolean).length;
   var pct = Math.round(totalDone / 160 * 100);
   var recommendedPiliers = (tensionIdxs || []).map(function(i) { return ZONE_TO_PILIER[i]; });
@@ -4569,9 +4682,12 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
           var motiv = (motivTexts[lang] || motivTexts.fr)[stIdx];
           return (
             <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 14, alignItems: 'center' }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16, alignSelf: 'flex-start' }}>{tr.meduse_card_title || 'Ta méduse'}</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16, alignSelf: 'flex-start' }}>{meduseName || (tr.meduse_card_title || 'Ta méduse')}</Text>
               <LivingMedusa pct={pct} streak={streak} lang={lang} showLabel={false} />
-              <Text style={{ fontSize: 18, fontWeight: '700', color: ms.color.replace('1)', '0.9)'), marginTop: 14 }}>{names[stIdx]}</Text>
+              {meduseName ? (
+                <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff', marginTop: 14 }}>{meduseName}</Text>
+              ) : null}
+              <Text style={{ fontSize: 14, fontWeight: '600', color: ms.color.replace('1)', '0.9)'), marginTop: meduseName ? 4 : 14 }}>{names[stIdx]}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, alignSelf: 'stretch' }}>
                 <View style={{ flex: 1, height: 4, backgroundColor: 'rgba(174,239,77,0.12)', borderRadius: 2, overflow: 'hidden' }}>
                   <View style={{ height: 4, width: (progressToNext * 100) + '%', backgroundColor: ms.color, borderRadius: 2 }} />
@@ -4579,6 +4695,24 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
                 {nextState && <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{names[stIdx + 1]}</Text>}
               </View>
               <Text style={{ fontSize: 12, fontWeight: '300', color: 'rgba(255,255,255,0.5)', marginTop: 10, textAlign: 'center', fontStyle: 'italic' }}>{motiv}</Text>
+              {!meduseName && !showNameInput && (
+                <TouchableOpacity onPress={function() { setShowNameInput(true); }} activeOpacity={0.85} style={{ marginTop: 14, paddingVertical: 8, paddingHorizontal: 20, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#AEEF4D' }}>{tr.meduse_name_btn || 'Donne-lui un nom'}</Text>
+                </TouchableOpacity>
+              )}
+              {showNameInput && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, alignSelf: 'stretch' }}>
+                  <TextInput value={nameInput} onChangeText={setNameInput} placeholder={tr.meduse_name_ph || 'Nom de ta méduse'} placeholderTextColor="rgba(174,239,77,0.3)" autoFocus style={{ flex: 1, height: 40, backgroundColor: 'rgba(0,18,32,0.6)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, color: '#ffffff', fontSize: 14, paddingHorizontal: 12 }} />
+                  <TouchableOpacity onPress={saveMeduseName} style={{ height: 40, paddingHorizontal: 16, borderRadius: 12, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#000000' }}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {meduseName && (
+                <TouchableOpacity onPress={function() { setShowNameInput(true); setNameInput(meduseName); }} activeOpacity={0.7} style={{ marginTop: 6 }}>
+                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{tr.meduse_rename || 'Renommer'}</Text>
+                </TouchableOpacity>
+              )}
             </View>
           );
         })()}
@@ -4597,6 +4731,28 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
             <Text style={[styles.statLbl, { color: 'rgba(174,239,77,0.6)' }]}>{tr.resume_global || 'Global'}</Text>
           </View>
         </View>
+
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 14, alignItems: 'center' }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14, alignSelf: 'flex-start' }}>{tr.body_map_title || 'Bilan corporel'}</Text>
+          <BodyMapVisual done={done} lang={lang} />
+        </View>
+
+        {(function() {
+          var streakStatus = 'safe';
+          if (streak > 0) {
+            var allDoneToday = Object.values(done).flat().filter(Boolean).length;
+          }
+          var atRisk = streak > 0 && totalDone > 0;
+          return atRisk && streak >= 2 ? (
+            <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(255,150,0,0.08)', borderWidth: 1, borderColor: 'rgba(255,180,60,0.4)', borderRadius: 12, padding: 16, marginBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Text style={{ fontSize: 24 }}>🔥</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFB43C' }}>{tr.streak_protect_title || 'Protège ton streak !'}</Text>
+                <Text style={{ fontSize: 11, color: 'rgba(255,180,60,0.6)', marginTop: 2 }}>{tr.streak_protect_sub || 'Fais une micro-séance de 2 min pour ne pas perdre tes ' + streak + ' jours'}</Text>
+              </View>
+            </View>
+          ) : null;
+        })()}
 
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 14 }}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.calendar_title || 'Activité récente'}</Text>
@@ -6132,7 +6288,7 @@ function StretchTimerModal({ visible, onClose, lang }) {
         </View>
 
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 30, zIndex: 2, paddingHorizontal: 20 }}>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>{tr.timer_title || 'Minuteur Stretching'}</Text>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>{tr.timer_title || 'Minuteur Stretching & Eldoa'}</Text>
           <Text style={{ fontSize: 12, fontWeight: '300', color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 18, marginBottom: 16, paddingHorizontal: 20 }}>{tr.timer_desc || 'Maintenez chaque étirement pendant la durée choisie. Respirez profondément et relâchez à chaque bip.'}</Text>
           <View style={{ backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 24, padding: 28, alignItems: 'center', width: '100%' }}>
 
@@ -6281,7 +6437,7 @@ function StretchTimerInline({ lang }) {
     <ScrollView style={{ flex: 1, zIndex: 2 }} contentContainerStyle={{ paddingTop: 62, paddingBottom: 120, alignItems: 'center' }} showsVerticalScrollIndicator={false}>
       <View style={{ paddingHorizontal: 20, alignSelf: 'stretch', marginBottom: 16 }}>
         <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</Text></Text>
-        <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.timer_title || 'Minuteur Stretching'}</Text>
+        <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.timer_title || 'Minuteur Stretching & Eldoa'}</Text>
       </View>
       <Text style={{ fontSize: 12, fontWeight: '300', color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 18, marginBottom: 20, paddingHorizontal: 32 }}>{tr.timer_desc || 'Maintenez chaque étirement pendant la durée choisie. Respirez profondément et relâchez à chaque bip.'}</Text>
 
