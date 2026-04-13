@@ -36,7 +36,12 @@ function getPiliers(lang) {
 }
 
 function canAccessSeanceIndex(idx, isSubscriber) {
-  return idx < FREE_SEANCE_INDEX || isSubscriber;
+  if (idx >= 5) return false; // séances 6-20 coming soon
+  return isSubscriber;
+}
+
+function isComingSoon(idx) {
+  return idx >= 5;
 }
 
 function getSeanceDuJour(done, tensionIdxs, lang) {
@@ -74,6 +79,7 @@ export {
   getSeances,
   getPiliers,
   canAccessSeanceIndex,
+  isComingSoon,
   getSeanceDuJour,
   getResumeIndicesForPilier,
   PILIER_LABEL_IDX,

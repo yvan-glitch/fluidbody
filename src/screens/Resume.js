@@ -278,7 +278,8 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
     AsyncStorage.setItem('fluid_meduse_name', name);
   }
   var totalDone = Object.values(done).flat().filter(Boolean).length;
-  var pct = Math.round(totalDone / 160 * 100);
+  var totalDoneCapped = Math.min(totalDone, 40);
+  var pct = Math.round(totalDoneCapped / 40 * 100);
   var recommendedPiliers = (tensionIdxs || []).map(function(i) { return ZONE_TO_PILIER[i]; });
   var [hkData, setHkData] = useState({ cal: 0, exMin: 0, standHr: 0 });
   var [localExMin, setLocalExMin] = useState(0);
@@ -542,8 +543,8 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20 }}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.par_pilier}</Text>
           {sortedPiliers.map(function(p, idx) {
-            var count = done[p.key].filter(function(v) { return v === true || v === 'true'; }).length;
-            var pct2 = Math.round(count / 20 * 100);
+            var count = Math.min(done[p.key].filter(function(v) { return v === true || v === 'true'; }).length, 5);
+            var pct2 = Math.round(count / 5 * 100);
             var isRec = recommendedPiliers.includes(p.key);
             return (
               <View key={p.key} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: idx < sortedPiliers.length - 1 ? 0.5 : 0, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
@@ -551,15 +552,15 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
                   <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '500', color: '#ffffff' }}>{p.label}{isRec ? ' ★' : ''}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: '#ffffff' }}>{p.label}{isRec ? ' \u2605' : ''}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 8 }}>
                     <View style={{ flex: 1, height: 4, backgroundColor: 'rgba(174,239,77,0.12)', borderRadius: 2, overflow: 'hidden' }}>
                       <View style={{ height: 4, width: pct2 + '%', backgroundColor: '#AEEF4D', borderRadius: 2 }} />
                     </View>
-                    <Text style={{ fontSize: 11, color: '#AEEF4D', width: 38 }}>{count}/20</Text>
+                    <Text style={{ fontSize: 11, color: '#AEEF4D', width: 38 }}>{count}/5</Text>
                   </View>
                 </View>
-                <Text style={{ fontSize: pct2 === 0 ? 13 : 16, fontWeight: '600', color: pct2 === 0 ? '#00BDD0' : '#AEEF4D', marginLeft: 8 }}>{pct2 === 0 ? (tr.cest_parti || "C'est parti ! 🌊") : pct2 + '%'}</Text>
+                <Text style={{ fontSize: pct2 === 0 ? 13 : 16, fontWeight: '600', color: pct2 === 0 ? '#00BDD0' : '#AEEF4D', marginLeft: 8 }}>{pct2 === 0 ? (tr.cest_parti || "C'est parti ! \uD83C\uDF0A") : pct2 + '%'}</Text>
               </View>
             );
           })}

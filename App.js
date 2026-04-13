@@ -382,8 +382,8 @@ function AnimatedFaceIcon({ size = 50, breathCycleMs = 3000, expression = 0, tin
 
 function Progresser({ done, lang, tensionIdxs }) {
   const tr = T[lang] || T['fr'];
-  const totalDone = Object.values(done).flat().filter(Boolean).length;
-  const pct = Math.round(totalDone / 160 * 100);
+  const totalDone = Math.min(Object.values(done).flat().filter(Boolean).length, 40);
+  const pct = Math.round(totalDone / 40 * 100);
   const piliers = getPiliers(lang);
   const recommendedPiliers = tensionIdxs.map(i => ZONE_TO_PILIER[i]);
   const globalAnim = useRef(new Animated.Value(0)).current;
@@ -412,14 +412,14 @@ function Progresser({ done, lang, tensionIdxs }) {
           <View style={{ height: 6, backgroundColor: 'rgba(174,239,77,0.15)', borderRadius: 3, marginTop: 14, overflow: 'hidden' }}>
             <Animated.View style={{ height: 6, width: globalAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 300] }), backgroundColor: '#AEEF4D', borderRadius: 3 }} />
           </View>
-          <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.45)', textAlign: 'right', marginTop: 4 }}>{totalDone} / 160</Text>
+          <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.45)', textAlign: 'right', marginTop: 4 }}>{totalDone} / 40</Text>
         </View>
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
           {sortedPiliers.map((p, idx) => {
-            const count = done[p.key].filter(v => v === true || v === 'true').length;
+            const count = Math.min(done[p.key].filter(v => v === true || v === 'true').length, 5);
             const IconComp = ICONS[p.key];
             const isRec = recommendedPiliers.includes(p.key);
-            const pct2 = Math.round(count / 20 * 100);
+            const pct2 = Math.round(count / 5 * 100);
             return (
               <View key={p.key} style={{ backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
@@ -429,13 +429,13 @@ function Progresser({ done, lang, tensionIdxs }) {
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <Text style={{ fontSize: 16, fontWeight: '300', color: '#ffffff' }}>{p.label}</Text>
-                      {isRec && <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(174,239,77,0.15)', borderWidth: 0.5, borderColor: 'rgba(174,239,77,0.5)' }}><Text style={{ fontSize: 8, color: '#AEEF4D', letterSpacing: 1 }}>★ {tr.recommande_pour_toi}</Text></View>}
+                      {isRec && <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(174,239,77,0.15)', borderWidth: 0.5, borderColor: 'rgba(174,239,77,0.5)' }}><Text style={{ fontSize: 8, color: '#AEEF4D', letterSpacing: 1 }}>{'\u2605'} {tr.recommande_pour_toi}</Text></View>}
                     </View>
-                    <Text style={{ fontSize: 11, color: '#AEEF4D', letterSpacing: 1, marginTop: 3 }}>{count}/20{count === 20 ? ' ✓' : ''}</Text>
+                    <Text style={{ fontSize: 11, color: '#AEEF4D', letterSpacing: 1, marginTop: 3 }}>{count}/5{count === 5 ? ' \u2713' : ''}</Text>
                   </View>
-                  <Text style={{ fontSize: pct2 === 0 ? 16 : 22, fontWeight: pct2 === 0 ? '600' : '200', color: pct2 === 0 ? '#00BDD0' : '#AEEF4D' }}>{pct2 === 0 ? (tr.cest_parti || "C'est parti ! 🌊") : pct2 + '%'}</Text>
+                  <Text style={{ fontSize: pct2 === 0 ? 16 : 22, fontWeight: pct2 === 0 ? '600' : '200', color: pct2 === 0 ? '#00BDD0' : '#AEEF4D' }}>{pct2 === 0 ? (tr.cest_parti || "C'est parti ! \uD83C\uDF0A") : pct2 + '%'}</Text>
                 </View>
-                <AnimatedBar value={count} max={20} color={'#AEEF4D'} delay={idx * 100} />
+                <AnimatedBar value={count} max={5} color={'#AEEF4D'} delay={idx * 100} />
               </View>
             );
           })}

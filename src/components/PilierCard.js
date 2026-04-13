@@ -44,9 +44,9 @@ export default function PilierCard({ pilier, doneCount, onPress, recommended, la
       >
         <ImageBackground
           source={imgSrc}
-          resizeMode={pilier.key === 'p8' ? 'contain' : 'cover'}
-          style={{ flex: 1 }}
-          imageStyle={{ opacity: 0.70 }}
+          resizeMode="cover"
+          style={{ flex: 1, overflow: 'hidden' }}
+          imageStyle={pilier.key === 'p8' ? { opacity: 0.70, top: -100, height: CARD_H + 100 } : { opacity: 0.70 }}
         >
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.65)"]}
