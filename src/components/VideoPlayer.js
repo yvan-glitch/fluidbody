@@ -40,6 +40,8 @@ function isBunnyVideoUrl(url) {
 
 const VIDEO_DEMO = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
 
+var RATE_OPTIONS = [0.75, 1.0, 1.25, 1.5];
+
 // ── Étape colors (also kept in App.js for PilierPanel) ──
 const ETAPE_COLORS = {
   'Comprendre': 'rgba(0,220,170,0.9)',
@@ -95,9 +97,7 @@ async function loadVideoResume(pilierKey, seanceIndex, currentUri, currentDurati
 // ── Subtitles (VTT) ──
 
 var SUBTITLE_LANGS = [
-  { code: 'fr', label: 'Français' }, { code: 'en', label: 'English' }, { code: 'de', label: 'Deutsch' },
-  { code: 'pt', label: 'Português' }, { code: 'zh', label: '中文' }, { code: 'ja', label: '日本語' },
-  { code: 'ko', label: '한국어' }, { code: 'es', label: 'Español' }, { code: 'it', label: 'Italiano' },
+  { code: 'fr', label: 'Français' }, { code: 'en', label: 'English' },
 ];
 
 function extractVideoId(url) {
@@ -267,6 +267,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   var [ccCues, setCcCues] = useState([]);
   var [ccText, setCcText] = useState(null);
   var [showCcPicker, setShowCcPicker] = useState(false);
+  var [playbackRate, setPlaybackRate] = useState(1.0);
 
   useEffect(function() {
     if (!ccEnabled || !hasRealVideo || !videoUrl) { setCcCues([]); return; }
@@ -445,6 +446,16 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     bumpTimer();
   }
 
+  async function cyclePlaybackRate() {
+    var idx = RATE_OPTIONS.indexOf(playbackRate);
+    var next = RATE_OPTIONS[(idx + 1) % RATE_OPTIONS.length];
+    setPlaybackRate(next);
+    if (videoRef.current) {
+      try { await videoRef.current.setRateAsync(next, true); } catch(e) {}
+    }
+    bumpTimer();
+  }
+
   function formatTimeCode(ms) {
     if (ms == null || !Number.isFinite(ms)) return '00:00';
     const s = Math.floor(ms / 1000);
@@ -523,6 +534,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
           style={{ position: 'absolute', top: 0, left: 0, width: dims.width, height: dims.height }}
           resizeMode={ResizeMode.CONTAIN}
           shouldPlay
+          rate={playbackRate}
+          shouldCorrectPitch={true}
           onPlaybackStatusUpdate={onPlaybackStatusUpdate}
         />
       ) : (
@@ -671,6 +684,11 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                 {hasRealVideo && ccEnabled && (
                   <TouchableOpacity onPress={function() { setShowCcPicker(!showCcPicker); bumpTimer(); }} hitSlop={10} style={{ height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>{ccLang.toUpperCase()}</Text>
+                  </TouchableOpacity>
+                )}
+                {hasRealVideo && (
+                  <TouchableOpacity onPress={cyclePlaybackRate} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', marginLeft: 8 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#ffffff' }}>{playbackRate === 1.0 ? '1x' : playbackRate + 'x'}</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={14} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>

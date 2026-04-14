@@ -28,7 +28,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ViewShot from 'react-native-view-shot';
-import { U_JELLY, U_WAVE, FREE_SEANCE_INDEX, ZONE_TO_PILIER, T, SEANCES_FR, SEANCES_EN, SEANCES_ES, SEANCES_IT, SEANCES_DE, SEANCES_PT, SEANCES_ZH, SEANCES_JA, SEANCES_KO, PILIERS_BASE, PILIER_IMAGES } from './src/constants/data';
+import { U_JELLY, U_WAVE, FREE_SEANCE_INDEX, ZONE_TO_PILIER, T, SEANCES_FR, SEANCES_EN, PILIERS_BASE, PILIER_IMAGES } from './src/constants/data';
 import { Linking as RNLinking } from 'react-native';
 import { Bulle, Rayon, Meduse, MeduseCornerIcon, VideoPlaceholderMeduse, BULLES, BULLES_MONCORPS, BULLES_ONBOARDING, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState, LivingMedusa, FloatingMedusas } from './src/components/Meduse';
 import VideoPlayer, { VIDEO_RESUME_PREFIX } from './src/components/VideoPlayer';
@@ -276,7 +276,7 @@ const Tab = createBottomTabNavigator();
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
 const SCALE = IS_IPAD ? SW / 390 : 1; // Scale factor relative to iPhone 390px
-const SUPPORTED_APP_LANGS = ['fr', 'en', 'es', 'it', 'de', 'pt', 'zh', 'ja', 'ko'];
+const SUPPORTED_APP_LANGS = ['fr', 'en'];
 
 /** Langue d'interface : locale appareil (expo-localization), sinon français. */
 function getAppLangFromLocale() {
@@ -447,7 +447,7 @@ function Progresser({ done, lang, tensionIdxs }) {
                     </View>
                     <Text style={{ fontSize: 11, color: '#AEEF4D', letterSpacing: 1, marginTop: 3 }}>{count}/5{count === 5 ? ' \u2713' : ''}</Text>
                   </View>
-                  <Text style={{ fontSize: pct2 === 0 ? 16 : 22, fontWeight: pct2 === 0 ? '600' : '200', color: '#AEEF4D' }}>{pct2 === 0 ? (tr.cest_parti || "C'est parti !") : pct2 + '%'}</Text>
+                  <Text style={{ fontSize: 22, fontWeight: '200', color: '#AEEF4D' }}>{pct2 + '%'}</Text>
                 </View>
                 <AnimatedBar value={count} max={5} color={'#AEEF4D'} delay={idx * 100} />
               </View>
@@ -878,14 +878,18 @@ async function setupNotifications(lang = 'fr') {
     if (status !== 'granted') return;
     await Notifications.cancelAllScheduledNotificationsAsync();
     const tr = T[lang] || T['fr'];
-    await Notifications.scheduleNotificationAsync({ content: { title: tr.notif_title, body: tr.notif_body, sound: true }, trigger: { hour: 9, minute: 0, repeats: true } });
+    var savedHour = parseInt(await AsyncStorage.getItem('fluid_notif_hour')) || 9;
+    var pauseEnabled = (await AsyncStorage.getItem('fluid_notif_pause_enabled')) !== 'false';
+    await Notifications.scheduleNotificationAsync({ content: { title: tr.notif_title, body: tr.notif_body, sound: true }, trigger: { hour: savedHour, minute: 0, repeats: true } });
     // Pause Active — Office : toutes les heures 9h-18h en semaine
-    for (var h = 9; h <= 17; h++) {
-      for (var wd = 2; wd <= 6; wd++) {
-        await Notifications.scheduleNotificationAsync({
-          content: { title: tr.notif_pause_title || 'Pause Active', body: tr.notif_pause_body || 'C\'est le moment de bouger ! 5 min d\'étirements au bureau.', sound: true },
-          trigger: { weekday: wd, hour: h, minute: 0, repeats: true },
-        });
+    if (pauseEnabled) {
+      for (var h = 9; h <= 17; h++) {
+        for (var wd = 2; wd <= 6; wd++) {
+          await Notifications.scheduleNotificationAsync({
+            content: { title: tr.notif_pause_title || 'Pause Active', body: tr.notif_pause_body || 'C\'est le moment de bouger ! 5 min d\'étirements au bureau.', sound: true },
+            trigger: { weekday: wd, hour: h, minute: 0, repeats: true },
+          });
+        }
       }
     }
   } catch(e) {}
@@ -937,6 +941,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
   const [freeDetailVisible, setFreeDetailVisible] = useState(false);
   const [freeVideoPlaying, setFreeVideoPlaying] = useState(false);
   const [showFirstSeanceModal, setShowFirstSeanceModal] = useState(false);
+  const [milestoneNum, setMilestoneNum] = useState(null);
   const [showAuthScreen, setShowAuthScreen] = useState(false);
   const [showStretchTimer, setShowStretchTimer] = useState(false);
   const [rcPackagesByProductId, setRcPackagesByProductId] = useState({});
@@ -1149,6 +1154,24 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
         setTimeout(function() { setShowFirstSeanceModal(true); }, 1500);
       }
     }
+    // Milestone celebrations
+    if (!done[key][idx]) {
+      var MILESTONES = [5, 10, 15, 20, 25, 30, 35, 40];
+      var newTotal = 0;
+      Object.values(next).forEach(function(arr) {
+        if (arr) arr.forEach(function(v) { if (v) newTotal++; });
+      });
+      if (MILESTONES.includes(newTotal)) {
+        AsyncStorage.getItem('fluid_milestones_seen').then(function(raw) {
+          var seen = raw ? JSON.parse(raw) : [];
+          if (!seen.includes(newTotal)) {
+            seen.push(newTotal);
+            AsyncStorage.setItem('fluid_milestones_seen', JSON.stringify(seen));
+            setMilestoneNum(newTotal);
+          }
+        });
+      }
+    }
     // Calendar heatmap
     if (!done[key][idx]) {
       try {
@@ -1250,6 +1273,21 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
         </Tab.Navigator>
       </NavigationContainer>
       <StretchTimerModal visible={showStretchTimer} onClose={function() { setShowStretchTimer(false); }} lang={lang} />
+      {milestoneNum && (
+        <Modal visible={true} transparent animationType="fade" statusBarTranslucent>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.92)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ alignItems: 'center', padding: 40 }}>
+              <Text style={{ fontSize: 60, marginBottom: 16 }}>🏆</Text>
+              <Text style={{ fontSize: 48, fontWeight: '900', color: '#AEEF4D', marginBottom: 8 }}>{milestoneNum}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#ffffff', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 12 }}>séances</Text>
+              <Text style={{ fontSize: 18, fontWeight: '400', color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginBottom: 32 }}>{tr['milestone_' + milestoneNum] || 'Bravo !'}</Text>
+              <TouchableOpacity onPress={function() { setMilestoneNum(null); }} style={{ paddingHorizontal: 40, paddingVertical: 14, borderRadius: 16, backgroundColor: '#AEEF4D' }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#001226' }}>Continuer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </>
   );
 }
