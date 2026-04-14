@@ -70,6 +70,17 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
             </View>
           </View>
 
+          <View style={{ marginTop: 16, marginBottom: 8, marginHorizontal: 28 }}>
+            {[tr.paywall_b1, tr.paywall_b2, tr.paywall_b3, tr.paywall_b4, tr.paywall_b5].map(function(b, i) {
+              return (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, paddingHorizontal: 4 }}>
+                  <Text style={{ fontSize: 14, color: '#AEEF4D', marginRight: 10 }}>✓</Text>
+                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '400' }}>{b}</Text>
+                </View>
+              );
+            })}
+          </View>
+
           {disabled && (
             <View style={{ alignSelf: "stretch", marginHorizontal: 28, marginBottom: 16, backgroundColor: "rgba(255,200,80,0.10)", borderWidth: 1, borderColor: "rgba(255,200,80,0.25)", borderRadius: 16, padding: 14 }}>
               <Text style={{ color: "rgba(255,220,140,0.9)", fontSize: 12, lineHeight: 18, textAlign: "center" }}>{tr.paywall_not_available}</Text>

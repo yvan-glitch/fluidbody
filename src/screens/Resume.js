@@ -163,11 +163,10 @@ function BodyMapVisual({ done, lang }) {
         </View>
         {/* Mannequin image + zones colorées */}
         <View style={{ width: 110, height: 250, position: 'relative' }}>
-          <ImageBackground source={require('../../assets/mannequin.png')} resizeMode="contain" style={{ width: 110, height: 250, opacity: 0.6 }} imageStyle={{ tintColor: '#AEEF4D' }} />
+          <ImageBackground source={require('../../assets/mannequin.png')} resizeMode="contain" style={{ width: 110, height: 250, opacity: 0.7 }} imageStyle={{ tintColor: '#15A89C' }} />
           {/* Zones colorées superposées */}
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
         <Svg width={110} height={250} viewBox="0 0 100 280">
-          {/* Zones colorées sur le mannequin */}
           {/* Épaules p1 */}
           <Ellipse cx="34" cy="46" rx="10" ry="6" fill={zoneColor('p1')} opacity={0.6} />
           <Ellipse cx="66" cy="46" rx="10" ry="6" fill={zoneColor('p1')} opacity={0.6} />
@@ -261,6 +260,58 @@ function getSmartRecommendation(done, tensionIdxs, lang) {
   return best;
 }
 
+// ══════════════════════════════════
+// WEEKLY SUMMARY CARD
+// ══════════════════════════════════
+function WeeklySummary({ streak, lang }) {
+  var [weekSessions, setWeekSessions] = useState(0);
+  var [weekMinutes, setWeekMinutes] = useState(0);
+  var tr = T[lang] || T['fr'];
+
+  useEffect(function() {
+    async function load() {
+      var today = new Date();
+      var sessions = 0;
+      var minutes = 0;
+      try {
+        var cal = await AsyncStorage.getItem('fluid_activity_calendar');
+        var parsed = cal ? JSON.parse(cal) : {};
+        for (var i = 0; i < 7; i++) {
+          var d = new Date(today);
+          d.setDate(d.getDate() - i);
+          var key = d.toISOString().split('T')[0];
+          if (parsed[key]) sessions += parsed[key];
+          var mins = await AsyncStorage.getItem('fluid_exercise_' + key);
+          if (mins) minutes += parseInt(mins) || 0;
+        }
+      } catch(e) {}
+      setWeekSessions(sessions);
+      setWeekMinutes(minutes);
+    }
+    load();
+  }, []);
+
+  return (
+    <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.4)', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(174,239,77,0.15)' }}>
+      <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.weekly_summary || 'Cette semaine'}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff' }}>{weekSessions}</Text>
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{tr.weekly_sessions_label || 'Séances'}</Text>
+        </View>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff' }}>{weekMinutes}'</Text>
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{tr.weekly_minutes_label || 'Minutes'}</Text>
+        </View>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff' }}>🔥{streak || 0}</Text>
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>Streak</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCreateAccount }) {
   var tr = T[lang] || T['fr'];
   var piliers = getPiliers(lang);
@@ -335,6 +386,8 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
             </View>
           </View>
         </View>
+
+        <WeeklySummary streak={streak} lang={lang} />
 
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 16 }}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 }}>{tr.resume_activite || 'Activité'}</Text>
@@ -563,7 +616,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
                     <Text style={{ fontSize: 11, color: '#AEEF4D', width: 38 }}>{count}/5</Text>
                   </View>
                 </View>
-                <Text style={{ fontSize: pct2 === 0 ? 13 : 16, fontWeight: '600', color: '#AEEF4D', marginLeft: 8 }}>{pct2 === 0 ? (tr.cest_parti || "C'est parti !") : pct2 + '%'}</Text>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: '#AEEF4D', marginLeft: 8 }}>{pct2 + '%'}</Text>
               </View>
             );
           })}

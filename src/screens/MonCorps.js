@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, ImageBackground } from 'react-native';
+import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, ImageBackground, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Svg, { Path, Circle, Ellipse } from 'react-native-svg';
@@ -12,6 +12,14 @@ import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, isComing
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
+
+const PROG_IMAGES = {
+  reveil: require('../../assets/programs/reveil-matinal.jpg'),
+  dos: require('../../assets/programs/mal-de-dos.jpg'),
+  posttravail: require('../../assets/programs/post-travail.jpg'),
+  core: require('../../assets/programs/core-plancher.jpg'),
+  souplesse: require('../../assets/programs/souplesse.jpg'),
+};
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
@@ -28,6 +36,14 @@ const ETAPE_COLORS = {
 };
 
 var JOUR_LABELS = { fr: ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'], en: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], de: ['Mo','Di','Mi','Do','Fr','Sa','So'], pt: ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'], zh: ['一','二','三','四','五','六','日'], ja: ['月','火','水','木','金','土','日'], ko: ['월','화','수','목','금','토','일'], es: ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'], it: ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'] };
+
+var LIVE_SCHEDULE = [
+  { id: 1, title: 'Mat Pilates', coach: 'Sabrina', day: 1, time: '18:00', duration: '45 min' },
+  { id: 2, title: 'Stretching Dos', coach: 'Sabrina', day: 3, time: '12:00', duration: '30 min' },
+  { id: 3, title: 'Core & Plancher', coach: 'Sabrina', day: 5, time: '18:00', duration: '45 min' },
+];
+var DAY_FULL_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+var DAY_FULL_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function tabBarIconTint(color) {
   return color != null && color !== '' ? color : 'rgba(0,220,255,0.9)';
@@ -486,6 +502,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
   var [mcTab, setMcTab] = useState('pour_vous');
   var [showCreateProg, setShowCreateProg] = useState(false);
   var [savedPrograms, setSavedPrograms] = useState([]);
+  var [searchQuery, setSearchQuery] = useState('');
+  var [searchEtape, setSearchEtape] = useState(null);
 
   useEffect(function() { loadSavedPrograms(); }, []);
   function loadSavedPrograms() {
@@ -505,8 +523,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
     setSavedPrograms(updated);
     AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(updated));
   }
-  var MC_TABS = ['pour_vous', 'explorer', 'programmes', 'recherche'];
-  var mcTabLabels = { pour_vous: tr.tab_pour_vous, explorer: tr.tab_explorer, programmes: tr.tab_programmes, recherche: tr.tab_recherche };
+  var MC_TABS = ['pour_vous', 'explorer', 'programmes', /* 'live', */ 'recherche'];
+  var mcTabLabels = { pour_vous: tr.tab_pour_vous, explorer: tr.tab_explorer, programmes: tr.tab_programmes, live: tr.live_title || 'Live', recherche: tr.tab_recherche };
   var piliers = getPiliers(lang);
   var recommendedPiliers = tensionIdxs.map(function(i) { return ZONE_TO_PILIER[i]; });
   var effectiveRecommended = recommendedPiliers.length > 0 ? recommendedPiliers : [];
@@ -687,12 +705,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
           <View key="programmes">
             <TouchableOpacity onPress={function() { var p = piliers.find(function(x) { return x.key === 'p8'; }); if (p) setOpenPilier(p); }} activeOpacity={0.9} style={{ marginBottom: 20, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,206,209,0.5)' }}>
               <LinearGradient colors={['rgba(0,206,209,0.2)', 'rgba(0,18,38,0.8)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 }}>
-                <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,206,209,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                    <Path d="M4 18h16M6 18V10c0-1 1-2 2-2h8c1 0 2 1 2 2v8" stroke="#00CED1" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
-                    <Circle cx="12" cy="5" r="3" stroke="#00CED1" strokeWidth={1.5} />
-                    <Path d="M9 14h6" stroke="#00CED1" strokeWidth={1.4} strokeLinecap="round" />
-                  </Svg>
+                <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden' }}>
+                  <ImageBackground source={require('../../assets/cafe.jpg')} resizeMode="cover" style={{ flex: 1 }} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 10, color: '#00CED1', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 2 }}>{tr.pause_bureau_tag || 'Pause active'}</Text>
@@ -709,97 +723,102 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
 
             {/* Réveil Matinal */}
             <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
-              <LinearGradient colors={['#1a0a28', '#8b3a62', '#e8784a']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
-                <View>
-                  <Text style={{ fontSize: 28 }}>🌅</Text>
-                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_reveil || 'Réveil Matinal'}</Text>
-                  <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>10 min pour réveiller ton corps en douceur</Text>
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff", letterSpacing: 1 }}>7 JOURS · 10 MIN/JOUR</Text>
+              <ImageBackground source={PROG_IMAGES.reveil} resizeMode="cover" style={{ flex: 1 }}>
+                <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
+                  <View>
+                    <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_reveil || 'Réveil Matinal'}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>10 min pour réveiller ton corps en douceur</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>7 JOURS · 10 MIN/JOUR</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={function() { var p = piliers.find(function(x) { return x.key === 'p4'; }); if (p) setOpenPilier(p); }}
+                    activeOpacity={0.8}
+                    style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  onPress={function() { var p = piliers.find(function(x) { return x.key === 'p4'; }); if (p) setOpenPilier(p); }}
-                  activeOpacity={0.8}
-                  style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
-                </TouchableOpacity>
-              </LinearGradient>
+              </ImageBackground>
             </View>
 
             {/* Mal de dos */}
             <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
-              <LinearGradient colors={['#0a1628', '#1a3a5c', '#2d6a8f']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
-                <View>
-                  <Text style={{ fontSize: 28 }}>🔥</Text>
-                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_dos || 'Mal de dos'}</Text>
-                  <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Soulage et renforce ton dos en 21 jours</Text>
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff", letterSpacing: 1 }}>21 JOURS · 15 MIN/JOUR</Text>
+              <ImageBackground source={PROG_IMAGES.dos} resizeMode="cover" style={{ flex: 1 }}>
+                <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
+                  <View>
+                    <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_dos || 'Mal de dos'}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>Soulage et renforce ton dos en 21 jours</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>21 JOURS · 15 MIN/JOUR</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={function() { var p = piliers.find(function(x) { return x.key === 'p2'; }); if (p) setOpenPilier(p); }}
+                    activeOpacity={0.8}
+                    style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  onPress={function() { var p = piliers.find(function(x) { return x.key === 'p2'; }); if (p) setOpenPilier(p); }}
-                  activeOpacity={0.8}
-                  style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
-                </TouchableOpacity>
-              </LinearGradient>
+              </ImageBackground>
             </View>
 
             {/* Post-travail */}
             <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
-              <LinearGradient colors={['#1a0a2e', '#3d2a5c', '#6b4a8a']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
-                <View>
-                  <Text style={{ fontSize: 28 }}>💆</Text>
-                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_posttravail || 'Post-travail'}</Text>
-                  <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Décompresse après une journée assise</Text>
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff", letterSpacing: 1 }}>5 JOURS · 15 MIN/JOUR</Text>
+              <ImageBackground source={PROG_IMAGES.posttravail} resizeMode="cover" style={{ flex: 1 }}>
+                <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
+                  <View>
+                    <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_posttravail || 'Post-travail'}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>Décompresse après une journée assise</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>5 JOURS · 15 MIN/JOUR</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={function() { var p = piliers.find(function(x) { return x.key === 'p1'; }); if (p) setOpenPilier(p); }}
+                    activeOpacity={0.8}
+                    style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  onPress={function() { var p = piliers.find(function(x) { return x.key === 'p1'; }); if (p) setOpenPilier(p); }}
-                  activeOpacity={0.8}
-                  style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
-                </TouchableOpacity>
-              </LinearGradient>
+              </ImageBackground>
             </View>
 
             {/* Core & Plancher */}
             <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
-              <LinearGradient colors={['#0a1a12', '#1a4a2e', '#2d8a4f']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
-                <View>
-                  <Text style={{ fontSize: 28 }}>💪</Text>
-                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_core || 'Core & Plancher'}</Text>
-                  <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Renforce ton centre et ta stabilité</Text>
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff", letterSpacing: 1 }}>14 JOURS · 12 MIN/JOUR</Text>
+              <ImageBackground source={PROG_IMAGES.core} resizeMode="cover" style={{ flex: 1 }}>
+                <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
+                  <View>
+                    <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_core || 'Core & Plancher'}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>Renforce ton centre et ta stabilité</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>14 JOURS · 12 MIN/JOUR</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={function() { var p = piliers.find(function(x) { return x.key === 'p7'; }); if (p) setOpenPilier(p); }}
+                    activeOpacity={0.8}
+                    style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  onPress={function() { var p = piliers.find(function(x) { return x.key === 'p7'; }); if (p) setOpenPilier(p); }}
-                  activeOpacity={0.8}
-                  style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
-                </TouchableOpacity>
-              </LinearGradient>
+              </ImageBackground>
             </View>
 
             {/* Souplesse totale */}
             <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
-              <LinearGradient colors={['#0a1828', '#0d4a5c', '#1a8a7a']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
-                <View>
-                  <Text style={{ fontSize: 28 }}>🧘</Text>
-                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_souplesse || 'Souplesse totale'}</Text>
-                  <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Gagne en mobilité sur tout le corps</Text>
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff", letterSpacing: 1 }}>14 JOURS · 20 MIN/JOUR</Text>
+              <ImageBackground source={PROG_IMAGES.souplesse} resizeMode="cover" style={{ flex: 1 }}>
+                <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
+                  <View>
+                    <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_souplesse || 'Souplesse totale'}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>Gagne en mobilité sur tout le corps</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>14 JOURS · 20 MIN/JOUR</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={function() { var p = piliers.find(function(x) { return x.key === 'p3'; }); if (p) setOpenPilier(p); }}
+                    activeOpacity={0.8}
+                    style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  onPress={function() { var p = piliers.find(function(x) { return x.key === 'p3'; }); if (p) setOpenPilier(p); }}
-                  activeOpacity={0.8}
-                  style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
-                </TouchableOpacity>
-              </LinearGradient>
+              </ImageBackground>
             </View>
 
             <Text style={{ fontSize: 22, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_section_title}</Text>
@@ -901,13 +920,119 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
             </View>
           );
         })()}
-        {mcTab === 'recherche' && (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14, justifyContent: "center" }}>
-          {sortedPiliers.map(function(p) {
-            return <PilierCard key={p.key} pilier={p} doneCount={done[p.key] ? done[p.key].filter(Boolean).length : 0} onPress={setOpenPilier} recommended={effectiveRecommended.includes(p.key)} lang={lang} />;
-          })}
-        </View>
+        {mcTab === 'live' && (
+          <View key="live" style={{ paddingBottom: 40 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#ff3b30' }} />
+              <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff' }}>{tr.live_title || 'Cours en direct'}</Text>
+            </View>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 20 }}>{tr.live_subtitle || 'Rejoins Sabrina en live chaque semaine'}</Text>
+            {LIVE_SCHEDULE.map(function(cls) {
+              var dayFull = lang === 'en' ? DAY_FULL_EN : DAY_FULL_FR;
+              var isToday = cls.day === new Date().getDay();
+              return (
+                <View key={cls.id} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 14, borderWidth: 1, borderColor: isToday ? '#AEEF4D' : 'rgba(174,239,77,0.15)' }}>
+                  <ImageBackground source={require('../../assets/coach.jpg')} resizeMode="cover" style={{ height: 150 }}>
+                    <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.7)', padding: 16, justifyContent: 'space-between' }}>
+                      <View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                          {isToday && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,59,48,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, gap: 4 }}>
+                              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#ff3b30' }} />
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#ff3b30' }}>{tr.live_today || "AUJOURD'HUI"}</Text>
+                            </View>
+                          )}
+                          <View style={{ backgroundColor: 'rgba(174,239,77,0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '600', color: '#AEEF4D' }}>{cls.duration}</Text>
+                          </View>
+                        </View>
+                        <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff', marginBottom: 3 }}>{cls.title}</Text>
+                        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{dayFull[cls.day]} · {cls.time} · {tr.live_with || 'avec'} {cls.coach}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <TouchableOpacity style={{ flex: 1, height: 38, borderRadius: 19, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: '#001226' }}>{tr.live_join || 'Rejoindre'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ height: 38, width: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 14 }}>🔔</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </ImageBackground>
+                </View>
+              );
+            })}
+            <View style={{ backgroundColor: 'rgba(0,18,38,0.4)', borderRadius: 16, padding: 20, marginTop: 6, borderWidth: 1, borderColor: 'rgba(174,239,77,0.1)' }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#ffffff', marginBottom: 8 }}>{tr.live_info_title || 'Comment ça marche ?'}</Text>
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 20 }}>{tr.live_info_body || "Connecte-toi à l'heure du cours et clique sur \"Rejoindre\"."}</Text>
+            </View>
+          </View>
         )}
+        {mcTab === 'recherche' && (function() {
+          var seancesData = getSeances(lang);
+          var allResults = [];
+          piliers.forEach(function(p) {
+            var ps = seancesData[p.key] || [];
+            ps.forEach(function(s, idx) {
+              var titre = s[0] || '';
+              var etape = s[2] || '';
+              var matchQuery = !searchQuery || titre.toLowerCase().includes(searchQuery.toLowerCase());
+              var matchEtape = !searchEtape || etape === searchEtape;
+              if (matchQuery && matchEtape) {
+                allResults.push({ seance: s, idx: idx, pilier: p });
+              }
+            });
+          });
+          return (
+            <View>
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder={tr.search_placeholder || 'Chercher une séance...'}
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: '#ffffff', marginBottom: 12, borderWidth: 1, borderColor: 'rgba(174,239,77,0.15)' }}
+              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                {['Comprendre', 'Ressentir', 'Préparer', 'Exécuter', 'Évoluer'].map(function(etape) {
+                  var active = searchEtape === etape;
+                  return (
+                    <TouchableOpacity key={etape} onPress={function() { setSearchEtape(active ? null : etape); }}
+                      style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.08)', marginRight: 8 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#001226' : 'rgba(255,255,255,0.6)' }}>{etape}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              {allResults.length === 0 && (
+                <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 32, fontSize: 14 }}>{tr.search_no_results || 'Aucun résultat'}</Text>
+              )}
+              {allResults.map(function(r, i) {
+                var s = r.seance;
+                var titre = s[0] || '';
+                var duree = s[1] || '';
+                var etape = s[2] || '';
+                var etapeColor = ETAPE_COLORS[etape] || 'rgba(255,255,255,0.5)';
+                return (
+                  <TouchableOpacity key={r.pilier.key + '-' + r.idx + '-' + i} onPress={function() { setOpenPilier(r.pilier); }}
+                    style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                      <View style={{ backgroundColor: 'rgba(174,239,77,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginRight: 8 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#AEEF4D' }}>{r.pilier.nom}</Text>
+                      </View>
+                      {etape ? (
+                        <View style={{ backgroundColor: etapeColor, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: '#001226' }}>{etape}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '600', marginBottom: 3 }}>{titre}</Text>
+                    {duree ? <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>{duree}</Text> : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          );
+        })()}
       </ScrollView>
       {openPilier && (
         <PilierPanel pilier={openPilier} done={done[openPilier.key] || Array(20).fill(false)} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} saveHealthKitWorkout={saveHealthKitWorkout} />

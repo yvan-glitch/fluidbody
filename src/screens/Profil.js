@@ -1,5 +1,5 @@
-import { useRef } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground, Share, Alert } from 'react-native';
+import { useRef, useState, useEffect } from 'react';
+import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground, Share, Alert, Modal, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
@@ -9,6 +9,7 @@ import { Bulle, FloatingMedusas, BULLES } from '../components/Meduse';
 import { getPiliers } from '../utils';
 
 const COACH_IMAGE = require('../../assets/coach.jpg');
+const DEV_IMAGE = require('../../assets/yvan.webp');
 
 // ══════════════════════════════════
 // PROFIL — Abonnement + Compte
@@ -16,6 +17,20 @@ const COACH_IMAGE = require('../../assets/coach.jpg');
 function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, isSubscriber, onRestorePurchases, onReset }) {
   var tr = T[lang] || T['fr'];
   var shareRef = useRef(null);
+  var [showCoachBio, setShowCoachBio] = useState(false);
+  var [showDevBio, setShowDevBio] = useState(false);
+  var [notifHour, setNotifHour] = useState(9);
+  var [pauseEnabled, setPauseEnabled] = useState(true);
+  var [storageUsed, setStorageUsed] = useState('0 B');
+
+  useEffect(function() {
+    AsyncStorage.getItem('fluid_notif_hour').then(function(v) { if (v) setNotifHour(parseInt(v) || 9); });
+    AsyncStorage.getItem('fluid_notif_pause_enabled').then(function(v) { setPauseEnabled(v !== 'false'); });
+    try {
+      var { getStorageUsed, formatBytes } = require('../components/DownloadManager');
+      getStorageUsed().then(function(s) { setStorageUsed(formatBytes(s)); });
+    } catch(e) {}
+  }, []);
   var totalDoneVal = done ? Object.values(done).flat().filter(Boolean).length : 0;
   var pctVal = Math.round(totalDoneVal / 160 * 100);
   var piliers = getPiliers(lang);
@@ -115,8 +130,89 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             </View>
           </View>
           <Text style={{ fontSize: 13, fontWeight: '300', color: 'rgba(255,255,255,0.7)', lineHeight: 20, fontStyle: 'italic', marginBottom: 14 }}>{tr.coach_bio || 'Passionnée par le mouvement conscient, je vous guide vers un corps plus libre et plus fort.'}</Text>
-          <TouchableOpacity activeOpacity={0.85} style={{ paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center' }}>
+          <TouchableOpacity activeOpacity={0.85} onPress={function() { setShowCoachBio(true); }} style={{ paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center' }}>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.coach_more || 'En savoir plus'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Modal visible={showCoachBio} animationType="slide" transparent statusBarTranslucent>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.95)', justifyContent: 'center' }}>
+            <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,28,50,0.95)', borderRadius: 20, padding: 24, maxHeight: Dimensions.get('window').height * 0.8, borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)' }}>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                  <View style={{ width: 90, height: 90, borderRadius: 45, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginBottom: 12 }}>
+                    <ImageBackground source={COACH_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
+                  </View>
+                  <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff' }}>{tr.coach_name || 'Sabrina'}</Text>
+                  <Text style={{ fontSize: 13, color: '#AEEF4D', marginTop: 4 }}>{tr.coach_subtitle || 'Experte Pilates · 30 ans d\'expérience'}</Text>
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(255,255,255,0.8)', lineHeight: 22 }}>{tr.coach_full_bio || ''}</Text>
+              </ScrollView>
+              <TouchableOpacity onPress={function() { setShowCoachBio(false); }} style={{ marginTop: 18, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.15)', alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>Fermer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.notif_section || 'Rappels'}</Text>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>{tr.notif_hour_label || 'Heure du rappel'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TouchableOpacity onPress={function() {
+                var h = Math.max(5, notifHour - 1);
+                setNotifHour(h);
+                AsyncStorage.setItem('fluid_notif_hour', String(h));
+              }} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 18, color: '#AEEF4D', fontWeight: '700' }}>{'\u2212'}</Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', minWidth: 50, textAlign: 'center' }}>{notifHour}h00</Text>
+              <TouchableOpacity onPress={function() {
+                var h = Math.min(22, notifHour + 1);
+                setNotifHour(h);
+                AsyncStorage.setItem('fluid_notif_hour', String(h));
+              }} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 18, color: '#AEEF4D', fontWeight: '700' }}>+</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View>
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>{tr.notif_pause_label || 'Pauses actives au bureau'}</Text>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{tr.notif_pause_sub || '9h-17h en semaine'}</Text>
+            </View>
+            <TouchableOpacity onPress={function() {
+              var next = !pauseEnabled;
+              setPauseEnabled(next);
+              AsyncStorage.setItem('fluid_notif_pause_enabled', String(next));
+            }} style={{ width: 50, height: 28, borderRadius: 14, backgroundColor: pauseEnabled ? '#AEEF4D' : 'rgba(255,255,255,0.15)', justifyContent: 'center', paddingHorizontal: 2 }}>
+              <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#ffffff', alignSelf: pauseEnabled ? 'flex-end' : 'flex-start' }} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dl_title || 'Téléchargements'}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>{tr.dl_storage || 'Espace utilisé'}</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#ffffff' }}>{storageUsed}</Text>
+          </View>
+          <TouchableOpacity onPress={function() {
+            Alert.alert(tr.dl_confirm_delete_all || 'Supprimer tous les téléchargements ?', '', [
+              { text: tr.reset_cancel || 'Annuler', style: 'cancel' },
+              { text: tr.dl_delete_all || 'Tout supprimer', style: 'destructive', onPress: async function() {
+                try {
+                  var { deleteAllDownloads } = require('../components/DownloadManager');
+                  await deleteAllDownloads();
+                  setStorageUsed('0 B');
+                } catch(e) {}
+              }},
+            ]);
+          }} style={{ paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(255,50,50,0.1)', alignItems: 'center' }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,90,90,0.9)' }}>{tr.dl_delete_all || 'Tout supprimer'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -154,6 +250,42 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </View>
         )}
 
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)' }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dev_title || 'Développeur'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+            <View style={{ width: 70, height: 70, borderRadius: 35, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginRight: 14 }}>
+              <ImageBackground source={DEV_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff' }}>{tr.dev_name || 'Yvan'}</Text>
+              <Text style={{ fontSize: 12, color: '#AEEF4D', marginTop: 2 }}>{tr.dev_subtitle || 'Fondateur · Ingénieur & Spécialiste Pilates'}</Text>
+            </View>
+          </View>
+          <TouchableOpacity activeOpacity={0.85} onPress={function() { setShowDevBio(true); }} style={{ paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center' }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.dev_more || 'En savoir plus'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Modal visible={showDevBio} animationType="slide" transparent statusBarTranslucent>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.95)', justifyContent: 'center' }}>
+            <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,28,50,0.95)', borderRadius: 20, padding: 24, maxHeight: Dimensions.get('window').height * 0.8, borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)' }}>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                  <View style={{ width: 90, height: 90, borderRadius: 45, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginBottom: 12 }}>
+                    <ImageBackground source={DEV_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
+                  </View>
+                  <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff' }}>{tr.dev_name || 'Yvan'}</Text>
+                  <Text style={{ fontSize: 13, color: '#AEEF4D', marginTop: 4 }}>{tr.dev_subtitle || 'Fondateur · Ingénieur & Spécialiste Pilates'}</Text>
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(255,255,255,0.8)', lineHeight: 22 }}>{tr.dev_full_bio || ''}</Text>
+              </ScrollView>
+              <TouchableOpacity onPress={function() { setShowDevBio(false); }} style={{ marginTop: 18, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.15)', alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>Fermer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
         {!supaUser && (
           <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
             <TouchableOpacity onPress={function() {
@@ -165,8 +297,8 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                   { text: tr.reset_ok || 'R\u00E9initialiser', style: 'destructive', onPress: function() { if (onReset) onReset(); } },
                 ]
               );
-            }} style={{ paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(255,50,50,0.08)', alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,100,100,0.85)' }}>{tr.reset_btn || 'R\u00E9initialiser toutes les donn\u00E9es'}</Text>
+            }} style={{ paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(255,50,50,0.15)', borderWidth: 1, borderColor: 'rgba(255,80,80,0.35)', alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,90,90,1)' }}>{tr.reset_btn || 'R\u00E9initialiser toutes les donn\u00E9es'}</Text>
             </TouchableOpacity>
           </View>
         )}
