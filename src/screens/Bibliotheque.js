@@ -1,9 +1,27 @@
-import { useState } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground } from 'react-native';
+import { useState, useMemo } from 'react';
+import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground, TextInput, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Ellipse, Line, Rect } from 'react-native-svg';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, Rayon, FloatingMedusas, BULLES } from '../components/Meduse';
+
+const PROGRAM_IMAGES = {
+  f1: require('../../assets/programs/reveil-matinal.jpg'),
+  f2: require('../../assets/programs/mal-de-dos.jpg'),
+  f3: require('../../assets/programs/post-travail.jpg'),
+  f4: require('../../assets/programs/core-plancher.jpg'),
+  f5: require('../../assets/programs/souplesse.jpg'),
+};
+
+const FICHE_GRADIENT_COLORS = [
+  ['rgba(0,220,170,0.7)', 'rgba(0,80,60,0.95)'],
+  ['rgba(100,190,255,0.7)', 'rgba(20,60,120,0.95)'],
+  ['rgba(255,200,80,0.7)', 'rgba(120,70,0,0.95)'],
+  ['rgba(255,145,100,0.7)', 'rgba(120,40,20,0.95)'],
+  ['rgba(185,135,255,0.7)', 'rgba(60,30,120,0.95)'],
+];
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const ARTICLES = {
   fr: [
@@ -227,90 +245,236 @@ function FicheDetail({ fiche, onClose, lang }) {
 
 
 // ══════════════════════════════════
-// BIBLIOTHEQUE — sans player podcast
+// BIBLIOTHEQUE — Apple Fitness+ style
 // ══════════════════════════════════
+
+function SearchIcon() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Circle cx={11} cy={11} r={7} stroke="rgba(255,255,255,0.5)" strokeWidth={2} />
+      <Line x1={16.5} y1={16.5} x2={21} y2={21} stroke="rgba(255,255,255,0.5)" strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function MicIcon() {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+      <Rect x={9} y={2} width={6} height={12} rx={3} fill="rgba(255,255,255,0.4)" />
+      <Path d="M5 11a7 7 0 0014 0" stroke="rgba(255,255,255,0.4)" strokeWidth={2} strokeLinecap="round" />
+      <Line x1={12} y1={18} x2={12} y2={22} stroke="rgba(255,255,255,0.4)" strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+// Pilier label map for compact card display
+const PILIER_LABELS = {
+  fr: { p1: 'Epaules', p2: 'Dos', p3: 'Mobilité', p4: 'Posture', p5: 'ELDOA', p6: 'Golf', p7: 'Mat Pilates' },
+  en: { p1: 'Shoulders', p2: 'Back', p3: 'Mobility', p4: 'Posture', p5: 'ELDOA', p6: 'Golf', p7: 'Mat Pilates' },
+  es: { p1: 'Hombros', p2: 'Espalda', p3: 'Movilidad', p4: 'Postura', p5: 'ELDOA', p6: 'Golf', p7: 'Mat Pilates' },
+  it: { p1: 'Spalle', p2: 'Schiena', p3: 'Mobilità', p4: 'Postura', p5: 'ELDOA', p6: 'Golf', p7: 'Mat Pilates' },
+  de: { p1: 'Schultern', p2: 'Rücken', p3: 'Mobilität', p4: 'Haltung', p5: 'ELDOA', p6: 'Golf', p7: 'Mat Pilates' },
+  pt: { p1: 'Ombros', p2: 'Costas', p3: 'Mobilidade', p4: 'Postura', p5: 'ELDOA', p6: 'Golf', p7: 'Mat Pilates' },
+  zh: { p1: '肩膀', p2: '背部', p3: '灵活性', p4: '姿势', p5: 'ELDOA', p6: '高尔夫', p7: '垫上普拉提' },
+  ja: { p1: '肩', p2: '背中', p3: 'モビリティ', p4: '姿勢', p5: 'ELDOA', p6: 'ゴルフ', p7: 'マットピラティス' },
+  ko: { p1: '어깨', p2: '등', p3: '유연성', p4: '자세', p5: 'ELDOA', p6: '골프', p7: '매트 필라테스' },
+};
+
 function Biblio({ lang }) {
   const tr = T[lang] || T['fr'];
-  const [tab, setTab] = useState('piliers');
   const [openArticle, setOpenArticle] = useState(null);
   const [openFiche, setOpenFiche] = useState(null);
+  const [search, setSearch] = useState('');
   const articles = ARTICLES[lang] || ARTICLES.fr;
   const fiches = FICHES[lang] || FICHES.fr;
+  const labels = PILIER_LABELS[lang] || PILIER_LABELS.fr;
+
+  const filteredArticles = useMemo(() => {
+    if (!search.trim()) return articles;
+    const q = search.trim().toLowerCase();
+    return articles.filter(a => a.titre.toLowerCase().includes(q));
+  }, [search, articles]);
 
   if (openArticle) return <ArticleDetail article={openArticle} onClose={() => setOpenArticle(null)} lang={lang} />;
   if (openFiche) return <FicheDetail fiche={openFiche} onClose={() => setOpenFiche(null)} lang={lang} />;
 
+  const cardGap = 12;
+  const gridPadding = 20;
+  const cardWidth = (SCREEN_WIDTH - gridPadding * 2 - cardGap) / 2;
+
   return (
-    <View style={{ flex: 1 }}>
-      <LinearGradient pointerEvents="none" colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-      <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.15} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
-        {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
-      </View>
-      <FloatingMedusas />
+    <View style={{ flex: 1, backgroundColor: '#000000' }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 40 }}
-        scrollEventThrottle={16}
-        showsVerticalScrollIndicator={true}
+        contentContainerStyle={{ paddingBottom: 50 }}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={{ paddingTop: 62, paddingHorizontal: 6, paddingBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' }}>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</Text></Text>
+        {/* Header */}
+        <View style={{ paddingTop: 62, paddingHorizontal: 20, paddingBottom: 8 }}>
+          <Text style={{ fontSize: 28, fontWeight: '700', color: '#ffffff', letterSpacing: -0.3 }}>
+            {tr.tab_piliers === 'The 6 pillars' ? 'Library' : 'Bibliothèque'}
+          </Text>
+        </View>
+
+        {/* Search bar */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            height: 40,
+          }}>
+            <SearchIcon />
+            <TextInput
+              style={{
+                flex: 1,
+                color: '#ffffff',
+                fontSize: 15,
+                marginLeft: 8,
+                paddingVertical: 0,
+              }}
+              placeholder={tr.tab_piliers === 'The 6 pillars' ? 'Search' : 'Rechercher'}
+              placeholderTextColor="rgba(255,255,255,0.35)"
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType="search"
+            />
+            <MicIcon />
           </View>
-          <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.biblio_sub}</Text>
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
-            {['piliers', 'methode'].map(t => (
-              <TouchableOpacity key={t} onPress={() => setTab(t)} style={{ paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: tab === t ? 'rgba(174,239,77,0.7)' : 'rgba(174,239,77,0.2)', backgroundColor: tab === t ? 'rgba(174,239,77,0.18)' : 'rgba(0,18,32,0.5)' }}>
-                <Text style={{ fontSize: 12, fontWeight: '300', color: tab === t ? '#AEEF4D' : 'rgba(174,239,77,0.5)' }}>{t === 'piliers' ? tr.tab_piliers : tr.tab_methode}</Text>
+        </View>
+
+        {/* Types d'activités section */}
+        <View style={{ marginBottom: 32 }}>
+          <Text style={{
+            fontSize: 20,
+            fontWeight: '600',
+            color: '#ffffff',
+            paddingHorizontal: 20,
+            marginBottom: 14,
+          }}>
+            {tr.tab_piliers === 'The 6 pillars' ? 'Activity Types' : "Types d'activités"}
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+          >
+            {filteredArticles.map((a, i) => (
+              <TouchableOpacity
+                key={a.key}
+                onPress={() => setOpenArticle(a)}
+                activeOpacity={0.8}
+                style={{ width: 140 }}
+              >
+                <View style={{
+                  width: 140,
+                  height: 120,
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  marginBottom: 8,
+                }}>
+                  <ImageBackground
+                    source={PILIER_IMAGES[a.key]}
+                    resizeMode="cover"
+                    style={{ flex: 1 }}
+                  />
+                </View>
+                <Text style={{
+                  fontSize: 13,
+                  fontWeight: '500',
+                  color: '#ffffff',
+                  textAlign: 'left',
+                }} numberOfLines={1}>
+                  {labels[a.key] || a.titre}
+                </Text>
+                <Text style={{
+                  fontSize: 11,
+                  color: 'rgba(255,255,255,0.45)',
+                  marginTop: 2,
+                }}>
+                  {a.duree}{tr.lire}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Découvrir section */}
+        <View style={{ paddingHorizontal: 20 }}>
+          <Text style={{
+            fontSize: 20,
+            fontWeight: '600',
+            color: '#ffffff',
+            marginBottom: 14,
+          }}>
+            {tr.tab_methode === 'The method' ? 'Discover' : 'Découvrir'}
+          </Text>
+          <View style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            gap: cardGap,
+          }}>
+            {fiches.map((f, i) => (
+              <TouchableOpacity
+                key={i}
+                onPress={() => setOpenFiche(f)}
+                activeOpacity={0.85}
+                style={{
+                  width: cardWidth,
+                  height: 170,
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                }}
+              >
+                <ImageBackground
+                  source={PROGRAM_IMAGES[`f${i + 1}`]}
+                  resizeMode="cover"
+                  style={{ flex: 1 }}
+                >
+                  <LinearGradient
+                    colors={['transparent', FICHE_GRADIENT_COLORS[i][1]]}
+                    locations={[0.25, 1]}
+                    style={{
+                      flex: 1,
+                      justifyContent: 'flex-end',
+                      padding: 14,
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 11,
+                      fontWeight: '700',
+                      color: 'rgba(255,255,255,0.55)',
+                      letterSpacing: 1.5,
+                      textTransform: 'uppercase',
+                      marginBottom: 3,
+                    }}>
+                      {f.num}
+                    </Text>
+                    <Text style={{
+                      fontSize: 16,
+                      fontWeight: '600',
+                      color: '#ffffff',
+                      lineHeight: 20,
+                    }} numberOfLines={2}>
+                      {f.etape}
+                    </Text>
+                    <Text style={{
+                      fontSize: 11,
+                      color: 'rgba(255,255,255,0.6)',
+                      marginTop: 3,
+                    }} numberOfLines={1}>
+                      {f.soustitre}
+                    </Text>
+                  </LinearGradient>
+                </ImageBackground>
               </TouchableOpacity>
             ))}
           </View>
         </View>
-        {tab === 'piliers' && (
-          <View style={{ gap: 12 }}>
-            {articles.map((a, i) => {
-              const IconComp = ICONS[a.key];
-              return (
-                <TouchableOpacity key={i} onPress={() => setOpenArticle(a)} style={{ backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                    <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden', borderWidth: 1.5, borderColor: '#AEEF4D', marginRight: 14 }}>
-                      <ImageBackground source={PILIER_IMAGES[a.key]} resizeMode="cover" style={{ flex: 1 }} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '300', color: '#ffffff', lineHeight: 22 }}>{a.titre}</Text>
-                      <Text style={{ fontSize: 10, color: '#AEEF4D', marginTop: 3 }}>{a.duree}{tr.lire}</Text>
-                    </View>
-                    <Text style={{ fontSize: 18, color: 'rgba(174,239,77,0.3)' }}>›</Text>
-                  </View>
-                  <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(174,239,77,0.55)', lineHeight: 20 }} numberOfLines={2}>{a.intro}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-        {tab === 'methode' && (
-          <View style={{ gap: 12 }}>
-            <View style={{ backgroundColor: 'rgba(0,18,38,0.7)', borderWidth: 0.5, borderColor: 'rgba(174,239,77,0.15)', borderRadius: 20, padding: 18, marginBottom: 4 }}>
-              <Text style={{ fontSize: 14, fontWeight: '200', color: 'rgba(174,239,77,0.7)', lineHeight: 22 }}>{tr.biblio_intro}</Text>
-            </View>
-            {fiches.map((f, i) => (
-              <TouchableOpacity key={i} onPress={() => setOpenFiche(f)} style={{ backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                  <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,18,32,0.8)', borderWidth: 1.5, borderColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#AEEF4D' }}>{f.num}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 18, fontWeight: '200', color: '#ffffff' }}>{f.etape}</Text>
-                    <Text style={{ fontSize: 11, color: 'rgba(174,239,77,0.5)', marginTop: 2 }}>{f.soustitre}</Text>
-                  </View>
-                  <Text style={{ fontSize: 18, color: 'rgba(174,239,77,0.3)' }}>›</Text>
-                </View>
-                <Text style={{ fontSize: 13, fontWeight: '200', color: 'rgba(174,239,77,0.55)', lineHeight: 20 }} numberOfLines={2}>{f.description}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
       </ScrollView>
     </View>
   );
