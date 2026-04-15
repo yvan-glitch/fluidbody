@@ -625,6 +625,90 @@ function FloatingMedusas() {
 }
 
 // ── Exports ──
+// ── MeduseRainDrop ── une méduse qui tombe du haut
+function MeduseRainDrop({ x, size, duration, delay, opacity, tint }) {
+  const fall = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const t = setTimeout(() => {
+      Animated.loop(
+        Animated.timing(fall, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true })
+      ).start();
+    }, delay);
+    return () => clearTimeout(t);
+  }, []);
+  const translateY = fall.interpolate({ inputRange: [0, 1], outputRange: [-size * 3, SH + size * 3] });
+  return (
+    <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: x, opacity, transform: [{ translateY }] }}>
+      <MeduseCornerIcon size={size} tint={tint} />
+    </Animated.View>
+  );
+}
+
+const RAIN_TINTS = ['rgba(174,239,77,1)'];
+const RAIN_PARAMS = Array.from({ length: 18 }, function(_, i) {
+  return {
+    x:        Math.random() * (SW - 65),
+    size:     28 + Math.random() * 50,
+    duration: 5000 + Math.random() * 7000,
+    delay:    Math.random() * 10000,
+    opacity:  0.55 + Math.random() * 0.45,
+    tint:     RAIN_TINTS[i % RAIN_TINTS.length],
+  };
+});
+
+// ── MeduseRain ── pluie de méduses tombant du haut
+function MeduseRain() {
+  return RAIN_PARAMS.map(function(p, i) { return <MeduseRainDrop key={'mr-' + i} {...p} />; });
+}
+
+// ── BulleDescendante ── une bulle qui tombe du haut vers le bas
+function BulleDescendante({ x, size, duration, delay }) {
+  const fall = useRef(new Animated.Value(0)).current;
+  const isWhite = Math.round(x * 10) % 2 === 1;
+  useEffect(() => {
+    const t = setTimeout(() => {
+      Animated.loop(
+        Animated.timing(fall, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true })
+      ).start();
+    }, delay);
+    return () => clearTimeout(t);
+  }, []);
+  const translateY = fall.interpolate({ inputRange: [0, 1], outputRange: [-size * 2, SH + size * 2] });
+  const opacity    = fall.interpolate({ inputRange: [0, 0.05, 0.88, 1], outputRange: [0.3, 0.85, 0.45, 0] });
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: x,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: 1.2,
+        borderColor: isWhite ? 'rgba(255,255,255,0.55)' : 'rgba(0,189,208,0.55)',
+        backgroundColor: isWhite ? 'rgba(255,255,255,0.18)' : 'rgba(0,189,208,0.18)',
+        opacity,
+        transform: [{ translateY }],
+      }}
+    />
+  );
+}
+
+const BULLES_DESC_PARAMS = Array.from({ length: 24 }, function(_, i) {
+  return {
+    x:        Math.random() * (SW - 10),
+    size:     2 + Math.random() * 9,
+    duration: 3500 + Math.random() * 6000,
+    delay:    Math.random() * 10000,
+  };
+});
+
+// ── PluieBulles ── bulles tombant du haut de l'écran
+function PluieBulles() {
+  return BULLES_DESC_PARAMS.map(function(p, i) { return <BulleDescendante key={'bd-' + i} {...p} />; });
+}
+
 export {
   tentaclePath,
   TENTS2,
@@ -645,4 +729,6 @@ export {
   getMeduseState,
   LivingMedusa,
   FloatingMedusas,
+  MeduseRain,
+  PluieBulles,
 };
