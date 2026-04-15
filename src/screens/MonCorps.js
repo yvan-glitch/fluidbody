@@ -4,11 +4,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Svg, { Path, Circle, Ellipse } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES } from '../constants/data';
+import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES, SABRINA_QUOTES } from '../constants/data';
 import { Bulle, Rayon, MeduseCornerIcon, BULLES, BULLES_MONCORPS } from '../components/Meduse';
 import VideoPlayer from '../components/VideoPlayer';
 import PilierCard from '../components/PilierCard';
-import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, isComingSoon, getResumeIndicesForPilier, hapticLight } from '../utils';
+import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, isComingSoon, getResumeIndicesForPilier, hapticLight, hapticSuccess } from '../utils';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
@@ -70,17 +70,26 @@ function CelebrationOverlay({ visible, onDone, pilier, lang }) {
   const scaleAnim  = useRef(new Animated.Value(0)).current;
   const opacAnim   = useRef(new Animated.Value(0)).current;
   const medalAnim  = useRef(new Animated.Value(0)).current;
-  const particles  = useRef(Array.from({ length: 18 }, () => ({
-    x: new Animated.Value(0),
-    y: new Animated.Value(0),
-    o: new Animated.Value(1),
-    s: new Animated.Value(0),
-    dx: (Math.random() - 0.5) * 320,
-    dy: -(80 + Math.random() * 280),
-  }))).current;
+  const EMOJIS = ['\uD83C\uDF89', '\u2B50', '\u2728', '\uD83E\uDEBC', '\uD83D\uDCAA', '\uD83C\uDFC6', U_WAVE, U_DROP, '\uD83D\uDCAB', '\uD83C\uDF38'];
+  const particles  = useRef(Array.from({ length: 35 }, () => {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 120 + Math.random() * 200;
+    return {
+      x: new Animated.Value(0),
+      y: new Animated.Value(0),
+      o: new Animated.Value(1),
+      s: new Animated.Value(0),
+      rot: new Animated.Value(0),
+      dx: Math.cos(angle) * radius,
+      dy: Math.sin(angle) * radius,
+      fontSize: 12 + Math.random() * 12,
+      rotTarget: (Math.random() - 0.5) * 720,
+    };
+  })).current;
 
   useEffect(() => {
     if (!visible) return;
+    hapticSuccess();
     Animated.parallel([
       Animated.timing(opacAnim,  { toValue: 1, duration: 300, useNativeDriver: true }),
       Animated.spring(scaleAnim, { toValue: 1, friction: 7, tension: 80, useNativeDriver: true }),
@@ -91,25 +100,37 @@ function CelebrationOverlay({ visible, onDone, pilier, lang }) {
       Animated.timing(medalAnim, { toValue: 1,  duration: 200, easing: Easing.inOut(Easing.sin),  useNativeDriver: true }),
     ]).start();
     particles.forEach((p, i) => {
+      p.x.setValue(0); p.y.setValue(0); p.o.setValue(1); p.s.setValue(0); p.rot.setValue(0);
       setTimeout(() => {
         p.s.setValue(0.4 + Math.random() * 0.6);
+        const dur = 900 + Math.random() * 500;
         Animated.parallel([
-          Animated.timing(p.x, { toValue: p.dx, duration: 900 + Math.random()*400, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-          Animated.timing(p.y, { toValue: p.dy, duration: 900 + Math.random()*400, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-          Animated.timing(p.o, { toValue: 0,    duration: 1100 + Math.random()*300, useNativeDriver: true }),
+          Animated.timing(p.x,   { toValue: p.dx, duration: dur, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(p.y,   { toValue: p.dy, duration: dur, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(p.rot, { toValue: p.rotTarget, duration: dur, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(p.o,   { toValue: 0,    duration: dur + 200, useNativeDriver: true }),
         ]).start();
-      }, i * 40);
+      }, i * 30);
     });
     setTimeout(onDone, 3200);
   }, [visible]);
 
   if (!visible) return null;
-  const EMOJIS = ['\u2728', U_WAVE, U_DROP, U_STAR, '\uD83E\uDEA7', '\uD83D\uDCAB', '\uD83C\uDF38'];
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, alignItems: 'center', justifyContent: 'center' }}>
       <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,5,15,0.82)', opacity: opacAnim }} />
       {particles.map((p, i) => (
-        <Animated.Text key={i} style={{ position: 'absolute', fontSize: 18, transform: [{ translateX: p.x }, { translateY: p.y }, { scale: p.s }], opacity: p.o }}>
+        <Animated.Text key={i} style={{
+          position: 'absolute',
+          fontSize: p.fontSize,
+          transform: [
+            { translateX: p.x },
+            { translateY: p.y },
+            { scale: p.s },
+            { rotate: p.rot.interpolate({ inputRange: [-360, 360], outputRange: ['-360deg', '360deg'] }) },
+          ],
+          opacity: p.o,
+        }}>
           {EMOJIS[i % EMOJIS.length]}
         </Animated.Text>
       ))}
@@ -606,11 +627,13 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
                   paddingVertical: 8,
                   borderRadius: 20,
                   backgroundColor: active ? "#ffffff" : "rgba(255,255,255,0.12)",
+                  alignItems: 'center',
                 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: "600", color: active ? "#000000" : "#ffffff" }}>
+                <Text style={{ fontSize: 14, fontWeight: active ? "700" : "600", color: active ? "#000000" : "rgba(255,255,255,0.6)" }}>
                   {mcTabLabels[t]}
                 </Text>
+                {active && <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#AEEF4D', marginTop: 4 }} />}
               </TouchableOpacity>
             );
           })}
@@ -654,8 +677,16 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
             PILIER_IMAGES.p3, PILIER_IMAGES.p4, PILIER_IMAGES.p5,
             PILIER_IMAGES.p6, PILIER_IMAGES.p7,
           ];
+          var quotes = SABRINA_QUOTES[lang] || SABRINA_QUOTES['fr'];
+          var dayIndex = (new Date().getDate() + new Date().getMonth() * 31) % quotes.length;
+          var quote = quotes[dayIndex];
           return (
             <View key="pour-vous">
+              {/* Citation du jour */}
+              <View style={{ marginBottom: 18, backgroundColor: 'rgba(0,18,38,0.4)', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: 'rgba(174,239,77,0.1)' }}>
+                <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(255,255,255,0.75)', lineHeight: 21, fontStyle: 'italic' }}>{"\u201C"}{quote}{"\u201D"}</Text>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: '#AEEF4D', marginTop: 8 }}>{"\u2014 Sabrina"}</Text>
+              </View>
               <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
                 <View style={{ width: halfW, height: rowH1, borderRadius: 12, overflow: "hidden" }}>
                   <ImageBackground source={mosaicImages[0]} resizeMode="cover" style={{ flex: 1 }} />
@@ -908,7 +939,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
                     onPress={function() { setOpenPilier(p); }}
                     style={{ marginBottom: 16, borderRadius: 16, overflow: "hidden", height: cardH }}
                   >
-                    <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} imageStyle={p.key === 'p8' ? { top: -20 } : undefined}>
+                    <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} imageStyle={p.key === 'p8' ? { top: -20, transform: [{ scale: 1.15 }] } : { transform: [{ scale: 1.15 }] }}>
                       <LinearGradient colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.7)"]} style={{ flex: 1, justifyContent: "flex-end", padding: 16 }}>
                         <Text style={{ fontSize: 24, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{p.label}</Text>
                         <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{tr.m_seances} {'\u00B7'} {tr.coming_soon_more || 'Plus \u00E0 venir'}</Text>
@@ -970,6 +1001,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         )}
         {mcTab === 'recherche' && (function() {
           var seancesData = getSeances(lang);
+          var halfW = (SW - 52) / 2;
           var allResults = [];
           piliers.forEach(function(p) {
             var ps = seancesData[p.key] || [];
@@ -985,51 +1017,62 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
           });
           return (
             <View>
-              <TextInput
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder={tr.search_placeholder || 'Chercher une séance...'}
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: '#ffffff', marginBottom: 12, borderWidth: 1, borderColor: 'rgba(174,239,77,0.15)' }}
-              />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              {/* Search bar style Fitness+ */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, paddingHorizontal: 14, marginBottom: 14 }}>
+                <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.35)', marginRight: 8 }}>🔍</Text>
+                <TextInput
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder={tr.search_placeholder || 'Chercher une séance...'}
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  style={{ flex: 1, paddingVertical: 12, fontSize: 15, color: '#ffffff' }}
+                />
+              </View>
+              {/* Étape filter chips */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
                 {['Comprendre', 'Ressentir', 'Préparer', 'Exécuter', 'Évoluer'].map(function(etape) {
                   var active = searchEtape === etape;
                   return (
                     <TouchableOpacity key={etape} onPress={function() { setSearchEtape(active ? null : etape); }}
-                      style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.08)', marginRight: 8 }}>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#001226' : 'rgba(255,255,255,0.6)' }}>{etape}</Text>
+                      style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.08)', marginRight: 8 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#001226' : 'rgba(255,255,255,0.6)' }}>{etape}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </ScrollView>
               {allResults.length === 0 && (
-                <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 32, fontSize: 14 }}>{tr.search_no_results || 'Aucun résultat'}</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 40, fontSize: 15 }}>{tr.search_no_results || 'Aucun résultat'}</Text>
               )}
-              {allResults.map(function(r, i) {
-                var s = r.seance;
-                var titre = s[0] || '';
-                var duree = s[1] || '';
-                var etape = s[2] || '';
-                var etapeColor = ETAPE_COLORS[etape] || 'rgba(255,255,255,0.5)';
-                return (
-                  <TouchableOpacity key={r.pilier.key + '-' + r.idx + '-' + i} onPress={function() { setOpenPilier(r.pilier); }}
-                    style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                      <View style={{ backgroundColor: 'rgba(174,239,77,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginRight: 8 }}>
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#AEEF4D' }}>{r.pilier.nom}</Text>
-                      </View>
-                      {etape ? (
-                        <View style={{ backgroundColor: etapeColor, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                          <Text style={{ fontSize: 10, fontWeight: '600', color: '#001226' }}>{etape}</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '600', marginBottom: 3 }}>{titre}</Text>
-                    {duree ? <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>{duree}</Text> : null}
-                  </TouchableOpacity>
-                );
-              })}
+              {/* Grid 2 colonnes avec photos */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                {allResults.map(function(r, i) {
+                  var s = r.seance;
+                  var titre = s[0] || '';
+                  var duree = s[1] || '';
+                  var etape = s[2] || '';
+                  var etapeColor = ETAPE_COLORS[etape] || 'rgba(255,255,255,0.5)';
+                  return (
+                    <TouchableOpacity key={r.pilier.key + '-' + r.idx + '-' + i} activeOpacity={0.88} onPress={function() { setOpenPilier(r.pilier); }}
+                      style={{ width: halfW, height: 140, borderRadius: 14, overflow: 'hidden', marginBottom: 2 }}>
+                      <ImageBackground source={PILIER_IMAGES[r.pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
+                        <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.8)']} style={{ flex: 1, justifyContent: 'space-between', padding: 10 }}>
+                          <View style={{ flexDirection: 'row' }}>
+                            {etape ? (
+                              <View style={{ backgroundColor: etapeColor, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 }}>
+                                <Text style={{ fontSize: 9, fontWeight: '700', color: '#001226' }}>{etape}</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                          <View>
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff', marginBottom: 2 }} numberOfLines={2}>{titre}</Text>
+                            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>{duree}</Text>
+                          </View>
+                        </LinearGradient>
+                      </ImageBackground>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           );
         })()}

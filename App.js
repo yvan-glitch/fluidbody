@@ -1302,6 +1302,7 @@ function App() {
   const [tensionIdxs, setTensionIdxs] = useState([]);
   const [supaUser, setSupaUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const splashStart = useRef(Date.now()).current;
   const [showAuth, setShowAuth] = useState(false);
   const profileLocalRef = useRef({ prenom: '', lang: 'fr', tensionIdxs: [] });
   profileLocalRef.current = { prenom, lang, tensionIdxs };
@@ -1361,9 +1362,14 @@ function App() {
       }
     }
 
+    function finishLoading() {
+      var elapsed = Date.now() - splashStart;
+      var remain = Math.max(0, 3000 - elapsed);
+      setTimeout(function() { setLoading(false); }, remain);
+    }
     async function checkSession() {
       try {
-        if (!supabase) { setLoading(false); return; }
+        if (!supabase) { finishLoading(); return; }
         const { data: { session }, error: se } = await supabase.auth.getSession();
         if (se) devWarn('getSession', se);
         if (session?.user) {
@@ -1373,7 +1379,7 @@ function App() {
           setOnboardingDone(true);
         }
       } catch (e) { devWarn('Session / profil', e); }
-      setLoading(false);
+      finishLoading();
     }
     checkSession();
     if (!supabase) return undefined;
@@ -1414,16 +1420,51 @@ function App() {
     else setShowAuth(false);
   }
 
+  // Animated splash
+  const splashOpacity = useRef(new Animated.Value(0)).current;
+  const splashScale = useRef(new Animated.Value(0.7)).current;
+  const splashTextOpacity = useRef(new Animated.Value(0)).current;
+  const splashGlow = useRef(new Animated.Value(0.3)).current;
+  const splashTagOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(function() {
+    if (loading) {
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(splashOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+          Animated.spring(splashScale, { toValue: 1, friction: 6, tension: 40, useNativeDriver: true }),
+        ]),
+        Animated.timing(splashTextOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(splashTagOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ]).start();
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(splashGlow, { toValue: 0.8, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(splashGlow, { toValue: 0.3, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, [loading]);
+
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000e18', alignItems: 'center', justifyContent: 'center' }}>
-        <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-          <View style={{ width: 88, height: 88, marginRight: 14, overflow: 'visible' }} pointerEvents="none">
-            <MeduseCornerIcon size={88} breathCycleMs={3000} />
-          </View>
-          <Text style={{ color: 'rgba(0,210,250,0.6)', fontSize: 12, letterSpacing: 3, textTransform: 'uppercase' }}>FluidBody Pilates</Text>
-        </View>
+        <LinearGradient colors={['#000e18', '#001828', '#002d48', '#001828', '#000e18']} style={StyleSheet.absoluteFill} />
+        {/* Glow effect behind medusa */}
+        <Animated.View style={{ position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(0,190,208,0.08)', opacity: splashGlow, transform: [{ scale: splashGlow.interpolate({ inputRange: [0.3, 0.8], outputRange: [1, 1.5] }) }] }} />
+        {/* Medusa */}
+        <Animated.View style={{ opacity: splashOpacity, transform: [{ scale: splashScale }], marginBottom: 24 }}>
+          <MeduseCornerIcon size={120} breathCycleMs={2500} />
+        </Animated.View>
+        {/* FLUIDBODY+ */}
+        <Animated.View style={{ opacity: splashTextOpacity, flexDirection: 'row', alignItems: 'baseline', marginBottom: 8 }}>
+          <Text style={{ fontSize: 32, fontWeight: '900', color: '#ffffff', letterSpacing: 1 }}>FLUIDBODY</Text>
+          <Text style={{ fontSize: 34, fontWeight: '900', color: '#AEEF4D' }}>+</Text>
+        </Animated.View>
+        {/* Tagline */}
+        <Animated.View style={{ opacity: splashTagOpacity }}>
+          <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, letterSpacing: 3, textTransform: 'uppercase' }}>Pilates & More</Text>
+        </Animated.View>
       </View>
     );
   }
