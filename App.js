@@ -30,7 +30,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ViewShot from 'react-native-view-shot';
 import { U_JELLY, U_WAVE, FREE_SEANCE_INDEX, ZONE_TO_PILIER, T, SEANCES_FR, SEANCES_EN, PILIERS_BASE, PILIER_IMAGES } from './src/constants/data';
 import { Linking as RNLinking } from 'react-native';
-import { Bulle, Rayon, Meduse, MeduseCornerIcon, VideoPlaceholderMeduse, BULLES, BULLES_MONCORPS, BULLES_ONBOARDING, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState, LivingMedusa, FloatingMedusas } from './src/components/Meduse';
+import { Bulle, Rayon, Meduse, MeduseCornerIcon, VideoPlaceholderMeduse, BULLES, BULLES_MONCORPS, BULLES_ONBOARDING, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState, LivingMedusa, FloatingMedusas, MeduseRain, PluieBulles } from './src/components/Meduse';
 import VideoPlayer, { VIDEO_RESUME_PREFIX } from './src/components/VideoPlayer';
 import PaywallModal, { PRODUCT_IDS } from './src/components/PaywallModal';
 import StretchTimerModal from './src/components/Timer';
@@ -1364,7 +1364,7 @@ function App() {
 
     function finishLoading() {
       var elapsed = Date.now() - splashStart;
-      var remain = Math.max(0, 3000 - elapsed);
+      var remain = Math.max(0, 8000 - elapsed);
       setTimeout(function() { setLoading(false); }, remain);
     }
     async function checkSession() {
@@ -1450,6 +1450,14 @@ function App() {
     return (
       <View style={{ flex: 1, backgroundColor: '#000e18', alignItems: 'center', justifyContent: 'center' }}>
         <LinearGradient colors={['#000e18', '#001828', '#002d48', '#001828', '#000e18']} style={StyleSheet.absoluteFill} />
+        {/* Méduses flottantes comme sur les autres écrans */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
+          <FloatingMedusas />
+        </View>
+        {/* Bulles qui descendent */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
+          <PluieBulles />
+        </View>
         {/* Glow effect behind medusa */}
         <Animated.View style={{ position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(0,190,208,0.08)', opacity: splashGlow, transform: [{ scale: splashGlow.interpolate({ inputRange: [0.3, 0.8], outputRange: [1, 1.5] }) }] }} />
         {/* Medusa */}
