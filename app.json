@@ -15,6 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ytissot.fluidbody",
+      "usesAppleSignIn": true,
       "buildNumber": "9",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -51,7 +52,14 @@
     },
     "plugins": [
       "expo-localization",
-      "react-native-health"
+      "react-native-health",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#AEEF4D"
+        }
+      ]
     ]
   }
 }

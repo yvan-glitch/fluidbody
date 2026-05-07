@@ -2,10 +2,17 @@
 // Extracted constants & translations
 // ══════════════════════════════════
 
-export const U_JELLY = '������';
-export const U_WAVE = '������';
+export const U_JELLY = '🪼';
+export const U_WAVE = '🌊';
 
 export const FREE_SEANCE_INDEX = 0;
+
+// Sélection gratuite du mois — 3 séances accessibles sans abonnement
+export const FREE_MONTHLY_SELECTION = [
+  { pilier: 'p2', idx: 0 },   // Dos · Comprendre — "Le dos expliqué"
+  { pilier: 'p7', idx: 10 },  // Mat Pilates · Exécuter — "La série des 5"
+  { pilier: 'p3', idx: 15 },  // Mobilité · Évoluer — "Mobilité & Pilates I"
+];
 
 export const ZONE_TO_PILIER = { 0: 'p2', 1: 'p1', 2: 'p3', 3: 'p4', 4: 'p5', 5: 'p6', 6: 'p8' };
 
@@ -49,8 +56,8 @@ export const T = {
     ob_auth_sub_signin: 'Entre tes identifiants pour retrouver ta progression.',
     ob_email_ph: 'ton@email.com',
     ob_pass_ph: 'Mot de passe (6 car. min.)',
-    ob_auth_submit_up: 'Créer mon compte',
-    ob_auth_submit_in: 'Me connecter',
+    ob_auth_submit_up: 'Créer un compte',
+    ob_auth_submit_in: 'Se connecter',
     ob_auth_toggle_in: 'J\'ai déjà un compte →',
     ob_auth_toggle_up: 'Pas de compte ? S\'inscrire',
     ob_auth_skip: 'Continuer sans compte nuage →',
@@ -82,7 +89,7 @@ export const T = {
     search_placeholder: 'Chercher une séance...',
     search_no_results: 'Aucun résultat',
     explore_free_title: 'Sélection gratuite du mois',
-    explore_free_sub: 'Essayez cette séance une fois, sans abonnement requis',
+    explore_free_sub: 'Essayez ces séances gratuitement, sans abonnement requis',
     explore_new: 'Nouvelles sélections pour vous',
     prog_section_title: 'Vos programmes sur mesure',
     prog_section_sub: 'Programmes prédéfinis pour continuer sur votre lancée ou intensifier votre routine.',
@@ -134,12 +141,18 @@ export const T = {
     commencer_seance: 'Commencer →',
     deja_faite: "✓ Déjà faite aujourd'hui",
     notif_section: 'Rappels',
+    theorie_section: 'Théorie',
     notif_hour_label: 'Heure du rappel',
     notif_pause_label: 'Pauses actives au bureau',
     notif_pause_sub: '9h-17h en semaine',
     notif_title: `FluidBody ${U_JELLY}`,
-    notif_body: "Ta séance démo t'attend. Ton corps a besoin de toi.",
+    notif_body: `C'est l'heure de ta séance ${U_JELLY}`,
     notif_pause_title: 'Pause Active 🪑', notif_pause_body: "C'est le moment de bouger ! 5 min d'étirements au bureau.",
+    notif_welcome_title: `Bienvenue dans FluidBody ${U_JELLY}`,
+    notif_welcome_body: (p) => p ? `Hello ${p}, ta première séance t'attend !` : 'Ta première séance t\'attend !',
+    notif_quote_title: 'Phrase du jour — Sabrina',
+    notif_quote_label: 'Phrase du jour de Sabrina',
+    notif_quote_hour_label: 'Heure de la phrase',
     coach_title: 'Votre Coach', coach_name: 'Sabrina', coach_subtitle: 'Experte Pilates · 30 ans d\'expérience', coach_bio: 'Passionnée par le mouvement conscient, je vous guide vers un corps plus libre et plus fort.', coach_more: 'En savoir plus', coach_avec: 'Avec Sabrina', coach_exp: '30 ans d\'expérience', coach_quote: '"Je vous accompagne pas à pas vers un corps plus libre."',
     coach_full_bio: 'Sabrina Tissot est la fondatrice d\'Espace Pilates, le premier studio de Pilates de la Riviera suisse, à La Tour-de-Peilz.\n\nDiplômée de l\'École Polytechnique de Lausanne, elle se forme au Pilates auprès d\'Anna Maria Cova à Milan dès l\'an 2000, puis développe son expertise au Villagio Internazionale, grande institution européenne du bien-être.\n\nFormatrice internationale (Milan, New York, Paris), Sabrina est aussi la co-créatrice du Pilawalk™, un système de marche tonifiante, et l\'auteure d\'un protocole d\'évaluation physique et posturale pour golfeurs.\n\nSa philosophie : le mouvement est intimement lié à l\'art de vivre. Avec rigueur et empathie, elle guide chacun vers une meilleure compréhension de son corps — avec précision, sensibilité et joie de vivre.',
     dev_title: 'Développeur', dev_name: 'Yvan', dev_subtitle: 'Fondateur · Ingénieur & Spécialiste Pilates', dev_more: 'En savoir plus',
@@ -165,9 +178,9 @@ export const T = {
     premium_alert_simulate: 'Voir les offres',
     premium_alert_later: 'Plus tard',
     paywall_title: 'Du Pilates pour tout le monde',
-    paywall_sub: 'Des séances guidées par Sabrina, experte Pilates depuis 30 ans',
+    paywall_sub: 'Transformez votre corps, un mouvement à la fois',
     paywall_badge: '7 JOURS GRATUITS',
-    paywall_yearly_link: '99 CHF/an · Économisez 35%',
+    paywall_yearly_link: 'Économisez avec le forfait annuel ›',
     paywall_monthly: 'Mensuel',
     paywall_yearly: 'Annuel',
     paywall_buy_monthly: 'Acheter mensuel',
@@ -181,7 +194,7 @@ export const T = {
     paywall_close: 'Fermer',
     paywall_prices_loading: 'Chargement des prix…',
     paywall_not_available: 'Achats indisponibles (Expo Go / simulateur).',
-    paywall_start: 'Commencer — 7 jours gratuits · sans carte bleue',
+    paywall_start: 'Commencer',
     paywall_per_month: '/mois',
     paywall_price_detail: '12.90 CHF/mois après l\'essai gratuit',
     paywall_access: 'Accès immédiat à tous les piliers · Sans engagement',
@@ -288,7 +301,7 @@ export const T = {
     search_placeholder: 'Search a session...',
     search_no_results: 'No results',
     explore_free_title: 'Free pick of the month',
-    explore_free_sub: 'Try this session once, no subscription required',
+    explore_free_sub: 'Try these sessions for free, no subscription required',
     explore_new: 'New picks for you',
     prog_section_title: 'Your tailored programs',
     prog_section_sub: 'Pre-built programs to keep your momentum or intensify your routine.',
@@ -328,12 +341,18 @@ export const T = {
     commencer_seance: 'Start →',
     deja_faite: '✓ Already done today',
     notif_section: 'Reminders',
+    theorie_section: 'Theory',
     notif_hour_label: 'Reminder time',
     notif_pause_label: 'Active desk breaks',
     notif_pause_sub: '9AM-5PM weekdays',
     notif_title: `FluidBody ${U_JELLY}`,
-    notif_body: 'Your demo session is waiting. Your body needs you.',
+    notif_body: `Time for your session ${U_JELLY}`,
     notif_pause_title: 'Active Break 🪑', notif_pause_body: 'Time to move! 5 min desk stretches.',
+    notif_welcome_title: `Welcome to FluidBody ${U_JELLY}`,
+    notif_welcome_body: (p) => p ? `Hi ${p}, your first session awaits!` : 'Your first session awaits!',
+    notif_quote_title: 'Daily quote — Sabrina',
+    notif_quote_label: "Sabrina's daily quote",
+    notif_quote_hour_label: 'Quote time',
     coach_title: 'Your Coach', coach_name: 'Sabrina', coach_subtitle: 'Pilates Expert · 30 years experience', coach_bio: 'Passionate about conscious movement, I guide you towards a freer, stronger body.', coach_more: 'Learn more', coach_avec: 'With Sabrina', coach_exp: '30 years experience', coach_quote: '"I guide you step by step towards a freer body."',
     coach_full_bio: 'Sabrina Tissot is the founder of Espace Pilates, the first Pilates studio on the Swiss Riviera, in La Tour-de-Peilz.\n\nA graduate of the École Polytechnique de Lausanne, she trained in Pilates with Anna Maria Cova in Milan in 2000, then honed her expertise at the Villagio Internazionale, a leading European wellness institution.\n\nAn international trainer (Milan, New York, Paris), Sabrina also co-created Pilawalk™, a toning walking system, and authored a physical and postural assessment protocol for golfers.\n\nHer philosophy: movement is intimately linked to the art of living. With rigour and empathy, she guides everyone towards a better understanding of their body — with precision, sensitivity and joie de vivre.',
     dev_title: 'Developer', dev_name: 'Yvan', dev_subtitle: 'Founder · Engineer & Pilates Specialist', dev_more: 'Learn more',
@@ -359,9 +378,9 @@ export const T = {
     premium_alert_simulate: 'See offers',
     premium_alert_later: 'Later',
     paywall_title: 'Pilates for everyone',
-    paywall_sub: 'Sessions guided by Sabrina, Pilates expert for 30 years',
+    paywall_sub: 'Transform your body, one movement at a time',
     paywall_badge: '7 DAYS FREE',
-    paywall_yearly_link: '99 CHF/year · Save 35%',
+    paywall_yearly_link: 'Save with the yearly plan ›',
     paywall_monthly: 'Monthly',
     paywall_yearly: 'Yearly',
     paywall_buy_monthly: 'Buy monthly',
@@ -375,7 +394,7 @@ export const T = {
     paywall_close: 'Close',
     paywall_prices_loading: 'Loading prices…',
     paywall_not_available: 'Purchases unavailable (Expo Go / simulator).',
-    paywall_start: 'Start — 7 days free · no credit card',
+    paywall_start: 'Start',
     paywall_per_month: '/month',
     paywall_price_detail: '12.90 CHF/month after free trial',
     paywall_access: 'Instant access to all pillars · No commitment',
@@ -415,7 +434,7 @@ export const T = {
 
 export const SEANCES_FR = {
   p1: [['Comprendre l\'épaule', '12 min', 'Comprendre'], ['La coiffe des rotateurs', '15 min', 'Comprendre'], ['Ressentir les omoplates', '12 min', 'Ressentir'], ['Le poids du bras', '15 min', 'Ressentir'], ['Cercles de conscience', '18 min', 'Ressentir'], ['Libérer les trapèzes', '20 min', 'Préparer'], ['Mobiliser la scapula', '22 min', 'Préparer'], ['Activer le dentelé', '25 min', 'Préparer'], ['Ouverture thoracique', '28 min', 'Préparer'], ['Proprioception épaule', '30 min', 'Préparer'], ['Le geste juste', '25 min', 'Exécuter'], ['Élévation consciente', '28 min', 'Exécuter'], ['Rotation externe guidée', '30 min', 'Exécuter'], ['Tirés et poussés', '32 min', 'Exécuter'], ['Circuit épaule complète', '35 min', 'Exécuter'], ['Force & souplesse I', '35 min', 'Évoluer'], ['Épaule sous charge', '38 min', 'Évoluer'], ['Équilibre scapulaire', '40 min', 'Évoluer'], ['L\'épaule athlétique', '42 min', 'Évoluer'], ['Maîtrise totale', '45 min', 'Évoluer']],
-  p2: [['Le dos expliqué', '12 min', 'Comprendre'], ['Pourquoi le dos souffre', '15 min', 'Comprendre'], ['La nuque et ses tensions', '15 min', 'Comprendre'], ['Ressentir sa colonne', '12 min', 'Ressentir'], ['Le sacrum comme base', '18 min', 'Ressentir'], ['Relâcher le psoas', '20 min', 'Préparer'], ['Décompression lombaire', '22 min', 'Préparer'], ['Mobiliser les thoraciques', '25 min', 'Préparer'], ['Cat-Cow conscient', '20 min', 'Préparer'], ['Libérer la nuque', '22 min', 'Préparer'], ['Renforcement profond I', '25 min', 'Exécuter'], ['La planche consciente', '28 min', 'Exécuter'], ['Pont fessier guidé', '28 min', 'Exécuter'], ['Rotation vertébrale', '30 min', 'Exécuter'], ['Extension du dos', '32 min', 'Exécuter'], ['Programme anti-douleur I', '30 min', 'Évoluer'], ['Programme anti-douleur II', '35 min', 'Évoluer'], ['Dos & respiration', '38 min', 'Évoluer'], ['Colonne intégrée', '40 min', 'Évoluer'], ['La colonne parfaite', '45 min', 'Évoluer']],
+  p2: [['Le dos expliqué', "1'59''", 'Comprendre', 'https://vz-1a4e2cac-0dc.b-cdn.net/02edcbb8-ca7c-4b58-8e64-719ad457bf92/playlist.m3u8'], ['Pourquoi le dos souffre', "2'29''", 'Comprendre', 'https://vz-1a4e2cac-0dc.b-cdn.net/7494838a-4ca1-4066-be77-5fff62b0ae1a/playlist.m3u8'], ['La nuque et ses tensions', '15 min', 'Comprendre'], ['Ressentir sa colonne', '12 min', 'Ressentir'], ['Le sacrum comme base', '18 min', 'Ressentir'], ['Relâcher le psoas', '20 min', 'Préparer'], ['Décompression lombaire', '22 min', 'Préparer'], ['Mobiliser les thoraciques', '25 min', 'Préparer'], ['Cat-Cow conscient', '20 min', 'Préparer'], ['Libérer la nuque', '22 min', 'Préparer'], ['Renforcement profond I', '25 min', 'Exécuter'], ['La planche consciente', '28 min', 'Exécuter'], ['Pont fessier guidé', '28 min', 'Exécuter'], ['Rotation vertébrale', '30 min', 'Exécuter'], ['Extension du dos', '32 min', 'Exécuter'], ['Programme anti-douleur I', '30 min', 'Évoluer'], ['Programme anti-douleur II', '35 min', 'Évoluer'], ['Dos & respiration', '38 min', 'Évoluer'], ['Colonne intégrée', '40 min', 'Évoluer'], ['La colonne parfaite', '45 min', 'Évoluer']],
   p3: [['Comprendre la hanche', '2 min 10 s', 'Comprendre', 'https://vz-1a4e2cac-0dc.b-cdn.net/596e732b-fa75-4606-aa8a-45fb034d2e0b/playlist.m3u8'], ['Le genou fragile', '15 min', 'Comprendre'], ['La cheville oubliée', '12 min', 'Comprendre'], ['Ressentir la hanche', '15 min', 'Ressentir'], ['Cartographie bas du corps', '20 min', 'Ressentir'], ['Mobilisation de hanche I', '20 min', 'Préparer'], ['Libération des fléchisseurs', '22 min', 'Préparer'], ['Mobilisation de hanche II', '25 min', 'Préparer'], ['Mobilité du genou', '20 min', 'Préparer'], ['La cheville en action', '22 min', 'Préparer'], ['Squat conscient I', '25 min', 'Exécuter'], ['Fente guidée', '28 min', 'Exécuter'], ['Pont et rotation de hanche', '28 min', 'Exécuter'], ['Station unipodale', '30 min', 'Exécuter'], ['Circuit mobilité', '32 min', 'Exécuter'], ['Mobilité & Pilates I', '30 min', 'Évoluer'], ['Profondeur de hanche', '35 min', 'Évoluer'], ['Genoux & force', '38 min', 'Évoluer'], ['La chaîne postérieure', '40 min', 'Évoluer'], ['Corps libre en bas', '45 min', 'Évoluer']],
   p4: [['La posture expliquée', '12 min', 'Comprendre'], ['Les 4 courbes naturelles', '15 min', 'Comprendre'], ['Posture & douleur', '15 min', 'Comprendre'], ['Ressentir l\'alignement', '12 min', 'Ressentir'], ['L\'axe vertical', '18 min', 'Ressentir'], ['Débloquer la cage thoracique', '20 min', 'Préparer'], ['Activer les stabilisateurs', '22 min', 'Préparer'], ['Rééquilibrer le bassin', '25 min', 'Préparer'], ['Aligner le cou', '22 min', 'Préparer'], ['Proprioception posturale', '25 min', 'Préparer'], ['Debout conscient', '25 min', 'Exécuter'], ['Marche consciente', '28 min', 'Exécuter'], ['Assis sans souffrir', '25 min', 'Exécuter'], ['Travail en miroir', '30 min', 'Exécuter'], ['Posture sous charge', '32 min', 'Exécuter'], ['Programme bureau I', '25 min', 'Évoluer'], ['Programme bureau II', '30 min', 'Évoluer'], ['Posture & respiration', '35 min', 'Évoluer'], ['Corps en équilibre', '40 min', 'Évoluer'], ['L\'alignement parfait', '45 min', 'Évoluer']],
   p5: [['Comprendre le souffle', '12 min', 'Comprendre'], ['Le diaphragme', '15 min', 'Comprendre'], ['Respiration & nerfs', '15 min', 'Comprendre'], ['Ressentir son souffle', '10 min', 'Ressentir'], ['Le souffle tridimensionnel', '15 min', 'Ressentir'], ['Cohérence cardiaque I', '12 min', 'Préparer'], ['Libérer le diaphragme', '15 min', 'Préparer'], ['Respiration latérale', '18 min', 'Préparer'], ['Respiration dorsale', '20 min', 'Préparer'], ['Plancher pelvien', '22 min', 'Préparer'], ['Pilates breathing I', '20 min', 'Exécuter'], ['Souffle & mouvement', '25 min', 'Exécuter'], ['Cohérence cardiaque II', '20 min', 'Exécuter'], ['Souffle & gainage', '28 min', 'Exécuter'], ['Séquence souffle complet', '30 min', 'Exécuter'], ['Techniques avancées I', '25 min', 'Évoluer'], ['Souffle & performance', '30 min', 'Évoluer'], ['Respiration & émotions', '32 min', 'Évoluer'], ['Anti-stress respiratoire', '35 min', 'Évoluer'], ['Maître du souffle', '40 min', 'Évoluer']],

@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { T, PILIERS_BASE, SEANCES_FR, SEANCES_EN, FREE_SEANCE_INDEX, ZONE_TO_PILIER } from './constants/data';
+import { T, PILIERS_BASE, SEANCES_FR, SEANCES_EN, FREE_SEANCE_INDEX, ZONE_TO_PILIER, FREE_MONTHLY_SELECTION } from './constants/data';
+
+const FREE_MONTHLY_SET = new Set((FREE_MONTHLY_SELECTION || []).map(function(s) { return s.pilier + '_' + s.idx; }));
 import { VIDEO_RESUME_PREFIX } from './components/VideoPlayer';
 
 let HapticsMod = null;
@@ -28,14 +30,18 @@ function getPiliers(lang) {
   return PILIERS_BASE.map((p) => ({ ...p, label: t.piliers[PILIER_LABEL_IDX[p.key]] }));
 }
 
-function canAccessSeanceIndex(idx, isSubscriber) {
-  if (idx >= 5) return false; // séances 6-20 coming soon
+// TEMP: séances déverrouillées pour test vidéo — à retirer avant prod
+const TEMP_UNLOCKED = new Set(['p2_0', 'p2_1']);
+
+function canAccessSeanceIndex(idx, isSubscriber, pilierKey) {
+  if (pilierKey && FREE_MONTHLY_SET.has(pilierKey + '_' + idx)) return true;
   if (idx === 0) return true; // séance 1 gratuite pour tous
+  if (pilierKey && TEMP_UNLOCKED.has(pilierKey + '_' + idx)) return true;
   return isSubscriber;
 }
 
-function isComingSoon(idx) {
-  return idx >= 5;
+function isComingSoon() {
+  return false;
 }
 
 function getSeanceDuJour(done, tensionIdxs, lang) {
