@@ -1027,7 +1027,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
   });
   const [streak, setStreak] = useState(0);
   const [isSubscriber, setIsSubscriber] = useState(false);
-  const ADMIN_EMAILS = ['yvan@espace-pilates.ch', 'sabrina@espace-pilates.ch'];
+  const ADMIN_EMAILS = ['yvan.tissot@icloud.com', 'sabrina.tissot@icloud.com'];
   const isAdmin = !!(supaUser && supaUser.email && ADMIN_EMAILS.indexOf(supaUser.email.toLowerCase()) !== -1);
   const effectiveIsSubscriber = isSubscriber || isAdmin;
   const [paywallVisible, setPaywallVisible] = useState(false);
