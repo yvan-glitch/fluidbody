@@ -1,7 +1,9 @@
-import { View, Text, TouchableOpacity, ScrollView, Modal, Alert, Dimensions, ImageBackground } from 'react-native';
+import { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Modal, Alert, Dimensions, ImageBackground, Linking } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { T, PILIER_IMAGES } from '../constants/data';
 
-const { width: SW } = Dimensions.get('window');
+const { width: SW, height: SH } = Dimensions.get('window');
 
 const PRODUCT_IDS = {
   monthly: 'com.fluidbody.app.premium.monthly',
@@ -19,144 +21,136 @@ function getRcPriceString(pkg) {
   return '';
 }
 
-export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore, onTryFree, coachImage }) {
-  var tr = T[lang] || T["fr"];
+function withPeriod(s, suffix) {
+  if (!s) return '';
+  if (s.includes('/')) return s;
+  return `${s}${suffix}`;
+}
+
+export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore }) {
+  var tr = T[lang] || T['fr'];
+  var isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   var monthlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.monthly];
   var yearlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.yearly];
-  var monthlyPrice = getRcPriceString(monthlyPkg);
-  var yearlyPrice = getRcPriceString(yearlyPkg);
-  var showYearly = !!(yearlyPkg || loadingPrices);
-  var paywallGridImages = [
-    PILIER_IMAGES.p7, PILIER_IMAGES.p5, PILIER_IMAGES.p3,
-    PILIER_IMAGES.p2, PILIER_IMAGES.p6, PILIER_IMAGES.p4,
-  ];
-  var gridItemW = Math.floor((SW - 56 - 16) / 3);
+  var monthlyPriceRaw = getRcPriceString(monthlyPkg) || 'CHF 9.90';
+  var yearlyPriceRaw = getRcPriceString(yearlyPkg) || 'CHF 99.00';
+  var monthlyDisplay = withPeriod(monthlyPriceRaw, isFr ? '/mois' : '/mo');
+  var yearlyDisplay = withPeriod(yearlyPriceRaw, isFr ? '/an' : '/yr');
+
+  const [selected, setSelected] = useState('yearly');
+  const selectedPrice = selected === 'yearly' ? yearlyDisplay : monthlyDisplay;
+
+  const heroTitle = isFr ? 'Du Pilates pour tout le monde' : 'Pilates for everyone';
+  const annualLabel = isFr ? 'Annuel' : 'Annual';
+  const annualSub = isFr ? '12 mois pour le prix de 8' : '12 months for the price of 8';
+  const monthlyLabel = isFr ? 'Mensuel' : 'Monthly';
+  const ctaLabel = isFr ? 'Commencer' : 'Start';
+
+  function onCta() {
+    if (loadingPrices) return;
+    if (selected === 'yearly') {
+      if (yearlyPkg) { onBuyYearly && onBuyYearly(yearlyPkg); return; }
+    } else {
+      if (monthlyPkg) { onBuyMonthly && onBuyMonthly(monthlyPkg); return; }
+    }
+    Alert.alert('FluidBody+', isFr ? 'Abonnement disponible dans la version App Store.' : 'Subscription available in the App Store version.');
+  }
+
+  function planCard(key, label, sub, priceText) {
+    var active = selected === key;
+    return (
+      <TouchableOpacity
+        key={key}
+        activeOpacity={0.85}
+        onPress={function() { setSelected(key); }}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 18,
+          paddingVertical: 16,
+          borderRadius: 16,
+          marginBottom: 10,
+          borderWidth: active ? 2 : 1,
+          borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.14)',
+          backgroundColor: active ? 'rgba(174,239,77,0.07)' : 'rgba(255,255,255,0.04)',
+        }}
+      >
+        <View style={{
+          width: 22, height: 22, borderRadius: 11, marginRight: 14,
+          borderWidth: 2,
+          borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.3)',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          {active && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#AEEF4D' }} />}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#ffffff' }}>{label}</Text>
+          {sub ? <Text style={{ fontSize: 12, fontWeight: '500', color: '#AEEF4D', marginTop: 2 }}>{sub}</Text> : null}
+        </View>
+        <Text style={{ fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.92)' }}>{priceText}</Text>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <Modal visible={!!visible} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: "#000000" }}>
-        <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={{ position: "absolute", top: 56, right: 20, zIndex: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontSize: 16, color: "rgba(255,255,255,0.7)", fontWeight: "600" }}>{"\u2715"}</Text>
-        </TouchableOpacity>
+      <View style={{ flex: 1, backgroundColor: '#000000' }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingVertical: 50, alignItems: "center" }}>
-
-          <View style={{ backgroundColor: '#AEEF4D', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginBottom: 24 }}>
-            <Text style={{ fontSize: 13, fontWeight: '800', color: '#000000', letterSpacing: 1 }}>{tr.paywall_badge || '7 JOURS GRATUITS'}</Text>
-          </View>
-
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center", paddingHorizontal: 28, marginBottom: 28 }}>
-            {paywallGridImages.map(function(src, i) {
-              return (
-                <View key={"pw-img-" + i} style={{ width: gridItemW, height: gridItemW, borderRadius: 14, overflow: "hidden" }}>
-                  <ImageBackground source={src} resizeMode="cover" style={{ flex: 1 }}>
-                    <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.15)" }} />
-                  </ImageBackground>
-                </View>
-              );
-            })}
-          </View>
-
-          <Text style={{ fontSize: 28, fontWeight: "800", color: "#ffffff", textAlign: "center", marginBottom: 10, paddingHorizontal: 28 }}>{tr.paywall_title}</Text>
-          <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.55)", textAlign: "center", lineHeight: 21, marginBottom: 24, paddingHorizontal: 32 }}>{tr.paywall_sub}</Text>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: 28, marginBottom: 28, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 16, padding: 14 }}>
-            <View style={{ width: 60, height: 60, borderRadius: 30, overflow: 'hidden', borderWidth: 2.5, borderColor: '#AEEF4D' }}>
-              <ImageBackground source={coachImage} resizeMode="cover" style={{ flex: 1 }} />
+          <ImageBackground source={PILIER_IMAGES.p7} resizeMode="cover" style={{ width: SW, height: Math.round(SH * 0.45), justifyContent: 'flex-end' }}>
+            <LinearGradient
+              colors={['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.55)', '#000000']}
+              locations={[0, 0.55, 1]}
+              style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
+            />
+            <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={{ position: 'absolute', top: 56, right: 20, width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '600' }}>{'✕'}</Text>
+            </TouchableOpacity>
+            <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#AEEF4D', letterSpacing: 2.5, marginBottom: 10 }}>FLUIDBODY+</Text>
+              <Text style={{ fontSize: 34, fontWeight: '800', color: '#ffffff', lineHeight: 38, letterSpacing: -0.5 }}>{heroTitle}</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '300', color: 'rgba(255,255,255,0.85)', lineHeight: 18, fontStyle: 'italic' }}>{tr.coach_quote || '"Je vous accompagne pas à pas vers un corps plus libre et plus fort."'}</Text>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#AEEF4D', marginTop: 6 }}>{tr.coach_avec || 'Avec Sabrina'} · {tr.coach_exp || '30 ans d\'expérience'}</Text>
-            </View>
-          </View>
+          </ImageBackground>
 
-          <View style={{ marginTop: 16, marginBottom: 8, marginHorizontal: 28 }}>
-            {[tr.paywall_b1, tr.paywall_b2, tr.paywall_b3, tr.paywall_b4, tr.paywall_b5].map(function(b, i) {
-              return (
-                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, paddingHorizontal: 4 }}>
-                  <Text style={{ fontSize: 14, color: '#AEEF4D', marginRight: 10 }}>✓</Text>
-                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '400' }}>{b}</Text>
-                </View>
-              );
-            })}
+          <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
+            {planCard('yearly', annualLabel, annualSub, yearlyDisplay)}
+            {planCard('monthly', monthlyLabel, null, monthlyDisplay)}
           </View>
 
           {disabled && (
-            <View style={{ alignSelf: "stretch", marginHorizontal: 28, marginBottom: 16, backgroundColor: "rgba(255,200,80,0.10)", borderWidth: 1, borderColor: "rgba(255,200,80,0.25)", borderRadius: 16, padding: 14 }}>
-              <Text style={{ color: "rgba(255,220,140,0.9)", fontSize: 12, lineHeight: 18, textAlign: "center" }}>{tr.paywall_not_available}</Text>
+            <View style={{ marginHorizontal: 20, marginTop: 8, backgroundColor: 'rgba(255,200,80,0.10)', borderWidth: 1, borderColor: 'rgba(255,200,80,0.25)', borderRadius: 14, padding: 12 }}>
+              <Text style={{ color: 'rgba(255,220,140,0.9)', fontSize: 12, lineHeight: 18, textAlign: 'center' }}>{tr.paywall_not_available}</Text>
             </View>
           )}
 
-          <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.50)", textAlign: "center", marginBottom: 14, paddingHorizontal: 40 }}>
-            {tr.paywall_free_seance || '1 s\u00E9ance gratuite par pilier \u00B7 sans carte bleue'}
-          </Text>
+          <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
+            <TouchableOpacity
+              onPress={onCta}
+              disabled={disabled || loadingPrices}
+              activeOpacity={0.85}
+              style={{
+                height: 56, borderRadius: 28, backgroundColor: '#E5FF00',
+                alignItems: 'center', justifyContent: 'center',
+                opacity: (disabled || loadingPrices) ? 0.4 : 1,
+                shadowColor: '#E5FF00', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 18,
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#000000', letterSpacing: 0.2 }}>{ctaLabel}</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginTop: 12 }}>{selectedPrice}</Text>
+          </View>
 
-          <TouchableOpacity
-            onPress={function() { if (monthlyPkg) { onBuyMonthly && onBuyMonthly(monthlyPkg); } else { Alert.alert('FluidBody+', 'Abonnement disponible dans la version App Store.'); } }}
-            disabled={false}
-            activeOpacity={0.85}
-            style={{
-              alignSelf: "stretch",
-              marginHorizontal: 28,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: "#AEEF4D",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 8,
-              opacity: (disabled || loadingPrices) ? 0.4 : 1,
-            }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#000000", letterSpacing: 0.3 }}>
-              {tr.paywall_start}
-            </Text>
+          <TouchableOpacity onPress={onRestore} disabled={disabled} activeOpacity={0.7} style={{ marginTop: 18 }}>
+            <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>{tr.paywall_restore}</Text>
           </TouchableOpacity>
 
-          <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.40)", textAlign: "center", marginBottom: 16 }}>
-            {tr.paywall_price_detail || 'Puis 12.90 CHF/mois · Annulez quand vous voulez'}
+          <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: 22, paddingHorizontal: 28, lineHeight: 15 }}>
+            {tr.paywall_legal || "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période. Le paiement est débité via votre compte Apple. Gérez ou annulez dans Réglages > Apple ID > Abonnements."}
           </Text>
-
-          <TouchableOpacity
-            onPress={function() { if (yearlyPkg) { onBuyYearly && onBuyYearly(yearlyPkg); } else { Alert.alert('FluidBody+', 'Abonnement disponible dans la version App Store.'); } }}
-            disabled={false}
-            activeOpacity={0.85}
-            style={{
-              alignSelf: "stretch",
-              marginHorizontal: 28,
-              height: 50,
-              borderRadius: 25,
-              backgroundColor: "rgba(0,189,208,0.15)",
-              borderWidth: 1,
-              borderColor: "#00BDD0",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 8,
-            }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: "700", color: "#00BDD0" }}>
-              {tr.paywall_yearly_link}
-            </Text>
+          <TouchableOpacity onPress={function() { Linking.openURL('https://fluidbody.app/privacy'); }} activeOpacity={0.7} style={{ marginTop: 8 }}>
+            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', textAlign: 'center', textDecorationLine: 'underline' }}>{tr.paywall_privacy_link || 'Politique de confidentialité'}</Text>
           </TouchableOpacity>
 
-          <Text style={{ fontSize: 11, fontWeight: "400", color: "rgba(255,255,255,0.30)", textAlign: "center", marginBottom: 20, paddingHorizontal: 40 }}>
-            {tr.paywall_access || 'Accès immédiat à tous les piliers · Sans engagement'}
-          </Text>
-
-          <TouchableOpacity
-            onPress={onRestore}
-            disabled={disabled}
-            activeOpacity={0.7}
-            style={{ marginTop: 8 }}
-          >
-            <Text style={{ fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.25)", textAlign: "center" }}>{tr.paywall_restore}</Text>
-          </TouchableOpacity>
-
-          <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.20)", textAlign: "center", marginTop: 20, paddingHorizontal: 28, lineHeight: 15 }}>
-            {tr.paywall_legal || "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la p\u00E9riode. Le paiement est d\u00E9bit\u00E9 via votre compte Apple. G\u00E9rez ou annulez dans R\u00E9glages > Apple ID > Abonnements."}
-          </Text>
-          <TouchableOpacity onPress={function() { var RNLinking = require('react-native').Linking; RNLinking.openURL('https://fluidbody.app/privacy'); }} activeOpacity={0.7} style={{ marginTop: 8, marginBottom: 20 }}>
-            <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", textAlign: "center", textDecorationLine: "underline" }}>{tr.paywall_privacy_link || "Politique de confidentialit\u00E9"}</Text>
-          </TouchableOpacity>
         </ScrollView>
       </View>
     </Modal>

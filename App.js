@@ -18,6 +18,8 @@ let HapticsMod = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
 try { Device = require('expo-device'); } catch(e) {}
 try { HapticsMod = require('expo-haptics'); } catch(e) {}
+let AppleAuth = null;
+try { AppleAuth = require('expo-apple-authentication'); } catch(e) {}
 let AppleHealthKit = null;
 try { AppleHealthKit = require('react-native-health').default; } catch(e) {}
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -28,7 +30,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ViewShot from 'react-native-view-shot';
-import { U_JELLY, U_WAVE, FREE_SEANCE_INDEX, ZONE_TO_PILIER, T, SEANCES_FR, SEANCES_EN, PILIERS_BASE, PILIER_IMAGES } from './src/constants/data';
+import { U_JELLY, U_WAVE, FREE_SEANCE_INDEX, ZONE_TO_PILIER, T, SEANCES_FR, SEANCES_EN, PILIERS_BASE, PILIER_IMAGES, SABRINA_QUOTES } from './src/constants/data';
 import { Linking as RNLinking } from 'react-native';
 import { Bulle, Rayon, Meduse, MeduseCornerIcon, VideoPlaceholderMeduse, BULLES, BULLES_MONCORPS, BULLES_ONBOARDING, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState, LivingMedusa, FloatingMedusas, MeduseRain, PluieBulles } from './src/components/Meduse';
 import VideoPlayer, { VIDEO_RESUME_PREFIX } from './src/components/VideoPlayer';
@@ -110,9 +112,10 @@ function CustomTabBar({ state, descriptors, navigation }) {
   var tabCount = state.routes.length;
   var barW = SW - 40;
   var tabW = barW / tabCount;
-  var pad = 5;
+  var pad = 6;
   var pillW = tabW - pad * 2;
-  var pillH = 56;
+  var pillH = 66;
+  var BAR_H = 78;
   var indicatorX = useRef(new Animated.Value(state.index * tabW + pad)).current;
   var currentIdx = useRef(state.index);
   var dragStartX = useRef(0);
@@ -144,8 +147,8 @@ function CustomTabBar({ state, descriptors, navigation }) {
   })).current;
 
   return (
-    <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: 66, backgroundColor: 'rgba(28,28,30,0.94)', borderRadius: 33, borderWidth: 1, borderColor: '#AEEF4D' }} {...panResponder.panHandlers}>
-      <Animated.View style={{ position: 'absolute', top: (66 - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.13)', transform: [{ translateX: indicatorX }] }} />
+    <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: BAR_H, backgroundColor: 'rgba(28,28,30,0.94)', borderRadius: BAR_H / 2, borderWidth: 1, borderColor: '#AEEF4D' }} {...panResponder.panHandlers}>
+      <Animated.View style={{ position: 'absolute', top: (BAR_H - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: pillH / 2, backgroundColor: 'rgba(255,255,255,0.13)', transform: [{ translateX: indicatorX }] }} />
       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
         {state.routes.map(function(route, index) {
           var options = descriptors[route.key].options;
@@ -157,9 +160,9 @@ function CustomTabBar({ state, descriptors, navigation }) {
           };
           var IconComp = options.tabBarIcon;
           return (
-            <TouchableOpacity key={route.key} onPress={onPress} activeOpacity={0.7} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: 66 }}>
-              {IconComp && IconComp({ color: color, size: 22, focused: isFocused })}
-              <Text style={{ fontSize: 10, fontWeight: '600', color: color, marginTop: 3, letterSpacing: 0.2 }}>{route.name}</Text>
+            <TouchableOpacity key={route.key} onPress={onPress} activeOpacity={0.7} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: BAR_H }}>
+              {IconComp && IconComp({ color: color, size: 26, focused: isFocused })}
+              <Text style={{ fontSize: 12, fontWeight: '600', color: color, marginTop: 5, letterSpacing: 0.2 }}>{route.name}</Text>
             </TouchableOpacity>
           );
         })}
@@ -291,7 +294,7 @@ function getAppLangFromLocale() {
 
 const ALL_PRODUCT_IDS = Object.values(PRODUCT_IDS);
 const RC_ENTITLEMENT_ID = 'Fluidbody Pilates Pro';
-const RC_API_KEY_IOS = 'appl_hqCGakwrJAfotXKNQtMBAgLnqcX';
+const RC_API_KEY_IOS = process.env.EXPO_PUBLIC_RC_API_KEY_IOS || '';
 
 const COACH_IMAGE = require('./assets/coach.jpg');
 
@@ -514,15 +517,39 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '', langForProfile = 'fr
   const tr = T[lang] || T.fr;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mode, setMode] = useState('up');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const validPass = password.length >= 6;
+  const canSubmit = validEmail && validPass && !loading;
+  const appleAvailable = !!AppleAuth && Platform.OS === 'ios';
 
-  async function submit() {
+  async function postAuthProfileSync(extraPrenom) {
+    if (!supabase) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const finalPrenom = String(extraPrenom || prenomHint || session.user.user_metadata?.prenom || '').trim();
+      if (finalPrenom) {
+        try { await supabase.auth.updateUser({ data: { prenom: finalPrenom } }); } catch(e) { devWarn('updateUser metadata', e); }
+      }
+      try {
+        await supabase.from('profiles').upsert({
+          id: session.user.id,
+          prenom: finalPrenom,
+          lang: langForProfile || lang,
+          tension_idxs: Array.isArray(tensionIdxsForProfile) ? tensionIdxsForProfile : [],
+          updated_at: new Date().toISOString(),
+        });
+      } catch (e) { devWarn('profiles upsert post-auth', e); }
+    } catch(e) { devWarn('postAuthProfileSync', e); }
+  }
+
+  async function handleEmailAuth(mode) {
     if (!supabase) return;
     const em = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { setError(tr.ob_auth_err_email); return; }
-    if (password.length < 6) { setError(tr.ob_auth_err_short); return; }
+    if (!validEmail) { setError(tr.ob_auth_err_email); return; }
+    if (!validPass) { setError(tr.ob_auth_err_short); return; }
     setLoading(true); setError('');
     try {
       if (mode === 'up') {
@@ -532,98 +559,125 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '', langForProfile = 'fr
           options: { data: { prenom: String(prenomHint || '').trim().slice(0, 50).replace(/[<>]/g, '') } },
         });
         if (err) { setError(err.message); setLoading(false); return; }
-        if (!data.session) {
-          setError(tr.ob_auth_confirm);
-          setLoading(false);
-          return;
-        }
+        if (!data.session) { setError(tr.ob_auth_confirm); setLoading(false); return; }
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email: em, password });
         if (err) { setError(err.message); setLoading(false); return; }
       }
-      const hint = prenomHint && String(prenomHint).trim();
-      if (hint) {
-        const { error: ue } = await supabase.auth.updateUser({ data: { prenom: hint } });
-        if (ue) devWarn('updateUser metadata prenom', ue);
-      }
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user && supabase) {
-        try {
-          await supabase.from('profiles').upsert({
-            id: session.user.id,
-            prenom: String(prenomHint || hint || '').trim(),
-            lang: langForProfile || lang,
-            tension_idxs: Array.isArray(tensionIdxsForProfile) ? tensionIdxsForProfile : [],
-            updated_at: new Date().toISOString(),
-          });
-        } catch (e) { devWarn('profiles upsert post-auth', e); }
-      }
+      await postAuthProfileSync();
     } catch (e) {
       setError(tr.ob_auth_err_net);
     }
     setLoading(false);
   }
 
+  async function handleAppleSignIn() {
+    if (!supabase) return;
+    if (!appleAvailable) {
+      Alert.alert('FluidBody+', tr.auth_apple_unavailable || 'Sign in with Apple est disponible sur iOS uniquement.');
+      return;
+    }
+    setLoading(true); setError('');
+    try {
+      const credential = await AppleAuth.signInAsync({
+        requestedScopes: [
+          AppleAuth.AppleAuthenticationScope.FULL_NAME,
+          AppleAuth.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) { setError('Apple identity token manquant.'); setLoading(false); return; }
+      const { error: err } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+      });
+      if (err) { setError(err.message); setLoading(false); return; }
+      const applePrenom = credential.fullName?.givenName || '';
+      await postAuthProfileSync(applePrenom);
+    } catch (e) {
+      if (e?.code !== 'ERR_REQUEST_CANCELED') setError(e?.message || tr.ob_auth_err_net);
+    }
+    setLoading(false);
+  }
+
   return (
-    <View style={{ flex: 1 }}>
-      <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible', opacity: 0.3 }} pointerEvents="none">
-        {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
-      </View>
-      <FloatingMedusas />
+    <View style={{ flex: 1, backgroundColor: '#000e18' }}>
+      <LinearGradient colors={['#000000', '#000e18', '#001828']} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
 
       <View style={{ paddingTop: 58, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 }}>
-        <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 30 }}>+</Text></Text>
-        <TouchableOpacity onPress={onSkip} style={{ paddingVertical: 6 }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1 }}>{tr.first_seance_later || 'Plus tard'}</Text>
-        </TouchableOpacity>
+        <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</Text></Text>
+        {onSkip ? (
+          <TouchableOpacity onPress={onSkip} style={{ paddingVertical: 6 }}>
+            <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>{tr.first_seance_later || 'Plus tard'}</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1, zIndex: 2 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 20 }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 32 }} keyboardShouldPersistTaps="handled">
 
-          <MeduseCornerIcon size={70} breathCycleMs={3000} tint="rgba(174,239,77,1)" />
-
-          <Text style={{ fontSize: 12, color: '#AEEF4D', letterSpacing: 3, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 }}>{tr.ob_auth_tag}</Text>
-          <Text style={{ fontSize: 22, fontWeight: '300', color: '#ffffff', textAlign: 'center', marginBottom: 8 }}>{tr.ob_auth_title}</Text>
-          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>{tr.ob_auth_sub}</Text>
-
-          <TouchableOpacity onPress={function() { if (supabase) { Alert.alert('FluidBody+', tr.auth_social_soon || 'Connexion Apple disponible dans la version App Store.'); } }} activeOpacity={0.85} style={{ width: '100%', height: 50, borderRadius: 25, backgroundColor: '#ffffff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 10 }}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-              <Path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C3.79 16.17 4.36 9.04 8.72 8.78c1.34.07 2.27.74 3.06.8.93-.19 1.82-.73 2.82-.66 1.19.1 2.09.58 2.68 1.49-2.45 1.47-1.87 4.71.36 5.62-.45 1.17-.66 1.7-1.23 2.73-.82 1.46-1.97 2.92-3.36 2.95.27.18.55.34.84.46.32.13.66.11 1.16.11zM12.13 8.65c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" fill="#000000" />
-            </Svg>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#000000' }}>{tr.auth_apple || 'Continuer avec Apple'}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={function() { if (supabase) { Alert.alert('FluidBody+', tr.auth_social_soon || 'Connexion Google disponible dans la version App Store.'); } }} activeOpacity={0.85} style={{ width: '100%', height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
-            <Svg width={18} height={18} viewBox="0 0 24 24">
-              <Path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
-              <Path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <Path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A11.96 11.96 0 001 12c0 1.94.46 3.77 1.18 5.07l3.66-2.84v-.14z" fill="#FBBC05" />
-              <Path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </Svg>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#ffffff' }}>{tr.auth_google || 'Continuer avec Google'}</Text>
-          </TouchableOpacity>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 16 }}>
-            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(174,239,77,0.2)' }} />
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginHorizontal: 14 }}>{tr.auth_or || 'ou'}</Text>
-            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(174,239,77,0.2)' }} />
+          <View style={{ alignItems: 'center', marginBottom: 36 }}>
+            <Text style={{ fontSize: 28, fontWeight: '700', color: '#ffffff', textAlign: 'center', letterSpacing: -0.4, marginBottom: 8 }}>{tr.ob_auth_title}</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 20 }}>{tr.ob_auth_sub}</Text>
           </View>
 
-          <TextInput value={email} onChangeText={setEmail} placeholder={tr.ob_email_ph} placeholderTextColor="rgba(174,239,77,0.3)" keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
-            style={{ width: '100%', height: 52, backgroundColor: 'rgba(0,18,32,0.6)', borderWidth: 1, borderColor: email ? '#AEEF4D' : 'rgba(174,239,77,0.2)', borderRadius: 14, color: '#ffffff', fontSize: 16, paddingHorizontal: 16, marginBottom: 10 }}
+          {appleAvailable ? (
+            <TouchableOpacity onPress={handleAppleSignIn} disabled={loading} activeOpacity={0.85} style={{ width: '100%', height: 52, borderRadius: 12, backgroundColor: '#000000', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
+              <Svg width={18} height={20} viewBox="0 0 24 24" fill="none">
+                <Path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C3.79 16.17 4.36 9.04 8.72 8.78c1.34.07 2.27.74 3.06.8.93-.19 1.82-.73 2.82-.66 1.19.1 2.09.58 2.68 1.49-2.45 1.47-1.87 4.71.36 5.62-.45 1.17-.66 1.7-1.23 2.73-.82 1.46-1.97 2.92-3.36 2.95zM12.13 8.65c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" fill="#ffffff" />
+              </Svg>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>{tr.auth_apple || 'Continuer avec Apple'}</Text>
+            </TouchableOpacity>
+          ) : null}
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 18 }}>
+            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(255,255,255,0.12)' }} />
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginHorizontal: 14, letterSpacing: 1, textTransform: 'uppercase' }}>{tr.auth_or || 'ou'}</Text>
+            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(255,255,255,0.12)' }} />
+          </View>
+
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder={tr.ob_email_ph}
+            placeholderTextColor="rgba(255,255,255,0.3)"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+            style={{ width: '100%', height: 52, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: email ? 'rgba(174,239,77,0.5)' : 'rgba(255,255,255,0.12)', borderRadius: 12, color: '#ffffff', fontSize: 15, paddingHorizontal: 16, marginBottom: 10 }}
           />
-          <TextInput value={password} onChangeText={setPassword} placeholder={tr.ob_pass_ph} placeholderTextColor="rgba(174,239,77,0.3)" secureTextEntry autoCapitalize="none" autoCorrect={false}
-            style={{ width: '100%', height: 52, backgroundColor: 'rgba(0,18,32,0.6)', borderWidth: 1, borderColor: password ? '#AEEF4D' : 'rgba(174,239,77,0.2)', borderRadius: 14, color: '#ffffff', fontSize: 16, paddingHorizontal: 16, marginBottom: 12 }}
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder={tr.ob_pass_ph}
+            placeholderTextColor="rgba(255,255,255,0.3)"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+            style={{ width: '100%', height: 52, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: password ? 'rgba(174,239,77,0.5)' : 'rgba(255,255,255,0.12)', borderRadius: 12, color: '#ffffff', fontSize: 15, paddingHorizontal: 16, marginBottom: 14 }}
           />
-          {error ? <Text style={{ color: 'rgba(255,120,120,0.9)', fontSize: 12, marginBottom: 10, textAlign: 'center' }}>{error}</Text> : null}
-          <TouchableOpacity onPress={submit} disabled={loading} style={{ width: '100%', height: 50, borderRadius: 25, backgroundColor: email.trim() && password.length >= 6 ? '#AEEF4D' : 'rgba(174,239,77,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: email.trim() && password.length >= 6 ? '#000000' : 'rgba(174,239,77,0.5)' }}>{loading ? '…' : (mode === 'up' ? tr.ob_auth_submit_up : tr.ob_auth_submit_in)}</Text>
+
+          {error ? <Text style={{ color: 'rgba(255,120,120,0.95)', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>{error}</Text> : null}
+
+          <TouchableOpacity
+            onPress={() => handleEmailAuth('in')}
+            disabled={!canSubmit}
+            activeOpacity={0.85}
+            style={{ width: '100%', height: 52, borderRadius: 12, backgroundColor: canSubmit ? '#AEEF4D' : 'rgba(174,239,77,0.18)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: '700', color: canSubmit ? '#000000' : 'rgba(174,239,77,0.4)' }}>{loading ? '…' : (tr.ob_auth_submit_in || 'Se connecter')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => { setMode(m => m === 'up' ? 'in' : 'up'); setError(''); }} style={{ paddingVertical: 10 }}>
-            <Text style={{ fontSize: 13, color: '#AEEF4D', letterSpacing: 0.5 }}>{mode === 'up' ? tr.ob_auth_toggle_in : tr.ob_auth_toggle_up}</Text>
+
+          <TouchableOpacity
+            onPress={() => handleEmailAuth('up')}
+            disabled={!canSubmit}
+            activeOpacity={0.85}
+            style={{ width: '100%', height: 52, borderRadius: 12, backgroundColor: 'transparent', borderWidth: 1, borderColor: canSubmit ? 'rgba(174,239,77,0.55)' : 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '600', color: canSubmit ? '#AEEF4D' : 'rgba(174,239,77,0.35)' }}>{tr.ob_auth_submit_up || 'Créer un compte'}</Text>
           </TouchableOpacity>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -880,7 +934,21 @@ async function setupNotifications(lang = 'fr') {
     const tr = T[lang] || T['fr'];
     var savedHour = parseInt(await AsyncStorage.getItem('fluid_notif_hour')) || 9;
     var pauseEnabled = (await AsyncStorage.getItem('fluid_notif_pause_enabled')) !== 'false';
+    var quoteEnabled = (await AsyncStorage.getItem('fluid_quote_enabled')) !== 'false';
+    var quoteHour = parseInt(await AsyncStorage.getItem('fluid_quote_hour')) || 8;
     await Notifications.scheduleNotificationAsync({ content: { title: tr.notif_title, body: tr.notif_body, sound: true }, trigger: { hour: savedHour, minute: 0, repeats: true } });
+    // Phrase du jour — Sabrina : rotation quotidienne, re-schedulée à chaque ouverture
+    if (quoteEnabled) {
+      var quotes = SABRINA_QUOTES[lang] || SABRINA_QUOTES['fr'];
+      if (quotes && quotes.length) {
+        var d = new Date();
+        var idx = (d.getDate() + d.getMonth() * 31) % quotes.length;
+        await Notifications.scheduleNotificationAsync({
+          content: { title: tr.notif_quote_title || 'Phrase du jour', body: quotes[idx], sound: false },
+          trigger: { hour: quoteHour, minute: 0, repeats: true },
+        });
+      }
+    }
     // Pause Active — Office : toutes les heures 9h-18h en semaine
     if (pauseEnabled) {
       for (var h = 9; h <= 17; h++) {
@@ -892,6 +960,28 @@ async function setupNotifications(lang = 'fr') {
         }
       }
     }
+  } catch(e) {}
+}
+
+async function sendWelcomeNotification(prenom, lang = 'fr') {
+  try {
+    if (!Notifications || !Device || !Device.isDevice) return;
+    const WELCOME_KEY = 'fluid_welcome_notif_sent';
+    if (await AsyncStorage.getItem(WELCOME_KEY)) return;
+    const { status } = await Notifications.getPermissionsAsync();
+    var granted = status === 'granted';
+    if (!granted) {
+      const req = await Notifications.requestPermissionsAsync();
+      granted = req.status === 'granted';
+    }
+    if (!granted) return;
+    const tr = T[lang] || T['fr'];
+    const body = typeof tr.notif_welcome_body === 'function' ? tr.notif_welcome_body(prenom) : tr.notif_welcome_body;
+    await Notifications.scheduleNotificationAsync({
+      content: { title: tr.notif_welcome_title, body: body, sound: true },
+      trigger: { seconds: 3 },
+    });
+    await AsyncStorage.setItem(WELCOME_KEY, '1');
   } catch(e) {}
 }
 
@@ -937,6 +1027,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
   });
   const [streak, setStreak] = useState(0);
   const [isSubscriber, setIsSubscriber] = useState(false);
+  const ADMIN_EMAILS = ['yvan@espace-pilates.ch', 'sabrina@espace-pilates.ch'];
+  const isAdmin = !!(supaUser && supaUser.email && ADMIN_EMAILS.indexOf(supaUser.email.toLowerCase()) !== -1);
+  const effectiveIsSubscriber = isSubscriber || isAdmin;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [freeDetailVisible, setFreeDetailVisible] = useState(false);
   const [freeVideoPlaying, setFreeVideoPlaying] = useState(false);
@@ -1232,7 +1325,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
               pilier={sdj.pilier}
               lang={lang}
               seanceIndex={sdj.idx}
-              isDemo={!isSubscriber}
+              isDemo={!effectiveIsSubscriber}
               onClose={() => setFreeVideoPlaying(false)}
               onComplete={() => { setFreeVideoPlaying(false); }}
               onDemoLimit={() => { setFreeVideoPlaying(false); setPaywallVisible(true); }}
@@ -1266,10 +1359,10 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
       )}
       <NavigationContainer>
           <Tab.Navigator tabBar={function(props) { return <CustomTabBar {...props} />; }} screenOptions={{ headerShown: false }}>
-          <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={isSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} onOpenTimer={() => setShowStretchTimer(true)} saveHealthKitWorkout={saveHealthKitWorkout} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} saveHealthKitWorkout={saveHealthKitWorkout} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={function() { setShowAuthScreen(true); }} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={isSubscriber} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} />}</Tab.Screen>
         </Tab.Navigator>
       </NavigationContainer>
       <StretchTimerModal visible={showStretchTimer} onClose={function() { setShowStretchTimer(false); }} lang={lang} />
@@ -1398,6 +1491,7 @@ function App() {
 
   async function handleOnboardingDone(p, l, t) {
     setPrenom(p); setLang(l); setTensionIdxs(t); setOnboardingDone(true);
+    sendWelcomeNotification(p, l);
     if (!supabase) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
@@ -1450,10 +1544,6 @@ function App() {
     return (
       <View style={{ flex: 1, backgroundColor: '#000e18', alignItems: 'center', justifyContent: 'center' }}>
         <LinearGradient colors={['#000e18', '#001828', '#002d48', '#001828', '#000e18']} style={StyleSheet.absoluteFill} />
-        {/* Méduses flottantes comme sur les autres écrans */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
-          <FloatingMedusas />
-        </View>
         {/* Bulles qui descendent */}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
           <PluieBulles />
@@ -1471,7 +1561,7 @@ function App() {
         </Animated.View>
         {/* Tagline */}
         <Animated.View style={{ opacity: splashTagOpacity }}>
-          <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, letterSpacing: 3, textTransform: 'uppercase' }}>Pilates & More</Text>
+          <Text style={{ color: '#AEEF4D', fontSize: 13, letterSpacing: 3, textTransform: 'uppercase' }}>Pilates & More</Text>
         </Animated.View>
       </View>
     );

@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground, Share, Alert, Modal, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
 import ViewShot from 'react-native-view-shot';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, FloatingMedusas, BULLES } from '../components/Meduse';
@@ -14,18 +14,35 @@ const DEV_IMAGE = require('../../assets/yvan.webp');
 // ══════════════════════════════════
 // PROFIL — Abonnement + Compte
 // ══════════════════════════════════
-function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, isSubscriber, onRestorePurchases, onReset }) {
+function TimerIcon({ color, size }) {
+  var s = size || 22;
+  return (
+    <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="13" r="8" stroke={color} strokeWidth={1.6} />
+      <Path d="M12 5V7" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M9.5 3h5" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <Path d="M12 13V9.5" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+      <Path d="M12 13L14.5 15" stroke={color} strokeWidth={1.4} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer }) {
   var tr = T[lang] || T['fr'];
   var shareRef = useRef(null);
   var [showCoachBio, setShowCoachBio] = useState(false);
   var [showDevBio, setShowDevBio] = useState(false);
   var [notifHour, setNotifHour] = useState(9);
   var [pauseEnabled, setPauseEnabled] = useState(true);
+  var [quoteEnabled, setQuoteEnabled] = useState(true);
+  var [quoteHour, setQuoteHour] = useState(8);
   var [storageUsed, setStorageUsed] = useState('0 B');
 
   useEffect(function() {
     AsyncStorage.getItem('fluid_notif_hour').then(function(v) { if (v) setNotifHour(parseInt(v) || 9); });
     AsyncStorage.getItem('fluid_notif_pause_enabled').then(function(v) { setPauseEnabled(v !== 'false'); });
+    AsyncStorage.getItem('fluid_quote_enabled').then(function(v) { setQuoteEnabled(v !== 'false'); });
+    AsyncStorage.getItem('fluid_quote_hour').then(function(v) { if (v) setQuoteHour(parseInt(v) || 8); });
     try {
       var { getStorageUsed, formatBytes } = require('../components/DownloadManager');
       getStorageUsed().then(function(s) { setStorageUsed(formatBytes(s)); });
@@ -155,6 +172,23 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </View>
         </Modal>
 
+        {onOpenTimer && (
+          <TouchableOpacity
+            onPress={onOpenTimer}
+            activeOpacity={0.85}
+            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
+          >
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+              <TimerIcon color="#AEEF4D" size={22} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff' }}>{tr.timer_title || 'Minuteur Stretching & Eldoa'}</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{tr.timer_sub || 'Lance un minuteur pour tes étirements'}</Text>
+            </View>
+            <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
+          </TouchableOpacity>
+        )}
+
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.notif_section || 'Rappels'}</Text>
 
@@ -179,7 +213,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <View>
               <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>{tr.notif_pause_label || 'Pauses actives au bureau'}</Text>
               <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{tr.notif_pause_sub || '9h-17h en semaine'}</Text>
@@ -192,6 +226,40 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#ffffff', alignSelf: pauseEnabled ? 'flex-end' : 'flex-start' }} />
             </TouchableOpacity>
           </View>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: quoteEnabled ? 16 : 0 }}>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', flex: 1, paddingRight: 12 }}>{tr.notif_quote_label || 'Phrase du jour de Sabrina'}</Text>
+            <TouchableOpacity onPress={function() {
+              var next = !quoteEnabled;
+              setQuoteEnabled(next);
+              AsyncStorage.setItem('fluid_quote_enabled', String(next));
+            }} style={{ width: 50, height: 28, borderRadius: 14, backgroundColor: quoteEnabled ? '#AEEF4D' : 'rgba(255,255,255,0.15)', justifyContent: 'center', paddingHorizontal: 2 }}>
+              <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#ffffff', alignSelf: quoteEnabled ? 'flex-end' : 'flex-start' }} />
+            </TouchableOpacity>
+          </View>
+
+          {quoteEnabled && (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>{tr.notif_quote_hour_label || 'Heure de la phrase'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity onPress={function() {
+                  var h = Math.max(5, quoteHour - 1);
+                  setQuoteHour(h);
+                  AsyncStorage.setItem('fluid_quote_hour', String(h));
+                }} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 18, color: '#AEEF4D', fontWeight: '700' }}>{'−'}</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', minWidth: 50, textAlign: 'center' }}>{quoteHour}h00</Text>
+                <TouchableOpacity onPress={function() {
+                  var h = Math.min(22, quoteHour + 1);
+                  setQuoteHour(h);
+                  AsyncStorage.setItem('fluid_quote_hour', String(h));
+                }} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 18, color: '#AEEF4D', fontWeight: '700' }}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
 
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
@@ -218,7 +286,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
 
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 12 }}>{tr.subscription_status_label}</Text>
-          <Text style={{ fontSize: 15, fontWeight: '400', color: '#AEEF4D', marginBottom: 16 }}>{isSubscriber ? tr.subscription_status_active : tr.subscription_status_free}</Text>
+          <Text style={{ fontSize: 15, fontWeight: '400', color: '#AEEF4D', marginBottom: 16 }}>{isAdmin ? 'Admin · accès complet' : (isSubscriber ? tr.subscription_status_active : tr.subscription_status_free)}</Text>
           <TouchableOpacity onPress={onRestorePurchases} style={{ paddingVertical: 13, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.10)', alignItems: 'center' }}>
             <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>{tr.subscription_reset}</Text>
           </TouchableOpacity>
