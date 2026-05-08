@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, Animated, Easing, StyleSheet, Dimensions, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
+import AnimatedPlus from './AnimatedPlus';
 import { Audio } from 'expo-av';
 import { T } from '../constants/data';
 import { Bulle, FloatingMedusas, BULLES } from './Meduse';
@@ -153,7 +154,7 @@ function StretchTimerModal({ visible, onClose, lang }) {
         <FloatingMedusas />
 
         <View style={{ paddingTop: 58, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 }}>
-          <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 30 }}>+</Text></Text>
+          <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 30 }}>+</AnimatedPlus></Text>
           <TouchableOpacity onPress={function() { resetTimer(); onClose(); }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)' }}>✕</Text></TouchableOpacity>
         </View>
 
@@ -293,7 +294,7 @@ function StretchTimerInline({ lang }) {
   return (
     <ScrollView style={{ flex: 1, zIndex: 2 }} contentContainerStyle={{ paddingTop: 62, paddingBottom: 120, alignItems: 'center' }} showsVerticalScrollIndicator={false}>
       <View style={{ paddingHorizontal: 20, alignSelf: 'stretch', marginBottom: 16 }}>
-        <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</Text></Text>
+        <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</AnimatedPlus></Text>
         <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.timer_title || 'Minuteur Stretching & Eldoa'}</Text>
       </View>
       <Text style={{ fontSize: 12, fontWeight: '300', color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 18, marginBottom: 20, paddingHorizontal: 32 }}>{tr.timer_desc || 'Maintenez chaque étirement pendant la durée choisie. Respirez profondément et relâchez à chaque bip.'}</Text>

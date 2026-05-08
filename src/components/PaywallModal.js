@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, Alert, Dimensions, ImageBackground, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AnimatedPlus from './AnimatedPlus';
 import { T, PILIER_IMAGES } from '../constants/data';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -32,7 +33,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   var isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   var monthlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.monthly];
   var yearlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.yearly];
-  var monthlyPriceRaw = getRcPriceString(monthlyPkg) || 'CHF 9.90';
+  var monthlyPriceRaw = getRcPriceString(monthlyPkg) || 'CHF 12.90';
   var yearlyPriceRaw = getRcPriceString(yearlyPkg) || 'CHF 99.00';
   var monthlyDisplay = withPeriod(monthlyPriceRaw, isFr ? '/mois' : '/mo');
   var yearlyDisplay = withPeriod(yearlyPriceRaw, isFr ? '/an' : '/yr');
@@ -107,7 +108,10 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '600' }}>{'✕'}</Text>
             </TouchableOpacity>
             <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
-              <Text style={{ fontSize: 11, fontWeight: '800', color: '#AEEF4D', letterSpacing: 2.5, marginBottom: 10 }}>FLUIDBODY+</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 12 }}>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: '#AEEF4D', letterSpacing: 3 }}>FLUIDBODY</Text>
+                <AnimatedPlus style={{ fontSize: 18, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
+              </View>
               <Text style={{ fontSize: 34, fontWeight: '800', color: '#ffffff', lineHeight: 38, letterSpacing: -0.5 }}>{heroTitle}</Text>
             </View>
           </ImageBackground>

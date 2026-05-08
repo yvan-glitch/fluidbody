@@ -2,9 +2,11 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, ImageBackground, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES, FREE_MONTHLY_SELECTION } from '../constants/data';
 import { Bulle, Rayon, MeduseCornerIcon, BULLES, BULLES_MONCORPS } from '../components/Meduse';
+import AnimatedPlus from '../components/AnimatedPlus';
 import VideoPlayer from '../components/VideoPlayer';
 import PilierCard from '../components/PilierCard';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from '../utils';
@@ -247,7 +249,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       })}
       <View style={{ paddingTop: 54, paddingHorizontal: 22, paddingBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 10 }}>
-          <Text style={{ fontSize: 22, fontWeight: '900', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</Text></Text>
+          <Text style={{ fontSize: 22, fontWeight: '900', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</AnimatedPlus></Text>
         </View>
         <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }} style={{ marginBottom: 12 }}>
           <Text style={{ fontSize: 24, fontWeight: '700', color: '#AEEF4D' }}>{tr.retour}</Text>
@@ -293,7 +295,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
             <TouchableOpacity onPress={() => tryOpenSeance(i)} disabled={noVideo} activeOpacity={0.88} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 12, height: 110, opacity: noVideo ? 0.45 : (locked ? 0.4 : 1) }}>
               <ImageBackground source={PILIER_IMAGES[pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
                 <LinearGradient colors={isDone ? ['rgba(0,30,22,0.75)', 'rgba(0,30,22,0.85)'] : locked ? ['rgba(0,14,24,0.75)', 'rgba(0,14,24,0.9)'] : ['rgba(0,14,24,0.55)', 'rgba(0,14,24,0.8)']} style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '900', color: '#ffffff', alignSelf: 'flex-end', marginBottom: 6 }}>FLUIDBODY<Text style={{ color: '#AEEF4D' }}>+</Text></Text>
+                  <Text style={{ fontSize: 10, fontWeight: '900', color: '#ffffff', alignSelf: 'flex-end', marginBottom: 6 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, color: '#AEEF4D' }}>+</AnimatedPlus></Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
                       <Text style={{ fontSize: 18, color: isDone ? '#AEEF4D' : '#ffffff' }}>{isDone ? '\u2713' : '\u25B6'}</Text>
@@ -496,11 +498,81 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
   );
 }
 
-function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout }) {
+const PILIER_LABEL_IDX = { p1: 0, p2: 1, p3: 2, p4: 3, p5: 4, p6: 5, p7: 6, p8: 7 };
+
+function ZoneIcon({ idx, color, size }) {
+  var s = size || 28;
+  var c = color || '#AEEF4D';
+  switch (idx) {
+    case 0: // Dos / Nuque — colonne ondulée
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <Path d="M12 3 Q15 7 12 11 Q9 15 12 19 Q14 21 12 22" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
+          <Circle cx="12" cy="6" r="1" fill={c} />
+          <Circle cx="12" cy="11" r="1" fill={c} />
+          <Circle cx="12" cy="16" r="1" fill={c} />
+        </Svg>
+      );
+    case 1: // Épaules
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <Path d="M4 11 Q12 4 20 11" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
+          <Circle cx="5" cy="12" r="1.6" fill={c} />
+          <Circle cx="19" cy="12" r="1.6" fill={c} />
+          <Path d="M5 13 L5 19 M19 13 L19 19" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+        </Svg>
+      );
+    case 2: // Hanches
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <Path d="M5 6 L5 11 Q5 14 8 14 L16 14 Q19 14 19 11 L19 6" stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M9 14 L8 21 M15 14 L16 21" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+        </Svg>
+      );
+    case 3: // Posture
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <Circle cx="12" cy="4.5" r="1.8" stroke={c} strokeWidth={1.6} />
+          <Path d="M12 7 L12 14" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
+          <Path d="M9 10 L15 10" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+          <Path d="M12 14 L9 21 M12 14 L15 21" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+        </Svg>
+      );
+    case 4: // Respiration
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <Path d="M3 9 Q7 5 11 9 T19 9" stroke={c} strokeWidth={1.7} strokeLinecap="round" />
+          <Path d="M3 14 Q7 10 11 14 T19 14" stroke={c} strokeWidth={1.7} strokeLinecap="round" />
+          <Path d="M3 19 Q7 15 11 19 T19 19" stroke={c} strokeWidth={1.7} strokeLinecap="round" opacity={0.6} />
+        </Svg>
+      );
+    case 5: // Stress / pleine conscience
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <Circle cx="12" cy="12" r="8" stroke={c} strokeWidth={1.6} />
+          <Circle cx="12" cy="12" r="4" stroke={c} strokeWidth={1.4} opacity={0.55} />
+          <Circle cx="12" cy="12" r="1.2" fill={c} />
+        </Svg>
+      );
+    case 6: // Bureau
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <Rect x="5" y="6" width="14" height="9" rx="1.5" stroke={c} strokeWidth={1.6} />
+          <Path d="M3 18 L21 18" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+          <Path d="M9 18 L9 21 M15 18 L15 21" stroke={c} strokeWidth={1.5} strokeLinecap="round" />
+        </Svg>
+      );
+    default:
+      return null;
+  }
+}
+
+function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout }) {
   var tr = T[lang] || T["fr"];
   var [openPilier, setOpenPilier] = useState(null);
   var [openInitialIdx, setOpenInitialIdx] = useState(null);
   var [mcTab, setMcTab] = useState('pour_vous');
+  var [bilanEditMode, setBilanEditMode] = useState(!Array.isArray(tensionIdxs) || tensionIdxs.length === 0);
   var [showCreateProg, setShowCreateProg] = useState(false);
   var [savedPrograms, setSavedPrograms] = useState([]);
   var [searchQuery, setSearchQuery] = useState('');
@@ -551,12 +623,9 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad2-" + i} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />; })}
       </View>
       <View style={[localStyles.logoRow, { justifyContent: "space-between", paddingLeft: 20, paddingRight: 20, paddingTop: 10, marginBottom: 20, flexDirection: 'row', alignItems: 'center' }]} pointerEvents="box-none">
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <MeduseCornerIcon size={56} breathCycleMs={4000} breathMaxScale={1.1} tint="rgba(174,239,77,1)" />
-          <Text style={[localStyles.logoWordmark, { marginLeft: -4 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-            FLUIDBODY<Text style={{ fontWeight: "900", color: "#AEEF4D", fontSize: 34 }}>+</Text>
-          </Text>
-        </View>
+        <Text style={localStyles.logoWordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+          FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: "900", color: "#AEEF4D", fontSize: 34 }}>+</AnimatedPlus>
+        </Text>
         {prenom ? <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(174,239,77,0.6)' }}>{tr.bonjour(prenom)}</Text> : null}
       </View>
       <View style={{ position: "absolute", top: 105, left: 0, right: 0, zIndex: 5, marginTop: 20 }}>
@@ -587,7 +656,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
       <ScrollView
         key={mcTab}
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 3 }}
-        contentContainerStyle={{ paddingTop: 190, paddingBottom: 140, paddingHorizontal: 16 }}
+        contentContainerStyle={{ paddingTop: 190, paddingBottom: 110, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
       >
         {mcTab === 'explorer' && sdj && (
@@ -671,6 +740,99 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
         })()}
         {mcTab === 'programmes' && (
           <View key="programmes">
+            {tr.ob_zones && tr.ob_zones.length > 0 && (function() {
+              var hasZones = Array.isArray(tensionIdxs) && tensionIdxs.length > 0;
+              if (bilanEditMode) {
+                return (
+                  <View style={{ marginBottom: 24, marginHorizontal: -16 }}>
+                    <View style={{ paddingHorizontal: 22, marginBottom: 14 }}>
+                      <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', letterSpacing: -0.2, marginBottom: 4 }}>{tr.ob_bilan || 'Bilan corporel'}</Text>
+                      <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 18 }}>{tr.bilan_intro || 'Dis-nous où tu ressens des tensions pour personnaliser ton programme'}</Text>
+                    </View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+                      {tr.ob_zones.map(function(zone, idx) {
+                        var active = (tensionIdxs || []).indexOf(idx) !== -1;
+                        return (
+                          <TouchableOpacity
+                            key={idx}
+                            activeOpacity={0.85}
+                            onPress={function() {
+                              if (!onTensionChange) return;
+                              var cur = Array.isArray(tensionIdxs) ? tensionIdxs : [];
+                              var next = cur.indexOf(idx) !== -1 ? cur.filter(function(x) { return x !== idx; }) : cur.concat([idx]);
+                              onTensionChange(next);
+                            }}
+                            style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 22, backgroundColor: active ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.08)', flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                          >
+                            <ZoneIcon idx={idx} color={active ? '#AEEF4D' : 'rgba(255,255,255,0.55)'} size={16} />
+                            <Text style={{ fontSize: 13, fontWeight: active ? '700' : '500', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.75)', letterSpacing: 0.1 }}>{zone}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                    <View style={{ paddingHorizontal: 22, marginTop: 16 }}>
+                      {hasZones ? (
+                        <TouchableOpacity
+                          onPress={function() { setBilanEditMode(false); }}
+                          activeOpacity={0.85}
+                          style={{ height: 46, borderRadius: 14, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <Text style={{ fontSize: 14, fontWeight: '800', color: '#000000', letterSpacing: 0.2 }}>{tr.bilan_view_program || 'Voir mon programme'}</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          onPress={function() { var p = piliers.find(function(x) { return x.key === 'p7'; }); if (p) setOpenPilier(p); }}
+                          activeOpacity={0.7}
+                          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8 }}
+                        >
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.bilan_explore_all || 'Tout explorer'}</Text>
+                          <Text style={{ fontSize: 18, color: '#AEEF4D', fontWeight: '300' }}>{'›'}</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                );
+              }
+              var seenKeys = {};
+              var recommendedPiliers = (tensionIdxs || []).map(function(i) { return ZONE_TO_PILIER[i]; })
+                .filter(function(k) { if (!k || seenKeys[k]) return false; seenKeys[k] = true; return true; })
+                .map(function(k) { return piliers.find(function(p) { return p.key === k; }); })
+                .filter(Boolean);
+              return (
+                <View style={{ marginBottom: 24 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingHorizontal: 4 }}>
+                    <View style={{ flex: 1, paddingRight: 12 }}>
+                      <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', letterSpacing: -0.2 }}>{tr.bilan_program_title || 'Votre programme personnalisé'}</Text>
+                    </View>
+                    <TouchableOpacity onPress={function() { setBilanEditMode(true); }} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.bilan_update_btn || 'Mettre à jour'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {recommendedPiliers.map(function(p) {
+                    var descIdx = PILIER_LABEL_IDX[p.key];
+                    var desc = (tr.piliers_desc && tr.piliers_desc[descIdx]) || '';
+                    return (
+                      <TouchableOpacity
+                        key={'rec-' + p.key}
+                        onPress={function() { setOpenPilier(p); }}
+                        activeOpacity={0.9}
+                        style={{ marginBottom: 10, height: 92, borderRadius: 16, overflow: 'hidden' }}
+                      >
+                        <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }}>
+                          <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(0,14,24,0.85)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 14, justifyContent: 'center' }}>
+                            <Text style={{ fontSize: 17, fontWeight: '800', color: '#ffffff', marginBottom: 4 }}>{p.label}</Text>
+                            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 16 }} numberOfLines={2}>{desc}</Text>
+                          </LinearGradient>
+                          <View style={{ position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' }}>
+                            <Text style={{ fontSize: 22, color: '#AEEF4D', fontWeight: '300' }}>{'›'}</Text>
+                          </View>
+                        </ImageBackground>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              );
+            })()}
             <TouchableOpacity onPress={function() { var p = piliers.find(function(x) { return x.key === 'p8'; }); if (p) setOpenPilier(p); }} activeOpacity={0.9} style={{ marginBottom: 20, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,206,209,0.5)' }}>
               <LinearGradient colors={['rgba(0,206,209,0.2)', 'rgba(0,18,38,0.8)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 }}>
                 <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden' }}>
@@ -895,7 +1057,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, streak, isSubsc
                                 <View style={{ backgroundColor: '#AEEF4D', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 }}>
                                   <Text style={{ fontSize: 9, fontWeight: '900', color: '#000', letterSpacing: 1.2 }}>{tr.gratuit_badge || 'GRATUIT'}</Text>
                                 </View>
-                                <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.85)' }}>FLUIDBODY<Text style={{ color: '#AEEF4D' }}>+</Text></Text>
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.85)' }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, color: '#AEEF4D' }}>+</AnimatedPlus></Text>
                               </View>
                               <View>
                                 <Text style={{ fontSize: 10, color: '#AEEF4D', letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 6 }}>{(tr.etapes && tr.etapes[it.etape]) || it.etape} · {it.pilier.label}</Text>

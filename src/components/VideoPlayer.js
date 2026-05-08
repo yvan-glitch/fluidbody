@@ -256,6 +256,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   const [videoLoadFailed, setVideoLoadFailed] = useState(false);
   const [videoResetKey, setVideoResetKey] = useState(0);
   const [titre, duree, etape, videoUrl] = seance;
+  const isTheory = etape === 'Comprendre' || etape === 'Ressentir';
   const hasRealVideo = isBunnyVideoUrl(videoUrl);
   const [showControls, setShowControls] = useState(!hasRealVideo);
   const [uri, setUri] = useState(hasRealVideo ? (videoUrl || '') : '');
@@ -570,7 +571,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         </View>
       )}
 
-      {!videoLoadFailed && (
+      {!videoLoadFailed && !isTheory && !showControls && (
         <>
         <View pointerEvents="none" style={{ position: 'absolute', top: 50, left: 16, zIndex: 210 }}>
           <View style={{ backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 16, padding: 12, minWidth: 110 }}>
