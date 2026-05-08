@@ -36,6 +36,7 @@ import { Bulle, Rayon, Meduse, MeduseCornerIcon, VideoPlaceholderMeduse, BULLES,
 import VideoPlayer, { VIDEO_RESUME_PREFIX } from './src/components/VideoPlayer';
 import PaywallModal, { PRODUCT_IDS } from './src/components/PaywallModal';
 import StretchTimerModal from './src/components/Timer';
+import AnimatedPlus from './src/components/AnimatedPlus';
 import PilierCard from './src/components/PilierCard';
 import MonCorps, { MetricTile } from './src/screens/MonCorps';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
@@ -112,10 +113,10 @@ function CustomTabBar({ state, descriptors, navigation }) {
   var tabCount = state.routes.length;
   var barW = SW - 40;
   var tabW = barW / tabCount;
-  var pad = 6;
+  var pad = 5;
   var pillW = tabW - pad * 2;
-  var pillH = 66;
-  var BAR_H = 78;
+  var pillH = 50;
+  var BAR_H = 60;
   var indicatorX = useRef(new Animated.Value(state.index * tabW + pad)).current;
   var currentIdx = useRef(state.index);
   var dragStartX = useRef(0);
@@ -161,8 +162,8 @@ function CustomTabBar({ state, descriptors, navigation }) {
           var IconComp = options.tabBarIcon;
           return (
             <TouchableOpacity key={route.key} onPress={onPress} activeOpacity={0.7} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: BAR_H }}>
-              {IconComp && IconComp({ color: color, size: 26, focused: isFocused })}
-              <Text style={{ fontSize: 12, fontWeight: '600', color: color, marginTop: 5, letterSpacing: 0.2 }}>{route.name}</Text>
+              {IconComp && IconComp({ color: color, size: 20, focused: isFocused })}
+              <Text style={{ fontSize: 10, fontWeight: '600', color: color, marginTop: 2, letterSpacing: 0.2 }}>{route.name}</Text>
             </TouchableOpacity>
           );
         })}
@@ -423,7 +424,7 @@ function Progresser({ done, lang, tensionIdxs }) {
       >
         <View style={{ paddingTop: 65, paddingHorizontal: 24, marginBottom: 24 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' }}>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</Text></Text>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</AnimatedPlus></Text>
           </View>
           <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.progresser_sub(pct)}</Text>
           <View style={{ height: 6, backgroundColor: 'rgba(174,239,77,0.15)', borderRadius: 3, marginTop: 14, overflow: 'hidden' }}>
@@ -513,7 +514,7 @@ function SeanceDetailModal({ visible, onClose, sdj, lang, onPlay }) {
 // ══════════════════════════════════
 // AUTH SCREEN — Email + mot de passe (Supabase), après onboarding si pas de session
 // ══════════════════════════════════
-function AuthScreen({ onSkip, lang = 'fr', prenomHint = '', langForProfile = 'fr', tensionIdxsForProfile = [] }) {
+function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForProfile = 'fr', tensionIdxsForProfile = [] }) {
   const tr = T[lang] || T.fr;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -564,11 +565,14 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '', langForProfile = 'fr
         const { error: err } = await supabase.auth.signInWithPassword({ email: em, password });
         if (err) { setError(err.message); setLoading(false); return; }
       }
-      await postAuthProfileSync();
+      setLoading(false);
+      onSuccess && onSuccess();
+      postAuthProfileSync().catch(function(e) { devWarn('postAuthProfileSync (background)', e); });
+      return;
     } catch (e) {
       setError(tr.ob_auth_err_net);
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function handleAppleSignIn() {
@@ -592,11 +596,14 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '', langForProfile = 'fr
       });
       if (err) { setError(err.message); setLoading(false); return; }
       const applePrenom = credential.fullName?.givenName || '';
-      await postAuthProfileSync(applePrenom);
+      setLoading(false);
+      onSuccess && onSuccess();
+      postAuthProfileSync(applePrenom).catch(function(e) { devWarn('postAuthProfileSync apple (background)', e); });
+      return;
     } catch (e) {
       if (e?.code !== 'ERR_REQUEST_CANCELED') setError(e?.message || tr.ob_auth_err_net);
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
@@ -604,7 +611,7 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '', langForProfile = 'fr
       <LinearGradient colors={['#000000', '#000e18', '#001828']} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
 
       <View style={{ paddingTop: 58, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 }}>
-        <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</Text></Text>
+        <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</AnimatedPlus></Text>
         {onSkip ? (
           <TouchableOpacity onPress={onSkip} style={{ paddingVertical: 6 }}>
             <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>{tr.first_seance_later || 'Plus tard'}</Text>
@@ -689,29 +696,12 @@ function AuthScreen({ onSkip, lang = 'fr', prenomHint = '', langForProfile = 'fr
 // ══════════════════════════════════
 function OnboardingScreen({ onDone, initialLang }) {
   const [lang] = useState(() => initialLang ?? getAppLangFromLocale());
-  const [step, setStep] = useState(0);
-  const [prenom, setPrenom] = useState('');
-  const [tensionIdxs, setTensionIdxs] = useState([]);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const tr = T[lang] || T.fr;
-  const obStepCount = 3;
-  const prenomMeduseAnim = useRef(new Animated.Value(0)).current;
-  const prenomMeduseFloat = prenomMeduseAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 8] });
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(prenomMeduseAnim, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(prenomMeduseAnim, { toValue: 0, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
 
   const floatingMedusas = useRef([
-    { x: new Animated.Value(SW - 80), y: new Animated.Value(SH * 0.12), size: 72, speed: 0.8, breath: 3200, cx: SW - 80, cy: SH * 0.12 },
-    { x: new Animated.Value(30), y: new Animated.Value(SH * 0.4), size: 58, speed: 0.9, breath: 3600, cx: 30, cy: SH * 0.4 },
-    { x: new Animated.Value(SW * 0.5), y: new Animated.Value(SH * 0.65), size: 50, speed: 0.85, breath: 4000, cx: SW * 0.5, cy: SH * 0.65 },
-    { x: new Animated.Value(SW * 0.75), y: new Animated.Value(SH * 0.8), size: 44, speed: 0.75, breath: 3800, cx: SW * 0.75, cy: SH * 0.8 },
+    { x: new Animated.Value(SW - 80), y: new Animated.Value(SH * 0.12), size: 72, breath: 3200 },
+    { x: new Animated.Value(30), y: new Animated.Value(SH * 0.4), size: 58, breath: 3600 },
+    { x: new Animated.Value(SW * 0.5), y: new Animated.Value(SH * 0.65), size: 50, breath: 4000 },
+    { x: new Animated.Value(SW * 0.75), y: new Animated.Value(SH * 0.8), size: 44, breath: 3800 },
   ]).current;
 
   useEffect(() => {
@@ -729,188 +719,66 @@ function OnboardingScreen({ onDone, initialLang }) {
     });
   }, []);
 
-  useEffect(function() {}, [step]);
-
-  function nextStep(n) {
-    Animated.sequence([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-    ]).start();
-    setTimeout(() => setStep(n), 400);
-  }
-
-  function afterPrenomContinue() {
-    if (!prenom.trim()) return;
-    onDone(prenom.trim(), lang, tensionIdxs, { skipCloudAuth: true });
-  }
-
-  function afterPrenomAnon() {
-    onDone('', lang, tensionIdxs, { skipCloudAuth: true });
-  }
-
-  function toggleTension(idx) {
-    setTensionIdxs(prev => prev.includes(idx) ? prev.filter(x => x !== idx) : [...prev, idx]);
-  }
+  useEffect(() => {
+    const t = setTimeout(() => { onDone('', lang, [], { skipCloudAuth: true }); }, 5000);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient colors={['#000e18', '#002d48', '#00bdd0', '#005878', '#001828']} locations={[0, 0.3, 0.52, 0.72, 1]} style={StyleSheet.absoluteFill} />
       {BULLES_ONBOARDING.map((b, i) => <Bulle key={`ob-${i}`} {...b} />)}
-      {/* Méduse centrale : écran bienvenue (step 0) et écran prénom (step 2) */}
-      {(step === 0 || step === 2) && (
-        <View style={{ position: 'absolute', top: step === 0 ? 298 : 200, left: 0, right: 0, alignItems: 'center', opacity: step === 0 ? 0.9 : 0.25, zIndex: 0 }} pointerEvents="none">
-          <Meduse />
-        </View>
-      )}
-      {/* Grand logo sur step 0, petit header compact sur steps 1-3 */}
-      {step === 0 ? (
-        <View style={{ position: 'absolute', top: 128, left: 0, right: 0, zIndex: 20, alignItems: 'center', paddingHorizontal: 8, pointerEvents: 'none' }}>
-          <View style={{ width: '100%', maxWidth: SW - 16, alignItems: 'center' }}>
-            <View style={{ width: '100%', paddingHorizontal: 2 }}>
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.2}
+      <View style={{ position: 'absolute', top: 298, left: 0, right: 0, alignItems: 'center', opacity: 0.9, zIndex: 0 }} pointerEvents="none">
+        <Meduse />
+      </View>
+      <View style={{ position: 'absolute', top: 128, left: 0, right: 0, zIndex: 20, alignItems: 'center', paddingHorizontal: 8, pointerEvents: 'none' }}>
+        <View style={{ width: '100%', maxWidth: SW - 16, alignItems: 'center' }}>
+          <View style={{ width: '100%', paddingHorizontal: 2 }}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.2}
+              style={{
+                width: '100%',
+                fontSize: 236,
+                fontWeight: '200',
+                letterSpacing: 10,
+                color: '#FAFEFF',
+                textAlign: 'center',
+                textShadowColor: 'rgba(0, 14, 32, 0.55)',
+                textShadowOffset: { width: 0, height: 5 },
+                textShadowRadius: 24,
+                ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
+              }}
+            >
+              FLUIDBODY<AnimatedPlus
                 style={{
-                  width: '100%',
-                  fontSize: 236,
-                  fontWeight: '200',
-                  letterSpacing: 10,
-                  color: '#FAFEFF',
-                  textAlign: 'center',
-                  textShadowColor: 'rgba(0, 14, 32, 0.55)',
-                  textShadowOffset: { width: 0, height: 5 },
-                  textShadowRadius: 24,
+                  fontWeight: '700',
+                  fontSize: 260,
+                  letterSpacing: 1,
+                  marginLeft: 40,
+                  color: '#E5FF00',
+                  textShadowColor: 'rgba(0, 0, 0, 0.4)',
+                  textShadowOffset: { width: 0, height: 3 },
+                  textShadowRadius: 14,
                   ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
                 }}
-              >
-                FLUIDBODY<Text
-                  style={{
-                    fontWeight: '700',
-                    fontSize: 260,
-                    letterSpacing: 1,
-                    color: '#E5FF00',
-                    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-                    textShadowOffset: { width: 0, height: 3 },
-                    textShadowRadius: 14,
-                    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
-                  }}
-                >+</Text>
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', flexWrap: 'nowrap', marginTop: -2, width: '100%', paddingHorizontal: 8 }}>
-              <Text style={{ fontSize: 28, fontWeight: '400', color: '#E5FF00', letterSpacing: 16, textTransform: 'uppercase', textShadowColor: 'rgba(0, 12, 28, 0.45)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>PILATES</Text>
-              <Text style={{ marginLeft: 14, fontSize: 28, fontWeight: '300', color: '#E5FF00', letterSpacing: 2, textShadowColor: 'rgba(0, 12, 28, 0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>{'& More'}</Text>
-            </View>
+              >+</AnimatedPlus>
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', flexWrap: 'nowrap', marginTop: -2, width: '100%', paddingHorizontal: 8 }}>
+            <Text style={{ fontSize: 28, fontWeight: '400', color: '#E5FF00', letterSpacing: 16, textTransform: 'uppercase', textShadowColor: 'rgba(0, 12, 28, 0.45)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>PILATES</Text>
+            <Text style={{ marginLeft: 14, fontSize: 28, fontWeight: '300', color: '#E5FF00', letterSpacing: 2, textShadowColor: 'rgba(0, 12, 28, 0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>{'& More'}</Text>
           </View>
         </View>
-      ) : (
-        <View style={[styles.logoRow, { justifyContent: "flex-start", paddingLeft: 20, paddingTop: 10, marginBottom: 20, zIndex: 20 }]} pointerEvents="none">
-          <Text style={styles.logoWordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-            FLUIDBODY<Text style={{ fontWeight: "900", color: "#E5FF00", fontSize: 34 }}>+</Text>
-          </Text>
-        </View>
-      )}
+      </View>
       {floatingMedusas.map(function(m, i) {
-        var s = step === 2 ? m.size * 0.7 : m.size;
-        var o = step === 2 ? 0.7 : 1;
         return (
-          <Animated.View key={'fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: o * 0.7, left: m.x, top: m.y }}>
-            <MeduseCornerIcon size={s} breathCycleMs={m.breath} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
+          <Animated.View key={'fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.7, left: m.x, top: m.y }}>
+            <MeduseCornerIcon size={m.size} breathCycleMs={m.breath} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
           </Animated.View>
         );
       })}
-      <View style={{ position: 'absolute', top: 54, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', zIndex: 30, paddingHorizontal: 24 }}>
-        {step > 1 ? (
-          <TouchableOpacity onPress={() => nextStep(step - 1)} style={{ position: 'absolute', left: 24, padding: 8 }}>
-            <Text style={{ fontSize: 22, color: '#E5FF00' }}>←</Text>
-          </TouchableOpacity>
-        ) : null}
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {Array.from({ length: obStepCount }, (_, i) => <View key={i} style={{ width: step === i ? 20 : 6, height: 6, borderRadius: 3, backgroundColor: step === i ? '#E5FF00' : 'rgba(229,255,0,0.25)' }} />)}
-        </View>
-      </View>
-      <Animated.View style={{ flex: 1, opacity: fadeAnim, alignItems: 'center', justifyContent: step === 1 ? 'center' : 'flex-end', paddingBottom: step === 0 ? 132 : 60, zIndex: 2, elevation: step === 2 ? 4 : 0 }}>
-        {step === 0 && (
-          <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 28, alignSelf: 'center' }}>
-              <View style={{ width: 120, height: 120, borderRadius: 60, overflow: 'hidden', borderWidth: 3, borderColor: '#AEEF4D' }}>
-                <ImageBackground source={COACH_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
-              </View>
-              <View>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#ffffff' }}>{tr.coach_avec || 'Avec Sabrina'}</Text>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{tr.coach_exp || '30 ans d\'expérience'}</Text>
-              </View>
-            </View>
-            <TouchableOpacity onPress={() => nextStep(1)} style={styles.btnCtaLarge}>
-              <Text style={styles.btnCtaLargeTxt}>{"C'est parti !"}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        {step === 1 && (
-          <View style={{ alignItems: 'center', paddingHorizontal: 32, alignSelf: 'stretch' }}>
-            <Text style={{ fontSize: 16, color: '#E5FF00', letterSpacing: 6, textTransform: 'uppercase', marginBottom: 12 }}>{tr.ob_bilan}</Text>
-            <Text style={{ fontSize: 32, fontWeight: '300', color: '#ffffff', textAlign: 'center', marginBottom: 8 }}>{tr.ob_tensions}</Text>
-            <Text style={{ fontSize: 17, color: 'rgba(255,255,255,0.6)', marginBottom: 18 }}>{tr.ob_select}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 28, marginTop: 8 }}>
-              {tr.ob_zones.map((zone, idx) => (
-                <TouchableOpacity key={idx} onPress={() => toggleTension(idx)} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 0.5, borderColor: tensionIdxs.includes(idx) ? '#E5FF00' : 'rgba(255,255,255,0.2)', backgroundColor: tensionIdxs.includes(idx) ? 'rgba(229,255,0,0.15)' : 'rgba(0,20,35,0.55)' }}>
-                  <Text style={{ fontSize: 15, color: tensionIdxs.includes(idx) ? '#E5FF00' : 'rgba(255,255,255,0.65)' }}>{zone}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity onPress={() => nextStep(2)} style={[styles.btnCtaLarge, tensionIdxs.length === 0 && styles.btnCtaOff]}>
-              <Text style={styles.btnCtaLargeTxt}>{tr.ob_continuer}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => nextStep(2)} style={{ marginTop: 18 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#E5FF00', letterSpacing: 2.5, textTransform: 'uppercase' }}>{tr.ob_explorer}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        {step === 2 && (
-          <KeyboardAvoidingView
-            style={{ flex: 1, alignSelf: 'stretch', width: '100%' }}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 52 : 0}
-          >
-          <ScrollView
-            style={{ flex: 1, alignSelf: 'stretch', zIndex: 3 }}
-            contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 120, paddingBottom: 24, flexGrow: 1, justifyContent: 'flex-end' }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            keyboardDismissMode="on-drag"
-          >
-            <View style={{ width: '100%', maxWidth: 420, alignSelf: 'center', paddingVertical: 22, paddingHorizontal: 18, borderRadius: 22, backgroundColor: 'rgba(0,10,22,0.78)', borderWidth: 1, borderColor: 'rgba(229,255,0,0.15)' }}>
-              <Text style={{ fontSize: 12, color: '#E5FF00', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{tr.ob_prenom_tag}</Text>
-              <Text style={{ fontSize: 32, fontWeight: '300', color: '#ffffff', textAlign: 'center', marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 10 }}>{tr.ob_prenom}</Text>
-              <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.75)', marginBottom: 24, textAlign: 'center', lineHeight: 22, textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{tr.ob_prenom_sub}</Text>
-              <TextInput
-                value={prenom} onChangeText={setPrenom}
-                placeholder={tr.ob_placeholder}
-                placeholderTextColor="rgba(0,200,230,0.45)"
-                autoFocus autoCapitalize="words" returnKeyType="done"
-                textContentType="givenName"
-                autoCorrect={false}
-                keyboardAppearance={Platform.OS === 'ios' ? 'dark' : undefined}
-                onSubmitEditing={() => afterPrenomContinue()}
-                style={{ alignSelf: 'stretch', height: 62, backgroundColor: prenom.trim() ? 'rgba(0,28,48,0.96)' : 'rgba(0,22,38,0.94)', borderWidth: prenom.trim() ? 1.5 : 1, borderColor: prenom.trim() ? '#E5FF00' : 'rgba(229,255,0,0.35)', borderRadius: 16, color: '#ffffff', fontSize: 20, fontWeight: '400', textAlign: 'center', marginBottom: prenom.trim() ? 10 : 22 }}
-              />
-              {prenom.trim().length > 0 && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', marginBottom: 14 }}>
-                  <Text style={{ fontSize: 26, fontWeight: '300', color: '#E5FF00', textAlign: 'center', lineHeight: 32 }}>{`${tr.bonjour_mot} ${prenom.trim()}`}</Text>
-                </View>
-              )}
-              <TouchableOpacity onPress={() => afterPrenomContinue()} style={[styles.btnCtaLarge, prenom.trim() === '' && styles.btnCtaOff]} disabled={prenom.trim() === ''}>
-                <Text style={styles.btnCtaLargeTxt}>{tr.ob_demarrer}</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity onPress={() => afterPrenomAnon()} style={{ marginTop: 18 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#E5FF00', letterSpacing: 2.5, textTransform: 'uppercase' }}>{tr.ob_anon}</Text>
-            </TouchableOpacity>
-          </ScrollView>
-          </KeyboardAvoidingView>
-        )}
-      </Animated.View>
     </View>
   );
 }
@@ -1019,7 +887,7 @@ try {
 // ══════════════════════════════════
 // MAIN APP
 // ══════════════════════════════════
-function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
+function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChange }) {
   const tr = T[lang] || T['fr'];
   const [done, setDone] = useState({
     p1: Array(20).fill(false), p2: Array(20).fill(false), p3: Array(20).fill(false),
@@ -1027,7 +895,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
   });
   const [streak, setStreak] = useState(0);
   const [isSubscriber, setIsSubscriber] = useState(false);
-  const ADMIN_EMAILS = ['yvan.tissot@icloud.com', 'sabrina.tissot@icloud.com'];
+  const ADMIN_EMAILS = [
+    'qcrm6vkbnx@privaterelay.appleid.com',
+    'xvan06@gmail.com',
+    'yvan.tissot@icloud.com',
+    'sabrina.tissot@icloud.com',
+  ];
   const isAdmin = !!(supaUser && supaUser.email && ADMIN_EMAILS.indexOf(supaUser.email.toLowerCase()) !== -1);
   const effectiveIsSubscriber = isSubscriber || isAdmin;
   const [paywallVisible, setPaywallVisible] = useState(false);
@@ -1354,15 +1227,23 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
       )}
       {showAuthScreen && (
         <Modal visible animationType="slide" presentationStyle="fullScreen" statusBarTranslucent>
-          <AuthScreen onSkip={function() { setShowAuthScreen(false); }} lang={lang} prenomHint={prenom} langForProfile={lang} tensionIdxsForProfile={tensionIdxs} />
+          <AuthScreen onSkip={function() { setShowAuthScreen(false); }} onSuccess={function() { setShowAuthScreen(false); }} lang={lang} prenomHint={prenom} langForProfile={lang} tensionIdxsForProfile={tensionIdxs} />
         </Modal>
       )}
       <NavigationContainer>
           <Tab.Navigator tabBar={function(props) { return <CustomTabBar {...props} />; }} screenOptions={{ headerShown: false }}>
-          <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} streak={streak} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} saveHealthKitWorkout={saveHealthKitWorkout} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} onTensionChange={onTensionChange} streak={streak} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} saveHealthKitWorkout={saveHealthKitWorkout} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={function() { setShowAuthScreen(true); }} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={() => { supabase?.auth.signOut(); }} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={async () => {
+            if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
+            try {
+              const { error } = await supabase.auth.signOut();
+              if (error) { Alert.alert('FluidBody+', error.message || 'Erreur de déconnexion.'); return; }
+            } catch (e) {
+              Alert.alert('FluidBody+', e?.message || 'Erreur de déconnexion.');
+            }
+          }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} />}</Tab.Screen>
         </Tab.Navigator>
       </NavigationContainer>
       <StretchTimerModal visible={showStretchTimer} onClose={function() { setShowStretchTimer(false); }} lang={lang} />
@@ -1390,6 +1271,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser }) {
 // ══════════════════════════════════
 function App() {
   const [onboardingDone, setOnboardingDone] = useState(false);
+  const [introShown, setIntroShown] = useState(false);
   const [prenom, setPrenom] = useState('');
   const [lang, setLang] = useState(() => getAppLangFromLocale());
   const [tensionIdxs, setTensionIdxs] = useState([]);
@@ -1409,6 +1291,7 @@ function App() {
   useEffect(() => {
     function friendlyFromEmail(email) {
       if (!email || typeof email !== 'string') return '';
+      if (email.toLowerCase().indexOf('privaterelay.appleid.com') !== -1) return 'Yvan';
       const local = email.split('@')[0] || '';
       const word = local.replace(/[.+_-]+/g, ' ').trim().split(/\s+/)[0] || '';
       if (!word) return '';
@@ -1457,7 +1340,7 @@ function App() {
 
     function finishLoading() {
       var elapsed = Date.now() - splashStart;
-      var remain = Math.max(0, 8000 - elapsed);
+      var remain = Math.max(0, 3000 - elapsed);
       setTimeout(function() { setLoading(false); }, remain);
     }
     async function checkSession() {
@@ -1514,6 +1397,21 @@ function App() {
     else setShowAuth(false);
   }
 
+  async function handleTensionChange(next) {
+    const arr = Array.isArray(next) ? next : [];
+    setTensionIdxs(arr);
+    if (!supabase) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      await supabase.from('profiles').upsert({
+        id: session.user.id,
+        tension_idxs: arr,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (e) { devWarn('Supabase tension_idxs upsert', e); }
+  }
+
   // Animated splash
   const splashOpacity = useRef(new Animated.Value(0)).current;
   const splashScale = useRef(new Animated.Value(0.7)).current;
@@ -1557,7 +1455,7 @@ function App() {
         {/* FLUIDBODY+ */}
         <Animated.View style={{ opacity: splashTextOpacity, flexDirection: 'row', alignItems: 'baseline', marginBottom: 8 }}>
           <Text style={{ fontSize: 32, fontWeight: '900', color: '#ffffff', letterSpacing: 1 }}>FLUIDBODY</Text>
-          <Text style={{ fontSize: 34, fontWeight: '900', color: '#AEEF4D' }}>+</Text>
+          <AnimatedPlus style={{ fontSize: 34, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
         </Animated.View>
         {/* Tagline */}
         <Animated.View style={{ opacity: splashTagOpacity }}>
@@ -1567,15 +1465,20 @@ function App() {
     );
   }
 
-  if (!onboardingDone) {
-    return <OnboardingScreen initialLang={lang} onDone={(p, l, t, o) => { completeOnboarding(p, l, t, o); }} />;
+  if (!introShown) {
+    return <OnboardingScreen initialLang={lang} onDone={(p, l, t, o) => {
+      setIntroShown(true);
+      if (!onboardingDone && !supaUser) {
+        completeOnboarding(p, l, t, o);
+      }
+    }} />;
   }
 
   if (showAuth && !supaUser) {
-    return <AuthScreen onSkip={() => setShowAuth(false)} lang={lang} prenomHint={prenom} langForProfile={lang} tensionIdxsForProfile={tensionIdxs} />;
+    return <AuthScreen onSkip={() => setShowAuth(false)} onSuccess={() => setShowAuth(false)} lang={lang} prenomHint={prenom} langForProfile={lang} tensionIdxsForProfile={tensionIdxs} />;
   }
 
-  return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} />;
+  return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} />;
 }
 
 export default function AppWithBoundary() {

@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Ellipse, Line, Rect } from 'react-native-svg';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, Rayon, FloatingMedusas, BULLES } from '../components/Meduse';
+import AnimatedPlus from '../components/AnimatedPlus';
 
 const PROGRAM_IMAGES = {
   f1: require('../../assets/programs/reveil-matinal.jpg'),
@@ -188,7 +189,7 @@ function ArticleDetail({ article, onClose, lang }) {
         <View style={{ paddingTop: 58, paddingHorizontal: 22 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <TouchableOpacity onPress={onClose} style={{ paddingVertical: 6 }}><Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1 }}>{tr.retour_biblio}</Text></TouchableOpacity>
-            <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 30 }}>+</Text></Text>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 30 }}>+</AnimatedPlus></Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
             <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(0,18,32,0.7)', borderWidth: 0.5, borderColor: '#AEEF4D' }}>
@@ -220,7 +221,7 @@ function FicheDetail({ fiche, onClose, lang }) {
         <View style={{ paddingTop: 58, paddingHorizontal: 22 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <TouchableOpacity onPress={onClose} style={{ paddingVertical: 6 }}><Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1 }}>{tr.retour_biblio}</Text></TouchableOpacity>
-            <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 30 }}>+</Text></Text>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 30 }}>+</AnimatedPlus></Text>
           </View>
           <Text style={{ fontSize: 72, fontWeight: '200', color: '#AEEF4D', opacity: 0.3, lineHeight: 80 }}>{fiche.num}</Text>
           <Text style={{ fontSize: 32, fontWeight: '200', color: 'rgba(215,248,255,0.95)', lineHeight: 40, marginBottom: 8 }}>{fiche.etape}</Text>

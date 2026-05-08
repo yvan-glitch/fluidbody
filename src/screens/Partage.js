@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ViewShot from 'react-native-view-shot';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, MeduseCornerIcon, FloatingMedusas, BULLES } from '../components/Meduse';
+import AnimatedPlus from '../components/AnimatedPlus';
 import { getPiliers } from '../utils';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -208,7 +209,7 @@ function PartageScreen({ done, lang, streak, prenom }) {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingTop: 62, paddingHorizontal: 20, marginBottom: 20 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</Text></Text>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</AnimatedPlus></Text>
             <MeduseCornerIcon size={40} breathCycleMs={3000} tint="rgba(174,239,77,1)" />
           </View>
           <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.partage_title || 'Partage'}</Text>
@@ -221,7 +222,7 @@ function PartageScreen({ done, lang, streak, prenom }) {
           <ViewShot ref={shareCardRef} options={{ format: 'png', quality: 1 }}>
             <LinearGradient colors={['#00bdd0', '#005878', '#002d48', '#000e18']} style={{ borderRadius: 16, padding: 24, overflow: 'hidden' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.5 }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</Text></Text>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.5 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</AnimatedPlus></Text>
                 <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D' }}>
                   <ImageBackground source={COACH_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
                 </View>

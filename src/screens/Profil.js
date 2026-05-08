@@ -6,6 +6,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import ViewShot from 'react-native-view-shot';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, FloatingMedusas, BULLES } from '../components/Meduse';
+import AnimatedPlus from '../components/AnimatedPlus';
 import { getPiliers } from '../utils';
 
 const COACH_IMAGE = require('../../assets/coach.jpg');
@@ -27,7 +28,7 @@ function TimerIcon({ color, size }) {
   );
 }
 
-function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer }) {
+function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer }) {
   var tr = T[lang] || T['fr'];
   var shareRef = useRef(null);
   var [showCoachBio, setShowCoachBio] = useState(false);
@@ -71,6 +72,53 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
       </View>
       <FloatingMedusas />
       <ScrollView contentContainerStyle={{ paddingTop: 62, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        {!supaUser && onCreateAccount && (
+          <TouchableOpacity
+            onPress={onCreateAccount}
+            activeOpacity={0.85}
+            style={{
+              marginHorizontal: 20,
+              marginBottom: 24,
+              padding: 18,
+              flexDirection: 'row',
+              alignItems: 'center',
+              borderRadius: 18,
+              backgroundColor: 'rgba(0,18,38,0.55)',
+              borderWidth: 1,
+              borderColor: 'rgba(174,239,77,0.35)',
+              shadowColor: '#AEEF4D',
+              shadowOpacity: 0.12,
+              shadowRadius: 18,
+              shadowOffset: { width: 0, height: 4 },
+            }}
+          >
+            <LinearGradient
+              colors={['rgba(174,239,77,0.28)', 'rgba(174,239,77,0.08)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 14,
+                borderWidth: 1,
+                borderColor: 'rgba(174,239,77,0.45)',
+              }}
+            >
+              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                <Circle cx="12" cy="8" r="3.8" stroke="#AEEF4D" strokeWidth={1.7} />
+                <Path d="M4.5 20.5c0-4.1 3.4-7.5 7.5-7.5s7.5 3.4 7.5 7.5" stroke="#AEEF4D" strokeWidth={1.7} strokeLinecap="round" />
+              </Svg>
+            </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#ffffff', letterSpacing: -0.1 }}>{tr.save_progress_title || 'Sauvegarde ta progression'}</Text>
+              <Text style={{ fontSize: 12, fontWeight: '400', color: 'rgba(255,255,255,0.55)', marginTop: 3, lineHeight: 16 }}>{tr.save_progress_sub || 'Crée un compte gratuit pour ne rien perdre'}</Text>
+            </View>
+            <Text style={{ fontSize: 22, color: '#AEEF4D', fontWeight: '300', marginLeft: 6 }}>{'›'}</Text>
+          </TouchableOpacity>
+        )}
         <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
@@ -89,7 +137,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           <ViewShot ref={shareRef} options={{ format: 'png', quality: 1 }}>
             <LinearGradient colors={['#00bdd0', '#005878', '#002d48', '#000e18']} style={{ borderRadius: 16, padding: 22, overflow: 'hidden' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-                <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff' }}>FLUIDBODY<Text style={{ fontWeight: '900', color: '#AEEF4D', fontSize: 26 }}>+</Text></Text>
+                <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff' }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 26 }}>+</AnimatedPlus></Text>
                 <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D' }}>
                   <ImageBackground source={COACH_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
                 </View>
@@ -310,14 +358,6 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           })}
         </View>
 
-        {supaUser && onLogout && (
-          <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
-            <TouchableOpacity onPress={onLogout} style={{ paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(255,50,50,0.08)', alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,100,100,0.85)' }}>Se déconnecter</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)' }}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dev_title || 'Développeur'}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
@@ -389,6 +429,34 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             </View>
           </View>
         </View>
+
+        {supaUser && onLogout && (
+          <TouchableOpacity
+            onPress={onLogout}
+            activeOpacity={0.85}
+            style={{
+              marginHorizontal: 20,
+              marginTop: 40,
+              marginBottom: 48,
+              height: 50,
+              borderRadius: 14,
+              backgroundColor: 'transparent',
+              borderWidth: 1,
+              borderColor: '#E5FF00',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+            }}
+          >
+            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+              <Path d="M9 3H6a2 2 0 00-2 2v14a2 2 0 002 2h3" stroke="#E5FF00" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+              <Path d="M16 17l5-5-5-5" stroke="#E5FF00" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+              <Path d="M21 12H10" stroke="#E5FF00" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#E5FF00', letterSpacing: 0.4 }}>Se déconnecter</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
