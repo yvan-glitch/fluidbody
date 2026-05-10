@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, ImageBackground, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -7,6 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES, FREE_MONTHLY_SELECTION } from '../constants/data';
 import { Bulle, Rayon, MeduseCornerIcon, BULLES, BULLES_MONCORPS } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
+import GlassButton from '../components/GlassButton';
+import LivingBackground from '../components/LivingBackground';
 import VideoPlayer from '../components/VideoPlayer';
 import PilierCard from '../components/PilierCard';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from '../utils';
@@ -227,9 +230,14 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
             <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ paddingVertical: 24, paddingHorizontal: 28, alignItems: 'center', backgroundColor: 'rgba(10,20,35,0.6)' }}>
               <LinearGradient colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }} pointerEvents="none" />
               <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', textAlign: 'center', marginBottom: 12 }}>{tr.demo_limit}</Text>
-              <TouchableOpacity onPress={() => { setShowDemoLimit(false); setActiveVideo(null); if (onActivateSubscription) onActivateSubscription(); }} style={{ backgroundColor: '#E5FF00', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 25, shadowColor: '#E5FF00', shadowOpacity: 0.55, shadowRadius: 20, shadowOffset: { width: 0, height: 0 } }}>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#000000' }}>{tr.paywall_start}</Text>
-              </TouchableOpacity>
+              <GlassButton
+                onPress={() => { setShowDemoLimit(false); setActiveVideo(null); if (onActivateSubscription) onActivateSubscription(); }}
+                fullWidth={false}
+                textColor="#AEEF4D"
+                style={{ paddingHorizontal: 32 }}
+              >
+                {tr.paywall_start}
+              </GlassButton>
             </BlurView>
           </View>
         )}
@@ -240,6 +248,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}>
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LivingBackground />
       <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
       <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r'+i} delay={b.delay + 2000} x={b.x + SW * 0.35} size={b.size} duration={b.duration} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r2'+i} delay={b.delay + 5000} x={b.x + SW * 0.65} size={b.size} duration={b.duration} />)}
@@ -272,24 +281,21 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       </View>
       <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
         {seances.map(([titre, duree, etape, url], i) => {
+          if (etape === 'Comprendre' || etape === 'Ressentir') return null;
           const isDone = done[i] === true || done[i] === 'true';
           const noVideo = !url;
           const locked = !noVideo && !canAccessSeanceIndex(i, isSubscriber, pilier.key);
-          const prevEtape = i > 0 ? seances[i - 1][2] : null;
-          const isTheory = etape === 'Comprendre' || etape === 'Ressentir';
-          const prevIsTheory = prevEtape === 'Comprendre' || prevEtape === 'Ressentir';
-          let sectionTitle = null;
-          let isPracticalStart = false;
-          if (isTheory && !prevIsTheory) {
-            sectionTitle = tr.theorie_section || 'Théorie';
-          } else if (!isTheory && etape !== prevEtape) {
-            sectionTitle = tr.etapes[etape] || etape;
-            if (prevIsTheory) isPracticalStart = true;
+          let prevPracticalEtape = null;
+          for (let k = i - 1; k >= 0; k--) {
+            const e = seances[k][2];
+            if (e !== 'Comprendre' && e !== 'Ressentir') { prevPracticalEtape = e; break; }
           }
+          let sectionTitle = null;
+          if (etape !== prevPracticalEtape) sectionTitle = tr.etapes[etape] || etape;
+          const isFirstVisible = prevPracticalEtape === null;
           const header = sectionTitle ? (
             <View>
-              {isPracticalStart && <View style={{ height: 1, backgroundColor: 'rgba(174,239,77,0.18)', marginTop: 18, marginBottom: 4, marginHorizontal: 4 }} />}
-              <Text style={{ fontSize: 18, fontWeight: '800', color: '#AEEF4D', letterSpacing: 2.5, textTransform: 'uppercase', marginTop: i === 0 ? 10 : 22, marginBottom: 18, paddingHorizontal: 4 }}>{sectionTitle}</Text>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#AEEF4D', letterSpacing: 2.5, textTransform: 'uppercase', marginTop: isFirstVisible ? 10 : 22, marginBottom: 18, paddingHorizontal: 4 }}>{sectionTitle}</Text>
             </View>
           ) : null;
           return (
@@ -422,6 +428,8 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
     <Modal visible animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: "#000e18" }}>
         <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+        <LivingBackground />
+      <LivingBackground />
         <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} pointerEvents="none" />
         <ScrollView contentContainerStyle={{ paddingTop: 60, paddingHorizontal: 24, paddingBottom: 40 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -573,6 +581,7 @@ function ZoneIcon({ idx, color, size }) {
 
 function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout }) {
   var tr = T[lang] || T["fr"];
+  var navigation = useNavigation();
   var [openPilier, setOpenPilier] = useState(null);
   var [openInitialIdx, setOpenInitialIdx] = useState(null);
   var [mcTab, setMcTab] = useState('pour_vous');
@@ -616,6 +625,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   return (
     <View style={localStyles.screen}>
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LivingBackground />
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: "none" }}>
         <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
         <Rayon left={140} width={55} delay={2000} duration={11000} opacity={0.15} />
@@ -630,7 +640,15 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         <Text style={localStyles.logoWordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
           FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: "900", color: "#AEEF4D", fontSize: 34 }}>+</AnimatedPlus>
         </Text>
-        {prenom ? <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(174,239,77,0.6)' }}>{tr.bonjour(prenom)}</Text> : null}
+        {prenom ? (
+          <TouchableOpacity
+            onPress={function() { try { navigation.navigate(tr.tabs[3]); } catch(e) {} }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(174,239,77,0.6)' }}>{tr.bonjour(prenom)}</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
       <View style={{ position: "absolute", top: 105, left: 0, right: 0, zIndex: 5, marginTop: 20 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
@@ -641,26 +659,20 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 key={t}
                 onPress={function() { setMcTab(t); }}
                 activeOpacity={0.8}
-                style={[
-                  { borderRadius: 24, overflow: 'hidden' },
-                  active ? { shadowColor: '#AEEF4D', shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } } : null,
-                ]}
-              >
-                <BlurView intensity={Platform.OS === 'ios' ? 75 : 0} tint="dark" style={{
-                  paddingHorizontal: 22,
-                  paddingVertical: 13,
-                  alignItems: 'center',
-                  backgroundColor: active ? 'rgba(174,239,77,0.15)' : 'rgba(255,255,255,0.10)',
+                style={{
+                  borderRadius: 30,
+                  overflow: 'hidden',
                   borderWidth: 1,
-                  borderColor: active ? 'rgba(174,239,77,0.55)' : 'rgba(255,255,255,0.25)',
+                  borderColor: active ? 'rgba(174,239,77,0.5)' : 'rgba(255,255,255,0.15)',
+                }}
+              >
+                <BlurView intensity={Platform.OS === 'ios' ? 10 : 0} tint="light" style={{
+                  paddingHorizontal: 22,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                  backgroundColor: active ? 'rgba(174,239,77,0.14)' : 'rgba(255,255,255,0.04)',
                 }}>
-                  <LinearGradient
-                    colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0)']}
-                    locations={[0, 1]}
-                    style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }}
-                    pointerEvents="none"
-                  />
-                  <Text style={{ fontSize: 16, fontWeight: active ? "700" : "600", color: active ? "#AEEF4D" : "rgba(255,255,255,0.78)" }}>
+                  <Text style={{ fontSize: 15, fontWeight: active ? "700" : "600", color: active ? "#AEEF4D" : "#ffffff" }}>
                     {mcTabLabels[t]}
                   </Text>
                 </BlurView>
@@ -707,48 +719,48 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             PILIER_IMAGES.p3, PILIER_IMAGES.p4, PILIER_IMAGES.p5,
             PILIER_IMAGES.p6, PILIER_IMAGES.p7,
           ];
+          var glassCell = function(src, w, h, key) {
+            return (
+              <View key={key} style={{ width: w, height: h, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', shadowColor: '#FFFFFF', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 0 } }}>
+                <ImageBackground source={src} resizeMode="cover" style={{ flex: 1 }} />
+                <LinearGradient colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '25%' }} pointerEvents="none" />
+              </View>
+            );
+          };
           return (
             <View key="pour-vous">
               <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
-                <View style={{ width: halfW, height: rowH1, borderRadius: 12, overflow: "hidden" }}>
-                  <ImageBackground source={mosaicImages[0]} resizeMode="cover" style={{ flex: 1 }} />
-                </View>
-                <View style={{ width: halfW, height: rowH1, borderRadius: 12, overflow: "hidden" }}>
-                  <ImageBackground source={mosaicImages[1]} resizeMode="cover" style={{ flex: 1 }} />
-                </View>
+                {glassCell(mosaicImages[0], halfW, rowH1, 'm0')}
+                {glassCell(mosaicImages[1], halfW, rowH1, 'm1')}
               </View>
               <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
-                <View style={{ width: thirdW, height: rowH2, borderRadius: 12, overflow: "hidden" }}>
-                  <ImageBackground source={mosaicImages[2]} resizeMode="cover" style={{ flex: 1 }} />
-                </View>
-                <View style={{ width: thirdW, height: rowH2, borderRadius: 12, overflow: "hidden" }}>
-                  <ImageBackground source={mosaicImages[3]} resizeMode="cover" style={{ flex: 1 }} />
-                </View>
-                <View style={{ width: thirdW, height: rowH2, borderRadius: 12, overflow: "hidden" }}>
-                  <ImageBackground source={mosaicImages[4]} resizeMode="cover" style={{ flex: 1 }} />
-                </View>
+                {glassCell(mosaicImages[2], thirdW, rowH2, 'm2')}
+                {glassCell(mosaicImages[3], thirdW, rowH2, 'm3')}
+                {glassCell(mosaicImages[4], thirdW, rowH2, 'm4')}
               </View>
               <View style={{ flexDirection: "row", gap: gridGap, marginBottom: 0 }}>
-                <View style={{ width: halfW, height: rowH1, borderRadius: 12, overflow: "hidden" }}>
-                  <ImageBackground source={mosaicImages[5]} resizeMode="cover" style={{ flex: 1 }} />
-                </View>
-                <View style={{ width: halfW, height: rowH1, borderRadius: 12, overflow: "hidden" }}>
-                  <ImageBackground source={mosaicImages[6]} resizeMode="cover" style={{ flex: 1 }} />
-                </View>
+                {glassCell(mosaicImages[5], halfW, rowH1, 'm5')}
+                {glassCell(mosaicImages[6], halfW, rowH1, 'm6')}
               </View>
-              <LinearGradient colors={["rgba(28,28,30,0.3)", "rgba(28,28,30,0.88)", "rgba(28,28,30,0.95)"]} locations={[0, 0.4, 1]} style={{ borderRadius: 16, marginTop: -36, paddingTop: 54, paddingBottom: 22, paddingHorizontal: 20, alignItems: "center" }}>
-                <Text style={{ fontSize: 22, fontWeight: "700", color: "#ffffff", textAlign: "center", marginBottom: 6 }}>{tr.paywall_title}</Text>
-                <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.6)", textAlign: "center", lineHeight: 19, marginBottom: 16 }}>{tr.paywall_sub}</Text>
-                <TouchableOpacity
-                  onPress={function() { onActivateSubscription && onActivateSubscription(); }}
-                  activeOpacity={0.85}
-                  style={{ alignSelf: "stretch", height: 52, borderRadius: 26, backgroundColor: "#E5FF00", shadowColor: "#E5FF00", shadowOpacity: 0.55, shadowRadius: 20, shadowOffset: { width: 0, height: 0 }, alignItems: "center", justifyContent: "center", marginBottom: 10 }}
-                >
-                  <Text style={{ fontSize: 17, fontWeight: "700", color: "#000000", letterSpacing: 0.2 }}>{tr.paywall_start}</Text>
-                </TouchableOpacity>
-                <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>{"CHF 12.90" + (tr.paywall_per_month || '/mois')}</Text>
+              <LinearGradient colors={["rgba(28,28,30,0.3)", "rgba(28,28,30,0.88)", "rgba(28,28,30,0.95)"]} locations={[0, 0.4, 1]} style={{ borderRadius: 16, marginTop: -36, paddingTop: 36, paddingBottom: 14, paddingHorizontal: 20, alignItems: "center" }}>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: "#ffffff", textAlign: "center", marginBottom: 4 }}>{tr.paywall_title}</Text>
+                <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", textAlign: "center", lineHeight: 16, marginBottom: 12 }}>{tr.paywall_sub}</Text>
+                <View style={{ alignSelf: "stretch", marginBottom: 8 }}>
+                  <GlassButton
+                    onPress={function() { onActivateSubscription && onActivateSubscription(); }}
+                    textColor="#AEEF4D"
+                    style={{ height: 48 }}
+                    textStyle={{ fontSize: 15, fontWeight: '700' }}
+                  >
+                    {tr.paywall_start}
+                  </GlassButton>
+                </View>
                 <TouchableOpacity onPress={function() { onActivateSubscription && onActivateSubscription(); }} activeOpacity={0.8}>
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: "rgba(255,255,255,0.75)" }}>{tr.paywall_yearly_link}</Text>
+                  <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", textAlign: 'center' }}>
+                    {"CHF 12.90" + (tr.paywall_per_month || '/mois')}
+                    <Text style={{ color: "rgba(255,255,255,0.4)" }}>{'  ·  '}</Text>
+                    <Text style={{ fontWeight: '600' }}>{tr.paywall_yearly_link}</Text>
+                  </Text>
                 </TouchableOpacity>
               </LinearGradient>
             </View>
@@ -848,21 +860,6 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 </View>
               );
             })()}
-            <TouchableOpacity onPress={function() { var p = piliers.find(function(x) { return x.key === 'p8'; }); if (p) setOpenPilier(p); }} activeOpacity={0.9} style={{ marginBottom: 20, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,206,209,0.5)' }}>
-              <LinearGradient colors={['rgba(0,206,209,0.2)', 'rgba(0,18,38,0.8)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 }}>
-                <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden' }}>
-                  <ImageBackground source={require('../../assets/cafe.jpg')} resizeMode="cover" style={{ flex: 1 }} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 10, color: '#00CED1', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 2 }}>{tr.pause_bureau_tag || 'Pause active'}</Text>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff' }}>{tr.pause_bureau_title || '5 min au bureau'}</Text>
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{tr.pause_bureau_sub || '\u00C9tire-toi sans quitter ta chaise'}</Text>
-                </View>
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#00CED1', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 16, color: '#000' }}>{'\u25B6'}</Text>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
             <Text style={{ fontSize: 22, fontWeight: "800", color: "#ffffff", marginBottom: 14 }}>{tr.prog_thematiques_title || 'Programmes thématiques'}</Text>
             <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.45)", lineHeight: 18, marginBottom: 14 }}>{tr.prog_thematiques_sub || 'Des parcours ciblés pour tes objectifs'}</Text>
 
