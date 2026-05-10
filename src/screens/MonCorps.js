@@ -6,7 +6,7 @@ import { BlurView } from 'expo-blur';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES, FREE_MONTHLY_SELECTION } from '../constants/data';
-import { Bulle, Rayon, MeduseCornerIcon, BULLES, BULLES_MONCORPS } from '../components/Meduse';
+import { Bulle, Rayon, MeduseCornerIcon, FloatingMedusas, BULLES, BULLES_MONCORPS } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import GlassButton from '../components/GlassButton';
 import LivingBackground from '../components/LivingBackground';
@@ -631,6 +631,9 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         <Rayon left={140} width={55} delay={2000} duration={11000} opacity={0.15} />
         <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
       </View>
+      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} pointerEvents="none">
+        <FloatingMedusas />
+      </View>
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: "none", overflow: "visible" }}>
         {BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-" + i} {...b} />; })}
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad1-" + i} delay={b.delay + 2000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.35))} size={b.size} duration={b.duration} />; })}
@@ -742,25 +745,21 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 {glassCell(mosaicImages[5], halfW, rowH1, 'm5')}
                 {glassCell(mosaicImages[6], halfW, rowH1, 'm6')}
               </View>
-              <LinearGradient colors={["rgba(28,28,30,0.3)", "rgba(28,28,30,0.88)", "rgba(28,28,30,0.95)"]} locations={[0, 0.4, 1]} style={{ borderRadius: 16, marginTop: -36, paddingTop: 36, paddingBottom: 14, paddingHorizontal: 20, alignItems: "center" }}>
-                <Text style={{ fontSize: 18, fontWeight: "700", color: "#ffffff", textAlign: "center", marginBottom: 4 }}>{tr.paywall_title}</Text>
-                <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.7)", textAlign: "center", lineHeight: 16, marginBottom: 12 }}>{tr.paywall_sub}</Text>
-                <View style={{ alignSelf: "stretch", marginBottom: 8 }}>
+              <LinearGradient colors={["rgba(28,28,30,0.3)", "rgba(28,28,30,0.88)", "rgba(28,28,30,0.95)"]} locations={[0, 0.4, 1]} style={{ borderRadius: 16, marginTop: 14, paddingTop: 60, paddingBottom: 24, paddingHorizontal: 20, alignItems: "center" }}>
+                <Text style={{ fontSize: 23, fontWeight: "700", color: "#ffffff", textAlign: "center", marginBottom: 6 }}>{tr.paywall_title}</Text>
+                <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.65)", textAlign: "center", lineHeight: 19, marginBottom: 16 }}>{tr.paywall_sub}</Text>
+                <View style={{ alignSelf: "stretch", marginBottom: 12 }}>
                   <GlassButton
                     onPress={function() { onActivateSubscription && onActivateSubscription(); }}
                     textColor="#AEEF4D"
-                    style={{ height: 48 }}
-                    textStyle={{ fontSize: 15, fontWeight: '700' }}
+                    textStyle={{ fontSize: 17, fontWeight: '700' }}
                   >
                     {tr.paywall_start}
                   </GlassButton>
                 </View>
+                <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>{"CHF 12.90" + (tr.paywall_per_month || '/mois')}</Text>
                 <TouchableOpacity onPress={function() { onActivateSubscription && onActivateSubscription(); }} activeOpacity={0.8}>
-                  <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", textAlign: 'center' }}>
-                    {"CHF 12.90" + (tr.paywall_per_month || '/mois')}
-                    <Text style={{ color: "rgba(255,255,255,0.4)" }}>{'  ·  '}</Text>
-                    <Text style={{ fontWeight: '600' }}>{tr.paywall_yearly_link}</Text>
-                  </Text>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: "rgba(255,255,255,0.8)" }}>{tr.paywall_yearly_link}</Text>
                 </TouchableOpacity>
               </LinearGradient>
             </View>

@@ -414,7 +414,7 @@ function VideoPlaceholderMeduse({ size }) {
 }
 
 // ── BULLES ──
-const BULLES = [
+const BULLES_RAW = [
   { x: 337, size: 2, delay: 409,   duration: 11506 },
   { x: 135, size: 3, delay: 2286,  duration: 8679  },
   { x: 356, size: 5, delay: 1424,  duration: 13912 },
@@ -447,6 +447,11 @@ const BULLES = [
   { x: 195, size: 3, delay: 2266,  duration: 15348 },
   { x: 262, size: 2, delay: 771,   duration: 8796  },
 ];
+
+// Bulles plus rapides — delay /3.5 (apparition rapide), duration /1.6 (montée plus rapide)
+const BULLES = BULLES_RAW.map(function(b) {
+  return { x: b.x, size: b.size, delay: Math.round(b.delay / 3.5), duration: Math.round(b.duration / 1.6) };
+});
 
 // ── BULLES_MONCORPS ──
 /** Moins dense qu'avant : 24 bulles x 3 décalages (les autres écrans gardent `BULLES` complet). */
@@ -557,23 +562,26 @@ function LivingMedusa({ pct, streak, lang, showLabel }) {
 }
 
 // ── FloatingMedusas ──
-function FloatingMedusas() {
+function FloatingMedusas({ topInset = 200, bottomInset = 140 } = {}) {
+  var initY = function(p) { return Math.max(topInset, SH * p); };
   var meds = useRef([
-    { x: new Animated.Value(20), y: new Animated.Value(SH * 0.08), size: 80, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
-    { x: new Animated.Value(SW * 0.65), y: new Animated.Value(SH * 0.15), size: 68, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
-    { x: new Animated.Value(SW * 0.3), y: new Animated.Value(SH * 0.35), size: 74, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
-    { x: new Animated.Value(SW * 0.8), y: new Animated.Value(SH * 0.5), size: 60, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
-    { x: new Animated.Value(SW * 0.15), y: new Animated.Value(SH * 0.65), size: 76, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
-    { x: new Animated.Value(SW * 0.5), y: new Animated.Value(SH * 0.78), size: 64, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
-    { x: new Animated.Value(SW * 0.75), y: new Animated.Value(SH * 0.3), size: 56, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
+    { x: new Animated.Value(20), y: new Animated.Value(initY(0.28)), size: 80, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
+    { x: new Animated.Value(SW * 0.65), y: new Animated.Value(initY(0.32)), size: 68, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
+    { x: new Animated.Value(SW * 0.3), y: new Animated.Value(initY(0.42)), size: 74, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
+    { x: new Animated.Value(SW * 0.8), y: new Animated.Value(initY(0.52)), size: 60, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
+    { x: new Animated.Value(SW * 0.15), y: new Animated.Value(initY(0.65)), size: 76, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
+    { x: new Animated.Value(SW * 0.5), y: new Animated.Value(initY(0.78)), size: 64, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
+    { x: new Animated.Value(SW * 0.75), y: new Animated.Value(initY(0.4)), size: 56, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
   ]).current;
   useEffect(function() {
     meds.forEach(function(m, i) {
-      // Drift lent à travers l'écran
+      // Drift lent à travers l'écran (zone exclut le top header)
       var delay = 300 + i * 500;
       function drift() {
         var toX = 10 + Math.random() * (SW - m.size - 20);
-        var toY = 40 + Math.random() * (SH - m.size - 140);
+        var maxY = SH - m.size - bottomInset;
+        var range = Math.max(60, maxY - topInset);
+        var toY = topInset + Math.random() * range;
         var dur = 12000 + Math.random() * 10000;
         Animated.parallel([
           Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
@@ -617,7 +625,7 @@ function FloatingMedusas() {
     var rotate = m.rot.interpolate({ inputRange: [0, 1], outputRange: ['-8deg', '8deg'] });
     var scale = m.pulse.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.08] });
     return (
-      <Animated.View key={'bg-m-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.6, left: m.x, top: m.y, transform: [{ translateY: translateY }, { translateX: translateX }, { rotate: rotate }, { scale: scale }] }}>
+      <Animated.View key={'bg-m-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.78, left: m.x, top: m.y, transform: [{ translateY: translateY }, { translateX: translateX }, { rotate: rotate }, { scale: scale }] }}>
         <MeduseCornerIcon size={m.size} breathCycleMs={2200 + i * 300} breathMaxScale={1.25} tint="rgba(174,239,77,1)" />
       </Animated.View>
     );

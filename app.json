@@ -22,8 +22,15 @@
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": false,
           "NSExceptionDomains": {
-            "b-cdn.net": { "NSIncludesSubdomains": true, "NSTemporaryExceptionAllowsInsecureHTTPLoads": false, "NSExceptionAllowsInsecureHTTPLoads": false },
-            "supabase.co": { "NSIncludesSubdomains": true, "NSTemporaryExceptionAllowsInsecureHTTPLoads": false }
+            "b-cdn.net": {
+              "NSIncludesSubdomains": true,
+              "NSTemporaryExceptionAllowsInsecureHTTPLoads": false,
+              "NSExceptionAllowsInsecureHTTPLoads": false
+            },
+            "supabase.co": {
+              "NSIncludesSubdomains": true,
+              "NSTemporaryExceptionAllowsInsecureHTTPLoads": false
+            }
           }
         },
         "NSHealthShareUsageDescription": "FluidBody utilise HealthKit pour enregistrer vos séances et remplir vos anneaux Fitness.",
@@ -59,7 +66,8 @@
           "icon": "./assets/icon.png",
           "color": "#AEEF4D"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }
