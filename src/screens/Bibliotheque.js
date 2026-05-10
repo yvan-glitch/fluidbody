@@ -1,10 +1,14 @@
 import { useState, useMemo } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground, TextInput, Dimensions } from 'react-native';
+import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground, TextInput, Dimensions, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Ellipse, Line, Rect } from 'react-native-svg';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, Rayon, FloatingMedusas, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
+import VideoPlayer from '../components/VideoPlayer';
+import LivingBackground from '../components/LivingBackground';
+import TheorieDetailScreen from './TheorieDetailScreen';
+import { getPiliers, getSeances } from '../utils';
 
 const PROGRAM_IMAGES = {
   f1: require('../../assets/programs/reveil-matinal.jpg'),
@@ -182,6 +186,7 @@ function ArticleDetail({ article, onClose, lang }) {
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}>
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LivingBackground />
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible', opacity: 0.3 }} pointerEvents="none">
         {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
       </View>
@@ -214,6 +219,7 @@ function FicheDetail({ fiche, onClose, lang }) {
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}>
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LivingBackground />
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible', opacity: 0.3 }} pointerEvents="none">
         {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
       </View>
@@ -281,14 +287,36 @@ const PILIER_LABELS = {
   ko: { p1: '어깨', p2: '등', p3: '유연성', p4: '자세', p5: 'ELDOA', p6: '골프', p7: '매트 필라테스' },
 };
 
-function Biblio({ lang }) {
+function Biblio({ lang, isSubscriber, onActivateSubscription }) {
   const tr = T[lang] || T['fr'];
   const [openArticle, setOpenArticle] = useState(null);
   const [openFiche, setOpenFiche] = useState(null);
+  const [openTheoryPilier, setOpenTheoryPilier] = useState(null);
   const [search, setSearch] = useState('');
+  const [activeTheory, setActiveTheory] = useState(null);
   const articles = ARTICLES[lang] || ARTICLES.fr;
   const fiches = FICHES[lang] || FICHES.fr;
   const labels = PILIER_LABELS[lang] || PILIER_LABELS.fr;
+  const piliers = getPiliers(lang);
+  const seancesByPilier = getSeances(lang);
+
+  const theoryByPilier = useMemo(() => {
+    const out = [];
+    piliers.forEach(p => {
+      const all = seancesByPilier[p.key] || [];
+      const items = [];
+      all.forEach((s, idx) => {
+        const etape = s[2];
+        if (etape === 'Comprendre' || etape === 'Ressentir') items.push({ seance: s, idx });
+      });
+      if (items.length > 0) out.push({ pilier: p, items });
+    });
+    return out;
+  }, [lang]);
+
+  const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+  const theoryTitle = isFr ? 'Théorie' : 'Theory';
+  const theorySub = isFr ? 'Comprendre et ressentir, par pilier' : 'Understand and feel, by pillar';
 
   const filteredArticles = useMemo(() => {
     if (!search.trim()) return articles;
@@ -298,6 +326,33 @@ function Biblio({ lang }) {
 
   if (openArticle) return <ArticleDetail article={openArticle} onClose={() => setOpenArticle(null)} lang={lang} />;
   if (openFiche) return <FicheDetail fiche={openFiche} onClose={() => setOpenFiche(null)} lang={lang} />;
+  if (openTheoryPilier) return (
+    <>
+      <TheorieDetailScreen
+        pilier={openTheoryPilier.pilier}
+        items={openTheoryPilier.items}
+        lang={lang}
+        isSubscriber={isSubscriber}
+        onActivateSubscription={onActivateSubscription}
+        onClose={() => setOpenTheoryPilier(null)}
+        onPlay={(seance, idx) => setActiveTheory({ pilier: openTheoryPilier.pilier, seance, idx })}
+      />
+      {activeTheory && (
+        <Modal visible animationType="fade" presentationStyle="fullScreen" statusBarTranslucent supportedOrientations={['portrait', 'landscape-left', 'landscape-right']} onRequestClose={() => setActiveTheory(null)}>
+          <VideoPlayer
+            key={activeTheory.pilier.key + '-' + activeTheory.idx}
+            seance={activeTheory.seance}
+            pilier={activeTheory.pilier}
+            lang={lang}
+            seanceIndex={activeTheory.idx}
+            isDemo={false}
+            onClose={() => setActiveTheory(null)}
+            onComplete={() => setActiveTheory(null)}
+          />
+        </Modal>
+      )}
+    </>
+  );
 
   const cardGap = 12;
   const gridPadding = 20;
@@ -476,7 +531,90 @@ function Biblio({ lang }) {
             ))}
           </View>
         </View>
+
+        {/* Théorie section */}
+        <View style={{ paddingHorizontal: 20, marginTop: 36 }}>
+          <Text style={{ fontSize: 20, fontWeight: '600', color: '#ffffff', marginBottom: 4 }}>{theoryTitle}</Text>
+          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 18 }}>{theorySub}</Text>
+          <View style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            gap: cardGap,
+          }}>
+            {theoryByPilier.map(({ pilier, items }, i) => (
+              <TouchableOpacity
+                key={pilier.key}
+                onPress={() => setOpenTheoryPilier({ pilier, items })}
+                activeOpacity={0.85}
+                style={{
+                  width: cardWidth,
+                  height: 170,
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                }}
+              >
+                <ImageBackground
+                  source={PILIER_IMAGES[pilier.key]}
+                  resizeMode="cover"
+                  style={{ flex: 1 }}
+                >
+                  <LinearGradient
+                    colors={['transparent', FICHE_GRADIENT_COLORS[i % FICHE_GRADIENT_COLORS.length][1]]}
+                    locations={[0.25, 1]}
+                    style={{
+                      flex: 1,
+                      justifyContent: 'flex-end',
+                      padding: 14,
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 11,
+                      fontWeight: '700',
+                      color: 'rgba(255,255,255,0.55)',
+                      letterSpacing: 1.5,
+                      textTransform: 'uppercase',
+                      marginBottom: 3,
+                    }}>
+                      {String(i + 1).padStart(2, '0')}
+                    </Text>
+                    <Text style={{
+                      fontSize: 16,
+                      fontWeight: '600',
+                      color: '#ffffff',
+                      lineHeight: 20,
+                    }} numberOfLines={2}>
+                      {pilier.label}
+                    </Text>
+                    <Text style={{
+                      fontSize: 11,
+                      color: 'rgba(255,255,255,0.6)',
+                      marginTop: 3,
+                    }} numberOfLines={1}>
+                      {isFr ? `${items.length} vidéos` : `${items.length} videos`}
+                    </Text>
+                  </LinearGradient>
+                </ImageBackground>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       </ScrollView>
+
+      {activeTheory && (
+        <Modal visible animationType="fade" presentationStyle="fullScreen" statusBarTranslucent supportedOrientations={['portrait', 'landscape-left', 'landscape-right']} onRequestClose={() => setActiveTheory(null)}>
+          <VideoPlayer
+            key={activeTheory.pilier.key + '-' + activeTheory.idx}
+            seance={activeTheory.seance}
+            pilier={activeTheory.pilier}
+            lang={lang}
+            seanceIndex={activeTheory.idx}
+            isDemo={false}
+            onClose={() => setActiveTheory(null)}
+            onComplete={() => setActiveTheory(null)}
+          />
+        </Modal>
+      )}
     </View>
   );
 }

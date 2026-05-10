@@ -20,6 +20,8 @@ try { Device = require('expo-device'); } catch(e) {}
 try { HapticsMod = require('expo-haptics'); } catch(e) {}
 let AppleAuth = null;
 try { AppleAuth = require('expo-apple-authentication'); } catch(e) {}
+let DateTimePicker = null;
+try { DateTimePicker = require('@react-native-community/datetimepicker').default; } catch(e) {}
 let AppleHealthKit = null;
 try { AppleHealthKit = require('react-native-health').default; } catch(e) {}
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -38,6 +40,9 @@ import PaywallModal, { PRODUCT_IDS } from './src/components/PaywallModal';
 import StretchTimerModal from './src/components/Timer';
 import AnimatedPlus from './src/components/AnimatedPlus';
 import PilierCard from './src/components/PilierCard';
+import GlassButton from './src/components/GlassButton';
+import Confetti from './src/components/Confetti';
+import LivingBackground from './src/components/LivingBackground';
 import MonCorps, { MetricTile } from './src/screens/MonCorps';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
 
@@ -418,6 +423,7 @@ function Progresser({ done, lang, tensionIdxs }) {
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient pointerEvents="none" colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LivingBackground />
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
         {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
       </View>
@@ -504,13 +510,15 @@ function SeanceDetailModal({ visible, onClose, sdj, lang, onPlay }) {
           <Text style={{ fontSize: 28, fontWeight: "800", color: "#ffffff", marginBottom: 10 }}>{titre}</Text>
           <Text style={{ fontSize: 15, fontWeight: "600", color: "#00BDD0", marginBottom: 6 }}>{sdj.pilier.label}</Text>
           <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 24 }}>{duree} · {tr.etapes[etape] || etape}</Text>
-          <TouchableOpacity
+          <GlassButton
             onPress={function() { onPlay && onPlay(); }}
-            activeOpacity={0.85}
-            style={{ height: 54, borderRadius: 27, backgroundColor: "#E5FF00", shadowColor: "#E5FF00", shadowOpacity: 0.55, shadowRadius: 20, shadowOffset: { width: 0, height: 0 }, alignItems: "center", justifyContent: "center", marginBottom: 14 }}
+            size="lg"
+            textColor="#AEEF4D"
+            textStyle={{ fontSize: 17 }}
+            style={{ marginBottom: 14 }}
           >
-            <Text style={{ fontSize: 17, fontWeight: "700", color: "#000000" }}>{tr.free_go}</Text>
-          </TouchableOpacity>
+            {tr.free_go}
+          </GlassButton>
         </ScrollView>
       </View>
     </Modal>
@@ -538,7 +546,8 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
       if (!session?.user) return;
       const finalPrenom = String(extraPrenom || prenomHint || session.user.user_metadata?.prenom || '').trim();
       if (finalPrenom) {
-        try { await supabase.auth.updateUser({ data: { prenom: finalPrenom } }); } catch(e) { devWarn('updateUser metadata', e); }
+        // fire-and-forget — ne pas bloquer l'upsert profiles
+        supabase.auth.updateUser({ data: { prenom: finalPrenom } }).catch(function(e) { devWarn('updateUser metadata (bg)', e); });
       }
       try {
         await supabase.from('profiles').upsert({
@@ -615,14 +624,22 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
   return (
     <View style={{ flex: 1, backgroundColor: '#000e18' }}>
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LivingBackground />
       <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} pointerEvents="none" />
 
       <View style={{ paddingTop: 58, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 }}>
         <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</AnimatedPlus></Text>
         {onSkip ? (
-          <TouchableOpacity onPress={onSkip} style={{ paddingVertical: 6 }}>
-            <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>{tr.first_seance_later || 'Plus tard'}</Text>
-          </TouchableOpacity>
+          <GlassButton
+            onPress={onSkip}
+            size="sm"
+            fullWidth={false}
+            textColor="rgba(255,255,255,0.7)"
+            textStyle={{ fontSize: 13, fontWeight: '500' }}
+            style={{ paddingHorizontal: 4 }}
+          >
+            {tr.first_seance_later || 'Plus tard'}
+          </GlassButton>
         ) : null}
       </View>
 
@@ -635,14 +652,19 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
           </View>
 
           {appleAvailable ? (
-            <TouchableOpacity onPress={handleAppleSignIn} disabled={loading} activeOpacity={0.85} style={{ width: '100%', height: 52, borderRadius: 14, overflow: 'hidden', marginBottom: 20, opacity: loading ? 0.5 : 1 }}>
-              <BlurView intensity={Platform.OS === 'ios' ? 60 : 0} tint="dark" style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.35)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
+            <GlassButton
+              onPress={handleAppleSignIn}
+              loading={loading}
+              size="md"
+              style={{ marginBottom: 20 }}
+              leftIcon={
                 <Svg width={18} height={20} viewBox="0 0 24 24" fill="none">
                   <Path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C3.79 16.17 4.36 9.04 8.72 8.78c1.34.07 2.27.74 3.06.8.93-.19 1.82-.73 2.82-.66 1.19.1 2.09.58 2.68 1.49-2.45 1.47-1.87 4.71.36 5.62-.45 1.17-.66 1.7-1.23 2.73-.82 1.46-1.97 2.92-3.36 2.95zM12.13 8.65c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" fill="#ffffff" />
                 </Svg>
-                <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>{tr.auth_apple || 'Continuer avec Apple'}</Text>
-              </BlurView>
-            </TouchableOpacity>
+              }
+            >
+              {tr.auth_apple || 'Continuer avec Apple'}
+            </GlassButton>
           ) : null}
 
           <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 18 }}>
@@ -676,25 +698,24 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
 
           {error ? <Text style={{ color: 'rgba(255,120,120,0.95)', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>{error}</Text> : null}
 
-          <TouchableOpacity
+          <GlassButton
             onPress={() => handleEmailAuth('in')}
             disabled={!canSubmit}
-            activeOpacity={0.85}
-            style={{ width: '100%', height: 52, borderRadius: 14, overflow: 'hidden', marginBottom: 10, opacity: canSubmit ? 1 : 0.5 }}
+            loading={loading}
+            textColor="#AEEF4D"
+            style={{ marginBottom: 10 }}
           >
-            <BlurView intensity={Platform.OS === 'ios' ? 50 : 0} tint="dark" style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: canSubmit ? 'rgba(174,239,77,0.22)' : 'rgba(174,239,77,0.06)', borderWidth: 1, borderColor: canSubmit ? '#AEEF4D' : 'rgba(174,239,77,0.25)' }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#AEEF4D', letterSpacing: 0.3 }}>{loading ? '…' : (tr.ob_auth_submit_in || 'Se connecter')}</Text>
-            </BlurView>
-          </TouchableOpacity>
+            {loading ? '…' : (tr.ob_auth_submit_in || 'Se connecter')}
+          </GlassButton>
 
-          <TouchableOpacity
+          <GlassButton
             onPress={() => handleEmailAuth('up')}
             disabled={!canSubmit}
-            activeOpacity={0.85}
-            style={{ width: '100%', height: 52, borderRadius: 12, backgroundColor: 'transparent', borderWidth: 1, borderColor: canSubmit ? 'rgba(174,239,77,0.55)' : 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
+            textColor="#AEEF4D"
+            textStyle={{ fontSize: 15, fontWeight: '600' }}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: canSubmit ? '#AEEF4D' : 'rgba(174,239,77,0.35)' }}>{tr.ob_auth_submit_up || 'Créer un compte'}</Text>
-          </TouchableOpacity>
+            {tr.ob_auth_submit_up || 'Créer un compte'}
+          </GlassButton>
 
         </ScrollView>
       </KeyboardAvoidingView>
@@ -710,6 +731,8 @@ function OnboardingScreen({ onDone, initialLang }) {
   const tr = T[lang] || T.fr;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -786,6 +809,7 @@ function OnboardingScreen({ onDone, initialLang }) {
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LivingBackground />
       {BULLES_ONBOARDING.map((b, i) => <Bulle key={`ob-${i}`} {...b} />)}
       <View style={{ position: 'absolute', top: 298, left: 0, right: 0, alignItems: 'center', opacity: 0.9, zIndex: 0 }} pointerEvents="none">
         <Meduse />
@@ -841,26 +865,33 @@ function OnboardingScreen({ onDone, initialLang }) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 30 }}>
         <View style={{ paddingHorizontal: 28, paddingBottom: 32, paddingTop: 16, backgroundColor: 'rgba(0,14,24,0.55)' }}>
           {appleAvailable ? (
-            <TouchableOpacity onPress={handleAppleSignIn} disabled={loading} activeOpacity={0.85} style={{ width: '100%', height: 50, borderRadius: 14, overflow: 'hidden', marginBottom: 16, opacity: loading ? 0.5 : 1 }}>
-              <BlurView intensity={Platform.OS === 'ios' ? 60 : 0} tint="dark" style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.35)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
+            <GlassButton
+              onPress={handleAppleSignIn}
+              loading={loading}
+              size="md"
+              style={{ marginBottom: 16 }}
+              leftIcon={
                 <Svg width={18} height={20} viewBox="0 0 24 24" fill="none">
                   <Path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C3.79 16.17 4.36 9.04 8.72 8.78c1.34.07 2.27.74 3.06.8.93-.19 1.82-.73 2.82-.66 1.19.1 2.09.58 2.68 1.49-2.45 1.47-1.87 4.71.36 5.62-.45 1.17-.66 1.7-1.23 2.73-.82 1.46-1.97 2.92-3.36 2.95zM12.13 8.65c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" fill="#ffffff" />
                 </Svg>
-                <Text style={{ fontSize: 15, fontWeight: '600', color: '#ffffff' }}>{tr.auth_apple || 'Continuer avec Apple'}</Text>
-              </BlurView>
-            </TouchableOpacity>
+              }
+            >
+              {tr.auth_apple || 'Continuer avec Apple'}
+            </GlassButton>
           ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
-            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(255,255,255,0.18)' }} />
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginHorizontal: 14, letterSpacing: 1, textTransform: 'uppercase' }}>{tr.auth_or || 'ou'}</Text>
-            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(255,255,255,0.18)' }} />
+            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(229,255,0,0.25)' }} />
+            <Text style={{ fontSize: 11, color: '#E5FF00', marginHorizontal: 14, letterSpacing: 1, textTransform: 'uppercase' }}>{tr.auth_or || 'ou'}</Text>
+            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(229,255,0,0.25)' }} />
           </View>
           <TextInput
             value={email} onChangeText={setEmail}
+            onFocus={() => setEmailFocused(true)}
+            onBlur={() => setEmailFocused(false)}
             placeholder={tr.ob_email_ph}
-            placeholderTextColor="rgba(255,255,255,0.35)"
+            placeholderTextColor="rgba(255,255,255,0.4)"
             keyboardType="email-address" autoCapitalize="none" autoCorrect={false} editable={!loading}
-            style={{ width: '100%', height: 48, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: email ? 'rgba(174,239,77,0.5)' : 'rgba(255,255,255,0.12)', borderRadius: 12, color: '#ffffff', fontSize: 15, paddingHorizontal: 14, marginBottom: 8 }}
+            style={{ width: '100%', height: 48, backgroundColor: emailFocused ? 'rgba(229,255,0,0.06)' : 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: emailFocused ? '#E5FF00' : 'rgba(255,255,255,0.25)', borderRadius: 25, color: '#ffffff', fontSize: 15, paddingHorizontal: 18, marginBottom: 8 }}
           />
           <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', lineHeight: 14, marginBottom: 10, paddingHorizontal: 2 }}>
             En continuant, tu acceptes nos Conditions d'utilisation et notre{' '}
@@ -868,23 +899,41 @@ function OnboardingScreen({ onDone, initialLang }) {
           </Text>
           <TextInput
             value={password} onChangeText={setPassword}
+            onFocus={() => setPasswordFocused(true)}
+            onBlur={() => setPasswordFocused(false)}
             placeholder={tr.ob_pass_ph}
-            placeholderTextColor="rgba(255,255,255,0.35)"
+            placeholderTextColor="rgba(255,255,255,0.4)"
             secureTextEntry autoCapitalize="none" autoCorrect={false} editable={!loading}
-            style={{ width: '100%', height: 48, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: password ? 'rgba(174,239,77,0.5)' : 'rgba(255,255,255,0.12)', borderRadius: 12, color: '#ffffff', fontSize: 15, paddingHorizontal: 14, marginBottom: 10 }}
+            style={{ width: '100%', height: 48, backgroundColor: passwordFocused ? 'rgba(229,255,0,0.06)' : 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: passwordFocused ? '#E5FF00' : 'rgba(255,255,255,0.25)', borderRadius: 25, color: '#ffffff', fontSize: 15, paddingHorizontal: 18, marginBottom: 10 }}
           />
           {error ? <Text style={{ color: 'rgba(255,140,140,0.95)', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>{error}</Text> : null}
-          <TouchableOpacity onPress={() => handleEmailAuth('in')} disabled={!canSubmit} activeOpacity={0.85} style={{ width: '100%', height: 50, borderRadius: 14, overflow: 'hidden', opacity: canSubmit ? 1 : 0.5 }}>
-            <BlurView intensity={Platform.OS === 'ios' ? 50 : 0} tint="dark" style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: canSubmit ? 'rgba(174,239,77,0.22)' : 'rgba(174,239,77,0.06)', borderWidth: 1, borderColor: canSubmit ? '#AEEF4D' : 'rgba(174,239,77,0.25)' }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 0.3 }}>{loading ? '…' : (tr.ob_auth_submit_in || 'Se connecter')}</Text>
-            </BlurView>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleEmailAuth('up')} disabled={loading} activeOpacity={0.7} style={{ marginTop: 12, paddingVertical: 6, alignItems: 'center' }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D', letterSpacing: 0.2 }}>{tr.ob_auth_submit_up || 'Créer un compte'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={finish} disabled={loading} activeOpacity={0.6} style={{ marginTop: 6, paddingVertical: 6, alignItems: 'center' }}>
-            <Text style={{ fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.4)' }}>{tr.first_seance_later || 'Plus tard'}</Text>
-          </TouchableOpacity>
+          <GlassButton
+            onPress={() => handleEmailAuth('in')}
+            disabled={!canSubmit}
+            loading={loading}
+            textColor="#AEEF4D"
+          >
+            {loading ? '…' : (tr.ob_auth_submit_in || 'Se connecter')}
+          </GlassButton>
+          <GlassButton
+            onPress={() => handleEmailAuth('up')}
+            loading={loading}
+            textColor="#AEEF4D"
+            style={{ marginTop: 12 }}
+            textStyle={{ fontSize: 14, fontWeight: '600' }}
+          >
+            {tr.ob_auth_submit_up || 'Créer un compte'}
+          </GlassButton>
+          <GlassButton
+            onPress={finish}
+            loading={loading}
+            size="sm"
+            textColor="rgba(255,255,255,0.7)"
+            style={{ marginTop: 10 }}
+            textStyle={{ fontSize: 13, fontWeight: '500' }}
+          >
+            {tr.first_seance_later || 'Plus tard'}
+          </GlassButton>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -1018,6 +1067,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [milestoneNum, setMilestoneNum] = useState(null);
   const [showAuthScreen, setShowAuthScreen] = useState(false);
   const [showStretchTimer, setShowStretchTimer] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editingProfileInitial, setEditingProfileInitial] = useState(null);
+  const [profileRefreshKey, setProfileRefreshKey] = useState(0);
   const [rcPackagesByProductId, setRcPackagesByProductId] = useState({});
   const [rcLoadingPrices, setRcLoadingPrices] = useState(false);
 
@@ -1323,12 +1375,22 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
               <Text style={{ fontSize: 32, marginTop: 12 }}>🎉</Text>
               <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', textAlign: 'center', marginTop: 12 }}>{tr.first_seance_title || 'Bravo !'}</Text>
               <Text style={{ fontSize: 15, fontWeight: '300', color: 'rgba(255,255,255,0.7)', textAlign: 'center', lineHeight: 22, marginTop: 10, marginBottom: 24 }}>{tr.first_seance_sub || 'Première séance terminée !\nCrée un compte gratuit pour sauvegarder ta progression.'}</Text>
-              <TouchableOpacity onPress={function() { setShowFirstSeanceModal(false); setShowAuthScreen(true); }} activeOpacity={0.85} style={{ alignSelf: 'stretch', height: 50, borderRadius: 25, backgroundColor: '#00BDD0', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#ffffff' }}>{tr.first_seance_create || 'Créer mon compte'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={function() { setShowFirstSeanceModal(false); }} activeOpacity={0.7}>
-                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{tr.first_seance_later || 'Plus tard'}</Text>
-              </TouchableOpacity>
+              <GlassButton
+                onPress={function() { setShowFirstSeanceModal(false); setShowAuthScreen(true); }}
+                textColor="#AEEF4D"
+                style={{ alignSelf: 'stretch', marginBottom: 12 }}
+              >
+                {tr.first_seance_create || 'Créer mon compte'}
+              </GlassButton>
+              <GlassButton
+                onPress={function() { setShowFirstSeanceModal(false); }}
+                size="sm"
+                fullWidth={false}
+                textColor="rgba(255,255,255,0.7)"
+                textStyle={{ fontSize: 13, fontWeight: '500' }}
+              >
+                {tr.first_seance_later || 'Plus tard'}
+              </GlassButton>
             </View>
           </View>
         </Modal>
@@ -1342,7 +1404,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           <Tab.Navigator tabBar={function(props) { return <CustomTabBar {...props} />; }} screenOptions={{ headerShown: false }}>
           <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} onTensionChange={onTensionChange} streak={streak} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} saveHealthKitWorkout={saveHealthKitWorkout} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={function() { setShowAuthScreen(true); }} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} />}</Tab.Screen>
+          <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={async () => {
             if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
             try {
@@ -1351,10 +1413,22 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
             } catch (e) {
               Alert.alert('FluidBody+', e?.message || 'Erreur de déconnexion.');
             }
-          }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} />}</Tab.Screen>
+          }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} />}</Tab.Screen>
         </Tab.Navigator>
       </NavigationContainer>
       <StretchTimerModal visible={showStretchTimer} onClose={function() { setShowStretchTimer(false); }} lang={lang} />
+      <Modal visible={editingProfile} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setEditingProfile(false); }}>
+        <ProfileSetupScreen
+          lang={lang}
+          initialData={editingProfileInitial}
+          ctaLabel={(T[lang] || T.fr).profile_save_btn || 'Enregistrer'}
+          onDone={async function(payload) {
+            await handleProfileSetupSave(payload);
+            setEditingProfile(false);
+            setProfileRefreshKey(function(k) { return k + 1; });
+          }}
+        />
+      </Modal>
       {milestoneNum && (
         <Modal visible={true} transparent animationType="fade" statusBarTranslucent>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.92)', justifyContent: 'center', alignItems: 'center' }}>
@@ -1363,9 +1437,14 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
               <Text style={{ fontSize: 48, fontWeight: '900', color: '#AEEF4D', marginBottom: 8 }}>{milestoneNum}</Text>
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#ffffff', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 12 }}>séances</Text>
               <Text style={{ fontSize: 18, fontWeight: '400', color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginBottom: 32 }}>{tr['milestone_' + milestoneNum] || 'Bravo !'}</Text>
-              <TouchableOpacity onPress={function() { setMilestoneNum(null); }} style={{ paddingHorizontal: 40, paddingVertical: 14, borderRadius: 16, backgroundColor: '#AEEF4D' }}>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#001226' }}>Continuer</Text>
-              </TouchableOpacity>
+              <GlassButton
+                onPress={function() { setMilestoneNum(null); }}
+                fullWidth={false}
+                textColor="#AEEF4D"
+                style={{ paddingHorizontal: 40 }}
+              >
+                Continuer
+              </GlassButton>
             </View>
           </View>
         </Modal>
@@ -1380,6 +1459,8 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
 function WelcomeIntroScreen({ onDone, lang }) {
   const tr = T[lang] || T.fr;
   const [selectedIdxs, setSelectedIdxs] = useState([]);
+  const [confettiActive, setConfettiActive] = useState(false);
+  const submittingRef = useRef(false);
   const gridGap = 8;
   const tileW = Math.floor((SW - 32 - gridGap * 2) / 3);
   const tileH = Math.floor(tileW * 1.05);
@@ -1392,9 +1473,21 @@ function WelcomeIntroScreen({ onDone, lang }) {
     });
   }
 
+  function handleSubmit() {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    if (selectedIdxs.length === 0) {
+      onDone(selectedIdxs);
+      return;
+    }
+    setConfettiActive(true);
+    setTimeout(function() { onDone(selectedIdxs); }, 2000);
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LivingBackground />
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.35 }} pointerEvents="none">
         <FloatingMedusas />
       </View>
@@ -1430,13 +1523,27 @@ function WelcomeIntroScreen({ onDone, lang }) {
           })}
         </View>
         <TouchableOpacity
-          onPress={function() { onDone(selectedIdxs); }}
+          onPress={handleSubmit}
+          disabled={confettiActive}
           activeOpacity={0.85}
-          style={{ marginHorizontal: 12, height: 56, borderRadius: 30, backgroundColor: '#E5FF00', shadowColor: '#E5FF00', shadowOpacity: 0.55, shadowRadius: 20, shadowOffset: { width: 0, height: 0 }, alignItems: 'center', justifyContent: 'center' }}
+          style={{
+            marginHorizontal: 12,
+            height: 56,
+            borderRadius: 30,
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            borderColor: '#E5FF00',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: confettiActive ? 0.45 : 1,
+          }}
         >
-          <Text style={{ fontSize: 16, fontWeight: '800', color: '#000000', letterSpacing: 0.2 }}>{tr.welcome_program_cta || 'On va créer ton programme'}</Text>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: '#E5FF00', letterSpacing: 0.2 }}>
+            {tr.welcome_program_cta || 'On va créer ton programme'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
+      {confettiActive && <Confetti count={70} duration={2000} />}
     </View>
   );
 }
@@ -1444,14 +1551,22 @@ function WelcomeIntroScreen({ onDone, lang }) {
 // ══════════════════════════════════
 // PROFILE SETUP (4th onboarding screen)
 // ══════════════════════════════════
-function ProfileSetupScreen({ onDone, lang }) {
+function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
   const tr = T[lang] || T.fr;
-  const [gender, setGender] = useState(null);
-  const [d, setD] = useState('');
-  const [m, setM] = useState('');
-  const [y, setY] = useState('');
-  const [height, setHeight] = useState('');
-  const [weight, setWeight] = useState('');
+  const init = initialData || {};
+  const initialBirth = init.birth_date && /^\d{4}-\d{2}-\d{2}$/.test(init.birth_date)
+    ? new Date(parseInt(init.birth_date.slice(0, 4), 10), parseInt(init.birth_date.slice(5, 7), 10) - 1, parseInt(init.birth_date.slice(8, 10), 10))
+    : null;
+  const [firstName, setFirstName] = useState(init.prenom || '');
+  const [gender, setGender] = useState(init.gender || null);
+  const [birthDate, setBirthDate] = useState(initialBirth);
+  const [height, setHeight] = useState(init.height_cm != null ? init.height_cm : null);
+  const [weight, setWeight] = useState(init.weight_kg != null ? init.weight_kg : null);
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const [editing, setEditing] = useState(null); // 'date' | 'height' | 'weight' | null
+  const [tempBirth, setTempBirth] = useState(initialBirth || new Date(1990, 0, 1));
+  const [tempValue, setTempValue] = useState('');
 
   const genders = [
     { key: 'female', label: tr.profile_gender_female || 'Femme' },
@@ -1459,98 +1574,268 @@ function ProfileSetupScreen({ onDone, lang }) {
     { key: 'other', label: tr.profile_gender_other || 'Autre' },
   ];
 
-  function buildBirthDate() {
-    var dd = parseInt(d, 10), mm = parseInt(m, 10), yy = parseInt(y, 10);
-    if (!dd || !mm || !yy || yy < 1900 || yy > new Date().getFullYear()) return null;
-    if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
-    return yy + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
-  }
+  const floatingMedusas = useRef([
+    { x: new Animated.Value(SW - 70), y: new Animated.Value(SH * 0.18), size: 48, breath: 3400 },
+    { x: new Animated.Value(20), y: new Animated.Value(SH * 0.42), size: 38, breath: 3800 },
+    { x: new Animated.Value(SW * 0.55), y: new Animated.Value(SH * 0.7), size: 36, breath: 4200 },
+    { x: new Animated.Value(SW * 0.78), y: new Animated.Value(SH * 0.85), size: 32, breath: 4000 },
+  ]).current;
 
-  function submit() {
-    var h = parseInt(height, 10);
-    var w = parseInt(weight, 10);
-    onDone({
-      gender: gender || null,
-      birth_date: buildBirthDate(),
-      height_cm: isFinite(h) && h > 0 ? h : null,
-      weight_kg: isFinite(w) && w > 0 ? w : null,
+  useEffect(() => {
+    floatingMedusas.forEach(function(m) {
+      function drift() {
+        var toX = 10 + Math.random() * (SW - m.size - 20);
+        var toY = 60 + Math.random() * (SH - m.size - 200);
+        var dur = 14000 + Math.random() * 9000;
+        Animated.parallel([
+          Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
+          Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
+        ]).start(function() { drift(); });
+      }
+      drift();
     });
+  }, []);
+
+  function formatDate(d) {
+    if (!d) return null;
+    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
   }
 
-  function inputStyle() {
-    return { height: 48, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12, color: '#ffffff', fontSize: 15, paddingHorizontal: 14, textAlign: 'center' };
+  async function submit() {
+    if (submittingRef.current) {
+      console.log('[ProfileSetupScreen] submit déjà en cours, tap ignoré');
+      return;
+    }
+    submittingRef.current = true;
+    setSubmitting(true);
+    const payload = {
+      prenom: firstName.trim() || null,
+      gender: gender || null,
+      birth_date: birthDate ? birthDate.getFullYear() + '-' + String(birthDate.getMonth() + 1).padStart(2, '0') + '-' + String(birthDate.getDate()).padStart(2, '0') : null,
+      height_cm: height,
+      weight_kg: weight,
+    };
+    console.log('[ProfileSetupScreen] submit tap — payload:', JSON.stringify(payload), 'onDone defined:', typeof onDone === 'function');
+    try {
+      if (typeof onDone === 'function') await onDone(payload);
+    } catch (e) {
+      console.log('[ProfileSetupScreen] onDone threw:', e?.message || String(e));
+    }
+    submittingRef.current = false;
+    setSubmitting(false);
   }
 
-  function fieldLabel(text) {
-    return <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.55)', marginBottom: 8, letterSpacing: 0.3, textTransform: 'uppercase' }}>{text}</Text>;
+  function openEdit(field) {
+    if (field === 'date') {
+      setTempBirth(birthDate || new Date(1990, 0, 1));
+    } else if (field === 'height') {
+      setTempValue(height != null ? String(height) : '');
+    } else if (field === 'weight') {
+      setTempValue(weight != null ? String(weight) : '');
+    }
+    setEditing(field);
+  }
+
+  function saveEdit() {
+    if (editing === 'date') {
+      setBirthDate(tempBirth);
+    } else if (editing === 'height') {
+      const n = parseInt(tempValue, 10);
+      setHeight(isFinite(n) && n > 0 ? n : null);
+    } else if (editing === 'weight') {
+      const n = parseInt(tempValue, 10);
+      setWeight(isFinite(n) && n > 0 ? n : null);
+    }
+    setEditing(null);
+  }
+
+  function row(label, value, onPress) {
+    const filled = value != null && value !== '';
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.8}
+        style={{
+          height: 56,
+          borderRadius: 16,
+          backgroundColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          borderColor: 'rgba(229,255,0,0.3)',
+          paddingHorizontal: 18,
+          marginBottom: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <Text style={{ fontSize: 15, fontWeight: '500', color: '#ffffff' }}>{label}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: filled ? '#ffffff' : 'rgba(255,255,255,0.4)' }}>{value || '—'}</Text>
+          <Text style={{ fontSize: 18, color: 'rgba(229,255,0,0.7)', fontWeight: '300' }}>{'›'}</Text>
+        </View>
+      </TouchableOpacity>
+    );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000e18' }}>
+    <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.35 }} pointerEvents="none">
-        <FloatingMedusas />
+      <LivingBackground />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }} pointerEvents="none">
+        {BULLES_ONBOARDING.map((b, i) => <Bulle key={`ps-${i}`} {...b} />)}
       </View>
+      {floatingMedusas.map(function(m, i) {
+        return (
+          <Animated.View key={'ps-fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 1, opacity: 0.55, left: m.x, top: m.y }}>
+            <MeduseCornerIcon size={m.size} breathCycleMs={m.breath} breathMaxScale={1.3} tint="rgba(174,239,77,1)" />
+          </Animated.View>
+        );
+      })}
       <View style={{ paddingTop: 58, paddingLeft: 22, alignItems: 'flex-start', zIndex: 5 }} pointerEvents="none">
         <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</AnimatedPlus></Text>
       </View>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ paddingTop: 24, paddingBottom: 40, paddingHorizontal: 24 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <View style={{ alignItems: 'center', marginBottom: 32 }}>
-            <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.4, marginBottom: 8 }}>{tr.profile_title || 'À propos de toi'}</Text>
-            <Text style={{ fontSize: 14, fontWeight: '400', color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 20 }}>{tr.profile_sub || 'Pour personnaliser ton programme'}</Text>
-          </View>
+      <ScrollView style={{ flex: 1, zIndex: 5 }} contentContainerStyle={{ paddingTop: 24, paddingBottom: 32, paddingHorizontal: 24 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <View style={{ alignItems: 'center', marginBottom: 28 }}>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.4, marginBottom: 8 }}>{tr.profile_title || 'À propos de toi'}</Text>
+          <Text style={{ fontSize: 14, fontWeight: '400', color: 'rgba(255,255,255,0.6)', textAlign: 'center', lineHeight: 20 }}>{tr.profile_sub || 'Pour personnaliser ton programme'}</Text>
+        </View>
 
-          <View style={{ marginBottom: 24 }}>
-            {fieldLabel(tr.profile_gender_label || 'Genre')}
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {genders.map(function(g) {
-                var active = gender === g.key;
-                return (
-                  <TouchableOpacity
-                    key={g.key}
-                    activeOpacity={0.85}
-                    onPress={function() { setGender(g.key); }}
-                    style={{ flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: active ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.12)' }}
-                  >
-                    <Text style={{ fontSize: 14, fontWeight: active ? '700' : '500', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.78)' }}>{g.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
+        <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(229,255,0,0.7)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>{tr.ob_prenom || 'Prénom'}</Text>
+        <TextInput
+          value={firstName}
+          onChangeText={setFirstName}
+          placeholder={tr.ob_placeholder || 'Ton prénom'}
+          placeholderTextColor="rgba(229,255,0,0.4)"
+          autoCapitalize="words"
+          autoCorrect={false}
+          textContentType="givenName"
+          maxLength={50}
+          style={{ height: 50, borderRadius: 25, backgroundColor: 'rgba(229,255,0,0.06)', borderWidth: 1.5, borderColor: '#E5FF00', color: '#ffffff', fontSize: 16, fontWeight: '500', paddingHorizontal: 18, marginBottom: 24 }}
+        />
 
-          <View style={{ marginBottom: 24 }}>
-            {fieldLabel(tr.profile_birth_label || 'Date de naissance')}
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TextInput value={d} onChangeText={setD} placeholder={tr.profile_birth_ph_d || 'JJ'} placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={2} style={[inputStyle(), { flex: 1 }]} />
-              <TextInput value={m} onChangeText={setM} placeholder={tr.profile_birth_ph_m || 'MM'} placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={2} style={[inputStyle(), { flex: 1 }]} />
-              <TextInput value={y} onChangeText={setY} placeholder={tr.profile_birth_ph_y || 'AAAA'} placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={4} style={[inputStyle(), { flex: 1.4 }]} />
-            </View>
-          </View>
+        <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(229,255,0,0.7)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>{tr.profile_gender_label || 'Genre'}</Text>
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
+          {genders.map(function(g) {
+            var active = gender === g.key;
+            return (
+              <TouchableOpacity
+                key={g.key}
+                activeOpacity={0.85}
+                onPress={function() { setGender(g.key); }}
+                style={{
+                  flex: 1,
+                  height: 50,
+                  borderRadius: 30,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: active ? 'rgba(174,239,77,0.12)' : 'transparent',
+                  borderWidth: active ? 1.5 : 1,
+                  borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.25)',
+                }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: active ? '700' : '500', color: active ? '#AEEF4D' : '#ffffff', letterSpacing: 0.2 }}>{g.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 32 }}>
-            <View style={{ flex: 1 }}>
-              {fieldLabel(tr.profile_height_label || 'Taille (cm)')}
-              <TextInput value={height} onChangeText={setHeight} placeholder="170" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={3} style={inputStyle()} />
-            </View>
-            <View style={{ flex: 1 }}>
-              {fieldLabel(tr.profile_weight_label || 'Poids (kg)')}
-              <TextInput value={weight} onChangeText={setWeight} placeholder="65" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={3} style={inputStyle()} />
-            </View>
-          </View>
+        <View style={{ height: 1, backgroundColor: 'rgba(229,255,0,0.15)', marginBottom: 18 }} />
 
-          <TouchableOpacity
-            onPress={submit}
-            activeOpacity={0.85}
-            style={{ height: 54, borderRadius: 14, overflow: 'hidden' }}
-          >
-            <BlurView intensity={Platform.OS === 'ios' ? 60 : 0} tint="dark" style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(229,255,0,0.25)', borderWidth: 1, borderColor: '#E5FF00' }}>
-              <Text style={{ fontSize: 16, fontWeight: '800', color: '#E5FF00', letterSpacing: 0.3 }}>{tr.welcome_cta || "C'est parti !"}</Text>
+        {row(tr.profile_birth_label || 'Date de naissance', formatDate(birthDate), function() { openEdit('date'); })}
+        {row(tr.profile_height_label || 'Taille (cm)', height != null ? height + ' cm' : null, function() { openEdit('height'); })}
+        {row(tr.profile_weight_label || 'Poids (kg)', weight != null ? weight + ' kg' : null, function() { openEdit('weight'); })}
+      </ScrollView>
+
+      <View style={{ paddingHorizontal: 24, paddingBottom: 36, paddingTop: 12, zIndex: 5 }}>
+        <GlassButton
+          onPress={submit}
+          loading={submitting}
+          variant="yellow"
+          size="lg"
+          textStyle={{ fontSize: 16, fontWeight: '800' }}
+        >
+          {submitting ? '…' : (ctaLabel || tr.profile_next_btn || 'Suivant')}
+        </GlassButton>
+      </View>
+
+      <Modal visible={!!editing} transparent animationType="slide" statusBarTranslucent onRequestClose={function() { setEditing(null); }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <Pressable style={{ flex: 1 }} onPress={function() { setEditing(null); }} />
+          <View style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', borderBottomWidth: 0 }}>
+            <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ backgroundColor: 'rgba(10,20,35,0.85)', paddingTop: 12, paddingBottom: 32, paddingHorizontal: 24 }}>
+              <View style={{ alignItems: 'center', marginBottom: 4 }}>
+                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.25)' }} />
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 }}>
+                <TouchableOpacity onPress={function() { setEditing(null); }} hitSlop={10}>
+                  <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)' }}>{tr.profile_cancel_btn || 'Annuler'}</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#ffffff' }}>
+                  {editing === 'date' ? (tr.profile_birth_label || 'Date de naissance') : editing === 'height' ? (tr.profile_height_label || 'Taille (cm)') : (tr.profile_weight_label || 'Poids (kg)')}
+                </Text>
+                <TouchableOpacity onPress={saveEdit} hitSlop={10}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#E5FF00' }}>{tr.profile_picker_done || 'Terminé'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {editing === 'date' ? (
+                DateTimePicker ? (
+                  <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+                    <DateTimePicker
+                      value={tempBirth}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      themeVariant="dark"
+                      locale={(lang || 'fr').toLowerCase().indexOf('fr') === 0 ? 'fr-FR' : 'en-US'}
+                      maximumDate={new Date()}
+                      minimumDate={new Date(1900, 0, 1)}
+                      onChange={function(_, d) { if (d) setTempBirth(d); }}
+                      textColor="#ffffff"
+                    />
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', gap: 10, paddingVertical: 18 }}>
+                    <TextInput
+                      value={String(tempBirth.getDate()).padStart(2, '0')}
+                      onChangeText={function(v) { var n = parseInt(v, 10); if (isFinite(n) && n >= 1 && n <= 31) { var nd = new Date(tempBirth); nd.setDate(n); setTempBirth(nd); } }}
+                      placeholder="JJ" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={2}
+                      style={{ flex: 1, height: 52, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 14, color: '#ffffff', fontSize: 18, textAlign: 'center', fontWeight: '600' }}
+                    />
+                    <TextInput
+                      value={String(tempBirth.getMonth() + 1).padStart(2, '0')}
+                      onChangeText={function(v) { var n = parseInt(v, 10); if (isFinite(n) && n >= 1 && n <= 12) { var nd = new Date(tempBirth); nd.setMonth(n - 1); setTempBirth(nd); } }}
+                      placeholder="MM" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={2}
+                      style={{ flex: 1, height: 52, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 14, color: '#ffffff', fontSize: 18, textAlign: 'center', fontWeight: '600' }}
+                    />
+                    <TextInput
+                      value={String(tempBirth.getFullYear())}
+                      onChangeText={function(v) { var n = parseInt(v, 10); if (isFinite(n) && n >= 1900 && n <= new Date().getFullYear()) { var nd = new Date(tempBirth); nd.setFullYear(n); setTempBirth(nd); } }}
+                      placeholder="AAAA" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={4}
+                      style={{ flex: 1.4, height: 52, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 14, color: '#ffffff', fontSize: 18, textAlign: 'center', fontWeight: '600' }}
+                    />
+                  </View>
+                )
+              ) : (
+                <View style={{ paddingVertical: 18, alignItems: 'center' }}>
+                  <TextInput
+                    value={tempValue}
+                    onChangeText={setTempValue}
+                    placeholder={editing === 'height' ? '170' : '65'}
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    keyboardType="number-pad"
+                    maxLength={3}
+                    autoFocus
+                    style={{ width: 160, height: 64, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 16, color: '#ffffff', fontSize: 28, fontWeight: '700', textAlign: 'center' }}
+                  />
+                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 10, letterSpacing: 0.3 }}>
+                    {editing === 'height' ? 'cm' : 'kg'}
+                  </Text>
+                </View>
+              )}
             </BlurView>
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -1594,25 +1879,106 @@ function App() {
   }
 
   useEffect(() => {
-    AsyncStorage.getItem('fluid_profile_setup_done').then(function(v) {
-      setProfileSetupShown(v === '1');
-    }).catch(function() { setProfileSetupShown(true); });
+    // TEMP DEV — force ProfileSetupScreen à chaque démarrage. Retirer avant prod.
+    AsyncStorage.removeItem('fluid_profile_setup_done').finally(function() {
+      AsyncStorage.getItem('fluid_profile_setup_done').then(function(v) {
+        setProfileSetupShown(v === '1');
+      }).catch(function() { setProfileSetupShown(true); });
+    });
   }, []);
 
+  const profileSetupSavingRef = useRef(false);
   async function handleProfileSetupSave(payload) {
-    setProfileSetupShown(true);
-    AsyncStorage.setItem('fluid_profile_setup_done', '1').catch(function(e) { devWarn('profile setup flag persist', e); });
-    if (!supabase) return;
+    if (profileSetupSavingRef.current) {
+      console.log('[ProfileSetup] save déjà en cours, ignore appel');
+      return;
+    }
+    profileSetupSavingRef.current = true;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-      const row = { id: session.user.id, updated_at: new Date().toISOString() };
-      if (payload.gender) row.gender = payload.gender;
-      if (payload.birth_date) row.birth_date = payload.birth_date;
-      if (payload.height_cm != null) row.height_cm = payload.height_cm;
-      if (payload.weight_kg != null) row.weight_kg = payload.weight_kg;
-      await supabase.from('profiles').upsert(row);
-    } catch (e) { devWarn('Supabase profile setup upsert', e); }
+      console.log('[ProfileSetup] === START ===');
+      console.log('[ProfileSetup] payload reçu:', JSON.stringify(payload));
+      setProfileSetupShown(true);
+      AsyncStorage.setItem('fluid_profile_setup_done', '1').catch(function(e) { devWarn('profile setup flag persist', e); });
+      const cleanPrenom = payload.prenom ? String(payload.prenom).trim().slice(0, 50) : null;
+      if (cleanPrenom) setPrenom(cleanPrenom);
+      if (!supabase) { console.log('[ProfileSetup] supabase null, skip cloud save'); return; }
+
+      console.log('[ProfileSetup] >>> getSession()');
+      const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+      console.log('[ProfileSetup] <<< getSession() result:', JSON.stringify({ userId: session?.user?.id || null, error: sessionErr?.message || null }));
+      if (!session?.user) { console.log('[ProfileSetup] pas de session active, abort'); return; }
+
+      // updateUser en fire-and-forget — secondaire, ne bloque pas l'upsert
+      if (cleanPrenom) {
+        console.log('[ProfileSetup] >>> auth.updateUser fire-and-forget (prenom:"' + cleanPrenom + '")');
+        supabase.auth.updateUser({ data: { prenom: cleanPrenom } })
+          .then(function(meta) { console.log('[ProfileSetup] (bg) updateUser done:', JSON.stringify({ ok: !meta.error, error: meta.error?.message || null })); })
+          .catch(function(e) { console.log('[ProfileSetup] (bg) updateUser threw:', e?.message || String(e)); });
+      }
+
+      const row = {
+        id: session.user.id,
+        updated_at: new Date().toISOString(),
+        prenom: cleanPrenom,
+        gender: payload.gender || null,
+        birth_date: payload.birth_date || null,
+        height_cm: payload.height_cm != null ? payload.height_cm : null,
+        weight_kg: payload.weight_kg != null ? payload.weight_kg : null,
+      };
+      console.log('[ProfileSetup] row complète (toutes colonnes):', JSON.stringify({
+        id: row.id,
+        prenom: row.prenom,
+        gender: row.gender,
+        birth_date: row.birth_date,
+        height_cm: row.height_cm,
+        weight_kg: row.weight_kg,
+        updated_at: row.updated_at,
+      }));
+      console.log('[ProfileSetup] colonnes envoyées:', Object.keys(row).join(', '));
+
+      console.log('[ProfileSetup] >>> profiles.upsert(row)');
+      try {
+        const TIMEOUT_SENTINEL = { __timeout: true };
+        const upsertPromise = supabase.from('profiles').upsert(row);
+        const timeoutPromise = new Promise(function(resolve) { setTimeout(function() { resolve(TIMEOUT_SENTINEL); }, 15000); });
+        const res = await Promise.race([upsertPromise, timeoutPromise]);
+        if (res === TIMEOUT_SENTINEL) {
+          console.log('[ProfileSetup] <<< upsert TIMEOUT (15s) — flow continue, upsert poursuit en background');
+          // log async result quand la promise se résout finalement
+          upsertPromise.then(function(r) {
+            console.log('[ProfileSetup] (bg-late) upsert finalement résolu:', JSON.stringify({ error: r.error?.message || null, status: r.status }));
+          }).catch(function(e) {
+            console.log('[ProfileSetup] (bg-late) upsert finalement rejeté:', e?.message || String(e));
+          });
+        } else {
+          console.log('[ProfileSetup] <<< upsert FULL result:', JSON.stringify({
+            data: res.data || null,
+            error: res.error ? {
+              message: res.error.message,
+              details: res.error.details || null,
+              hint: res.error.hint || null,
+              code: res.error.code || null,
+            } : null,
+            status: res.status,
+            statusText: res.statusText,
+            count: res.count,
+          }));
+          if (res.error) {
+            console.log('[ProfileSetup] <<< upsert ERROR (résumé):', res.error.message, '| code:', res.error.code, '| status:', res.status);
+          } else {
+            console.log('[ProfileSetup] <<< upsert OK — status:', res.status, '| statusText:', res.statusText);
+          }
+        }
+      } catch(e) {
+        console.log('[ProfileSetup] <<< upsert threw:', e?.message || String(e));
+      }
+      console.log('[ProfileSetup] === END ===');
+    } catch (e) {
+      console.log('[ProfileSetup] catch global:', e?.message || String(e));
+      devWarn('Supabase profile setup upsert', e);
+    } finally {
+      profileSetupSavingRef.current = false;
+    }
   }
 
   useEffect(() => {
@@ -1769,6 +2135,7 @@ function App() {
     return (
       <View style={{ flex: 1, backgroundColor: '#000e18', alignItems: 'center', justifyContent: 'center' }}>
         <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LivingBackground />
         {/* Bulles qui descendent */}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
           <PluieBulles />
@@ -1805,15 +2172,15 @@ function App() {
     return <AuthScreen onSkip={() => setShowAuth(false)} onSuccess={() => setShowAuth(false)} lang={lang} prenomHint={prenom} langForProfile={lang} tensionIdxsForProfile={tensionIdxs} />;
   }
 
+  if (profileSetupShown === false) {
+    return <ProfileSetupScreen lang={lang} onDone={handleProfileSetupSave} />;
+  }
+
   if (welcomeShown === false) {
     return <WelcomeIntroScreen lang={lang} onDone={function(idxs) {
       if (Array.isArray(idxs) && idxs.length > 0) handleTensionChange(idxs);
       dismissWelcomeIntro();
     }} />;
-  }
-
-  if (profileSetupShown === false) {
-    return <ProfileSetupScreen lang={lang} onDone={handleProfileSetupSave} />;
   }
 
   return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} />;
