@@ -4,7 +4,7 @@ import {
   Animated, Easing, Dimensions, ImageBackground, Platform, StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Circle, Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg';
+import Svg, { Path, Circle, Defs, RadialGradient, Stop, Ellipse, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { T, ZONE_TO_PILIER, PILIER_IMAGES } from '../constants/data';
@@ -64,6 +64,50 @@ const { width: SW } = Dimensions.get('window');
 // ══════════════════════════════════
 // ACTIVITY RING
 // ══════════════════════════════════
+function AppleWatchIcon({ size = 34 }) {
+  var pulse = useRef(new Animated.Value(1)).current;
+  var glow = useRef(new Animated.Value(0)).current;
+  useEffect(function() {
+    var loopP = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1.20, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 1.0, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ]));
+    var loopG = Animated.loop(Animated.sequence([
+      Animated.timing(glow, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      Animated.timing(glow, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+    ]));
+    loopP.start();
+    loopG.start();
+    return function() { loopP.stop(); loopG.stop(); };
+  }, []);
+  return (
+    <Animated.View style={{
+      shadowColor: '#FF3B30',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: glow.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.75] }),
+      shadowRadius: glow.interpolate({ inputRange: [0, 1], outputRange: [6, 16] }),
+    }}>
+      <Animated.View style={{ transform: [{ scale: pulse }] }}>
+      <Svg width={size} height={Math.round(size * 28 / 22)} viewBox="0 0 24 30" fill="none">
+        {/* Crown */}
+        <Path d="M19.5 11 L21 11 L21 14 L19.5 14" stroke="rgba(255,255,255,0.7)" strokeWidth={1.4} strokeLinecap="round" fill="none" />
+        <Path d="M19.5 16 L21 16 L21 18 L19.5 18" stroke="rgba(255,255,255,0.5)" strokeWidth={1.2} strokeLinecap="round" fill="none" />
+        {/* Strap top */}
+        <Path d="M7 0 L17 0 L16 6 L8 6 Z" fill="rgba(255,255,255,0.55)" />
+        {/* Strap bottom */}
+        <Path d="M8 24 L16 24 L17 30 L7 30 Z" fill="rgba(255,255,255,0.55)" />
+        {/* Watch body */}
+        <Rect x={3} y={6} width={18} height={18} rx={4.5} stroke="rgba(255,255,255,0.85)" strokeWidth={1.4} fill="rgba(0,0,0,0.35)" />
+        {/* Inner ring */}
+        <Circle cx={12} cy={15} r={5} stroke="#FF3B30" strokeWidth={1.2} fill="none" />
+        <Circle cx={12} cy={15} r={3.2} stroke="#30D158" strokeWidth={1.0} fill="none" />
+        <Circle cx={12} cy={15} r={1.4} fill="#0A84FF" />
+      </Svg>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
 function getJellyfishGlow(progress) {
   var p = Math.max(0, Math.min(1, progress));
   return {
@@ -486,9 +530,14 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
 
         <WeeklySummary streak={streak} lang={lang} />
 
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.resume_activite || 'Activité'}</Text>
-          <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.55)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2, marginBottom: 14 }}>{tr.live_today || "Aujourd'hui"}</Text>
+        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, paddingTop: 10, paddingBottom: 20, paddingHorizontal: 20, marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.resume_activite || 'Activité'}</Text>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.55)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.live_today || "Aujourd'hui"}</Text>
+            </View>
+            <AppleWatchIcon size={34} />
+          </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-start' }}>
             {[
               { label: tr.resume_bouger || 'Bouger', color: '#FF3B30', value: effectiveCal, goal: calGoal, unit: 'cal', progress: calPct },

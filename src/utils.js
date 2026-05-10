@@ -37,6 +37,11 @@ function canAccessSeanceIndex(idx, isSubscriber, pilierKey) {
   if (pilierKey && FREE_MONTHLY_SET.has(pilierKey + '_' + idx)) return true;
   if (idx === 0) return true; // séance 1 gratuite pour tous
   if (pilierKey && TEMP_UNLOCKED.has(pilierKey + '_' + idx)) return true;
+  // Théorie (Comprendre + Ressentir) toujours gratuite — vit dans la Biblio
+  if (pilierKey) {
+    const s = (SEANCES_FR[pilierKey] || [])[idx];
+    if (s && (s[2] === 'Comprendre' || s[2] === 'Ressentir')) return true;
+  }
   return isSubscriber;
 }
 
@@ -63,21 +68,27 @@ function getSeanceDuJour(done, tensionIdxs, lang) {
     const ps = seances[p.key] || [];
     if (ps.length === 0) return;
 
-    // Find first undone session index for this pilier
+    // Find first undone session index for this pilier (excluding theory steps — those live in Biblio)
     const doneMap = (done && done[p.key]) || {};
     let firstUndone = -1;
     for (let i = 0; i < ps.length; i++) {
+      const e = ps[i] && ps[i][2];
+      if (e === 'Comprendre' || e === 'Ressentir') continue;
       if (!doneMap[i]) { firstUndone = i; break; }
     }
-    // All sessions done in this pilier — skip it
+    // All practical sessions done in this pilier — skip it
     if (firstUndone === -1) return;
 
-    // Completion ratio for this pilier (0 = nothing done, 1 = all done)
+    // Completion ratio for practical sessions only
     let doneCount = 0;
+    let practicalCount = 0;
     for (let i = 0; i < ps.length; i++) {
+      const e = ps[i] && ps[i][2];
+      if (e === 'Comprendre' || e === 'Ressentir') continue;
+      practicalCount++;
       if (doneMap[i]) doneCount++;
     }
-    const completionRatio = ps.length > 0 ? doneCount / ps.length : 0;
+    const completionRatio = practicalCount > 0 ? doneCount / practicalCount : 0;
 
     // Score the candidate
     let score = 0;

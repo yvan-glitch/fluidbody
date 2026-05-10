@@ -359,17 +359,27 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
   const cardWidth = (SCREEN_WIDTH - gridPadding * 2 - cardGap) / 2;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000000' }}>
+    <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
+      <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LivingBackground />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="none">
+        <FloatingMedusas />
+      </View>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
+        {BULLES.map((b, i) => <Bulle key={`bib-${i}`} {...b} />)}
+      </View>
+
       <ScrollView
-        style={{ flex: 1 }}
+        style={{ flex: 1, zIndex: 2 }}
         contentContainerStyle={{ paddingBottom: 50 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={{ paddingTop: 62, paddingHorizontal: 20, paddingBottom: 8 }}>
+        <View style={{ paddingTop: 62, paddingHorizontal: 20, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <Text style={{ fontSize: 28, fontWeight: '700', color: '#ffffff', letterSpacing: -0.3 }}>
             {tr.tab_piliers === 'The 6 pillars' ? 'Library' : 'Bibliothèque'}
           </Text>
+          <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 26 }}>+</AnimatedPlus></Text>
         </View>
 
         {/* Search bar */}

@@ -172,48 +172,41 @@ function VideoSkipChevrons({ reverse, size = 22 }) {
 
 function VideoSkip10Icon({ reverse, onPress, bumpTimer }) {
   const a11y = reverse ? 'Revenir de 10 secondes' : 'Avancer de 10 secondes';
+  const SIZE = 52;
   return (
     <Pressable
       accessibilityLabel={a11y}
       accessibilityRole="button"
-      onPress={async () => {
-        bumpTimer();
-        await onPress?.();
-      }}
+      onPress={async () => { bumpTimer(); await onPress?.(); }}
       hitSlop={14}
-      style={{ width: 72, height: 72, alignItems: 'center', justifyContent: 'center' }}
+      style={{ width: SIZE + 12, height: SIZE + 12, alignItems: 'center', justifyContent: 'center' }}
     >
       <View
         style={{
-          width: SKIP_BTN,
-          height: SKIP_BTN,
-          borderRadius: SKIP_BTN / 2,
-          backgroundColor: 'rgba(255,255,255,0.2)',
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.45)',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: reverse ? 4 : 4,
-          paddingHorizontal: 6,
-          shadowColor: '#000',
-          shadowOpacity: 0.42,
-          shadowRadius: 14,
-          shadowOffset: { width: 0, height: 5 },
-          elevation: 12,
+          width: SIZE, height: SIZE, borderRadius: SIZE / 2,
+          borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+          alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+          shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
+          elevation: 10,
         }}
       >
-        {reverse ? (
-          <>
-            <VideoSkipChevrons reverse />
-            <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: -0.3 }}>10</Text>
-          </>
-        ) : (
-          <>
-            <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: -0.3 }}>10</Text>
-            <VideoSkipChevrons reverse={false} />
-          </>
-        )}
+        <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.04)' }]} />
+        <Svg width={SIZE} height={SIZE} viewBox="0 0 24 24" fill="none" style={{ position: 'absolute' }}>
+          {reverse ? (
+            <>
+              <Path d="M12 5 A7 7 0 1 0 19 12" stroke="#fff" strokeWidth={1.5} strokeLinecap="round" fill="none" />
+              <Path d="M14.5 3 L12 5 L14.5 7.5" stroke="#fff" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </>
+          ) : (
+            <>
+              <Path d="M12 5 A7 7 0 1 1 5 12" stroke="#fff" strokeWidth={1.5} strokeLinecap="round" fill="none" />
+              <Path d="M9.5 3 L12 5 L9.5 7.5" stroke="#fff" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </>
+          )}
+        </Svg>
+        <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff', letterSpacing: -0.3, marginTop: 1 }}>10</Text>
       </View>
     </Pressable>
   );
@@ -264,6 +257,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   uriRef.current = uri;
   const lastPersistAtRef = useRef(0);
   var [ccEnabled, setCcEnabled] = useState(false);
+  var [volume, setVolume] = useState(1);
   var [ccLang, setCcLang] = useState(lang || 'fr');
   var [ccCues, setCcCues] = useState([]);
   var [ccText, setCcText] = useState(null);
@@ -666,36 +660,45 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         <>
           <Pressable style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)' }]} onPress={hideControls} android_ripple={null} />
           <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
-            <View style={{ paddingTop: 50, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }} pointerEvents="box-none">
-              <View style={{ flex: 1, paddingRight: 12 }} pointerEvents="box-none">
-                <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={10} style={{ alignSelf: 'flex-start', marginBottom: 10 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.9)' }}>{tr.retour_video}</Text>
-                </TouchableOpacity>
-                <Text style={{ fontSize: 17, fontWeight: '700', color: '#fff', letterSpacing: 0.3 }} numberOfLines={2}>{titre.toUpperCase()}</Text>
-                <Text style={{ fontSize: 13, fontWeight: '300', color: 'rgba(255,255,255,0.65)', marginTop: 4 }}>
-                  {tr.etapes[etape] || etape} · {pilier.label} · {duree}
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                {hasRealVideo && (
-                  <TouchableOpacity onPress={function() { setCcEnabled(!ccEnabled); bumpTimer(); }} hitSlop={10} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: ccEnabled ? '#AEEF4D' : 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 12, fontWeight: '800', color: ccEnabled ? '#000' : '#fff' }}>CC</Text>
-                  </TouchableOpacity>
-                )}
-                {hasRealVideo && ccEnabled && (
-                  <TouchableOpacity onPress={function() { setShowCcPicker(!showCcPicker); bumpTimer(); }} hitSlop={10} style={{ height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>{ccLang.toUpperCase()}</Text>
-                  </TouchableOpacity>
-                )}
-                {hasRealVideo && (
-                  <TouchableOpacity onPress={cyclePlaybackRate} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', marginLeft: 8 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#ffffff' }}>{playbackRate === 1.0 ? '1x' : playbackRate + 'x'}</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={14} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 22, color: '#fff', fontWeight: '300' }}>{'\u2715'}</Text>
-                </TouchableOpacity>
-              </View>
+            {/* Top-left : X + PiP/fullscreen */}
+            <View pointerEvents="box-none" style={{ position: 'absolute', top: 50, left: 16, flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={10} style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
+                <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
+                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.04)' }]} />
+                <Text style={{ fontSize: 16, color: '#FFFFFF', fontWeight: '500' }}>{'✕'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { bumpTimer(); }} hitSlop={10} style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
+                <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
+                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.04)' }]} />
+                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                  <Path d="M3 7 a2 2 0 0 1 2 -2 H14 a2 2 0 0 1 2 2 V13 a2 2 0 0 1 -2 2 H10" stroke="#FFFFFF" strokeWidth={1.6} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  <Path d="M9 11 H19 a2 2 0 0 1 2 2 V18 a2 2 0 0 1 -2 2 H9 a2 2 0 0 1 -2 -2 V13 a2 2 0 0 1 2 -2 Z" fill="#FFFFFF" />
+                </Svg>
+              </TouchableOpacity>
+            </View>
+
+            {/* Top-right : volume slider + speaker */}
+            <View pointerEvents="box-none" style={{ position: 'absolute', top: 56, right: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Pressable
+                onPress={async (e) => {
+                  bumpTimer();
+                  const w = 90;
+                  const x = e.nativeEvent.locationX;
+                  const v = Math.max(0, Math.min(1, x / w));
+                  setVolume(v);
+                  try { await videoRef.current?.setVolumeAsync(v); } catch(_) {}
+                }}
+                style={{ width: 90, height: 24, justifyContent: 'center' }}
+              >
+                <View style={{ height: 5, borderRadius: 2.5, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden' }}>
+                  <View style={{ height: '100%', width: (volume * 100) + '%', backgroundColor: '#ffffff', borderRadius: 2.5 }} />
+                </View>
+              </Pressable>
+              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                <Path d="M3 10 v4 h3 l5 4 V6 L6 10 Z" fill="#fff" />
+                <Path d="M15 9 c1.5 1.5 1.5 4.5 0 6" stroke="#fff" strokeWidth={1.5} strokeLinecap="round" fill="none" />
+                <Path d="M18 6 c3 3 3 9 0 12" stroke="#fff" strokeWidth={1.5} strokeLinecap="round" fill="none" />
+              </Svg>
             </View>
 
             {hasRealVideo && (
@@ -716,22 +719,24 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                   accessibilityRole="button"
                 >
                   <Animated.View style={{
-                    width: 76,
-                    height: 76,
-                    borderRadius: 38,
-                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    width: 72,
+                    height: 72,
+                    borderRadius: 36,
+                    overflow: 'hidden',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.15)',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.45)',
                     shadowColor: '#000',
-                    shadowOpacity: 0.5,
-                    shadowRadius: 18,
-                    shadowOffset: { width: 0, height: 6 },
-                    elevation: 14,
+                    shadowOpacity: 0.45,
+                    shadowRadius: 16,
+                    shadowOffset: { width: 0, height: 4 },
+                    elevation: 12,
                     transform: [{ scale: playScale }],
                   }}>
-                    <VideoPlayPauseIcon playing={!!status.isPlaying} size={36} />
+                    <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
+                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.04)' }]} />
+                    <VideoPlayPauseIcon playing={!!status.isPlaying} size={32} />
                   </Animated.View>
                 </Pressable>
                 <VideoSkip10Icon
@@ -746,6 +751,22 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             )}
 
             <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingBottom: 32, paddingHorizontal: 20 }} pointerEvents="box-none">
+              {hasRealVideo && (
+                <View style={{ alignItems: 'flex-end', marginBottom: 10 }}>
+                  <TouchableOpacity onPress={cyclePlaybackRate} hitSlop={10} style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
+                    <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
+                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.04)' }]} />
+                    {playbackRate === 1.0 ? (
+                      <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                        <Path d="M12 3 a9 9 0 1 1 -6.4 2.6" stroke="#FFFFFF" strokeWidth={1.6} strokeLinecap="round" fill="none" />
+                        <Path d="M12 12 L7 7" stroke="#FFFFFF" strokeWidth={1.6} strokeLinecap="round" fill="none" />
+                      </Svg>
+                    ) : (
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#FFFFFF' }}>{playbackRate}x</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
               {hasRealVideo && resumeHint != null && (
                 <View
                   style={{
@@ -766,49 +787,26 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                 </View>
               )}
               {hasRealVideo && (
-              <>
-              <Pressable
-                accessibilityLabel="Barre de progression de la vidéo"
-                accessibilityRole="adjustable"
-                onPress={async (e) => {
-                  bumpTimer();
-                  if (!status.durationMillis) return;
-                  const { locationX } = e.nativeEvent;
-                  const ratio = Math.max(0, Math.min(1, locationX / barW));
-                  await videoRef.current?.setPositionAsync(ratio * status.durationMillis);
-                }}
-                style={{ width: barW, height: 28, alignSelf: 'center', justifyContent: 'center', marginBottom: 8 }}
-              >
-                <View style={{ width: barW, height: 28, justifyContent: 'center' }}>
-                  <View style={{ height: 4, width: barW, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.22)' }}>
-                    <View style={{ width: barW * progress, height: 4, borderRadius: 2, backgroundColor: '#fff' }} />
-                  </View>
-                  <View
-                    pointerEvents="none"
-                    style={{
-                      position: 'absolute',
-                      left: thumbLeft,
-                      top: (28 - thumbSize) / 2,
-                      width: thumbSize,
-                      height: thumbSize,
-                      borderRadius: thumbSize / 2,
-                      backgroundColor: '#fff',
-                      borderWidth: 1,
-                      borderColor: 'rgba(0,0,0,0.12)',
-                      shadowColor: '#000',
-                      shadowOpacity: 0.35,
-                      shadowRadius: 6,
-                      shadowOffset: { width: 0, height: 2 },
-                      elevation: 4,
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: '#ffffff', minWidth: 44 }}>{formatTimeCode(status.positionMillis)}</Text>
+                  <Pressable
+                    accessibilityLabel="Barre de progression de la vidéo"
+                    accessibilityRole="adjustable"
+                    onPress={async (e) => {
+                      bumpTimer();
+                      if (!status.durationMillis) return;
+                      const w = e.nativeEvent.target ? barW : barW;
+                      const ratio = Math.max(0, Math.min(1, e.nativeEvent.locationX / w));
+                      await videoRef.current?.setPositionAsync(ratio * status.durationMillis);
                     }}
-                  />
+                    style={{ flex: 1, height: 24, justifyContent: 'center' }}
+                  >
+                    <View style={{ height: 3, borderRadius: 1.5, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden' }}>
+                      <View style={{ width: (progress * 100) + '%', height: '100%', backgroundColor: '#ffffff' }} />
+                    </View>
+                  </Pressable>
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: '#ffffff', minWidth: 44, textAlign: 'right' }}>{formatRemaining(status.positionMillis, status.durationMillis)}</Text>
                 </View>
-              </Pressable>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: barW, alignSelf: 'center', marginBottom: 16 }}>
-                <Text style={{ fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.85)' }}>{formatTimeCode(status.positionMillis)}</Text>
-                <Text style={{ fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.85)' }}>{formatRemaining(status.positionMillis, status.durationMillis)}</Text>
-              </View>
-              </>
               )}
               {(progress >= 0.8 || !hasRealVideo || elapsedSec >= 60) && <Pressable
                 onPress={() => {

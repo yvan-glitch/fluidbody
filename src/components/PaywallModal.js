@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, Alert, Dimensions, ImageBackground, Linking, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, Alert, Dimensions, ImageBackground, Linking, Platform, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import AnimatedPlus from './AnimatedPlus';
+import GlassButton from './GlassButton';
+import LivingBackground from './LivingBackground';
+import { Bulle, FloatingMedusas, BULLES_ONBOARDING } from './Meduse';
 import { T, PILIER_IMAGES } from '../constants/data';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -42,7 +45,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   const [selected, setSelected] = useState('yearly');
   const selectedPrice = selected === 'yearly' ? yearlyDisplay : monthlyDisplay;
 
-  const heroTitle = isFr ? 'Du Pilates pour tout le monde' : 'Pilates for everyone';
+  const heroTitle = isFr ? 'Le Pilates conscient, au quotidien' : 'Conscious Pilates, every day';
   const annualLabel = isFr ? 'Annuel' : 'Annual';
   const annualSub = isFr ? '12 mois pour le prix de 8' : '12 months for the price of 8';
   const monthlyLabel = isFr ? 'Mensuel' : 'Monthly';
@@ -96,9 +99,16 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
 
   return (
     <Modal visible={!!visible} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: '#0a1423' }}>
-        <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} pointerEvents="none" />
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
+        <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+        <LivingBackground />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }} pointerEvents="none">
+          {BULLES_ONBOARDING.map((b, i) => <Bulle key={`pw-${i}`} {...b} />)}
+        </View>
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} pointerEvents="none">
+          <FloatingMedusas />
+        </View>
+        <ScrollView style={{ zIndex: 2 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
           <ImageBackground source={PILIER_IMAGES.p7} resizeMode="cover" style={{ width: SW, height: Math.round(SH * 0.45), justifyContent: 'flex-end' }}>
             <LinearGradient
@@ -106,7 +116,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               locations={[0, 0.55, 1]}
               style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
             />
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={{ position: 'absolute', top: 56, right: 20, width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' }}>
+            <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={{ position: 'absolute', top: 56, right: 20, width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(30,30,40,0.7)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '600' }}>{'✕'}</Text>
             </TouchableOpacity>
             <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
@@ -130,32 +140,38 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
           )}
 
           <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
-            <TouchableOpacity
+            <GlassButton
               onPress={onCta}
               disabled={disabled || loadingPrices}
-              activeOpacity={0.85}
-              style={{
-                height: 56, borderRadius: 28, backgroundColor: '#E5FF00',
-                alignItems: 'center', justifyContent: 'center',
-                opacity: (disabled || loadingPrices) ? 0.4 : 1,
-                shadowColor: '#E5FF00', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 18,
-              }}
+              size="lg"
+              textColor="#AEEF4D"
+              textStyle={{ fontSize: 16, fontWeight: '800' }}
             >
-              <Text style={{ fontSize: 16, fontWeight: '800', color: '#000000', letterSpacing: 0.2 }}>{ctaLabel}</Text>
-            </TouchableOpacity>
+              {ctaLabel}
+            </GlassButton>
             <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginTop: 12 }}>{selectedPrice}</Text>
           </View>
 
-          <TouchableOpacity onPress={onRestore} disabled={disabled} activeOpacity={0.7} style={{ marginTop: 18 }}>
-            <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>{tr.paywall_restore}</Text>
-          </TouchableOpacity>
+          <View style={{ paddingHorizontal: 60, marginTop: 18 }}>
+            <GlassButton
+              onPress={onRestore}
+              disabled={disabled}
+              size="sm"
+              textColor="rgba(255,255,255,0.7)"
+              textStyle={{ fontSize: 13, fontWeight: '500' }}
+            >
+              {tr.paywall_restore}
+            </GlassButton>
+          </View>
 
-          <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: 22, paddingHorizontal: 28, lineHeight: 15 }}>
-            {tr.paywall_legal || "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période. Le paiement est débité via votre compte Apple. Gérez ou annulez dans Réglages > Apple ID > Abonnements."}
-          </Text>
-          <TouchableOpacity onPress={function() { Linking.openURL('https://fluidbody.app/privacy'); }} activeOpacity={0.7} style={{ marginTop: 8 }}>
-            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', textAlign: 'center', textDecorationLine: 'underline' }}>{tr.paywall_privacy_link || 'Politique de confidentialité'}</Text>
-          </TouchableOpacity>
+          <View style={{ marginTop: 22, marginHorizontal: 16, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(0,18,32,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)' }}>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'center', lineHeight: 17 }}>
+              {tr.paywall_legal || "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période. Le paiement est débité via votre compte Apple. Gérez ou annulez dans Réglages > Apple ID > Abonnements."}
+            </Text>
+            <TouchableOpacity onPress={function() { Linking.openURL('https://yvan-glitch.github.io/fluidbody-privacy/'); }} activeOpacity={0.7} style={{ marginTop: 10 }}>
+              <Text style={{ fontSize: 12, color: '#AEEF4D', textAlign: 'center', textDecorationLine: 'underline', fontWeight: '600' }}>{tr.paywall_privacy_link || 'Politique de confidentialité'}</Text>
+            </TouchableOpacity>
+          </View>
 
         </ScrollView>
       </View>
