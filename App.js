@@ -745,6 +745,22 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [emailExistsErr, setEmailExistsErr] = useState(false);
+  const [authVisible, setAuthVisible] = useState(false);
+  const authOpacity = useRef(new Animated.Value(0)).current;
+  const authTranslateY = useRef(new Animated.Value(-260)).current;
+
+  useEffect(() => {
+    const t = setTimeout(() => setAuthVisible(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!authVisible) return;
+    Animated.parallel([
+      Animated.timing(authOpacity, { toValue: 1, duration: 1100, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(authTranslateY, { toValue: 0, duration: 1100, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+    ]).start();
+  }, [authVisible]);
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const validPass = password.length >= 6;
   const canSubmit = validEmail && validPass && !loading;
@@ -882,7 +898,10 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
         );
       })}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 30 }}>
-        <View style={{ paddingHorizontal: 28, paddingBottom: 32, paddingTop: 16, backgroundColor: 'rgba(0,14,24,0.55)' }}>
+        <Animated.View
+          pointerEvents={authVisible ? 'auto' : 'none'}
+          style={{ paddingHorizontal: 28, paddingBottom: 32, paddingTop: 16, backgroundColor: 'rgba(0,14,24,0.55)', opacity: authOpacity, transform: [{ translateY: authTranslateY }] }}
+        >
           {appleAvailable ? (
             <GlassButton
               onPress={handleAppleSignIn}
@@ -963,7 +982,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
           >
             {tr.first_seance_later || 'Plus tard'}
           </GlassButton>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </View>
   );
