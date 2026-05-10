@@ -44,6 +44,7 @@ import GlassButton from './src/components/GlassButton';
 import Confetti from './src/components/Confetti';
 import LivingBackground from './src/components/LivingBackground';
 import SignInScreen from './src/screens/SignIn';
+import HealthKitConnectScreen from './src/screens/HealthKitConnect';
 import MonCorps, { MetricTile } from './src/screens/MonCorps';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
 
@@ -757,8 +758,8 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
   useEffect(() => {
     if (!authVisible) return;
     Animated.parallel([
-      Animated.timing(authOpacity, { toValue: 1, duration: 1100, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.timing(authTranslateY, { toValue: 0, duration: 1100, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(authOpacity, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.spring(authTranslateY, { toValue: 0, damping: 18, stiffness: 90, mass: 1, useNativeDriver: true }),
     ]).start();
   }, [authVisible]);
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -1901,6 +1902,7 @@ function App() {
   const [signInPrefillEmail, setSignInPrefillEmail] = useState('');
   const [welcomeShown, setWelcomeShown] = useState(null);
   const [profileSetupShown, setProfileSetupShown] = useState(null);
+  const [hkPromptShown, setHkPromptShown] = useState(null);
   const [prenom, setPrenom] = useState('');
   const [lang, setLang] = useState(() => getAppLangFromLocale());
   const [tensionIdxs, setTensionIdxs] = useState([]);
@@ -1929,6 +1931,18 @@ function App() {
   function dismissWelcomeIntro() {
     setWelcomeShown(true);
     AsyncStorage.setItem('fluid_welcome_intro_done', '1').catch(function(e) { devWarn('welcome flag persist', e); });
+  }
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') { setHkPromptShown(true); return; }
+    AsyncStorage.getItem('fluid_hk_prompt_done').then(function(v) {
+      setHkPromptShown(v === '1');
+    }).catch(function() { setHkPromptShown(true); });
+  }, []);
+
+  function dismissHkPrompt() {
+    setHkPromptShown(true);
+    AsyncStorage.setItem('fluid_hk_prompt_done', '1').catch(function(e) { devWarn('hk flag persist', e); });
   }
 
   useEffect(() => {
@@ -2254,6 +2268,10 @@ function App() {
       if (Array.isArray(idxs) && idxs.length > 0) handleTensionChange(idxs);
       dismissWelcomeIntro();
     }} />;
+  }
+
+  if (hkPromptShown === false) {
+    return <HealthKitConnectScreen lang={lang} onDone={function() { dismissHkPrompt(); }} />;
   }
 
   return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} />;
