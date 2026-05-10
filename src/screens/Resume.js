@@ -8,8 +8,9 @@ import Svg, { Path, Circle, Defs, RadialGradient, Stop, Ellipse } from 'react-na
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { T, ZONE_TO_PILIER, PILIER_IMAGES } from '../constants/data';
-import { Bulle, FloatingMedusas, BULLES, LivingMedusa, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState } from '../components/Meduse';
+import { Bulle, FloatingMedusas, MeduseCornerIcon, BULLES, LivingMedusa, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
+import LivingBackground from '../components/LivingBackground';
 import { getPiliers, getSeances } from '../utils';
 
 // HealthKit — optional native module
@@ -59,22 +60,61 @@ function getHealthKitSummary(cb) {
 
 const { width: SW } = Dimensions.get('window');
 
-var AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // ══════════════════════════════════
 // ACTIVITY RING
 // ══════════════════════════════════
-function ActivityRing({ radius, strokeWidth, progress, color, bgColor }) {
-  var circ = 2 * Math.PI * radius;
+function getJellyfishGlow(progress) {
+  var p = Math.max(0, Math.min(1, progress));
+  return {
+    bellOpacity: 0.22 + (1.0 - 0.22) * p,
+    haloRadius: 22 * p,
+    haloOpacity: 0.55 * p,
+  };
+}
+
+function JellyfishMetric({ progress, color, size = 64 }) {
   var anim = useRef(new Animated.Value(0)).current;
-  useEffect(function() { Animated.timing(anim, { toValue: Math.min(progress, 1), duration: 1200, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(); }, [progress]);
-  var dashOffset = anim.interpolate({ inputRange: [0, 1], outputRange: [circ, 0] });
-  var size = (radius + strokeWidth) * 2;
+  var pulse = useRef(new Animated.Value(1)).current;
+  var [glow, setGlow] = useState(getJellyfishGlow(0));
+  var rgbColor = color.replace(/^#/, '');
+  var r = parseInt(rgbColor.slice(0, 2), 16);
+  var g = parseInt(rgbColor.slice(2, 4), 16);
+  var b = parseInt(rgbColor.slice(4, 6), 16);
+  var tintRgba = 'rgba(' + r + ',' + g + ',' + b + ',1)';
+
+  useEffect(function() {
+    var listener = anim.addListener(function(v) { setGlow(getJellyfishGlow(v.value)); });
+    var target = Math.max(0, Math.min(1, progress));
+    Animated.timing(anim, { toValue: target, duration: anim._value === 0 ? 900 : 600, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+    return function() { anim.removeListener(listener); };
+  }, [progress]);
+
+  useEffect(function() {
+    if (progress <= 0) return;
+    var loop = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1.04, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 1.0, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ]));
+    loop.start();
+    return function() { loop.stop(); };
+  }, [progress > 0]);
+
   return (
-    <Svg width={size} height={size} style={{ position: 'absolute', top: 0, left: 0 }}>
-      <Circle cx={radius + strokeWidth} cy={radius + strokeWidth} r={radius} stroke={bgColor || 'rgba(255,255,255,0.08)'} strokeWidth={strokeWidth} fill="none" />
-      <AnimatedCircle cx={radius + strokeWidth} cy={radius + strokeWidth} r={radius} stroke={color} strokeWidth={strokeWidth} fill="none" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={dashOffset} transform={'rotate(-90 ' + (radius + strokeWidth) + ' ' + (radius + strokeWidth) + ')'} />
-    </Svg>
+    <Animated.View style={{
+      width: size,
+      height: size,
+      alignItems: 'center',
+      justifyContent: 'center',
+      opacity: glow.bellOpacity,
+      shadowColor: color,
+      shadowOpacity: glow.haloOpacity,
+      shadowRadius: glow.haloRadius,
+      shadowOffset: { width: 0, height: 0 },
+      transform: [{ scale: pulse }],
+    }}>
+      <MeduseCornerIcon size={size} tint={tintRgba} breathCycleMs={null} />
+    </Animated.View>
   );
 }
 
@@ -89,25 +129,61 @@ function ActivityCalendar({ lang }) {
     });
   }, []);
   var today = new Date();
+  var todayKey = today.toISOString().slice(0, 10);
   var days = [];
   for (var i = 27; i >= 0; i--) {
     var d = new Date(today); d.setDate(d.getDate() - i);
     var key = d.toISOString().slice(0, 10);
-    days.push({ key: key, day: d.getDate(), dow: d.getDay(), count: history[key] || 0 });
+    days.push({ key: key, day: d.getDate(), dow: d.getDay(), count: history[key] || 0, isToday: key === todayKey });
   }
   var dayLabels = { fr: ['L','M','M','J','V','S','D'], en: ['M','T','W','T','F','S','S'] };
   var labels = dayLabels[lang] || dayLabels.fr;
+  var gap = 6;
+  var cellSize = Math.floor((SW - 80 - gap * 6) / 7);
   return (
     <View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-        {labels.map(function(l, i) { return <Text key={i} style={{ fontSize: 8, color: 'rgba(174,239,77,0.4)', width: Math.floor((SW - 80) / 7), textAlign: 'center' }}>{l}</Text>; })}
+      <View style={{ flexDirection: 'row', marginBottom: 8, gap: gap }}>
+        {labels.map(function(l, i) { return <Text key={i} style={{ fontSize: 9, fontWeight: '700', color: 'rgba(174,239,77,0.55)', width: cellSize, textAlign: 'center', letterSpacing: 0.5 }}>{l}</Text>; })}
       </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 3 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: gap }}>
         {days.map(function(d) {
-          var intensity = d.count === 0 ? 0 : d.count === 1 ? 0.3 : d.count === 2 ? 0.6 : 1;
+          var bg, borderColor, borderWidth, textColor, dotColor, glow;
+          if (d.count === 0) {
+            bg = 'rgba(255,255,255,0.04)';
+            borderColor = d.isToday ? '#AEEF4D' : 'rgba(255,255,255,0.10)';
+            borderWidth = d.isToday ? 1.5 : 1;
+            textColor = d.isToday ? '#AEEF4D' : 'rgba(255,255,255,0.35)';
+            dotColor = null;
+            glow = null;
+          } else {
+            var intensity = d.count >= 3 ? 1 : d.count === 2 ? 0.75 : 0.5;
+            bg = 'rgba(174,239,77,' + intensity + ')';
+            borderColor = 'rgba(255,255,255,0.45)';
+            borderWidth = 1.5;
+            textColor = '#001226';
+            dotColor = d.count >= 2 ? '#001226' : null;
+            glow = { shadowColor: '#AEEF4D', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 0 } };
+          }
           return (
-            <View key={d.key} style={{ width: Math.floor((SW - 80 - 18) / 7), height: Math.floor((SW - 80 - 18) / 7), borderRadius: 4, backgroundColor: d.count > 0 ? ('rgba(174,239,77,' + intensity + ')') : 'rgba(174,239,77,0.06)', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 7, color: d.count > 0 ? '#000000' : 'rgba(255,255,255,0.2)', fontWeight: d.count > 0 ? '700' : '400' }}>{d.day}</Text>
+            <View
+              key={d.key}
+              style={[{
+                width: cellSize,
+                height: cellSize,
+                borderRadius: cellSize / 2,
+                backgroundColor: bg,
+                borderWidth: borderWidth,
+                borderColor: borderColor,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }, glow]}
+            >
+              <Text style={{ fontSize: 11, color: textColor, fontWeight: d.count > 0 ? '800' : '500' }}>{d.day}</Text>
+              {dotColor ? (
+                <View style={{ position: 'absolute', bottom: 4, flexDirection: 'row', gap: 2 }}>
+                  {Array.from({ length: Math.min(d.count, 3) }).map(function(_, k) { return <View key={k} style={{ width: 2.5, height: 2.5, borderRadius: 1.25, backgroundColor: dotColor }} />; })}
+                </View>
+              ) : null}
             </View>
           );
         })}
@@ -371,10 +447,10 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient pointerEvents="none" colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LivingBackground />
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
         {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
       </View>
-      <FloatingMedusas />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }} scrollEventThrottle={16} showsVerticalScrollIndicator={false}>
         <View style={{ paddingTop: 62, paddingHorizontal: 20, marginBottom: 20 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -392,36 +468,26 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
 
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 16 }}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 }}>{tr.resume_activite || 'Activité'}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ width: 140, height: 140, alignItems: 'center', justifyContent: 'center' }}>
-              <ActivityRing radius={60} strokeWidth={8} progress={calPct} color="#FF3B30" bgColor="rgba(255,59,48,0.2)" />
-              <ActivityRing radius={48} strokeWidth={8} progress={exPct} color="#30D158" bgColor="rgba(48,209,88,0.2)" />
-              <ActivityRing radius={36} strokeWidth={8} progress={standPct} color="#0A84FF" bgColor="rgba(10,132,255,0.2)" />
-            </View>
-            <View style={{ flex: 1, marginLeft: 20, gap: 14 }}>
-              <View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF3B30' }} />
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{tr.resume_bouger || 'Bouger'}</Text>
+          {[
+            { label: tr.resume_bouger || 'Bouger', color: '#FF3B30', value: effectiveCal, goal: calGoal, unit: 'cal', progress: calPct },
+            { label: tr.resume_exercice || 'Exercice', color: '#30D158', value: effectiveExMin, goal: exGoal, unit: 'min', progress: exPct },
+            { label: tr.resume_debout || 'Debout', color: '#0A84FF', value: hkData.standHr, goal: standGoal, unit: 'h', progress: standPct },
+          ].map(function(m, i, arr) {
+            return (
+              <View key={m.label} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: i === arr.length - 1 ? 0 : 14 }}>
+                <View style={{ width: 64, height: 64, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                  <JellyfishMetric progress={m.progress} color={m.color} size={64} />
                 </View>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: '#FF3B30', marginTop: 2 }}>{effectiveCal}<Text style={{ fontSize: 13, fontWeight: '400' }}>/{calGoal} cal</Text></Text>
-              </View>
-              <View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#30D158' }} />
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{tr.resume_exercice || 'Exercice'}</Text>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: m.color }} />
+                    <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{m.label}</Text>
+                  </View>
+                  <Text style={{ fontSize: 22, fontWeight: '700', color: m.color, marginTop: 2 }}>{m.value}<Text style={{ fontSize: 13, fontWeight: '400' }}>/{m.goal} {m.unit}</Text></Text>
                 </View>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: '#30D158', marginTop: 2 }}>{effectiveExMin}<Text style={{ fontSize: 13, fontWeight: '400' }}>/{exGoal} min</Text></Text>
               </View>
-              <View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#0A84FF' }} />
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{tr.resume_debout || 'Debout'}</Text>
-                </View>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: '#0A84FF', marginTop: 2 }}>{hkData.standHr}<Text style={{ fontSize: 13, fontWeight: '400' }}>/{standGoal} h</Text></Text>
-              </View>
-            </View>
-          </View>
+            );
+          })}
         </View>
 
         {(function() {
@@ -524,28 +590,6 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.calendar_title || 'Activité récente'}</Text>
           <ActivityCalendar lang={lang} />
         </View>
-
-        {(function() {
-          var rec = getSmartRecommendation(done, tensionIdxs, lang);
-          if (!rec || !rec.seance) return null;
-          return (
-            <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
-                <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden', borderWidth: 1.5, borderColor: '#AEEF4D', marginRight: 14 }}>
-                  <ImageBackground source={PILIER_IMAGES[rec.pilier.key]} resizeMode="cover" style={{ flex: 1 }} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 10, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 3 }}>{tr.recommended_next || 'Recommandée pour toi'}</Text>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff' }}>{rec.seance[0]}</Text>
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{rec.pilier.label} · {rec.seance[1]}</Text>
-                </View>
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 16, color: '#000000' }}>▶</Text>
-                </View>
-              </View>
-            </View>
-          );
-        })()}
 
         {(function() {
           var weekGoal = 3;
