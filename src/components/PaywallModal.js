@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, Alert, Dimensions, ImageBackground, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, Alert, Dimensions, ImageBackground, Linking, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import AnimatedPlus from './AnimatedPlus';
 import { T, PILIER_IMAGES } from '../constants/data';
 
@@ -95,7 +96,8 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
 
   return (
     <Modal visible={!!visible} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      <View style={{ flex: 1, backgroundColor: '#0a1423' }}>
+        <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} pointerEvents="none" />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
           <ImageBackground source={PILIER_IMAGES.p7} resizeMode="cover" style={{ width: SW, height: Math.round(SH * 0.45), justifyContent: 'flex-end' }}>

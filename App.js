@@ -148,9 +148,14 @@ function CustomTabBar({ state, descriptors, navigation }) {
   })).current;
 
   return (
-    <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: BAR_H, backgroundColor: 'rgba(28,28,30,0.94)', borderRadius: BAR_H / 2, borderWidth: 1, borderColor: '#AEEF4D' }} {...panResponder.panHandlers}>
-      <Animated.View style={{ position: 'absolute', top: (BAR_H - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: pillH / 2, backgroundColor: 'rgba(255,255,255,0.13)', transform: [{ translateX: indicatorX }] }} />
-      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+    <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: BAR_H, zIndex: 1000, elevation: 12, shadowColor: '#ffffff', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }} {...panResponder.panHandlers}>
+      <View style={{ flex: 1, borderRadius: BAR_H / 2, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }}>
+        <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} />
+        <LinearGradient colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }} pointerEvents="none" />
+        <Animated.View style={{ position: 'absolute', top: (BAR_H - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: pillH / 2, backgroundColor: 'rgba(174,239,77,0.15)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.4)', transform: [{ translateX: indicatorX }] }}>
+          <LinearGradient colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', borderTopLeftRadius: pillH / 2, borderTopRightRadius: pillH / 2 }} pointerEvents="none" />
+        </Animated.View>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
         {state.routes.map(function(route, index) {
           var options = descriptors[route.key].options;
           var isFocused = state.index === index;
@@ -167,6 +172,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
             </TouchableOpacity>
           );
         })}
+        </View>
       </View>
     </View>
   );
@@ -411,7 +417,7 @@ function Progresser({ done, lang, tensionIdxs }) {
   const sortedPiliers = [...piliers].sort((a, b) => (recommendedPiliers.includes(a.key) ? 0 : 1) - (recommendedPiliers.includes(b.key) ? 0 : 1));
   return (
     <View style={{ flex: 1 }}>
-      <LinearGradient pointerEvents="none" colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
+      <LinearGradient pointerEvents="none" colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
         {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
       </View>
@@ -501,7 +507,7 @@ function SeanceDetailModal({ visible, onClose, sdj, lang, onPlay }) {
           <TouchableOpacity
             onPress={function() { onPlay && onPlay(); }}
             activeOpacity={0.85}
-            style={{ height: 54, borderRadius: 27, backgroundColor: "#E5FF00", alignItems: "center", justifyContent: "center", marginBottom: 14 }}
+            style={{ height: 54, borderRadius: 27, backgroundColor: "#E5FF00", shadowColor: "#E5FF00", shadowOpacity: 0.55, shadowRadius: 20, shadowOffset: { width: 0, height: 0 }, alignItems: "center", justifyContent: "center", marginBottom: 14 }}
           >
             <Text style={{ fontSize: 17, fontWeight: "700", color: "#000000" }}>{tr.free_go}</Text>
           </TouchableOpacity>
@@ -608,7 +614,8 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000e18' }}>
-      <LinearGradient colors={['#000000', '#000e18', '#001828']} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} pointerEvents="none" />
 
       <View style={{ paddingTop: 58, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 }}>
         <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</AnimatedPlus></Text>
@@ -628,11 +635,13 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
           </View>
 
           {appleAvailable ? (
-            <TouchableOpacity onPress={handleAppleSignIn} disabled={loading} activeOpacity={0.85} style={{ width: '100%', height: 52, borderRadius: 12, backgroundColor: '#000000', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
-              <Svg width={18} height={20} viewBox="0 0 24 24" fill="none">
-                <Path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C3.79 16.17 4.36 9.04 8.72 8.78c1.34.07 2.27.74 3.06.8.93-.19 1.82-.73 2.82-.66 1.19.1 2.09.58 2.68 1.49-2.45 1.47-1.87 4.71.36 5.62-.45 1.17-.66 1.7-1.23 2.73-.82 1.46-1.97 2.92-3.36 2.95zM12.13 8.65c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" fill="#ffffff" />
-              </Svg>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>{tr.auth_apple || 'Continuer avec Apple'}</Text>
+            <TouchableOpacity onPress={handleAppleSignIn} disabled={loading} activeOpacity={0.85} style={{ width: '100%', height: 52, borderRadius: 14, overflow: 'hidden', marginBottom: 20, opacity: loading ? 0.5 : 1 }}>
+              <BlurView intensity={Platform.OS === 'ios' ? 60 : 0} tint="dark" style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.35)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
+                <Svg width={18} height={20} viewBox="0 0 24 24" fill="none">
+                  <Path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C3.79 16.17 4.36 9.04 8.72 8.78c1.34.07 2.27.74 3.06.8.93-.19 1.82-.73 2.82-.66 1.19.1 2.09.58 2.68 1.49-2.45 1.47-1.87 4.71.36 5.62-.45 1.17-.66 1.7-1.23 2.73-.82 1.46-1.97 2.92-3.36 2.95zM12.13 8.65c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" fill="#ffffff" />
+                </Svg>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>{tr.auth_apple || 'Continuer avec Apple'}</Text>
+              </BlurView>
             </TouchableOpacity>
           ) : null}
 
@@ -671,9 +680,11 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
             onPress={() => handleEmailAuth('in')}
             disabled={!canSubmit}
             activeOpacity={0.85}
-            style={{ width: '100%', height: 52, borderRadius: 12, backgroundColor: canSubmit ? '#AEEF4D' : 'rgba(174,239,77,0.18)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}
+            style={{ width: '100%', height: 52, borderRadius: 14, overflow: 'hidden', marginBottom: 10, opacity: canSubmit ? 1 : 0.5 }}
           >
-            <Text style={{ fontSize: 16, fontWeight: '700', color: canSubmit ? '#000000' : 'rgba(174,239,77,0.4)' }}>{loading ? '…' : (tr.ob_auth_submit_in || 'Se connecter')}</Text>
+            <BlurView intensity={Platform.OS === 'ios' ? 50 : 0} tint="dark" style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: canSubmit ? 'rgba(174,239,77,0.22)' : 'rgba(174,239,77,0.06)', borderWidth: 1, borderColor: canSubmit ? '#AEEF4D' : 'rgba(174,239,77,0.25)' }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#AEEF4D', letterSpacing: 0.3 }}>{loading ? '…' : (tr.ob_auth_submit_in || 'Se connecter')}</Text>
+            </BlurView>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -696,6 +707,15 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
 // ══════════════════════════════════
 function OnboardingScreen({ onDone, initialLang }) {
   const [lang] = useState(() => initialLang ?? getAppLangFromLocale());
+  const tr = T[lang] || T.fr;
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const validPass = password.length >= 6;
+  const canSubmit = validEmail && validPass && !loading;
+  const appleAvailable = !!AppleAuth && Platform.OS === 'ios';
 
   const floatingMedusas = useRef([
     { x: new Animated.Value(SW - 80), y: new Animated.Value(SH * 0.12), size: 72, breath: 3200 },
@@ -719,14 +739,53 @@ function OnboardingScreen({ onDone, initialLang }) {
     });
   }, []);
 
-  useEffect(() => {
-    const t = setTimeout(() => { onDone('', lang, [], { skipCloudAuth: true }); }, 5000);
-    return () => clearTimeout(t);
-  }, []);
+  function finish() { onDone('', lang, [], { skipCloudAuth: true }); }
+
+  async function handleEmailAuth(mode) {
+    if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
+    const em = email.trim().toLowerCase();
+    if (!validEmail) { setError(tr.ob_auth_err_email); return; }
+    if (!validPass) { setError(tr.ob_auth_err_short); return; }
+    setLoading(true); setError('');
+    try {
+      if (mode === 'up') {
+        const { data, error: err } = await supabase.auth.signUp({ email: em, password });
+        if (err) { setError(err.message); setLoading(false); return; }
+        if (!data.session) { setError(tr.ob_auth_confirm); setLoading(false); return; }
+      } else {
+        const { error: err } = await supabase.auth.signInWithPassword({ email: em, password });
+        if (err) { setError(err.message); setLoading(false); return; }
+      }
+      setLoading(false);
+      finish();
+    } catch (e) {
+      setError(tr.ob_auth_err_net);
+      setLoading(false);
+    }
+  }
+
+  async function handleAppleSignIn() {
+    if (!supabase) return;
+    if (!appleAvailable) { Alert.alert('FluidBody+', 'Sign in with Apple disponible sur iOS uniquement.'); return; }
+    setLoading(true); setError('');
+    try {
+      const credential = await AppleAuth.signInAsync({
+        requestedScopes: [AppleAuth.AppleAuthenticationScope.FULL_NAME, AppleAuth.AppleAuthenticationScope.EMAIL],
+      });
+      if (!credential.identityToken) { setError('Apple identity token manquant.'); setLoading(false); return; }
+      const { error: err } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken });
+      if (err) { setError(err.message); setLoading(false); return; }
+      setLoading(false);
+      finish();
+    } catch (e) {
+      if (e?.code !== 'ERR_REQUEST_CANCELED') setError(e?.message || tr.ob_auth_err_net);
+      setLoading(false);
+    }
+  }
 
   return (
     <View style={{ flex: 1 }}>
-      <LinearGradient colors={['#000e18', '#002d48', '#00bdd0', '#005878', '#001828']} locations={[0, 0.3, 0.52, 0.72, 1]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
       {BULLES_ONBOARDING.map((b, i) => <Bulle key={`ob-${i}`} {...b} />)}
       <View style={{ position: 'absolute', top: 298, left: 0, right: 0, alignItems: 'center', opacity: 0.9, zIndex: 0 }} pointerEvents="none">
         <Meduse />
@@ -779,6 +838,55 @@ function OnboardingScreen({ onDone, initialLang }) {
           </Animated.View>
         );
       })}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 30 }}>
+        <View style={{ paddingHorizontal: 28, paddingBottom: 32, paddingTop: 16, backgroundColor: 'rgba(0,14,24,0.55)' }}>
+          {appleAvailable ? (
+            <TouchableOpacity onPress={handleAppleSignIn} disabled={loading} activeOpacity={0.85} style={{ width: '100%', height: 50, borderRadius: 14, overflow: 'hidden', marginBottom: 16, opacity: loading ? 0.5 : 1 }}>
+              <BlurView intensity={Platform.OS === 'ios' ? 60 : 0} tint="dark" style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.35)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
+                <Svg width={18} height={20} viewBox="0 0 24 24" fill="none">
+                  <Path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C3.79 16.17 4.36 9.04 8.72 8.78c1.34.07 2.27.74 3.06.8.93-.19 1.82-.73 2.82-.66 1.19.1 2.09.58 2.68 1.49-2.45 1.47-1.87 4.71.36 5.62-.45 1.17-.66 1.7-1.23 2.73-.82 1.46-1.97 2.92-3.36 2.95zM12.13 8.65c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" fill="#ffffff" />
+                </Svg>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#ffffff' }}>{tr.auth_apple || 'Continuer avec Apple'}</Text>
+              </BlurView>
+            </TouchableOpacity>
+          ) : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(255,255,255,0.18)' }} />
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginHorizontal: 14, letterSpacing: 1, textTransform: 'uppercase' }}>{tr.auth_or || 'ou'}</Text>
+            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(255,255,255,0.18)' }} />
+          </View>
+          <TextInput
+            value={email} onChangeText={setEmail}
+            placeholder={tr.ob_email_ph}
+            placeholderTextColor="rgba(255,255,255,0.35)"
+            keyboardType="email-address" autoCapitalize="none" autoCorrect={false} editable={!loading}
+            style={{ width: '100%', height: 48, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: email ? 'rgba(174,239,77,0.5)' : 'rgba(255,255,255,0.12)', borderRadius: 12, color: '#ffffff', fontSize: 15, paddingHorizontal: 14, marginBottom: 8 }}
+          />
+          <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', lineHeight: 14, marginBottom: 10, paddingHorizontal: 2 }}>
+            En continuant, tu acceptes nos Conditions d'utilisation et notre{' '}
+            <Text onPress={function() { RNLinking.openURL('https://yvan-glitch.github.io/fluidbody-privacy/'); }} style={{ color: 'rgba(174,239,77,0.7)', textDecorationLine: 'underline' }}>Politique de confidentialité</Text>
+          </Text>
+          <TextInput
+            value={password} onChangeText={setPassword}
+            placeholder={tr.ob_pass_ph}
+            placeholderTextColor="rgba(255,255,255,0.35)"
+            secureTextEntry autoCapitalize="none" autoCorrect={false} editable={!loading}
+            style={{ width: '100%', height: 48, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: password ? 'rgba(174,239,77,0.5)' : 'rgba(255,255,255,0.12)', borderRadius: 12, color: '#ffffff', fontSize: 15, paddingHorizontal: 14, marginBottom: 10 }}
+          />
+          {error ? <Text style={{ color: 'rgba(255,140,140,0.95)', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>{error}</Text> : null}
+          <TouchableOpacity onPress={() => handleEmailAuth('in')} disabled={!canSubmit} activeOpacity={0.85} style={{ width: '100%', height: 50, borderRadius: 14, overflow: 'hidden', opacity: canSubmit ? 1 : 0.5 }}>
+            <BlurView intensity={Platform.OS === 'ios' ? 50 : 0} tint="dark" style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: canSubmit ? 'rgba(174,239,77,0.22)' : 'rgba(174,239,77,0.06)', borderWidth: 1, borderColor: canSubmit ? '#AEEF4D' : 'rgba(174,239,77,0.25)' }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 0.3 }}>{loading ? '…' : (tr.ob_auth_submit_in || 'Se connecter')}</Text>
+            </BlurView>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleEmailAuth('up')} disabled={loading} activeOpacity={0.7} style={{ marginTop: 12, paddingVertical: 6, alignItems: 'center' }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D', letterSpacing: 0.2 }}>{tr.ob_auth_submit_up || 'Créer un compte'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={finish} disabled={loading} activeOpacity={0.6} style={{ marginTop: 6, paddingVertical: 6, alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.4)' }}>{tr.first_seance_later || 'Plus tard'}</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -1267,11 +1375,194 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
 }
 
 // ══════════════════════════════════
+// WELCOME INTRO (3rd onboarding screen)
+// ══════════════════════════════════
+function WelcomeIntroScreen({ onDone, lang }) {
+  const tr = T[lang] || T.fr;
+  const [selectedIdxs, setSelectedIdxs] = useState([]);
+  const gridGap = 8;
+  const tileW = Math.floor((SW - 32 - gridGap * 2) / 3);
+  const tileH = Math.floor(tileW * 1.05);
+  const tiles = [PILIER_IMAGES.p1, PILIER_IMAGES.p2, PILIER_IMAGES.p3, PILIER_IMAGES.p4, PILIER_IMAGES.p5, PILIER_IMAGES.p6];
+  const zones = tr.ob_zones || [];
+
+  function toggleZone(idx) {
+    setSelectedIdxs(function(prev) {
+      return prev.indexOf(idx) !== -1 ? prev.filter(function(x) { return x !== idx; }) : prev.concat([idx]);
+    });
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
+      <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.35 }} pointerEvents="none">
+        <FloatingMedusas />
+      </View>
+      <View style={{ paddingTop: 58, paddingLeft: 22, alignItems: 'flex-start', zIndex: 5 }} pointerEvents="none">
+        <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</AnimatedPlus></Text>
+      </View>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingTop: 24, paddingBottom: 32, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: gridGap, justifyContent: 'center', marginBottom: 32 }}>
+          {tiles.map(function(src, i) {
+            return (
+              <View key={'wel-' + i} style={{ width: tileW, height: tileH, borderRadius: 14, overflow: 'hidden' }}>
+                <ImageBackground source={src} resizeMode="cover" style={{ flex: 1 }}>
+                  <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,14,24,0.4)']} style={{ flex: 1 }} />
+                </ImageBackground>
+              </View>
+            );
+          })}
+        </View>
+        <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.3, marginBottom: 20, paddingHorizontal: 8 }}>{tr.ob_tensions || 'Où ressens-tu des tensions ?'}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 28, paddingHorizontal: 8 }}>
+          {zones.map(function(zone, idx) {
+            var active = selectedIdxs.indexOf(idx) !== -1;
+            return (
+              <TouchableOpacity
+                key={idx}
+                activeOpacity={0.85}
+                onPress={function() { toggleZone(idx); }}
+                style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 22, backgroundColor: active ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.1)' }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: active ? '700' : '500', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.78)', letterSpacing: 0.1 }}>{zone}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <TouchableOpacity
+          onPress={function() { onDone(selectedIdxs); }}
+          activeOpacity={0.85}
+          style={{ marginHorizontal: 12, height: 56, borderRadius: 30, backgroundColor: '#E5FF00', shadowColor: '#E5FF00', shadowOpacity: 0.55, shadowRadius: 20, shadowOffset: { width: 0, height: 0 }, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={{ fontSize: 16, fontWeight: '800', color: '#000000', letterSpacing: 0.2 }}>{tr.welcome_program_cta || 'On va créer ton programme'}</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+}
+
+// ══════════════════════════════════
+// PROFILE SETUP (4th onboarding screen)
+// ══════════════════════════════════
+function ProfileSetupScreen({ onDone, lang }) {
+  const tr = T[lang] || T.fr;
+  const [gender, setGender] = useState(null);
+  const [d, setD] = useState('');
+  const [m, setM] = useState('');
+  const [y, setY] = useState('');
+  const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState('');
+
+  const genders = [
+    { key: 'female', label: tr.profile_gender_female || 'Femme' },
+    { key: 'male', label: tr.profile_gender_male || 'Homme' },
+    { key: 'other', label: tr.profile_gender_other || 'Autre' },
+  ];
+
+  function buildBirthDate() {
+    var dd = parseInt(d, 10), mm = parseInt(m, 10), yy = parseInt(y, 10);
+    if (!dd || !mm || !yy || yy < 1900 || yy > new Date().getFullYear()) return null;
+    if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+    return yy + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+  }
+
+  function submit() {
+    var h = parseInt(height, 10);
+    var w = parseInt(weight, 10);
+    onDone({
+      gender: gender || null,
+      birth_date: buildBirthDate(),
+      height_cm: isFinite(h) && h > 0 ? h : null,
+      weight_kg: isFinite(w) && w > 0 ? w : null,
+    });
+  }
+
+  function inputStyle() {
+    return { height: 48, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12, color: '#ffffff', fontSize: 15, paddingHorizontal: 14, textAlign: 'center' };
+  }
+
+  function fieldLabel(text) {
+    return <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.55)', marginBottom: 8, letterSpacing: 0.3, textTransform: 'uppercase' }}>{text}</Text>;
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000e18' }}>
+      <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.35 }} pointerEvents="none">
+        <FloatingMedusas />
+      </View>
+      <View style={{ paddingTop: 58, paddingLeft: 22, alignItems: 'flex-start', zIndex: 5 }} pointerEvents="none">
+        <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</AnimatedPlus></Text>
+      </View>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingTop: 24, paddingBottom: 40, paddingHorizontal: 24 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <View style={{ alignItems: 'center', marginBottom: 32 }}>
+            <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.4, marginBottom: 8 }}>{tr.profile_title || 'À propos de toi'}</Text>
+            <Text style={{ fontSize: 14, fontWeight: '400', color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 20 }}>{tr.profile_sub || 'Pour personnaliser ton programme'}</Text>
+          </View>
+
+          <View style={{ marginBottom: 24 }}>
+            {fieldLabel(tr.profile_gender_label || 'Genre')}
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {genders.map(function(g) {
+                var active = gender === g.key;
+                return (
+                  <TouchableOpacity
+                    key={g.key}
+                    activeOpacity={0.85}
+                    onPress={function() { setGender(g.key); }}
+                    style={{ flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: active ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.12)' }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: active ? '700' : '500', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.78)' }}>{g.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={{ marginBottom: 24 }}>
+            {fieldLabel(tr.profile_birth_label || 'Date de naissance')}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TextInput value={d} onChangeText={setD} placeholder={tr.profile_birth_ph_d || 'JJ'} placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={2} style={[inputStyle(), { flex: 1 }]} />
+              <TextInput value={m} onChangeText={setM} placeholder={tr.profile_birth_ph_m || 'MM'} placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={2} style={[inputStyle(), { flex: 1 }]} />
+              <TextInput value={y} onChangeText={setY} placeholder={tr.profile_birth_ph_y || 'AAAA'} placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={4} style={[inputStyle(), { flex: 1.4 }]} />
+            </View>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 32 }}>
+            <View style={{ flex: 1 }}>
+              {fieldLabel(tr.profile_height_label || 'Taille (cm)')}
+              <TextInput value={height} onChangeText={setHeight} placeholder="170" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={3} style={inputStyle()} />
+            </View>
+            <View style={{ flex: 1 }}>
+              {fieldLabel(tr.profile_weight_label || 'Poids (kg)')}
+              <TextInput value={weight} onChangeText={setWeight} placeholder="65" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={3} style={inputStyle()} />
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={submit}
+            activeOpacity={0.85}
+            style={{ height: 54, borderRadius: 14, overflow: 'hidden' }}
+          >
+            <BlurView intensity={Platform.OS === 'ios' ? 60 : 0} tint="dark" style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(229,255,0,0.25)', borderWidth: 1, borderColor: '#E5FF00' }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#E5FF00', letterSpacing: 0.3 }}>{tr.welcome_cta || "C'est parti !"}</Text>
+            </BlurView>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+// ══════════════════════════════════
 // APP ROOT
 // ══════════════════════════════════
 function App() {
   const [onboardingDone, setOnboardingDone] = useState(false);
   const [introShown, setIntroShown] = useState(false);
+  const [welcomeShown, setWelcomeShown] = useState(null);
+  const [profileSetupShown, setProfileSetupShown] = useState(null);
   const [prenom, setPrenom] = useState('');
   const [lang, setLang] = useState(() => getAppLangFromLocale());
   const [tensionIdxs, setTensionIdxs] = useState([]);
@@ -1287,6 +1578,42 @@ function App() {
       console.log('[FluidBody] emojis inline', JSON.stringify({ fire: '🔥', lock: '🔒', check: '✓', play: '▶' }));
     }
   }, []);
+
+  useEffect(() => {
+    // TEMP DEV — force WelcomeIntroScreen à chaque démarrage. Retirer avant prod.
+    AsyncStorage.removeItem('fluid_welcome_intro_done').finally(function() {
+      AsyncStorage.getItem('fluid_welcome_intro_done').then(function(v) {
+        setWelcomeShown(v === '1');
+      }).catch(function() { setWelcomeShown(true); });
+    });
+  }, []);
+
+  function dismissWelcomeIntro() {
+    setWelcomeShown(true);
+    AsyncStorage.setItem('fluid_welcome_intro_done', '1').catch(function(e) { devWarn('welcome flag persist', e); });
+  }
+
+  useEffect(() => {
+    AsyncStorage.getItem('fluid_profile_setup_done').then(function(v) {
+      setProfileSetupShown(v === '1');
+    }).catch(function() { setProfileSetupShown(true); });
+  }, []);
+
+  async function handleProfileSetupSave(payload) {
+    setProfileSetupShown(true);
+    AsyncStorage.setItem('fluid_profile_setup_done', '1').catch(function(e) { devWarn('profile setup flag persist', e); });
+    if (!supabase) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const row = { id: session.user.id, updated_at: new Date().toISOString() };
+      if (payload.gender) row.gender = payload.gender;
+      if (payload.birth_date) row.birth_date = payload.birth_date;
+      if (payload.height_cm != null) row.height_cm = payload.height_cm;
+      if (payload.weight_kg != null) row.weight_kg = payload.weight_kg;
+      await supabase.from('profiles').upsert(row);
+    } catch (e) { devWarn('Supabase profile setup upsert', e); }
+  }
 
   useEffect(() => {
     function friendlyFromEmail(email) {
@@ -1441,7 +1768,7 @@ function App() {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000e18', alignItems: 'center', justifyContent: 'center' }}>
-        <LinearGradient colors={['#000e18', '#001828', '#002d48', '#001828', '#000e18']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
         {/* Bulles qui descendent */}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
           <PluieBulles />
@@ -1476,6 +1803,17 @@ function App() {
 
   if (showAuth && !supaUser) {
     return <AuthScreen onSkip={() => setShowAuth(false)} onSuccess={() => setShowAuth(false)} lang={lang} prenomHint={prenom} langForProfile={lang} tensionIdxsForProfile={tensionIdxs} />;
+  }
+
+  if (welcomeShown === false) {
+    return <WelcomeIntroScreen lang={lang} onDone={function(idxs) {
+      if (Array.isArray(idxs) && idxs.length > 0) handleTensionChange(idxs);
+      dismissWelcomeIntro();
+    }} />;
+  }
+
+  if (profileSetupShown === false) {
+    return <ProfileSetupScreen lang={lang} onDone={handleProfileSetupSave} />;
   }
 
   return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} />;

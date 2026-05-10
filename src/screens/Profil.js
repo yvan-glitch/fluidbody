@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground, Share, Alert, Modal, Dimensions } from 'react-native';
+import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground, Share, Alert, Modal, Dimensions, TextInput, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Svg, { Path, Circle } from 'react-native-svg';
 import ViewShot from 'react-native-view-shot';
 import { T, PILIER_IMAGES } from '../constants/data';
@@ -38,6 +39,15 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var [quoteEnabled, setQuoteEnabled] = useState(true);
   var [quoteHour, setQuoteHour] = useState(8);
   var [storageUsed, setStorageUsed] = useState('0 B');
+  var [profileData, setProfileData] = useState({ gender: null, birth_date: null, height_cm: null, weight_kg: null });
+  var [profileEditMode, setProfileEditMode] = useState(false);
+  var [profileSaving, setProfileSaving] = useState(false);
+  var [editGender, setEditGender] = useState(null);
+  var [editD, setEditD] = useState('');
+  var [editM, setEditM] = useState('');
+  var [editY, setEditY] = useState('');
+  var [editHeight, setEditHeight] = useState('');
+  var [editWeight, setEditWeight] = useState('');
 
   useEffect(function() {
     AsyncStorage.getItem('fluid_notif_hour').then(function(v) { if (v) setNotifHour(parseInt(v) || 9); });
@@ -49,6 +59,75 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
       getStorageUsed().then(function(s) { setStorageUsed(formatBytes(s)); });
     } catch(e) {}
   }, []);
+
+  useEffect(function() {
+    if (!supabase || !supaUser) return;
+    var cancelled = false;
+    supabase.from('profiles').select('gender, birth_date, height_cm, weight_kg').eq('id', supaUser.id).maybeSingle().then(function(res) {
+      if (cancelled || !res || !res.data) return;
+      setProfileData({
+        gender: res.data.gender || null,
+        birth_date: res.data.birth_date || null,
+        height_cm: res.data.height_cm != null ? res.data.height_cm : null,
+        weight_kg: res.data.weight_kg != null ? res.data.weight_kg : null,
+      });
+    }).catch(function() {});
+    return function() { cancelled = true; };
+  }, [supaUser && supaUser.id]);
+
+  function startProfileEdit() {
+    setEditGender(profileData.gender || null);
+    if (profileData.birth_date && /^\d{4}-\d{2}-\d{2}$/.test(profileData.birth_date)) {
+      var parts = profileData.birth_date.split('-');
+      setEditY(parts[0]); setEditM(parts[1]); setEditD(parts[2]);
+    } else { setEditY(''); setEditM(''); setEditD(''); }
+    setEditHeight(profileData.height_cm != null ? String(profileData.height_cm) : '');
+    setEditWeight(profileData.weight_kg != null ? String(profileData.weight_kg) : '');
+    setProfileEditMode(true);
+  }
+
+  async function saveProfileEdit() {
+    var dd = parseInt(editD, 10), mm = parseInt(editM, 10), yy = parseInt(editY, 10);
+    var birth = null;
+    if (dd && mm && yy && yy >= 1900 && yy <= new Date().getFullYear() && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+      birth = yy + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+    }
+    var h = parseInt(editHeight, 10);
+    var w = parseInt(editWeight, 10);
+    var next = {
+      gender: editGender || null,
+      birth_date: birth,
+      height_cm: isFinite(h) && h > 0 ? h : null,
+      weight_kg: isFinite(w) && w > 0 ? w : null,
+    };
+    setProfileData(next);
+    setProfileEditMode(false);
+    if (!supabase || !supaUser) return;
+    setProfileSaving(true);
+    try {
+      await supabase.from('profiles').upsert({
+        id: supaUser.id,
+        gender: next.gender,
+        birth_date: next.birth_date,
+        height_cm: next.height_cm,
+        weight_kg: next.weight_kg,
+        updated_at: new Date().toISOString(),
+      });
+    } catch(e) {}
+    setProfileSaving(false);
+  }
+
+  function genderLabel(key) {
+    if (key === 'female') return tr.profile_gender_female || 'Femme';
+    if (key === 'male') return tr.profile_gender_male || 'Homme';
+    if (key === 'other') return tr.profile_gender_other || 'Autre';
+    return tr.profile_not_set || 'Non renseigné';
+  }
+  function formatBirth(iso) {
+    if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return tr.profile_not_set || 'Non renseigné';
+    var p = iso.split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
   var totalDoneVal = done ? Object.values(done).flat().filter(Boolean).length : 0;
   var pctVal = Math.round(totalDoneVal / 160 * 100);
   var piliers = getPiliers(lang);
@@ -66,7 +145,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   }
   return (
     <View style={{ flex: 1 }}>
-      <LinearGradient pointerEvents="none" colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
+      <LinearGradient pointerEvents="none" colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
         {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
       </View>
@@ -201,8 +280,10 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         </View>
 
         <Modal visible={showCoachBio} animationType="slide" transparent statusBarTranslucent>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.95)', justifyContent: 'center' }}>
-            <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,28,50,0.95)', borderRadius: 20, padding: 24, maxHeight: Dimensions.get('window').height * 0.8, borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)' }}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.6)', justifyContent: 'center' }}>
+            <View style={{ marginHorizontal: 20, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', maxHeight: Dimensions.get('window').height * 0.8, shadowColor: '#ffffff', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
+              <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ backgroundColor: 'rgba(10,20,35,0.6)', padding: 24 }}>
+                <LinearGradient colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '30%' }} pointerEvents="none" />
               <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={{ alignItems: 'center', marginBottom: 20 }}>
                   <View style={{ width: 90, height: 90, borderRadius: 45, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginBottom: 12 }}>
@@ -216,6 +297,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <TouchableOpacity onPress={function() { setShowCoachBio(false); }} style={{ marginTop: 18, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.15)', alignItems: 'center' }}>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>Fermer</Text>
               </TouchableOpacity>
+              </BlurView>
             </View>
           </View>
         </Modal>
@@ -358,6 +440,85 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           })}
         </View>
 
+        {supaUser && (
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff' }}>{tr.profile_card_title || 'Mon profil'}</Text>
+              {!profileEditMode ? (
+                <TouchableOpacity onPress={startProfileEdit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} activeOpacity={0.7}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.profile_edit_btn || 'Modifier'}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {!profileEditMode ? (
+              <View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{tr.profile_gender_label || 'Genre'}</Text>
+                  <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{genderLabel(profileData.gender)}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{tr.profile_birth_label || 'Date de naissance'}</Text>
+                  <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{formatBirth(profileData.birth_date)}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{tr.profile_height_label || 'Taille (cm)'}</Text>
+                  <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{profileData.height_cm != null ? profileData.height_cm + ' cm' : (tr.profile_not_set || 'Non renseigné')}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12 }}>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{tr.profile_weight_label || 'Poids (kg)'}</Text>
+                  <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{profileData.weight_kg != null ? profileData.weight_kg + ' kg' : (tr.profile_not_set || 'Non renseigné')}</Text>
+                </View>
+              </View>
+            ) : (
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.3, textTransform: 'uppercase', marginTop: 4, marginBottom: 8 }}>{tr.profile_gender_label || 'Genre'}</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                  {[
+                    { key: 'female', label: tr.profile_gender_female || 'Femme' },
+                    { key: 'male', label: tr.profile_gender_male || 'Homme' },
+                    { key: 'other', label: tr.profile_gender_other || 'Autre' },
+                  ].map(function(g) {
+                    var active = editGender === g.key;
+                    return (
+                      <TouchableOpacity key={g.key} activeOpacity={0.85} onPress={function() { setEditGender(g.key); }} style={{ flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: active ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.12)' }}>
+                        <Text style={{ fontSize: 13, fontWeight: active ? '700' : '500', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.78)' }}>{g.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.3, textTransform: 'uppercase', marginBottom: 8 }}>{tr.profile_birth_label || 'Date de naissance'}</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                  <TextInput value={editD} onChangeText={setEditD} placeholder={tr.profile_birth_ph_d || 'JJ'} placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={2} style={{ flex: 1, height: 44, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12, color: '#ffffff', fontSize: 15, paddingHorizontal: 12, textAlign: 'center' }} />
+                  <TextInput value={editM} onChangeText={setEditM} placeholder={tr.profile_birth_ph_m || 'MM'} placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={2} style={{ flex: 1, height: 44, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12, color: '#ffffff', fontSize: 15, paddingHorizontal: 12, textAlign: 'center' }} />
+                  <TextInput value={editY} onChangeText={setEditY} placeholder={tr.profile_birth_ph_y || 'AAAA'} placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={4} style={{ flex: 1.4, height: 44, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12, color: '#ffffff', fontSize: 15, paddingHorizontal: 12, textAlign: 'center' }} />
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 18 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.3, textTransform: 'uppercase', marginBottom: 8 }}>{tr.profile_height_label || 'Taille (cm)'}</Text>
+                    <TextInput value={editHeight} onChangeText={setEditHeight} placeholder="170" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={3} style={{ height: 44, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12, color: '#ffffff', fontSize: 15, paddingHorizontal: 12, textAlign: 'center' }} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.3, textTransform: 'uppercase', marginBottom: 8 }}>{tr.profile_weight_label || 'Poids (kg)'}</Text>
+                    <TextInput value={editWeight} onChangeText={setEditWeight} placeholder="65" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={3} style={{ height: 44, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12, color: '#ffffff', fontSize: 15, paddingHorizontal: 12, textAlign: 'center' }} />
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity onPress={function() { setProfileEditMode(false); }} disabled={profileSaving} activeOpacity={0.7} style={{ flex: 1, height: 46, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.7)' }}>{tr.profile_cancel_btn || 'Annuler'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={saveProfileEdit} disabled={profileSaving} activeOpacity={0.85} style={{ flex: 1.4, height: 46, borderRadius: 12, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#000000' }}>{profileSaving ? '…' : (tr.profile_save_btn || 'Enregistrer')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)' }}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dev_title || 'Développeur'}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
@@ -375,8 +536,10 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         </View>
 
         <Modal visible={showDevBio} animationType="slide" transparent statusBarTranslucent>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.95)', justifyContent: 'center' }}>
-            <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,28,50,0.95)', borderRadius: 20, padding: 24, maxHeight: Dimensions.get('window').height * 0.8, borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)' }}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.6)', justifyContent: 'center' }}>
+            <View style={{ marginHorizontal: 20, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', maxHeight: Dimensions.get('window').height * 0.8, shadowColor: '#ffffff', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
+              <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ backgroundColor: 'rgba(10,20,35,0.6)', padding: 24 }}>
+                <LinearGradient colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '30%' }} pointerEvents="none" />
               <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={{ alignItems: 'center', marginBottom: 20 }}>
                   <View style={{ width: 90, height: 90, borderRadius: 45, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginBottom: 12 }}>
@@ -390,6 +553,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <TouchableOpacity onPress={function() { setShowDevBio(false); }} style={{ marginTop: 18, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.15)', alignItems: 'center' }}>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>Fermer</Text>
               </TouchableOpacity>
+              </BlurView>
             </View>
           </View>
         </Modal>
