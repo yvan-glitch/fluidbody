@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground, Share, Alert, Modal, Dimensions, TextInput, Platform } from 'react-native';
+import GlassButton from '../components/GlassButton';
+import LivingBackground from '../components/LivingBackground';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -29,7 +31,7 @@ function TimerIcon({ color, size }) {
   );
 }
 
-function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer }) {
+function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onEditProfile, profileRefreshKey }) {
   var tr = T[lang] || T['fr'];
   var shareRef = useRef(null);
   var [showCoachBio, setShowCoachBio] = useState(false);
@@ -61,19 +63,27 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   }, []);
 
   useEffect(function() {
-    if (!supabase || !supaUser) return;
+    if (!supabase || !supaUser) {
+      console.log('[Profil] fetch skipped — supabase=' + !!supabase + ' supaUser=' + !!supaUser);
+      return;
+    }
+    console.log('[Profil] fetching profile for user.id:', supaUser.id);
     var cancelled = false;
-    supabase.from('profiles').select('gender, birth_date, height_cm, weight_kg').eq('id', supaUser.id).maybeSingle().then(function(res) {
-      if (cancelled || !res || !res.data) return;
+    supabase.from('profiles').select('prenom, gender, birth_date, height_cm, weight_kg').eq('id', supaUser.id).maybeSingle().then(function(res) {
+      if (cancelled) return;
+      console.log('[Profil] fetched res:', JSON.stringify({ data: res?.data || null, error: res?.error?.message || null }));
+      if (!res || !res.data) return;
       setProfileData({
         gender: res.data.gender || null,
         birth_date: res.data.birth_date || null,
         height_cm: res.data.height_cm != null ? res.data.height_cm : null,
         weight_kg: res.data.weight_kg != null ? res.data.weight_kg : null,
       });
-    }).catch(function() {});
+    }).catch(function(e) {
+      console.log('[Profil] fetch threw:', e?.message || e);
+    });
     return function() { cancelled = true; };
-  }, [supaUser && supaUser.id]);
+  }, [supaUser && supaUser.id, profileRefreshKey]);
 
   function startProfileEdit() {
     setEditGender(profileData.gender || null);
@@ -146,6 +156,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient pointerEvents="none" colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LivingBackground />
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
         {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
       </View>
@@ -444,11 +455,25 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff' }}>{tr.profile_card_title || 'Mon profil'}</Text>
-              {!profileEditMode ? (
-                <TouchableOpacity onPress={startProfileEdit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} activeOpacity={0.7}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.profile_edit_btn || 'Modifier'}</Text>
-                </TouchableOpacity>
-              ) : null}
+              <TouchableOpacity
+                onPress={function() {
+                  if (onEditProfile) {
+                    onEditProfile({
+                      prenom: prenom || '',
+                      gender: profileData.gender,
+                      birth_date: profileData.birth_date,
+                      height_cm: profileData.height_cm,
+                      weight_kg: profileData.weight_kg,
+                    });
+                  } else {
+                    startProfileEdit();
+                  }
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.profile_edit_btn || 'Modifier'}</Text>
+              </TouchableOpacity>
             </View>
 
             {!profileEditMode ? (
@@ -507,12 +532,28 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 </View>
 
                 <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <TouchableOpacity onPress={function() { setProfileEditMode(false); }} disabled={profileSaving} activeOpacity={0.7} style={{ flex: 1, height: 46, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.7)' }}>{tr.profile_cancel_btn || 'Annuler'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={saveProfileEdit} disabled={profileSaving} activeOpacity={0.85} style={{ flex: 1.4, height: 46, borderRadius: 12, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#000000' }}>{profileSaving ? '…' : (tr.profile_save_btn || 'Enregistrer')}</Text>
-                  </TouchableOpacity>
+                  <View style={{ flex: 1 }}>
+                    <GlassButton
+                      onPress={function() { setProfileEditMode(false); }}
+                      disabled={profileSaving}
+                      size="sm"
+                      textColor="rgba(255,255,255,0.7)"
+                      textStyle={{ fontSize: 14, fontWeight: '600' }}
+                    >
+                      {tr.profile_cancel_btn || 'Annuler'}
+                    </GlassButton>
+                  </View>
+                  <View style={{ flex: 1.4 }}>
+                    <GlassButton
+                      onPress={saveProfileEdit}
+                      loading={profileSaving}
+                      size="sm"
+                      textColor="#AEEF4D"
+                      textStyle={{ fontSize: 14, fontWeight: '800' }}
+                    >
+                      {profileSaving ? '…' : (tr.profile_save_btn || 'Enregistrer')}
+                    </GlassButton>
+                  </View>
                 </View>
               </View>
             )}
@@ -595,31 +636,35 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         </View>
 
         {supaUser && onLogout && (
-          <TouchableOpacity
-            onPress={onLogout}
-            activeOpacity={0.85}
-            style={{
-              marginHorizontal: 20,
-              marginTop: 40,
-              marginBottom: 48,
-              height: 50,
-              borderRadius: 14,
-              backgroundColor: 'transparent',
-              borderWidth: 1,
-              borderColor: '#E5FF00',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-            }}
-          >
-            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-              <Path d="M9 3H6a2 2 0 00-2 2v14a2 2 0 002 2h3" stroke="#E5FF00" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-              <Path d="M16 17l5-5-5-5" stroke="#E5FF00" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-              <Path d="M21 12H10" stroke="#E5FF00" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#E5FF00', letterSpacing: 0.4 }}>Se déconnecter</Text>
-          </TouchableOpacity>
+          <View style={{ marginHorizontal: 20, marginTop: 40, marginBottom: 48 }}>
+            <GlassButton
+              onPress={onLogout}
+              textColor="#AEEF4D"
+              leftIcon={
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                  <Path d="M9 3H6a2 2 0 00-2 2v14a2 2 0 002 2h3" stroke="#AEEF4D" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                  <Path d="M16 17l5-5-5-5" stroke="#AEEF4D" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                  <Path d="M21 12H10" stroke="#AEEF4D" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
+              }
+            >
+              Se déconnecter
+            </GlassButton>
+          </View>
+        )}
+        {__DEV__ && (
+          <View style={{ marginHorizontal: 20, marginBottom: 48, padding: 16, borderWidth: 1, borderColor: 'rgba(255,200,0,0.4)', borderRadius: 12 }}>
+            <Text style={{ color: '#FFCC00', fontSize: 12, marginBottom: 8, fontWeight: '700', letterSpacing: 1 }}>DEV ONLY</Text>
+            <TouchableOpacity
+              onPress={async () => {
+                await AsyncStorage.removeItem('fluid_hk_prompt_done');
+                Alert.alert('OK', 'Flag HealthKit prompt resetté. Relance l\'app pour voir l\'écran.');
+              }}
+              style={{ padding: 12, backgroundColor: 'rgba(255,200,0,0.15)', borderRadius: 8 }}
+            >
+              <Text style={{ color: '#FFCC00' }}>Reset HealthKit prompt flag</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </ScrollView>
     </View>
