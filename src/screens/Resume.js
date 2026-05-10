@@ -67,13 +67,14 @@ const { width: SW } = Dimensions.get('window');
 function getJellyfishGlow(progress) {
   var p = Math.max(0, Math.min(1, progress));
   return {
-    bellOpacity: 0.22 + (1.0 - 0.22) * p,
-    haloRadius: 22 * p,
-    haloOpacity: 0.55 * p,
+    bellOpacity: 0.45 + (1.0 - 0.45) * p,
+    haloRadius: 8 + (22 - 8) * p,
+    haloOpacity: 0.18 + (0.55 - 0.18) * p,
+    auraOpacity: 0.16 + (0.36 - 0.16) * p,
   };
 }
 
-function JellyfishMetric({ progress, color, size = 64 }) {
+function JellyfishMetric({ progress, color, size = 88 }) {
   var anim = useRef(new Animated.Value(0)).current;
   var pulse = useRef(new Animated.Value(1)).current;
   var [glow, setGlow] = useState(getJellyfishGlow(0));
@@ -106,14 +107,33 @@ function JellyfishMetric({ progress, color, size = 64 }) {
       height: size,
       alignItems: 'center',
       justifyContent: 'center',
-      opacity: glow.bellOpacity,
       shadowColor: color,
       shadowOpacity: glow.haloOpacity,
       shadowRadius: glow.haloRadius,
       shadowOffset: { width: 0, height: 0 },
       transform: [{ scale: pulse }],
     }}>
-      <MeduseCornerIcon size={size} tint={tintRgba} breathCycleMs={null} />
+      {/* Aura colorée derrière (renforce la lecture de la teinte) */}
+      <View style={{
+        position: 'absolute',
+        width: size * 0.78,
+        height: size * 0.78,
+        borderRadius: size,
+        backgroundColor: color,
+        opacity: glow.auraOpacity,
+      }} />
+      <Animated.View style={{ opacity: glow.bellOpacity }}>
+        <MeduseCornerIcon size={size} tint={tintRgba} breathCycleMs={null} />
+      </Animated.View>
+      {/* Voile teinté par-dessus pour intensifier la couleur (additive) */}
+      <View style={{
+        position: 'absolute',
+        width: size * 0.62,
+        height: size * 0.62,
+        borderRadius: size,
+        backgroundColor: color,
+        opacity: glow.auraOpacity * 0.45,
+      }} pointerEvents="none" />
     </Animated.View>
   );
 }
@@ -468,26 +488,26 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
 
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 16 }}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 }}>{tr.resume_activite || 'Activité'}</Text>
-          {[
-            { label: tr.resume_bouger || 'Bouger', color: '#FF3B30', value: effectiveCal, goal: calGoal, unit: 'cal', progress: calPct },
-            { label: tr.resume_exercice || 'Exercice', color: '#30D158', value: effectiveExMin, goal: exGoal, unit: 'min', progress: exPct },
-            { label: tr.resume_debout || 'Debout', color: '#0A84FF', value: hkData.standHr, goal: standGoal, unit: 'h', progress: standPct },
-          ].map(function(m, i, arr) {
-            return (
-              <View key={m.label} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: i === arr.length - 1 ? 0 : 14 }}>
-                <View style={{ width: 64, height: 64, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
-                  <JellyfishMetric progress={m.progress} color={m.color} size={64} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: m.color }} />
-                    <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{m.label}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-start' }}>
+            {[
+              { label: tr.resume_bouger || 'Bouger', color: '#FF3B30', value: effectiveCal, goal: calGoal, unit: 'cal', progress: calPct },
+              { label: tr.resume_exercice || 'Exercice', color: '#30D158', value: effectiveExMin, goal: exGoal, unit: 'min', progress: exPct },
+              { label: tr.resume_debout || 'Debout', color: '#0A84FF', value: hkData.standHr, goal: standGoal, unit: 'h', progress: standPct },
+            ].map(function(m) {
+              return (
+                <View key={m.label} style={{ flex: 1, alignItems: 'center' }}>
+                  <JellyfishMetric progress={m.progress} color={m.color} size={88} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
+                    <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: m.color }} />
+                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>{m.label}</Text>
                   </View>
-                  <Text style={{ fontSize: 22, fontWeight: '700', color: m.color, marginTop: 2 }}>{m.value}<Text style={{ fontSize: 13, fontWeight: '400' }}>/{m.goal} {m.unit}</Text></Text>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: m.color, marginTop: 2 }}>
+                    {m.value}<Text style={{ fontSize: 11, fontWeight: '400', color: 'rgba(255,255,255,0.55)' }}>/{m.goal} {m.unit}</Text>
+                  </Text>
                 </View>
-              </View>
-            );
-          })}
+              );
+            })}
+          </View>
         </View>
 
         {(function() {
