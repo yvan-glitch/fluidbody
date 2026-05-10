@@ -223,11 +223,14 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
           saveHealthKitWorkout={saveHealthKitWorkout}
         />
         {showDemoLimit && (
-          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.85)', paddingVertical: 24, paddingHorizontal: 28, alignItems: 'center', zIndex: 50 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', textAlign: 'center', marginBottom: 12 }}>{tr.demo_limit}</Text>
-            <TouchableOpacity onPress={() => { setShowDemoLimit(false); setActiveVideo(null); if (onActivateSubscription) onActivateSubscription(); }} style={{ backgroundColor: '#E5FF00', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 25 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#000000' }}>{tr.paywall_start}</Text>
-            </TouchableOpacity>
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 50, overflow: 'hidden', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.25)' }}>
+            <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ paddingVertical: 24, paddingHorizontal: 28, alignItems: 'center', backgroundColor: 'rgba(10,20,35,0.6)' }}>
+              <LinearGradient colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }} pointerEvents="none" />
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', textAlign: 'center', marginBottom: 12 }}>{tr.demo_limit}</Text>
+              <TouchableOpacity onPress={() => { setShowDemoLimit(false); setActiveVideo(null); if (onActivateSubscription) onActivateSubscription(); }} style={{ backgroundColor: '#E5FF00', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 25, shadowColor: '#E5FF00', shadowOpacity: 0.55, shadowRadius: 20, shadowOffset: { width: 0, height: 0 } }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#000000' }}>{tr.paywall_start}</Text>
+              </TouchableOpacity>
+            </BlurView>
           </View>
         )}
       </Modal>
@@ -236,7 +239,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}>
-      <LinearGradient colors={['#000e18', '#002d48', '#005878', '#00bdd0', '#001828']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
       <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
       <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r'+i} delay={b.delay + 2000} x={b.x + SW * 0.35} size={b.size} duration={b.duration} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r2'+i} delay={b.delay + 5000} x={b.x + SW * 0.65} size={b.size} duration={b.duration} />)}
@@ -418,7 +421,8 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
   return (
     <Modal visible animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: "#000e18" }}>
-        <LinearGradient colors={['#000e18', '#002d48', '#005878']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+        <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} pointerEvents="none" />
         <ScrollView contentContainerStyle={{ paddingTop: 60, paddingHorizontal: 24, paddingBottom: 40 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
             <TouchableOpacity onPress={onClose} style={{ paddingVertical: 8 }}>
@@ -611,7 +615,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
 
   return (
     <View style={localStyles.screen}>
-      <LinearGradient colors={["#000e18", "#001828", "#002d48", "#005878", "#00bdd0"]} locations={[0, 0.2, 0.45, 0.70, 1]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: "none" }}>
         <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
         <Rayon left={140} width={55} delay={2000} duration={11000} opacity={0.15} />
@@ -637,17 +641,29 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 key={t}
                 onPress={function() { setMcTab(t); }}
                 activeOpacity={0.8}
-                style={{
+                style={[
+                  { borderRadius: 24, overflow: 'hidden' },
+                  active ? { shadowColor: '#AEEF4D', shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } } : null,
+                ]}
+              >
+                <BlurView intensity={Platform.OS === 'ios' ? 75 : 0} tint="dark" style={{
                   paddingHorizontal: 22,
                   paddingVertical: 13,
-                  borderRadius: 24,
-                  backgroundColor: active ? "#ffffff" : "rgba(255,255,255,0.12)",
                   alignItems: 'center',
-                }}
-              >
-                <Text style={{ fontSize: 16, fontWeight: active ? "700" : "600", color: active ? "#000000" : "rgba(255,255,255,0.6)" }}>
-                  {mcTabLabels[t]}
-                </Text>
+                  backgroundColor: active ? 'rgba(174,239,77,0.15)' : 'rgba(255,255,255,0.10)',
+                  borderWidth: 1,
+                  borderColor: active ? 'rgba(174,239,77,0.55)' : 'rgba(255,255,255,0.25)',
+                }}>
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0)']}
+                    locations={[0, 1]}
+                    style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }}
+                    pointerEvents="none"
+                  />
+                  <Text style={{ fontSize: 16, fontWeight: active ? "700" : "600", color: active ? "#AEEF4D" : "rgba(255,255,255,0.78)" }}>
+                    {mcTabLabels[t]}
+                  </Text>
+                </BlurView>
               </TouchableOpacity>
             );
           })}
@@ -726,7 +742,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 <TouchableOpacity
                   onPress={function() { onActivateSubscription && onActivateSubscription(); }}
                   activeOpacity={0.85}
-                  style={{ alignSelf: "stretch", height: 52, borderRadius: 26, backgroundColor: "#E5FF00", alignItems: "center", justifyContent: "center", marginBottom: 10 }}
+                  style={{ alignSelf: "stretch", height: 52, borderRadius: 26, backgroundColor: "#E5FF00", shadowColor: "#E5FF00", shadowOpacity: 0.55, shadowRadius: 20, shadowOffset: { width: 0, height: 0 }, alignItems: "center", justifyContent: "center", marginBottom: 10 }}
                 >
                   <Text style={{ fontSize: 17, fontWeight: "700", color: "#000000", letterSpacing: 0.2 }}>{tr.paywall_start}</Text>
                 </TouchableOpacity>
@@ -744,12 +760,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               var hasZones = Array.isArray(tensionIdxs) && tensionIdxs.length > 0;
               if (bilanEditMode) {
                 return (
-                  <View style={{ marginBottom: 24, marginHorizontal: -16 }}>
-                    <View style={{ paddingHorizontal: 22, marginBottom: 14 }}>
+                  <View style={{ marginBottom: 24 }}>
+                    <View style={{ marginBottom: 14, paddingHorizontal: 4 }}>
                       <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', letterSpacing: -0.2, marginBottom: 4 }}>{tr.ob_bilan || 'Bilan corporel'}</Text>
                       <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 18 }}>{tr.bilan_intro || 'Dis-nous où tu ressens des tensions pour personnaliser ton programme'}</Text>
                     </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 16, paddingHorizontal: 8 }}>
                       {tr.ob_zones.map(function(zone, idx) {
                         var active = (tensionIdxs || []).indexOf(idx) !== -1;
                         return (
@@ -762,15 +778,14 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                               var next = cur.indexOf(idx) !== -1 ? cur.filter(function(x) { return x !== idx; }) : cur.concat([idx]);
                               onTensionChange(next);
                             }}
-                            style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 22, backgroundColor: active ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.08)', flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                            style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 22, backgroundColor: active ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.1)' }}
                           >
-                            <ZoneIcon idx={idx} color={active ? '#AEEF4D' : 'rgba(255,255,255,0.55)'} size={16} />
-                            <Text style={{ fontSize: 13, fontWeight: active ? '700' : '500', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.75)', letterSpacing: 0.1 }}>{zone}</Text>
+                            <Text style={{ fontSize: 13, fontWeight: active ? '700' : '500', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.78)', letterSpacing: 0.1 }}>{zone}</Text>
                           </TouchableOpacity>
                         );
                       })}
-                    </ScrollView>
-                    <View style={{ paddingHorizontal: 22, marginTop: 16 }}>
+                    </View>
+                    <View style={{ paddingHorizontal: 4 }}>
                       {hasZones ? (
                         <TouchableOpacity
                           onPress={function() { setBilanEditMode(false); }}
