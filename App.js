@@ -43,6 +43,7 @@ import PilierCard from './src/components/PilierCard';
 import GlassButton from './src/components/GlassButton';
 import Confetti from './src/components/Confetti';
 import LivingBackground from './src/components/LivingBackground';
+import SignInScreen from './src/screens/SignIn';
 import MonCorps, { MetricTile } from './src/screens/MonCorps';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
 
@@ -154,9 +155,10 @@ function CustomTabBar({ state, descriptors, navigation }) {
 
   return (
     <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: BAR_H, zIndex: 1000, elevation: 12, shadowColor: '#ffffff', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }} {...panResponder.panHandlers}>
-      <View style={{ flex: 1, borderRadius: BAR_H / 2, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }}>
-        <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} />
-        <LinearGradient colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }} pointerEvents="none" />
+      <View style={{ flex: 1, borderRadius: BAR_H / 2, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
+        <BlurView intensity={Platform.OS === 'ios' ? 40 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.45)' }} />
+        <LinearGradient colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }} pointerEvents="none" />
+        <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.18)']} locations={[0, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '50%' }} pointerEvents="none" />
         <Animated.View style={{ position: 'absolute', top: (BAR_H - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: pillH / 2, backgroundColor: 'rgba(174,239,77,0.15)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.4)', transform: [{ translateX: indicatorX }] }}>
           <LinearGradient colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', borderTopLeftRadius: pillH / 2, borderTopRightRadius: pillH / 2 }} pointerEvents="none" />
         </Animated.View>
@@ -625,7 +627,13 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
     <View style={{ flex: 1, backgroundColor: '#000e18' }}>
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
       <LivingBackground />
-      <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} pointerEvents="none" />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }} pointerEvents="none">
+        {BULLES.map((b, i) => <Bulle key={`auth-${i}`} {...b} />)}
+      </View>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} pointerEvents="none">
+        <FloatingMedusas />
+      </View>
+      <BlurView intensity={Platform.OS === 'ios' ? 30 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.4)' }} pointerEvents="none" />
 
       <View style={{ paddingTop: 58, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 }}>
         <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</AnimatedPlus></Text>
@@ -726,15 +734,17 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
 // ══════════════════════════════════
 // ONBOARDING
 // ══════════════════════════════════
-function OnboardingScreen({ onDone, initialLang }) {
+function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
   const [lang] = useState(() => initialLang ?? getAppLangFromLocale());
   const tr = T[lang] || T.fr;
+  const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailExistsErr, setEmailExistsErr] = useState(false);
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const validPass = password.length >= 6;
   const canSubmit = validEmail && validPass && !loading;
@@ -769,11 +779,20 @@ function OnboardingScreen({ onDone, initialLang }) {
     const em = email.trim().toLowerCase();
     if (!validEmail) { setError(tr.ob_auth_err_email); return; }
     if (!validPass) { setError(tr.ob_auth_err_short); return; }
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setEmailExistsErr(false);
     try {
       if (mode === 'up') {
         const { data, error: err } = await supabase.auth.signUp({ email: em, password });
-        if (err) { setError(err.message); setLoading(false); return; }
+        if (err) {
+          const msg = (err.message || '').toLowerCase();
+          if (msg.includes('already') || msg.includes('exists') || msg.includes('registered') || msg.includes('déjà')) {
+            setEmailExistsErr(true);
+            setError(isFr ? 'Cet email est déjà utilisé. Connecte-toi plutôt ?' : 'This email is already in use. Sign in instead?');
+          } else {
+            setError(err.message);
+          }
+          setLoading(false); return;
+        }
         if (!data.session) { setError(tr.ob_auth_confirm); setLoading(false); return; }
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email: em, password });
@@ -906,30 +925,40 @@ function OnboardingScreen({ onDone, initialLang }) {
             secureTextEntry autoCapitalize="none" autoCorrect={false} editable={!loading}
             style={{ width: '100%', height: 48, backgroundColor: passwordFocused ? 'rgba(229,255,0,0.06)' : 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: passwordFocused ? '#E5FF00' : 'rgba(255,255,255,0.25)', borderRadius: 25, color: '#ffffff', fontSize: 15, paddingHorizontal: 18, marginBottom: 10 }}
           />
-          {error ? <Text style={{ color: 'rgba(255,140,140,0.95)', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>{error}</Text> : null}
+          {error ? (
+            emailExistsErr ? (
+              <View style={{ marginBottom: 10, padding: 10, borderRadius: 14, backgroundColor: 'rgba(229,255,0,0.06)', borderWidth: 1, borderColor: 'rgba(229,255,0,0.4)' }}>
+                <Text style={{ color: 'rgba(255,220,140,0.95)', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>{error}</Text>
+                <TouchableOpacity onPress={() => onSwitchToSignIn && onSwitchToSignIn(email)} activeOpacity={0.85} style={{ alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: '#AEEF4D' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D' }}>{tr.ob_auth_submit_in || 'Se connecter'}</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Text style={{ color: 'rgba(255,140,140,0.95)', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>{error}</Text>
+            )
+          ) : null}
           <GlassButton
-            onPress={() => handleEmailAuth('in')}
+            onPress={() => handleEmailAuth('up')}
             disabled={!canSubmit}
             loading={loading}
             textColor="#AEEF4D"
           >
-            {loading ? '…' : (tr.ob_auth_submit_in || 'Se connecter')}
+            {loading ? '…' : (tr.ob_auth_submit_up || 'Créer un compte')}
           </GlassButton>
-          <GlassButton
-            onPress={() => handleEmailAuth('up')}
-            loading={loading}
-            textColor="#AEEF4D"
-            style={{ marginTop: 12 }}
-            textStyle={{ fontSize: 14, fontWeight: '600' }}
-          >
-            {tr.ob_auth_submit_up || 'Créer un compte'}
-          </GlassButton>
+
+          <TouchableOpacity onPress={() => onSwitchToSignIn && onSwitchToSignIn(email)} disabled={loading} activeOpacity={0.7} style={{ alignItems: 'center', paddingVertical: 12, marginTop: 6 }}>
+            <Text style={{ fontSize: 14 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.55)' }}>{isFr ? 'Déjà un compte ?  ' : 'Already have an account?  '}</Text>
+              <Text style={{ color: '#AEEF4D', textDecorationLine: 'underline' }}>{isFr ? 'Se connecter ›' : 'Sign in ›'}</Text>
+            </Text>
+          </TouchableOpacity>
+
           <GlassButton
             onPress={finish}
             loading={loading}
             size="sm"
             textColor="rgba(255,255,255,0.7)"
-            style={{ marginTop: 10 }}
+            style={{ marginTop: 4 }}
             textStyle={{ fontSize: 13, fontWeight: '500' }}
           >
             {tr.first_seance_later || 'Plus tard'}
@@ -1488,7 +1517,10 @@ function WelcomeIntroScreen({ onDone, lang }) {
     <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
       <LivingBackground />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.35 }} pointerEvents="none">
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }} pointerEvents="none">
+        {BULLES.map((b, i) => <Bulle key={`wi-${i}`} {...b} />)}
+      </View>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} pointerEvents="none">
         <FloatingMedusas />
       </View>
       <View style={{ paddingTop: 58, paddingLeft: 22, alignItems: 'flex-start', zIndex: 5 }} pointerEvents="none">
@@ -1575,10 +1607,10 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
   ];
 
   const floatingMedusas = useRef([
-    { x: new Animated.Value(SW - 70), y: new Animated.Value(SH * 0.18), size: 48, breath: 3400 },
-    { x: new Animated.Value(20), y: new Animated.Value(SH * 0.42), size: 38, breath: 3800 },
-    { x: new Animated.Value(SW * 0.55), y: new Animated.Value(SH * 0.7), size: 36, breath: 4200 },
-    { x: new Animated.Value(SW * 0.78), y: new Animated.Value(SH * 0.85), size: 32, breath: 4000 },
+    { x: new Animated.Value(SW - 90), y: new Animated.Value(SH * 0.22), size: 70, breath: 3400 },
+    { x: new Animated.Value(20), y: new Animated.Value(SH * 0.45), size: 58, breath: 3800 },
+    { x: new Animated.Value(SW * 0.55), y: new Animated.Value(SH * 0.7), size: 54, breath: 4200 },
+    { x: new Animated.Value(SW * 0.78), y: new Animated.Value(SH * 0.85), size: 48, breath: 4000 },
   ]).current;
 
   useEffect(() => {
@@ -1686,8 +1718,8 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
       </View>
       {floatingMedusas.map(function(m, i) {
         return (
-          <Animated.View key={'ps-fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 1, opacity: 0.55, left: m.x, top: m.y }}>
-            <MeduseCornerIcon size={m.size} breathCycleMs={m.breath} breathMaxScale={1.3} tint="rgba(174,239,77,1)" />
+          <Animated.View key={'ps-fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 1, opacity: 0.85, left: m.x, top: m.y }}>
+            <MeduseCornerIcon size={m.size} breathCycleMs={m.breath} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
           </Animated.View>
         );
       })}
@@ -1846,6 +1878,8 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
 function App() {
   const [onboardingDone, setOnboardingDone] = useState(false);
   const [introShown, setIntroShown] = useState(false);
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [signInPrefillEmail, setSignInPrefillEmail] = useState('');
   const [welcomeShown, setWelcomeShown] = useState(null);
   const [profileSetupShown, setProfileSetupShown] = useState(null);
   const [prenom, setPrenom] = useState('');
@@ -2136,9 +2170,9 @@ function App() {
       <View style={{ flex: 1, backgroundColor: '#000e18', alignItems: 'center', justifyContent: 'center' }}>
         <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
       <LivingBackground />
-        {/* Bulles qui descendent */}
+        {/* Bulles qui montent */}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
-          <PluieBulles />
+          {BULLES.map((b, i) => <Bulle key={`splash-${i}`} {...b} />)}
         </View>
         {/* Glow effect behind medusa */}
         <Animated.View style={{ position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(0,190,208,0.08)', opacity: splashGlow, transform: [{ scale: splashGlow.interpolate({ inputRange: [0.3, 0.8], outputRange: [1, 1.5] }) }] }} />
@@ -2160,12 +2194,32 @@ function App() {
   }
 
   if (!introShown) {
-    return <OnboardingScreen initialLang={lang} onDone={(p, l, t, o) => {
-      setIntroShown(true);
-      if (!onboardingDone && !supaUser) {
-        completeOnboarding(p, l, t, o);
-      }
-    }} />;
+    if (showSignIn) {
+      return <SignInScreen
+        lang={lang}
+        supabase={supabase}
+        prefillEmail={signInPrefillEmail}
+        onSwitchToSignUp={() => setShowSignIn(false)}
+        onSuccess={() => { setShowSignIn(false); setIntroShown(true); }}
+        onSkip={() => {
+          setShowSignIn(false);
+          setIntroShown(true);
+          if (!onboardingDone && !supaUser) {
+            completeOnboarding('', lang, [], { skipCloudAuth: true });
+          }
+        }}
+      />;
+    }
+    return <OnboardingScreen
+      initialLang={lang}
+      onSwitchToSignIn={(em) => { setSignInPrefillEmail(em || ''); setShowSignIn(true); }}
+      onDone={(p, l, t, o) => {
+        setIntroShown(true);
+        if (!onboardingDone && !supaUser) {
+          completeOnboarding(p, l, t, o);
+        }
+      }}
+    />;
   }
 
   if (showAuth && !supaUser) {
