@@ -487,7 +487,8 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
         <WeeklySummary streak={streak} lang={lang} />
 
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 }}>{tr.resume_activite || 'Activité'}</Text>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.resume_activite || 'Activité'}</Text>
+          <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.55)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2, marginBottom: 14 }}>{tr.live_today || "Aujourd'hui"}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-start' }}>
             {[
               { label: tr.resume_bouger || 'Bouger', color: '#FF3B30', value: effectiveCal, goal: calGoal, unit: 'cal', progress: calPct },
