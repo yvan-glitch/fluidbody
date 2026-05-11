@@ -2212,9 +2212,12 @@ function App() {
     }
 
     function finishLoading() {
+      // Splash minimum = 900 ms (suffisant pour la transition fade-in/scale).
+      // Auparavant fixé à 3000 ms : pénalité immédiate sur le cold start ressenti.
       var elapsed = Date.now() - splashStart;
-      var remain = Math.max(0, 3000 - elapsed);
-      setTimeout(function() { setLoading(false); }, remain);
+      var remain = Math.max(0, 900 - elapsed);
+      if (remain === 0) setLoading(false);
+      else setTimeout(function() { setLoading(false); }, remain);
     }
     async function checkSession() {
       try {
@@ -2323,11 +2326,6 @@ function App() {
     return (
       <View style={{ flex: 1, backgroundColor: '#000e18', alignItems: 'center', justifyContent: 'center' }}>
         <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
-      <LivingBackground />
-        {/* Bulles qui montent */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
-          {BULLES.map((b, i) => <Bulle key={`splash-${i}`} {...b} />)}
-        </View>
         {/* Glow effect behind medusa */}
         <Animated.View style={{ position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(0,190,208,0.08)', opacity: splashGlow, transform: [{ scale: splashGlow.interpolate({ inputRange: [0.3, 0.8], outputRange: [1, 1.5] }) }] }} />
         {/* Medusa */}
