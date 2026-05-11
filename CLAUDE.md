@@ -64,6 +64,40 @@ No test runner or linter is configured.
 - **Translations**: All UI strings go through `const tr = T[lang] || T['fr']` — always access via `tr.key_name`
 - **Piliers**: The 6 exercise categories (p1-p6, optionally p7) each with up to 20 séances; first 2 séances per pilier are free
 
+## Vidéos sécurisées
+
+Premium Bunny CDN URLs are **never** bundled. Flow:
+
+1. `src/constants/data.js` flags sessions that have a video with `true` at
+   index 3 of the séance tuple (e.g. `['Le dos expliqué', "1'59''", 'Comprendre', true]`).
+   The Bunny GUID lives only in the Supabase table `video_assets`.
+2. `src/utils/videoUrl.js#getSignedVideoUrl(sessionId, kind, lang?)` calls the
+   `sign-video-url` Supabase edge function with the user's JWT.
+3. The edge function (`supabase/functions/sign-video-url/index.ts`) verifies
+   the JWT, looks up `video_assets.bunny_path`, checks entitlement
+   (admin allowlist → `profiles.is_subscriber` → live RevenueCat fallback),
+   then mints a Bunny Token-Auth URL with a 30-min TTL.
+4. `VideoPlayer` and `DownloadManager` consume signed URLs only; the client
+   has an in-memory cache that re-signs ~1 min before expiry.
+
+Session id convention: `${pilierKey}_${seanceIndex}` — matches the existing
+`DownloadManager` key. Same id is used for HLS, MP4 download, and VTT
+subtitles; the edge function picks the asset suffix from `kind`.
+
+Setup:
+- Bunny dashboard: enable Token Authentication on the pull zone (see
+  `supabase/README.md` for the exact clicks).
+- Supabase env vars (function secrets, never `EXPO_PUBLIC_*`):
+  `BUNNY_TOKEN_KEY`, `BUNNY_PULL_ZONE_HOST`,
+  `REVENUECAT_SECRET_API_KEY` (optional), `ADMIN_EMAILS` (optional).
+- Run `supabase db push` to create `video_assets` + add `profiles.is_subscriber`,
+  then `supabase functions deploy sign-video-url`.
+
+`DownloadManager.js`'s XOR-with-derived-seed encryption is a casual-tamper
+deterrent, **not** DRM. It's tagged in the file as a placeholder; replace
+with `expo-secure-store` + a per-user-derived key before treating it as a
+real protection layer.
+
 ## Metro Config
 
 `metro.config.js` adds Node.js polyfills (`node-libs-react-native`) for Supabase compatibility, with mock `net`/`tls`.
