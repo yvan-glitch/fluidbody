@@ -1,0 +1,57 @@
+// Fetches short-lived Bunny Token-Auth URLs from the `sign-video-url` edge
+// function. URLs are cached in-memory per (sessionId, kind, lang) until they
+// approach expiry, so scrubbing inside the player never re-signs.
+//
+// Session ids match the DownloadManager convention: `${pilierKey}_${index}`
+// (e.g. 'p2_0'). The mapping from session id to Bunny GUID lives server-side
+// in the `video_assets` table — never in the bundled JS.
+
+import supabase from '../lib/supabase';
+
+const SAFETY_MARGIN_MS = 60_000; // re-sign 1 min before the token expires
+const cache = new Map();
+
+export function buildSessionId(pilierKey, seanceIndex) {
+  if (!pilierKey || seanceIndex == null) return null;
+  return `${pilierKey}_${seanceIndex}`;
+}
+
+function cacheKey(sessionId, kind, lang) {
+  return lang ? `${sessionId}|${kind}|${lang}` : `${sessionId}|${kind}`;
+}
+
+export async function getSignedVideoUrl(sessionId, kind = 'hls', lang) {
+  if (!sessionId) throw new Error('sessionId required');
+  if (!supabase) throw new Error('Supabase non configuré');
+
+  const key = cacheKey(sessionId, kind, lang);
+  const now = Date.now();
+  const cached = cache.get(key);
+  if (cached && cached.expiresAt - SAFETY_MARGIN_MS > now) return cached.url;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('not-signed-in');
+
+  const { data, error } = await supabase.functions.invoke('sign-video-url', {
+    body: { session_id: sessionId, kind, lang },
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+
+  if (error) {
+    const err = new Error(error.message || 'sign-video-url-failed');
+    err.status = error.context?.status || error.status;
+    throw err;
+  }
+  const { url, expires } = data || {};
+  if (!url || !expires) throw new Error('invalid-sign-response');
+
+  cache.set(key, { url, expiresAt: expires * 1000 });
+  return url;
+}
+
+export function clearVideoUrlCache(sessionId) {
+  if (!sessionId) { cache.clear(); return; }
+  for (const k of Array.from(cache.keys())) {
+    if (k.startsWith(`${sessionId}|`)) cache.delete(k);
+  }
+}
