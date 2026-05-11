@@ -47,6 +47,36 @@ import SignInScreen from './src/screens/SignIn';
 import HealthKitConnectScreen from './src/screens/HealthKitConnect';
 import MonCorps, { MetricTile } from './src/screens/MonCorps';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
+import { LogBox } from 'react-native';
+
+// ─── GLOBAL ERROR HANDLER (PROD ONLY) ─────────────────────────────────────────
+// En production (TestFlight / App Store), on intercepte les erreurs JS uncaught
+// et on les affiche à l'écran pour pouvoir diagnostiquer les bugs silencieux.
+if (!__DEV__) {
+  if (typeof ErrorUtils !== 'undefined' && ErrorUtils.getGlobalHandler) {
+    const originalHandler = ErrorUtils.getGlobalHandler();
+    ErrorUtils.setGlobalHandler((error, isFatal) => {
+      if (typeof console !== 'undefined') {
+        console.error('FLUIDBODY_FATAL:', error?.message || String(error), error?.stack || '');
+      }
+      setTimeout(() => {
+        Alert.alert(
+          'Erreur (debug TestFlight)',
+          `${error?.message || 'Unknown error'}\n\nStack:\n${(error?.stack || '').slice(0, 500)}`,
+          [{ text: 'OK' }]
+        );
+      }, 100);
+      if (typeof originalHandler === 'function') originalHandler(error, isFatal);
+    });
+  }
+  if (typeof process !== 'undefined' && typeof process.on === 'function') {
+    try {
+      process.on('unhandledRejection', (reason) => {
+        Alert.alert('Promise rejetée (debug)', String(reason).slice(0, 500));
+      });
+    } catch (e) {}
+  }
+}
 
 // ── HEALTHKIT ──────────────────────────────────────────
 const HK_PERMISSIONS = AppleHealthKit ? {
