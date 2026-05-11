@@ -68,6 +68,16 @@ No test runner or linter is configured.
 
 `metro.config.js` adds Node.js polyfills (`node-libs-react-native`) for Supabase compatibility, with mock `net`/`tls`.
 
+## HealthKit (currently disabled)
+
+Onboarding screen `HealthKitConnectScreen` is gated by the `HEALTHKIT_DISABLED` constant in `App.js` (~line 2093). Original crash: NSException at `apple-watch-hero.png` decode (882×806 Display P3 PNG) via `RCTImageLoader` + `CGImageSourceCreateThumbnailAtIndex` under New Architecture (builds 33/34/35).
+
+Two mitigations are already applied:
+1. `HealthKitConnect.js` now uses `<Image>` from `expo-image` (SDWebImage on iOS) instead of RN's `Image` — same fix pattern as commit 6e55733.
+2. `apple-watch-hero.png` re-encoded from Display P3 → sRGB via `sips`.
+
+**Re-enabling:** set `HEALTHKIT_DISABLED = false`, ship a TestFlight build, watch Sentry for ~24 h. If clean → remove the flag entirely. If the crash persists, fall back to one of: disable New Arch (`newArchEnabled: false` in `app.json`), downscale the hero image to ~600×548, or replace it with a vector SVG.
+
 ## Notes
 
 - The `my-app/` directory is an unrelated Expo Router scaffold (not part of the main app)

@@ -2032,15 +2032,29 @@ function App() {
     AsyncStorage.setItem('fluid_welcome_intro_done', '1').catch(function(e) { devWarn('welcome flag persist', e); });
   }
 
+  // Feature flag : écran HealthKitConnect désactivé sur l'onboarding.
+  // Cause d'origine (builds 33/34/35) : NSException au décodage de
+  // apple-watch-hero.png (882x806, profil Display P3) via RCTImageLoader +
+  // CGImageSourceCreateThumbnailAtIndex sous New Architecture / Fabric.
+  // Fix appliqué (à valider en TestFlight) :
+  //   1. HealthKitConnect.js migré vers <Image> de expo-image (SDWebImage iOS)
+  //      au lieu de l'Image RN — même mitigation que commit 6e55733.
+  //   2. apple-watch-hero.png reconverti de Display P3 → sRGB via sips.
+  // Pour ré-activer après validation : passer ce flag à false, push un build
+  // sur TestFlight, observer Sentry. Si zéro crash sur ~24h, retirer le flag.
+  // Si crash persiste : (a) tenter newArchEnabled:false temporaire,
+  // (b) downscale l'image à 600x548, (c) remplacer par un SVG vectoriel.
+  const HEALTHKIT_DISABLED = true;
+
   useEffect(() => {
-    // TEMP: bypass HealthKitConnect — crash natif systémique (NSException au
-    // décodage de apple-watch-hero.png ou autre asset, threads RCTImageLoader +
-    // CGImageSourceCreateThumbnailAtIndex actifs dans le crash log build 33/34/35).
-    // On force le flag pour skip définitivement l'écran d'onboarding.
-    // Le composant HealthKitConnect.js reste en place et sera ré-activé via un
-    // point d'entrée dans Settings une fois la cause du décodage diagnostiquée.
-    setHkPromptShown(true);
-    AsyncStorage.setItem('fluid_hk_prompt_done', '1').catch(function() {});
+    if (HEALTHKIT_DISABLED) {
+      setHkPromptShown(true);
+      AsyncStorage.setItem('fluid_hk_prompt_done', '1').catch(function() {});
+      return;
+    }
+    AsyncStorage.getItem('fluid_hk_prompt_done')
+      .then(function(v) { setHkPromptShown(v === '1'); })
+      .catch(function() { setHkPromptShown(true); });
   }, []);
 
   function dismissHkPrompt() {
