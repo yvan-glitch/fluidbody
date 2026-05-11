@@ -84,7 +84,6 @@ import supabase from './src/lib/supabase';
 import PaywallModal, { PRODUCT_IDS } from './src/components/PaywallModal';
 import StretchTimerModal from './src/components/Timer';
 import AnimatedPlus from './src/components/AnimatedPlus';
-import PilierCard from './src/components/PilierCard';
 import GlassButton from './src/components/GlassButton';
 import Confetti from './src/components/Confetti';
 import LivingBackground from './src/components/LivingBackground';

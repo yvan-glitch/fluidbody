@@ -13,7 +13,6 @@ import GlassButton from '../components/GlassButton';
 import LivingBackground from '../components/LivingBackground';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
-import PilierCard from '../components/PilierCard';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from '../utils';
 
 let Notifications = null;
