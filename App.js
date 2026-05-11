@@ -2033,10 +2033,14 @@ function App() {
   }
 
   useEffect(() => {
-    if (Platform.OS !== 'ios') { setHkPromptShown(true); return; }
-    AsyncStorage.getItem('fluid_hk_prompt_done').then(function(v) {
-      setHkPromptShown(v === '1');
-    }).catch(function() { setHkPromptShown(true); });
+    // TEMP: bypass HealthKitConnect — crash natif systémique (NSException au
+    // décodage de apple-watch-hero.png ou autre asset, threads RCTImageLoader +
+    // CGImageSourceCreateThumbnailAtIndex actifs dans le crash log build 33/34/35).
+    // On force le flag pour skip définitivement l'écran d'onboarding.
+    // Le composant HealthKitConnect.js reste en place et sera ré-activé via un
+    // point d'entrée dans Settings une fois la cause du décodage diagnostiquée.
+    setHkPromptShown(true);
+    AsyncStorage.setItem('fluid_hk_prompt_done', '1').catch(function() {});
   }, []);
 
   function dismissHkPrompt() {
