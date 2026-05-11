@@ -30,6 +30,7 @@ export default function Confetti({ count = 60, duration = 2000, onDone }) {
   ).current;
 
   useEffect(() => {
+    let mounted = true;
     const animations = pieces.map((p) =>
       Animated.parallel([
         Animated.timing(p.translateY, {
@@ -63,9 +64,23 @@ export default function Confetti({ count = 60, duration = 2000, onDone }) {
         ]),
       ])
     );
-    Animated.stagger(0, animations).start(() => {
-      if (typeof onDone === 'function') onDone();
+    const stagger = Animated.stagger(0, animations);
+    stagger.start(() => {
+      if (mounted && typeof onDone === 'function') onDone();
     });
+    return () => {
+      mounted = false;
+      try { stagger.stop && stagger.stop(); } catch (e) {}
+      animations.forEach((a) => { try { a.stop && a.stop(); } catch (e) {} });
+      pieces.forEach((p) => {
+        try {
+          p.translateX.removeAllListeners();
+          p.translateY.removeAllListeners();
+          p.rotate.removeAllListeners();
+          p.opacity.removeAllListeners();
+        } catch (e) {}
+      });
+    };
   }, []);
 
   return (

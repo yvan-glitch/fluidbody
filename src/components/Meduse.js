@@ -574,48 +574,71 @@ function FloatingMedusas({ topInset = 200, bottomInset = 140 } = {}) {
     { x: new Animated.Value(SW * 0.75), y: new Animated.Value(initY(0.4)), size: 56, bob: new Animated.Value(0), sway: new Animated.Value(0), rot: new Animated.Value(0), pulse: new Animated.Value(0) },
   ]).current;
   useEffect(function() {
+    var mounted = true;
+    var timeouts = [];
+    var loops = [];
+    var currentDrifts = []; // animations parallel en cours pour pouvoir les stop
     meds.forEach(function(m, i) {
       // Drift lent à travers l'écran (zone exclut le top header)
       var delay = 300 + i * 500;
       function drift() {
+        if (!mounted) return;
         var toX = 10 + Math.random() * (SW - m.size - 20);
         var maxY = SH - m.size - bottomInset;
         var range = Math.max(60, maxY - topInset);
         var toY = topInset + Math.random() * range;
         var dur = 12000 + Math.random() * 10000;
-        Animated.parallel([
+        var p = Animated.parallel([
           Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
           Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
-        ]).start(function() { drift(); });
+        ]);
+        currentDrifts[i] = p;
+        p.start(function() { if (mounted) drift(); });
       }
-      setTimeout(drift, delay);
-      // Bob (haut/bas sinusoïdal)
+      timeouts.push(setTimeout(drift, delay));
+      // Bob
       var bobDur = 2400 + i * 380;
-      Animated.loop(Animated.sequence([
+      var bobLoop = Animated.loop(Animated.sequence([
         Animated.timing(m.bob, { toValue: 1, duration: bobDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
         Animated.timing(m.bob, { toValue: 0, duration: bobDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-      ])).start();
-      // Sway (gauche/droite)
+      ]));
+      bobLoop.start(); loops.push(bobLoop);
+      // Sway
       var swayDur = 3200 + i * 450;
-      setTimeout(function() {
-        Animated.loop(Animated.sequence([
+      timeouts.push(setTimeout(function() {
+        if (!mounted) return;
+        var swayLoop = Animated.loop(Animated.sequence([
           Animated.timing(m.sway, { toValue: 1, duration: swayDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
           Animated.timing(m.sway, { toValue: 0, duration: swayDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-        ])).start();
-      }, i * 300);
-      // Rotation douce
+        ]));
+        swayLoop.start(); loops.push(swayLoop);
+      }, i * 300));
+      // Rotation
       var rotDur = 4000 + i * 600;
-      Animated.loop(Animated.sequence([
+      var rotLoop = Animated.loop(Animated.sequence([
         Animated.timing(m.rot, { toValue: 1, duration: rotDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
         Animated.timing(m.rot, { toValue: 0, duration: rotDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-      ])).start();
-      // Pulse (scale)
+      ]));
+      rotLoop.start(); loops.push(rotLoop);
+      // Pulse
       var pulseDur = 2800 + i * 350;
-      Animated.loop(Animated.sequence([
+      var pulseLoop = Animated.loop(Animated.sequence([
         Animated.timing(m.pulse, { toValue: 1, duration: pulseDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
         Animated.timing(m.pulse, { toValue: 0, duration: pulseDur, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-      ])).start();
+      ]));
+      pulseLoop.start(); loops.push(pulseLoop);
     });
+    return function() {
+      mounted = false;
+      timeouts.forEach(function(t) { clearTimeout(t); });
+      loops.forEach(function(l) { try { l.stop && l.stop(); } catch (e) {} });
+      currentDrifts.forEach(function(d) { try { d && d.stop && d.stop(); } catch (e) {} });
+      meds.forEach(function(m) {
+        try { m.x.removeAllListeners(); m.y.removeAllListeners(); } catch (e) {}
+        try { m.bob.removeAllListeners(); m.sway.removeAllListeners(); } catch (e) {}
+        try { m.rot.removeAllListeners(); m.pulse.removeAllListeners(); } catch (e) {}
+      });
+    };
   }, []);
   return meds.map(function(m, i) {
     var bobAmp = 8 + i * 2;

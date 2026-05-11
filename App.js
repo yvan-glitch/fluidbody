@@ -799,10 +799,15 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
 
   useEffect(() => {
     if (!authVisible) return;
-    Animated.parallel([
+    const entrance = Animated.parallel([
       Animated.timing(authOpacity, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.spring(authTranslateY, { toValue: 0, damping: 18, stiffness: 90, mass: 1, useNativeDriver: true }),
-    ]).start();
+    ]);
+    entrance.start();
+    return () => {
+      try { entrance.stop && entrance.stop(); } catch (e) {}
+      try { authOpacity.removeAllListeners(); authTranslateY.removeAllListeners(); } catch (e) {}
+    };
   }, [authVisible]);
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const validPass = password.length >= 6;
@@ -817,18 +822,28 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
   ]).current;
 
   useEffect(() => {
-    floatingMedusas.forEach(function(m) {
+    let mounted = true;
+    const currentDrifts = [];
+    floatingMedusas.forEach(function(m, i) {
       function drift() {
+        if (!mounted) return;
         var toX = 10 + Math.random() * (SW - m.size - 20);
         var toY = 60 + Math.random() * (SH - m.size - 160);
         var dur = 12000 + Math.random() * 8000;
-        Animated.parallel([
+        var p = Animated.parallel([
           Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
           Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
-        ]).start(function() { drift(); });
+        ]);
+        currentDrifts[i] = p;
+        p.start(function() { if (mounted) drift(); });
       }
       drift();
     });
+    return () => {
+      mounted = false;
+      currentDrifts.forEach((d) => { try { d && d.stop && d.stop(); } catch (e) {} });
+      floatingMedusas.forEach((m) => { try { m.x.removeAllListeners(); m.y.removeAllListeners(); } catch (e) {} });
+    };
   }, []);
 
   function finish() { onDone('', lang, [], { skipCloudAuth: true }); }
@@ -1688,18 +1703,28 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
   ]).current;
 
   useEffect(() => {
-    floatingMedusas.forEach(function(m) {
+    let mounted = true;
+    const currentDrifts = [];
+    floatingMedusas.forEach(function(m, i) {
       function drift() {
+        if (!mounted) return;
         var toX = 10 + Math.random() * (SW - m.size - 20);
         var toY = 60 + Math.random() * (SH - m.size - 200);
         var dur = 14000 + Math.random() * 9000;
-        Animated.parallel([
+        var p = Animated.parallel([
           Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
           Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
-        ]).start(function() { drift(); });
+        ]);
+        currentDrifts[i] = p;
+        p.start(function() { if (mounted) drift(); });
       }
       drift();
     });
+    return () => {
+      mounted = false;
+      currentDrifts.forEach((d) => { try { d && d.stop && d.stop(); } catch (e) {} });
+      floatingMedusas.forEach((m) => { try { m.x.removeAllListeners(); m.y.removeAllListeners(); } catch (e) {} });
+    };
   }, []);
 
   function formatDate(d) {

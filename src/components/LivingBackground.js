@@ -59,7 +59,12 @@ export default function LivingBackground() {
       ly.start();
       loops.push(lx, ly);
     });
-    return () => { loops.forEach((l) => l.stop && l.stop()); };
+    return () => {
+      loops.forEach((l) => { try { l.stop && l.stop(); } catch (e) {} });
+      anims.forEach((a) => {
+        try { a.x.removeAllListeners(); a.y.removeAllListeners(); } catch (e) {}
+      });
+    };
   }, []);
 
   return (

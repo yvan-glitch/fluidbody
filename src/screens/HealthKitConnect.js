@@ -71,16 +71,21 @@ export default function HealthKitConnectScreen({ lang, onDone }) {
   const heartPulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.parallel([
+    const entrance = Animated.parallel([
       Animated.timing(watchOpacity, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.spring(watchScale, { toValue: 1, damping: 14, stiffness: 80, mass: 1, useNativeDriver: true }),
-    ]).start();
+    ]);
+    entrance.start();
     const loop = Animated.loop(Animated.sequence([
       Animated.timing(heartPulse, { toValue: 1.08, duration: 800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       Animated.timing(heartPulse, { toValue: 1.0, duration: 800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ]));
     loop.start();
-    return () => loop.stop();
+    return () => {
+      try { entrance.stop && entrance.stop(); } catch (e) {}
+      try { loop.stop && loop.stop(); } catch (e) {}
+      try { watchOpacity.removeAllListeners(); watchScale.removeAllListeners(); heartPulse.removeAllListeners(); } catch (e) {}
+    };
   }, []);
 
   function showLaterToast() {
