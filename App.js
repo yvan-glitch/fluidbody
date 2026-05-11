@@ -23,7 +23,11 @@ try { AppleAuth = require('expo-apple-authentication'); } catch(e) {}
 let DateTimePicker = null;
 try { DateTimePicker = require('@react-native-community/datetimepicker').default; } catch(e) {}
 let AppleHealthKit = null;
-try { AppleHealthKit = require('react-native-health').default; } catch(e) {}
+try {
+  AppleHealthKit = require('react-native-health').default || require('react-native-health');
+} catch (e) {
+  if (__DEV__) console.warn('react-native-health unavailable:', e);
+}
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Svg, { Path, Circle, Ellipse, Line, Rect, Defs, RadialGradient, Stop, G } from 'react-native-svg';
 import { Video, ResizeMode, Audio } from 'expo-av';
@@ -79,50 +83,66 @@ if (!__DEV__) {
 }
 
 // ── HEALTHKIT ──────────────────────────────────────────
-const HK_PERMISSIONS = AppleHealthKit ? {
-  permissions: {
-    read: [
-      AppleHealthKit.Constants?.Permissions?.ActiveEnergyBurned,
-      AppleHealthKit.Constants?.Permissions?.AppleExerciseTime,
-      AppleHealthKit.Constants?.Permissions?.AppleStandTime,
-      AppleHealthKit.Constants?.Permissions?.Workout,
-    ].filter(Boolean),
-    write: [
-      AppleHealthKit.Constants?.Permissions?.ActiveEnergyBurned,
-      AppleHealthKit.Constants?.Permissions?.Workout,
-    ].filter(Boolean),
-  },
-} : null;
+// NOTE: NE PAS accéder à AppleHealthKit.Constants ici (load time).
+// L'accès traverse le bridge natif et peut throw NSException si HKHealthStore
+// n'est pas correctement init → crash Hermes au démarrage de l'app.
+// Les permissions sont calculées LAZILY dans initHealthKit().
 
 let hkInitialized = false;
 
+function buildHkPermissions() {
+  if (!AppleHealthKit) return null;
+  try {
+    const C = (AppleHealthKit.Constants && AppleHealthKit.Constants.Permissions) || {};
+    return {
+      permissions: {
+        read: [C.ActiveEnergyBurned, C.AppleExerciseTime, C.AppleStandTime, C.Workout].filter(Boolean),
+        write: [C.ActiveEnergyBurned, C.Workout].filter(Boolean),
+      },
+    };
+  } catch (e) {
+    if (__DEV__) console.warn('HK perms throw:', e);
+    return null;
+  }
+}
+
 function initHealthKit() {
   if (!AppleHealthKit || hkInitialized || Platform.OS !== 'ios') return;
-  AppleHealthKit.initHealthKit(HK_PERMISSIONS, function(err) {
-    if (err) { if (__DEV__) console.log('HealthKit init error:', err); return; }
-    hkInitialized = true;
-    if (__DEV__) console.log('HealthKit initialized');
-  });
+  const perms = buildHkPermissions();
+  if (!perms) return;
+  try {
+    AppleHealthKit.initHealthKit(perms, function(err) {
+      if (err) { if (__DEV__) console.log('HealthKit init error:', err); return; }
+      hkInitialized = true;
+      if (__DEV__) console.log('HealthKit initialized');
+    });
+  } catch (e) {
+    if (__DEV__) console.warn('HealthKit init throw:', e);
+  }
 }
 
 function saveHealthKitWorkout(durationMinutes) {
   if (!AppleHealthKit || !hkInitialized || Platform.OS !== 'ios') return;
-  var now = new Date();
-  var start = new Date(now.getTime() - durationMinutes * 60000);
-  var calories = Math.round(durationMinutes * 5);
-  var options = {
-    type: 'FunctionalStrengthTraining',
-    startDate: start.toISOString(),
-    endDate: now.toISOString(),
-    energyBurned: calories,
-    energyBurnedUnit: 'calorie',
-  };
-  AppleHealthKit.saveWorkout(options, function(err, res) {
-    if (__DEV__) {
-      if (__DEV__ && err) console.log('HealthKit workout save error:', err);
-      else if (__DEV__) console.log('HealthKit workout saved:', durationMinutes + 'min, ' + calories + 'cal');
-    }
-  });
+  try {
+    var now = new Date();
+    var start = new Date(now.getTime() - durationMinutes * 60000);
+    var calories = Math.round(durationMinutes * 5);
+    var options = {
+      type: 'FunctionalStrengthTraining',
+      startDate: start.toISOString(),
+      endDate: now.toISOString(),
+      energyBurned: calories,
+      energyBurnedUnit: 'calorie',
+    };
+    AppleHealthKit.saveWorkout(options, function(err, res) {
+      if (__DEV__) {
+        if (err) console.log('HealthKit workout save error:', err);
+        else console.log('HealthKit workout saved:', durationMinutes + 'min, ' + calories + 'cal');
+      }
+    });
+  } catch (e) {
+    if (__DEV__) console.warn('HealthKit save throw:', e);
+  }
 }
 
 /** Pictogrammes restants (autres que 🔥🔒✓▶) — chaînes UTF-8. */
@@ -1191,7 +1211,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [rcPackagesByProductId, setRcPackagesByProductId] = useState({});
   const [rcLoadingPrices, setRcLoadingPrices] = useState(false);
 
-  useEffect(function() { initHealthKit(); }, []);
+  useEffect(function() { try { initHealthKit(); } catch (e) { if (__DEV__) console.warn('initHealthKit throw:', e); } }, []);
 
   const rcSupported = Platform.OS === 'ios';
   const rcDisabled = !Purchases || !rcSupported || (Device && Device.isDevice === false);
