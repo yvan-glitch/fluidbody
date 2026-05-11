@@ -370,21 +370,6 @@ function TabIconProfil({ color, size }) {
   );
 }
 
-function TabIconPartage({ color, size }) {
-  var c = tabBarIconTint(color);
-  var s = size ?? 22;
-  return (
-    <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-        <Circle cx="18" cy="5" r="3" stroke={c} strokeWidth={1.5} />
-        <Circle cx="6" cy="12" r="3" stroke={c} strokeWidth={1.5} />
-        <Circle cx="18" cy="19" r="3" stroke={c} strokeWidth={1.5} />
-        <Path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" stroke={c} strokeWidth={1.3} strokeLinecap="round" />
-      </Svg>
-    </View>
-  );
-}
-
 // TabIconTimer moved to src/screens/MonCorps.js
 
 const Tab = createBottomTabNavigator();
@@ -576,8 +561,6 @@ function Progresser({ done, lang, tensionIdxs }) {
 }
 
 
-// AVATARS, AvatarFace, AvatarConstellation, FloatingAvatars, PartageScreen moved to src/screens/Partage.js
-// import PartageScreen from './src/screens/Partage'; // not used in tab navigator currently
 
 
 // ProfilScreen moved to src/screens/Profil.js
@@ -2038,12 +2021,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // TEMP DEV — force WelcomeIntroScreen à chaque démarrage. Retirer avant prod.
-    AsyncStorage.removeItem('fluid_welcome_intro_done').finally(function() {
-      AsyncStorage.getItem('fluid_welcome_intro_done').then(function(v) {
-        setWelcomeShown(v === '1');
-      }).catch(function() { setWelcomeShown(true); });
-    });
+    AsyncStorage.getItem('fluid_welcome_intro_done')
+      .then(function(v) { setWelcomeShown(v === '1'); })
+      .catch(function() { setWelcomeShown(true); });
   }, []);
 
   function dismissWelcomeIntro() {
@@ -2082,12 +2062,9 @@ function App() {
   }
 
   useEffect(() => {
-    // TEMP DEV — force ProfileSetupScreen à chaque démarrage. Retirer avant prod.
-    AsyncStorage.removeItem('fluid_profile_setup_done').finally(function() {
-      AsyncStorage.getItem('fluid_profile_setup_done').then(function(v) {
-        setProfileSetupShown(v === '1');
-      }).catch(function() { setProfileSetupShown(true); });
-    });
+    AsyncStorage.getItem('fluid_profile_setup_done')
+      .then(function(v) { setProfileSetupShown(v === '1'); })
+      .catch(function() { setProfileSetupShown(true); });
   }, []);
 
   const profileSetupSavingRef = useRef(false);
