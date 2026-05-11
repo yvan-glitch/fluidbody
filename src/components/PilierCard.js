@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, ImageBackground, Dimensions, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Dimensions, Platform, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { T, PILIER_IMAGES } from '../constants/data';
 
@@ -42,12 +43,15 @@ export default function PilierCard({ pilier, doneCount, onPress, recommended, la
         end={{ x: 0.8, y: 1 }}
         style={{ flex: 1 }}
       >
-        <ImageBackground
-          source={imgSrc}
-          resizeMode="cover"
-          style={{ flex: 1, overflow: 'hidden' }}
-          imageStyle={pilier.key === 'p8' ? { opacity: 0.70, top: -100, height: CARD_H + 100 } : { opacity: 0.70 }}
-        >
+        <View style={{ flex: 1, overflow: 'hidden' }}>
+          <Image
+            source={imgSrc}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+            recyclingKey={'pilier-' + (imageKey || pilier.key)}
+            style={[StyleSheet.absoluteFill, pilier.key === 'p8' ? { opacity: 0.70, top: -100, height: CARD_H + 100 } : { opacity: 0.70 }]}
+          />
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.65)"]}
             locations={[0.3, 1]}
@@ -60,7 +64,7 @@ export default function PilierCard({ pilier, doneCount, onPress, recommended, la
             )}
             <Text style={{ fontSize: 18, fontWeight: "700", color: "#fff" }}>{pilier.label}</Text>
           </LinearGradient>
-        </ImageBackground>
+        </View>
       </LinearGradient>
     </TouchableOpacity>
   );

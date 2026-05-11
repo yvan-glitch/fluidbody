@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground, TextInput, Dimensions, Modal } from 'react-native';
+import { Text, StyleSheet, View, TouchableOpacity, ScrollView, TextInput, Dimensions, Modal } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Ellipse, Line, Rect } from 'react-native-svg';
 import { T, PILIER_IMAGES } from '../constants/data';
@@ -8,6 +9,7 @@ import AnimatedPlus from '../components/AnimatedPlus';
 import VideoPlayer from '../components/VideoPlayer';
 import LivingBackground from '../components/LivingBackground';
 import TheorieDetailScreen from './TheorieDetailScreen';
+import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import { getPiliers, getSeances } from '../utils';
 
 const PROGRAM_IMAGES = {
@@ -382,33 +384,25 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
           <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 26 }}>+</AnimatedPlus></Text>
         </View>
 
-        {/* Search bar */}
+        {/* Search bar — Liquid Glass capsule */}
         <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: 'rgba(255,255,255,0.08)',
-            borderRadius: 12,
-            paddingHorizontal: 12,
-            height: 40,
-          }}>
+          <LiquidGlassCapsule tint="light" radius={16} paddingH={14} paddingV={10} gap={8}>
             <SearchIcon />
             <TextInput
               style={{
                 flex: 1,
                 color: '#ffffff',
                 fontSize: 15,
-                marginLeft: 8,
                 paddingVertical: 0,
               }}
               placeholder={tr.tab_piliers === 'The 6 pillars' ? 'Search' : 'Rechercher'}
-              placeholderTextColor="rgba(255,255,255,0.35)"
+              placeholderTextColor="rgba(255,255,255,0.4)"
               value={search}
               onChangeText={setSearch}
               returnKeyType="search"
             />
             <MicIcon />
-          </View>
+          </LiquidGlassCapsule>
         </View>
 
         {/* Types d'activités section */}
@@ -442,9 +436,12 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                   backgroundColor: 'rgba(255,255,255,0.06)',
                   marginBottom: 8,
                 }}>
-                  <ImageBackground
+                  <Image
                     source={PILIER_IMAGES[a.key]}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="memory-disk"
+                    recyclingKey={'bib-act-' + a.key}
                     style={{ flex: 1 }}
                   />
                 </View>
@@ -496,11 +493,15 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                   overflow: 'hidden',
                 }}
               >
-                <ImageBackground
-                  source={PROGRAM_IMAGES[`f${i + 1}`]}
-                  resizeMode="cover"
-                  style={{ flex: 1 }}
-                >
+                <View style={{ flex: 1 }}>
+                  <Image
+                    source={PROGRAM_IMAGES[`f${i + 1}`]}
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="memory-disk"
+                    recyclingKey={'bib-fiche-' + i}
+                    style={StyleSheet.absoluteFill}
+                  />
                   <LinearGradient
                     colors={['transparent', FICHE_GRADIENT_COLORS[i][1]]}
                     locations={[0.25, 1]}
@@ -536,7 +537,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                       {f.soustitre}
                     </Text>
                   </LinearGradient>
-                </ImageBackground>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -564,11 +565,15 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                   overflow: 'hidden',
                 }}
               >
-                <ImageBackground
-                  source={PILIER_IMAGES[pilier.key]}
-                  resizeMode="cover"
-                  style={{ flex: 1 }}
-                >
+                <View style={{ flex: 1 }}>
+                  <Image
+                    source={PILIER_IMAGES[pilier.key]}
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="memory-disk"
+                    recyclingKey={'bib-theo-' + pilier.key}
+                    style={StyleSheet.absoluteFill}
+                  />
                   <LinearGradient
                     colors={['transparent', FICHE_GRADIENT_COLORS[i % FICHE_GRADIENT_COLORS.length][1]]}
                     locations={[0.25, 1]}
@@ -604,7 +609,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                       {isFr ? `${items.length} vidéos` : `${items.length} videos`}
                     </Text>
                   </LinearGradient>
-                </ImageBackground>
+                </View>
               </TouchableOpacity>
             ))}
           </View>

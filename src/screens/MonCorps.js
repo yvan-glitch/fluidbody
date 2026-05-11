@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, ImageBackground, TextInput } from 'react-native';
+import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, TextInput } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
@@ -10,6 +11,7 @@ import { Bulle, Rayon, MeduseCornerIcon, FloatingMedusas, BULLES, BULLES_MONCORP
 import AnimatedPlus from '../components/AnimatedPlus';
 import GlassButton from '../components/GlassButton';
 import LivingBackground from '../components/LivingBackground';
+import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
 import PilierCard from '../components/PilierCard';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from '../utils';
@@ -302,7 +304,8 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
             <Fragment key={i}>
               {header}
             <TouchableOpacity onPress={() => tryOpenSeance(i)} disabled={noVideo} activeOpacity={0.88} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 12, height: 110, opacity: noVideo ? 0.45 : (locked ? 0.4 : 1) }}>
-              <ImageBackground source={PILIER_IMAGES[pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
+              <View style={{ flex: 1 }}>
+                <Image source={PILIER_IMAGES[pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pil-bg-' + pilier.key} style={StyleSheet.absoluteFill} />
                 <LinearGradient colors={isDone ? ['rgba(0,30,22,0.75)', 'rgba(0,30,22,0.85)'] : locked ? ['rgba(0,14,24,0.75)', 'rgba(0,14,24,0.9)'] : ['rgba(0,14,24,0.55)', 'rgba(0,14,24,0.8)']} style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
                   <Text style={{ fontSize: 10, fontWeight: '900', color: '#ffffff', alignSelf: 'flex-end', marginBottom: 6 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, color: '#AEEF4D' }}>+</AnimatedPlus></Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -325,7 +328,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                     <Text style={{ fontSize: 13, color: '#AEEF4D', fontWeight: '300' }}>{String(i + 1).padStart(2, '0')}</Text>
                   </View>
                 </LinearGradient>
-              </ImageBackground>
+              </View>
             </TouchableOpacity>
             </Fragment>
           );
@@ -446,7 +449,7 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
               return (
                 <TouchableOpacity key={p.key} onPress={function() { togglePilier(p.key); }} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, borderWidth: 1.5, borderColor: active ? '#E5FF00' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(229,255,0,0.12)' : 'rgba(0,18,32,0.6)' }}>
                   <View style={{ width: 32, height: 32, borderRadius: 16, overflow: 'hidden' }}>
-                    <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} />
+                    <Image source={PILIER_IMAGES[p.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pil-' + p.key} style={{ flex: 1 }} />
                   </View>
                   <Text style={{ fontSize: 14, fontWeight: '500', color: active ? '#E5FF00' : 'rgba(255,255,255,0.6)' }}>{p.label}</Text>
                 </TouchableOpacity>
@@ -654,34 +657,31 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         ) : null}
       </View>
       <View style={{ position: "absolute", top: 105, left: 0, right: 0, zIndex: 5, marginTop: 20 }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
-          {MC_TABS.map(function(t) {
-            var active = mcTab === t;
-            return (
-              <TouchableOpacity
-                key={t}
-                onPress={function() { setMcTab(t); }}
-                activeOpacity={0.8}
-                style={{
-                  borderRadius: 30,
-                  overflow: 'hidden',
-                  borderWidth: 1,
-                  borderColor: active ? 'rgba(174,239,77,0.5)' : 'rgba(255,255,255,0.15)',
-                }}
-              >
-                <BlurView intensity={Platform.OS === 'ios' ? 10 : 0} tint="light" style={{
-                  paddingHorizontal: 22,
-                  paddingVertical: 12,
-                  alignItems: 'center',
-                  backgroundColor: active ? 'rgba(174,239,77,0.14)' : 'rgba(255,255,255,0.04)',
-                }}>
-                  <Text style={{ fontSize: 15, fontWeight: active ? "700" : "600", color: active ? "#AEEF4D" : "#ffffff" }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+          <LiquidGlassCapsule tint="light" paddingH={6} paddingV={6} gap={4}>
+            {MC_TABS.map(function(t) {
+              var active = mcTab === t;
+              return (
+                <TouchableOpacity
+                  key={t}
+                  onPress={function() { setMcTab(t); }}
+                  activeOpacity={0.8}
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 999,
+                    backgroundColor: active ? 'rgba(174,239,77,0.18)' : 'transparent',
+                    borderWidth: active ? 1 : 0,
+                    borderColor: active ? 'rgba(174,239,77,0.5)' : 'transparent',
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: active ? "700" : "600", color: active ? "#AEEF4D" : "#ffffff" }}>
                     {mcTabLabels[t]}
                   </Text>
-                </BlurView>
-              </TouchableOpacity>
-            );
-          })}
+                </TouchableOpacity>
+              );
+            })}
+          </LiquidGlassCapsule>
         </ScrollView>
       </View>
       <ScrollView
@@ -692,7 +692,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       >
         {mcTab === 'explorer' && sdj && (
           <TouchableOpacity onPress={function() { if (onTryFreeSession) onTryFreeSession(); }} activeOpacity={0.9} style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#AEEF4D' }}>
-            <ImageBackground source={PILIER_IMAGES[sdj.pilier.key]} resizeMode="cover" style={{ height: 110 }}>
+            <View style={{ height: 110 }}>
+              <Image source={PILIER_IMAGES[sdj.pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-sdj-' + sdj.pilier.key} style={StyleSheet.absoluteFill} />
               <LinearGradient colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.85)']} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
                 <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
                   <Text style={{ fontSize: 20, color: '#000000' }}>{'\u25B6'}</Text>
@@ -707,7 +708,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{sdj.pilier.label} {'\u00B7'} {sdj.seance[1]}</Text>
                 </View>
               </LinearGradient>
-            </ImageBackground>
+            </View>
           </TouchableOpacity>
         )}
         {mcTab === 'pour_vous' && (function() {
@@ -725,7 +726,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           var glassCell = function(src, w, h, key) {
             return (
               <View key={key} style={{ width: w, height: h, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', shadowColor: '#FFFFFF', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 0 } }}>
-                <ImageBackground source={src} resizeMode="cover" style={{ flex: 1 }} />
+                <Image source={src} contentFit="cover" transition={200} cachePolicy="memory-disk" style={{ flex: 1 }} />
                 <LinearGradient colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '25%' }} pointerEvents="none" />
               </View>
             );
@@ -844,7 +845,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                         activeOpacity={0.9}
                         style={{ marginBottom: 10, height: 92, borderRadius: 16, overflow: 'hidden' }}
                       >
-                        <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }}>
+                        <View style={{ flex: 1 }}>
+                          <Image source={PILIER_IMAGES[p.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pcard-' + p.key} style={StyleSheet.absoluteFill} />
                           <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(0,14,24,0.85)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 14, justifyContent: 'center' }}>
                             <Text style={{ fontSize: 17, fontWeight: '800', color: '#ffffff', marginBottom: 4 }}>{p.label}</Text>
                             <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 16 }} numberOfLines={2}>{desc}</Text>
@@ -852,7 +854,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                           <View style={{ position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' }}>
                             <Text style={{ fontSize: 22, color: '#AEEF4D', fontWeight: '300' }}>{'›'}</Text>
                           </View>
-                        </ImageBackground>
+                        </View>
                       </TouchableOpacity>
                     );
                   })}
@@ -864,7 +866,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
 
             {/* Réveil Matinal */}
             <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
-              <ImageBackground source={PROG_IMAGES.reveil} resizeMode="cover" style={{ flex: 1 }}>
+              <View style={{ flex: 1 }}>
+                <Image source={PROG_IMAGES.reveil} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey="mc-prog-reveil" style={StyleSheet.absoluteFill} />
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
                   <View>
                     <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_reveil || 'Réveil Matinal'}</Text>
@@ -879,12 +882,13 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
                   </TouchableOpacity>
                 </View>
-              </ImageBackground>
+              </View>
             </View>
 
             {/* Mal de dos */}
             <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
-              <ImageBackground source={PROG_IMAGES.dos} resizeMode="cover" style={{ flex: 1 }}>
+              <View style={{ flex: 1 }}>
+                <Image source={PROG_IMAGES.dos} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey="mc-prog-dos" style={StyleSheet.absoluteFill} />
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
                   <View>
                     <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_dos || 'Mal de dos'}</Text>
@@ -899,12 +903,13 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
                   </TouchableOpacity>
                 </View>
-              </ImageBackground>
+              </View>
             </View>
 
             {/* Post-travail */}
             <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
-              <ImageBackground source={PROG_IMAGES.posttravail} resizeMode="cover" style={{ flex: 1 }}>
+              <View style={{ flex: 1 }}>
+                <Image source={PROG_IMAGES.posttravail} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey="mc-prog-pt" style={StyleSheet.absoluteFill} />
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
                   <View>
                     <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_posttravail || 'Post-travail'}</Text>
@@ -919,12 +924,13 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
                   </TouchableOpacity>
                 </View>
-              </ImageBackground>
+              </View>
             </View>
 
             {/* Core & Plancher */}
             <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
-              <ImageBackground source={PROG_IMAGES.core} resizeMode="cover" style={{ flex: 1 }}>
+              <View style={{ flex: 1 }}>
+                <Image source={PROG_IMAGES.core} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey="mc-prog-core" style={StyleSheet.absoluteFill} />
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
                   <View>
                     <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_core || 'Core & Plancher'}</Text>
@@ -939,12 +945,13 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
                   </TouchableOpacity>
                 </View>
-              </ImageBackground>
+              </View>
             </View>
 
             {/* Souplesse totale */}
             <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
-              <ImageBackground source={PROG_IMAGES.souplesse} resizeMode="cover" style={{ flex: 1 }}>
+              <View style={{ flex: 1 }}>
+                <Image source={PROG_IMAGES.souplesse} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey="mc-prog-soup" style={StyleSheet.absoluteFill} />
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
                   <View>
                     <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_souplesse || 'Souplesse totale'}</Text>
@@ -959,7 +966,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>{tr.prog_apercu}</Text>
                   </TouchableOpacity>
                 </View>
-              </ImageBackground>
+              </View>
             </View>
 
             <Text style={{ fontSize: 22, fontWeight: "800", color: "#ffffff", marginBottom: 6 }}>{tr.prog_section_title}</Text>
@@ -1016,7 +1023,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                           return (
                             <View key={p.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.1)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)' }}>
                               <View style={{ width: 24, height: 24, borderRadius: 12, overflow: 'hidden' }}>
-                                <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} />
+                                <Image source={PILIER_IMAGES[p.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pil-' + p.key} style={{ flex: 1 }} />
                               </View>
                               <Text style={{ fontSize: 12, color: '#AEEF4D' }}>{p.label}</Text>
                             </View>
@@ -1062,7 +1069,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                           onPress={function() { setOpenInitialIdx(it.idx); setOpenPilier(it.pilier); }}
                           style={{ width: freeCardW, height: freeCardH, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)' }}
                         >
-                          <ImageBackground source={PILIER_IMAGES[it.pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
+                          <View style={{ flex: 1 }}>
+                            <Image source={PILIER_IMAGES[it.pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-it-' + it.pilier.key} style={StyleSheet.absoluteFill} />
                             <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']} locations={[0, 0.5, 1]} style={{ flex: 1, padding: 16, justifyContent: 'space-between' }}>
                               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <View style={{ backgroundColor: '#AEEF4D', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 }}>
@@ -1081,7 +1089,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                                 </View>
                               </View>
                             </LinearGradient>
-                          </ImageBackground>
+                          </View>
                         </TouchableOpacity>
                       );
                     })}
@@ -1101,12 +1109,13 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     }}
                     style={{ marginBottom: 16, borderRadius: 16, overflow: "hidden", height: cardH }}
                   >
-                    <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} imageStyle={p.key === 'p8' ? { top: -20, transform: [{ scale: 1.15 }] } : { transform: [{ scale: 1.15 }] }}>
+                    <View style={{ flex: 1 }}>
+                      <Image source={PILIER_IMAGES[p.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pcardbig-' + p.key} style={[StyleSheet.absoluteFill, p.key === 'p8' ? { top: -20, transform: [{ scale: 1.15 }] } : { transform: [{ scale: 1.15 }] }]} />
                       <LinearGradient colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.7)"]} style={{ flex: 1, justifyContent: "flex-end", padding: 16 }}>
                         <Text style={{ fontSize: 24, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{p.label}</Text>
                         <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{(ps.length || 20) + ' ' + tr.m_seances}</Text>
                       </LinearGradient>
-                    </ImageBackground>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
@@ -1125,7 +1134,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               var isToday = cls.day === new Date().getDay();
               return (
                 <View key={cls.id} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 14, borderWidth: 1, borderColor: isToday ? '#AEEF4D' : 'rgba(174,239,77,0.15)' }}>
-                  <ImageBackground source={require('../../assets/coach.jpg')} resizeMode="cover" style={{ height: 150 }}>
+                  <View style={{ height: 150 }}>
+                    <Image source={require('../../assets/coach.jpg')} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey="mc-coach" style={StyleSheet.absoluteFill} />
                     <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.7)', padding: 16, justifyContent: 'space-between' }}>
                       <View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -1151,7 +1161,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                         </TouchableOpacity>
                       </View>
                     </View>
-                  </ImageBackground>
+                  </View>
                 </View>
               );
             })}
@@ -1179,16 +1189,18 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           });
           return (
             <View>
-              {/* Search bar style Fitness+ */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, paddingHorizontal: 14, marginBottom: 14 }}>
-                <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.35)', marginRight: 8 }}>🔍</Text>
-                <TextInput
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholder={tr.search_placeholder || 'Chercher une séance...'}
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  style={{ flex: 1, paddingVertical: 12, fontSize: 15, color: '#ffffff' }}
-                />
+              {/* Search bar — Liquid Glass capsule */}
+              <View style={{ marginBottom: 14 }}>
+                <LiquidGlassCapsule tint="light" radius={16} paddingH={14} paddingV={8} gap={8}>
+                  <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.45)' }}>🔍</Text>
+                  <TextInput
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder={tr.search_placeholder || 'Chercher une séance...'}
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    style={{ flex: 1, paddingVertical: 6, fontSize: 15, color: '#ffffff' }}
+                  />
+                </LiquidGlassCapsule>
               </View>
               {/* Étape filter chips */}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
@@ -1216,7 +1228,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   return (
                     <TouchableOpacity key={r.pilier.key + '-' + r.idx + '-' + i} activeOpacity={0.88} onPress={function() { setOpenPilier(r.pilier); }}
                       style={{ width: halfW, height: 140, borderRadius: 14, overflow: 'hidden', marginBottom: 2 }}>
-                      <ImageBackground source={PILIER_IMAGES[r.pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
+                      <View style={{ flex: 1 }}>
+                        <Image source={PILIER_IMAGES[r.pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-r-' + r.pilier.key} style={StyleSheet.absoluteFill} />
                         <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.8)']} style={{ flex: 1, justifyContent: 'space-between', padding: 10 }}>
                           <View style={{ flexDirection: 'row' }}>
                             {etape ? (
@@ -1230,7 +1243,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                             <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>{duree}</Text>
                           </View>
                         </LinearGradient>
-                      </ImageBackground>
+                      </View>
                     </TouchableOpacity>
                   );
                 })}

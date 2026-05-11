@@ -11,6 +11,7 @@ import { BlurView } from 'expo-blur';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { T } from '../constants/data';
 import { VideoPlaceholderMeduse } from './Meduse';
+import LiquidGlassCapsule from './LiquidGlassCapsule';
 
 // ── Optional native modules (safe for Expo Go) ──
 let HapticsMod = null;
@@ -660,21 +661,19 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         <>
           <Pressable style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)' }]} onPress={hideControls} android_ripple={null} />
           <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
-            {/* Top-left : X + PiP/fullscreen */}
-            <View pointerEvents="box-none" style={{ position: 'absolute', top: 50, left: 16, flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={10} style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
-                <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
-                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.04)' }]} />
-                <Text style={{ fontSize: 16, color: '#FFFFFF', fontWeight: '500' }}>{'✕'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => { bumpTimer(); }} hitSlop={10} style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
-                <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
-                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.04)' }]} />
-                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                  <Path d="M3 7 a2 2 0 0 1 2 -2 H14 a2 2 0 0 1 2 2 V13 a2 2 0 0 1 -2 2 H10" stroke="#FFFFFF" strokeWidth={1.6} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                  <Path d="M9 11 H19 a2 2 0 0 1 2 2 V18 a2 2 0 0 1 -2 2 H9 a2 2 0 0 1 -2 -2 V13 a2 2 0 0 1 2 -2 Z" fill="#FFFFFF" />
-                </Svg>
-              </TouchableOpacity>
+            {/* Top-left : X + PiP/fullscreen — capsule Liquid Glass */}
+            <View pointerEvents="box-none" style={{ position: 'absolute', top: 50, left: 16 }}>
+              <LiquidGlassCapsule tint="light" paddingH={10} paddingV={6} gap={12}>
+                <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={10} style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 16, color: '#FFFFFF', fontWeight: '500' }}>{'✕'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { bumpTimer(); }} hitSlop={10} style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}>
+                  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                    <Path d="M3 7 a2 2 0 0 1 2 -2 H14 a2 2 0 0 1 2 2 V13 a2 2 0 0 1 -2 2 H10" stroke="#FFFFFF" strokeWidth={1.6} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                    <Path d="M9 11 H19 a2 2 0 0 1 2 2 V18 a2 2 0 0 1 -2 2 H9 a2 2 0 0 1 -2 -2 V13 a2 2 0 0 1 2 -2 Z" fill="#FFFFFF" />
+                  </Svg>
+                </TouchableOpacity>
+              </LiquidGlassCapsule>
             </View>
 
             {/* Top-right : volume slider + speaker */}
