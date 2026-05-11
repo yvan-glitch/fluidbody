@@ -13,6 +13,7 @@ import GlassButton from '../components/GlassButton';
 import LivingBackground from '../components/LivingBackground';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
+import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from '../utils';
 
 let Notifications = null;
@@ -212,6 +213,10 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       return;
     }
     hapticLight();
+    // Prefetch HLS manifest URL in parallel with the modal open animation —
+    // by the time VideoPlayer mounts, the signed URL is already in cache.
+    const sessionId = buildSessionId(pilier.key, i);
+    if (sessionId) prefetchSignedVideoUrl(sessionId, 'hls');
     setActiveVideo(i);
   }
 
