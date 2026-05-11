@@ -9,9 +9,9 @@ import LivingBackground from '../components/LivingBackground';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
-// Hero image — drop your file at assets/images/apple-watch-hero.jpg
+// Hero image — drop your file at assets/apple-watch-hero.png
 let APPLE_WATCH_HERO = null;
-try { APPLE_WATCH_HERO = require('../../assets/images/apple-watch-hero.jpg'); } catch (e) {}
+try { APPLE_WATCH_HERO = require('../../assets/apple-watch-hero.png'); } catch (e) {}
 
 function HealthHeartIcon({ size = 64 }) {
   return (
@@ -149,7 +149,7 @@ export default function HealthKitConnectScreen({ lang, onDone }) {
             ) : (
               <View style={{ width: '100%', height: '100%', backgroundColor: 'rgba(8,26,38,0.6)', alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, paddingHorizontal: 18, textAlign: 'center' }}>
-                  assets/images/apple-watch-hero.jpg
+                  assets/apple-watch-hero.png
                 </Text>
               </View>
             )}
