@@ -16,7 +16,6 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.ytissot.fluidbody",
       "usesAppleSignIn": true,
-      "buildNumber": "9",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {
@@ -65,7 +64,15 @@
     },
     "plugins": [
       "expo-localization",
-      "react-native-health",
+      "expo-apple-authentication",
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "FluidBody utilise HealthKit pour enregistrer vos séances et remplir vos anneaux Fitness.",
+          "healthUpdatePermission": "FluidBody enregistre vos séances de Pilates comme exercices dans Santé.",
+          "isClinicalDataEnabled": false
+        }
+      ],
       [
         "expo-notifications",
         {
