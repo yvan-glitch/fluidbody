@@ -12,6 +12,7 @@ import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { T } from '../constants/data';
 import { VideoPlaceholderMeduse } from './Meduse';
 import LiquidGlassCapsule from './LiquidGlassCapsule';
+import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 
 // ── Optional native modules (safe for Expo Go) ──
 let HapticsMod = null;
@@ -28,18 +29,11 @@ function devWarn(...args) {
   if (__DEV__) console.warn('[FluidBody]', ...args);
 }
 
-/** URL vidéo hébergée Bunny.net (HLS / CDN). */
-function isBunnyVideoUrl(url) {
-  if (!url || typeof url !== 'string') return false;
-  const u = url.trim().toLowerCase();
-  if (u.includes('b-cdn.net')) return true;
-  if (u.includes('bunnycdn.com')) return true;
-  if (u.includes('bunny.net')) return true;
-  if (u.includes('vz-') && u.includes('.m3u8')) return true;
-  return false;
+/** Truthy flag at `seance[3]` indicates a protected Bunny video is available
+ *  for this session. The actual URL is signed on demand via the edge function. */
+function hasProtectedVideo(flag) {
+  return !!flag;
 }
-
-const VIDEO_DEMO = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
 
 var RATE_OPTIONS = [0.75, 1.0, 1.25, 1.5];
 
@@ -60,6 +54,14 @@ function videoResumeStorageKey(pilierKey, seanceIndex) {
   return `${VIDEO_RESUME_PREFIX}${pilierKey}_${seanceIndex}`;
 }
 
+// Strip query string so signed URLs (which rotate every TTL) don't invalidate
+// the resume cache. The path identifies the asset; the token does not.
+function normalizeUriForResume(uri) {
+  if (!uri) return '';
+  const q = uri.indexOf('?');
+  return q >= 0 ? uri.slice(0, q) : uri;
+}
+
 async function saveVideoResume(pilierKey, seanceIndex, uri, positionMillis, durationMillis) {
   if (!uri || !durationMillis || positionMillis == null) return;
   if (positionMillis < 2500) return;
@@ -67,7 +69,7 @@ async function saveVideoResume(pilierKey, seanceIndex, uri, positionMillis, dura
   try {
     await AsyncStorage.setItem(
       videoResumeStorageKey(pilierKey, seanceIndex),
-      JSON.stringify({ uri, positionMillis, durationMillis, t: Date.now() }),
+      JSON.stringify({ uri: normalizeUriForResume(uri), positionMillis, durationMillis, t: Date.now() }),
     );
   } catch (e) {}
 }
@@ -83,7 +85,7 @@ async function loadVideoResume(pilierKey, seanceIndex, currentUri, currentDurati
     const raw = await AsyncStorage.getItem(videoResumeStorageKey(pilierKey, seanceIndex));
     if (!raw) return null;
     const o = JSON.parse(raw);
-    if (o.uri !== currentUri) return null;
+    if (o.uri !== normalizeUriForResume(currentUri)) return null;
     const d0 = o.durationMillis || 0;
     const d1 = currentDurationMillis || 0;
     if (d0 > 0 && d1 > 0 && Math.abs(d0 - d1) / Math.max(d0, d1) > 0.18) return null;
@@ -100,18 +102,6 @@ async function loadVideoResume(pilierKey, seanceIndex, currentUri, currentDurati
 var SUBTITLE_LANGS = [
   { code: 'fr', label: 'Français' }, { code: 'en', label: 'English' },
 ];
-
-function extractVideoId(url) {
-  if (!url) return null;
-  var m = url.match(/\/([0-9a-f-]{36})\//);
-  return m ? m[1] : null;
-}
-
-function getSubtitleUrl(videoUrl, langCode) {
-  var id = extractVideoId(videoUrl);
-  if (!id) return null;
-  return 'https://vz-1a4e2cac-0dc.b-cdn.net/' + id + '/subtitles/' + langCode + '.vtt';
-}
 
 function parseVtt(text) {
   if (!text) return [];
@@ -249,11 +239,12 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   const doneScale = useRef(new Animated.Value(1)).current;
   const [videoLoadFailed, setVideoLoadFailed] = useState(false);
   const [videoResetKey, setVideoResetKey] = useState(0);
-  const [titre, duree, etape, videoUrl] = seance;
+  const [titre, duree, etape, videoFlag] = seance;
   const isTheory = etape === 'Comprendre' || etape === 'Ressentir';
-  const hasRealVideo = isBunnyVideoUrl(videoUrl);
+  const hasRealVideo = hasProtectedVideo(videoFlag);
+  const sessionId = hasRealVideo ? buildSessionId(pilier?.key, seanceIndex) : null;
   const [showControls, setShowControls] = useState(!hasRealVideo);
-  const [uri, setUri] = useState(hasRealVideo ? (videoUrl || '') : '');
+  const [uri, setUri] = useState('');
   const uriRef = useRef(uri);
   uriRef.current = uri;
   const lastPersistAtRef = useRef(0);
@@ -265,14 +256,36 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   var [showCcPicker, setShowCcPicker] = useState(false);
   var [playbackRate, setPlaybackRate] = useState(1.0);
 
+  // Fetch a fresh signed HLS URL whenever we need one (initial mount or after
+  // a forced reset). The token is short-lived, so we always re-resolve through
+  // the cache instead of caching the URL in component state long-term.
   useEffect(function() {
-    if (!ccEnabled || !hasRealVideo || !videoUrl) { setCcCues([]); return; }
-    var url = getSubtitleUrl(videoUrl, ccLang);
-    if (!url) return;
-    fetch(url).then(function(r) { if (r.ok) return r.text(); throw new Error('no vtt'); })
-      .then(function(txt) { setCcCues(parseVtt(txt)); })
-      .catch(function() { setCcCues([]); });
-  }, [ccEnabled, ccLang, videoUrl]);
+    if (!hasRealVideo || !sessionId) return;
+    let cancelled = false;
+    setUri('');
+    hasRestoredRef.current = false;
+    getSignedVideoUrl(sessionId, 'hls')
+      .then(function(signed) { if (!cancelled) setUri(signed); })
+      .catch(function(err) {
+        if (cancelled) return;
+        if (__DEV__) devWarn('getSignedVideoUrl', err?.message || err);
+        setVideoLoadFailed(true);
+      });
+    return function() { cancelled = true; };
+  }, [hasRealVideo, sessionId, videoResetKey]);
+
+  useEffect(function() {
+    if (!ccEnabled || !hasRealVideo || !sessionId) { setCcCues([]); return; }
+    let cancelled = false;
+    getSignedVideoUrl(sessionId, 'vtt', ccLang)
+      .then(function(url) {
+        if (cancelled) return;
+        return fetch(url).then(function(r) { if (r.ok) return r.text(); throw new Error('no vtt'); });
+      })
+      .then(function(txt) { if (!cancelled && txt) setCcCues(parseVtt(txt)); })
+      .catch(function() { if (!cancelled) setCcCues([]); });
+    return function() { cancelled = true; };
+  }, [ccEnabled, ccLang, hasRealVideo, sessionId]);
 
   useEffect(function() {
     if (ccEnabled && ccCues.length > 0 && status.positionMillis != null) {
@@ -399,13 +412,6 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
       syncKeepAwake(s);
       if (__DEV__) console.log('Video playback error:', { uri: uriRef.current, error: s.error });
       if (__DEV__) devWarn('Video playback error', s.error);
-      // Fallback: si l'URL spécifique échoue, basculer sur la démo pour éviter un écran bloqué
-      if (hasRealVideo && uriRef.current !== VIDEO_DEMO) {
-        setUri(VIDEO_DEMO);
-        hasRestoredRef.current = false;
-        setVideoResetKey((k) => k + 1);
-        return;
-      }
       setVideoLoadFailed(true);
       return;
     }
@@ -522,7 +528,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, backgroundColor: '#000', width: dims.width, height: dims.height }}>
-      {hasRealVideo ? (
+      {hasRealVideo && uri ? (
         <Video
           key={videoResetKey}
           ref={videoRef}
@@ -533,6 +539,17 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
           rate={playbackRate}
           shouldCorrectPitch={true}
           onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+        />
+      ) : hasRealVideo ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: dims.width,
+            height: dims.height,
+            backgroundColor: '#000',
+          }}
         />
       ) : (
         <View
