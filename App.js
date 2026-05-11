@@ -865,10 +865,10 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
   const appleAvailable = !!AppleAuth && Platform.OS === 'ios';
 
   const floatingMedusas = useRef([
-    { x: new Animated.Value(SW - 80), y: new Animated.Value(SH * 0.12), size: 72, breath: 3200 },
-    { x: new Animated.Value(30), y: new Animated.Value(SH * 0.4), size: 58, breath: 3600 },
-    { x: new Animated.Value(SW * 0.5), y: new Animated.Value(SH * 0.65), size: 50, breath: 4000 },
-    { x: new Animated.Value(SW * 0.75), y: new Animated.Value(SH * 0.8), size: 44, breath: 3800 },
+    { baseX: SW - 80, baseY: SH * 0.12, size: 72, breath: 3200, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    { baseX: 30, baseY: SH * 0.4, size: 58, breath: 3600, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    { baseX: SW * 0.5, baseY: SH * 0.65, size: 50, breath: 4000, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    { baseX: SW * 0.75, baseY: SH * 0.8, size: 44, breath: 3800, dx: new Animated.Value(0), dy: new Animated.Value(0) },
   ]).current;
 
   useEffect(() => {
@@ -881,8 +881,8 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
         var toY = 60 + Math.random() * (SH - m.size - 160);
         var dur = 12000 + Math.random() * 8000;
         var p = Animated.parallel([
-          Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
-          Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
+          Animated.timing(m.dx, { toValue: toX - m.baseX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
+          Animated.timing(m.dy, { toValue: toY - m.baseY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
         ]);
         currentDrifts[i] = p;
         p.start(function() { if (mounted) drift(); });
@@ -892,7 +892,6 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
     return () => {
       mounted = false;
       currentDrifts.forEach((d) => { try { d && d.stop && d.stop(); } catch (e) {} });
-      floatingMedusas.forEach((m) => { try { m.x.removeAllListeners(); m.y.removeAllListeners(); } catch (e) {} });
     };
   }, []);
 
@@ -1012,7 +1011,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
       </View>
       {floatingMedusas.map(function(m, i) {
         return (
-          <Animated.View key={'fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.7, left: m.x, top: m.y }}>
+          <Animated.View key={'fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.7, left: m.baseX, top: m.baseY, transform: [{ translateX: m.dx }, { translateY: m.dy }] }}>
             <MeduseCornerIcon size={m.size} breathCycleMs={m.breath} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
           </Animated.View>
         );
@@ -1718,10 +1717,10 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
   ];
 
   const floatingMedusas = useRef([
-    { x: new Animated.Value(SW - 90), y: new Animated.Value(SH * 0.22), size: 70, breath: 3400 },
-    { x: new Animated.Value(20), y: new Animated.Value(SH * 0.45), size: 58, breath: 3800 },
-    { x: new Animated.Value(SW * 0.55), y: new Animated.Value(SH * 0.7), size: 54, breath: 4200 },
-    { x: new Animated.Value(SW * 0.78), y: new Animated.Value(SH * 0.85), size: 48, breath: 4000 },
+    { baseX: SW - 90, baseY: SH * 0.22, size: 70, breath: 3400, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    { baseX: 20, baseY: SH * 0.45, size: 58, breath: 3800, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    { baseX: SW * 0.55, baseY: SH * 0.7, size: 54, breath: 4200, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    { baseX: SW * 0.78, baseY: SH * 0.85, size: 48, breath: 4000, dx: new Animated.Value(0), dy: new Animated.Value(0) },
   ]).current;
 
   useEffect(() => {
@@ -1734,8 +1733,8 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
         var toY = 60 + Math.random() * (SH - m.size - 200);
         var dur = 14000 + Math.random() * 9000;
         var p = Animated.parallel([
-          Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
-          Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
+          Animated.timing(m.dx, { toValue: toX - m.baseX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
+          Animated.timing(m.dy, { toValue: toY - m.baseY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
         ]);
         currentDrifts[i] = p;
         p.start(function() { if (mounted) drift(); });
@@ -1745,7 +1744,6 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
     return () => {
       mounted = false;
       currentDrifts.forEach((d) => { try { d && d.stop && d.stop(); } catch (e) {} });
-      floatingMedusas.forEach((m) => { try { m.x.removeAllListeners(); m.y.removeAllListeners(); } catch (e) {} });
     };
   }, []);
 
@@ -1839,7 +1837,7 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
       </View>
       {floatingMedusas.map(function(m, i) {
         return (
-          <Animated.View key={'ps-fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 1, opacity: 0.85, left: m.x, top: m.y }}>
+          <Animated.View key={'ps-fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 1, opacity: 0.85, left: m.baseX, top: m.baseY, transform: [{ translateX: m.dx }, { translateY: m.dy }] }}>
             <MeduseCornerIcon size={m.size} breathCycleMs={m.breath} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
           </Animated.View>
         );
