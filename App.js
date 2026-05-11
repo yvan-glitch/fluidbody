@@ -154,9 +154,9 @@ function initHealthKit() {
   if (!perms) return;
   try {
     AppleHealthKit.initHealthKit(perms, function(err) {
-      if (err) { if (__DEV__) console.log('HealthKit init error:', err); return; }
+      if (err) { if (__DEV__) devLog('HealthKit init error:', err); return; }
       hkInitialized = true;
-      if (__DEV__) console.log('HealthKit initialized');
+      if (__DEV__) devLog('HealthKit initialized');
     });
   } catch (e) {
     if (__DEV__) console.warn('HealthKit init throw:', e);
@@ -178,8 +178,8 @@ function saveHealthKitWorkout(durationMinutes) {
     };
     AppleHealthKit.saveWorkout(options, function(err, res) {
       if (__DEV__) {
-        if (err) console.log('HealthKit workout save error:', err);
-        else console.log('HealthKit workout saved:', durationMinutes + 'min, ' + calories + 'cal');
+        if (err) devLog('HealthKit workout save error:', err);
+        else devLog('HealthKit workout saved:', durationMinutes + 'min, ' + calories + 'cal');
       }
     });
   } catch (e) {
@@ -200,6 +200,10 @@ function streakCountValue(streak) {
 
 function devWarn(...args) {
   if (__DEV__) console.warn('[FluidBody]', ...args);
+}
+
+function devLog(...args) {
+  if (__DEV__) console.log('[FluidBody]', ...args);
 }
 
 // hapticLight and hapticSuccess moved to src/utils.js
@@ -1215,7 +1219,7 @@ try {
     },
     realtime: { transport: () => null },
   });
-  if (__DEV__) console.log('Supabase créé avec succès');
+  if (__DEV__) devLog('Supabase créé avec succès');
 } catch (e) {
   supabase = null;
   if (__DEV__) console.error('Erreur Supabase:', e?.message != null ? e.message : String(e));
@@ -1277,7 +1281,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       await setSubscriptionActive(active);
       return { info, active };
     } catch (e) {
-      if (__DEV__) console.log('IAP Error:', e);
+      if (__DEV__) devLog('IAP Error:', e);
       devWarn('RevenueCat getCustomerInfo', e);
       return { info: null, active: false };
     }
@@ -1291,7 +1295,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       await setSubscriptionActive(active);
       setPaywallVisible(false);
     } catch (e) {
-      if (__DEV__) console.log('IAP Error:', e);
+      if (__DEV__) devLog('IAP Error:', e);
       devWarn('RevenueCat purchasePackage', e);
     }
   }
@@ -1303,7 +1307,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       const active = !!info?.entitlements?.active?.[RC_ENTITLEMENT_ID];
       await setSubscriptionActive(active);
     } catch (e) {
-      if (__DEV__) console.log('IAP Error:', e);
+      if (__DEV__) devLog('IAP Error:', e);
       devWarn('RevenueCat restorePurchases', e);
     }
   }
@@ -1370,7 +1374,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       try {
         Purchases.configure({ apiKey: RC_API_KEY_IOS });
       } catch (e) {
-        if (__DEV__) console.log('IAP Error:', e);
+        if (__DEV__) devLog('IAP Error:', e);
         devWarn('RevenueCat configure', e);
         return;
       }
@@ -1390,7 +1394,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       } catch (e) {}
 
       try {
-        if (__DEV__) console.log('Loading products...', PRODUCT_IDS);
+        if (__DEV__) devLog('Loading products...', PRODUCT_IDS);
         setRcLoadingPrices(true);
         const offerings = await Purchases.getOfferings();
         const current = offerings?.current;
@@ -1417,10 +1421,10 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         }
         if (mounted) {
           setRcPackagesByProductId(map);
-          if (__DEV__) console.log('Products loaded:', map);
+          if (__DEV__) devLog('Products loaded:', map);
         }
       } catch (e) {
-        if (__DEV__) console.log('IAP Error:', e);
+        if (__DEV__) devLog('IAP Error:', e);
         devWarn('RevenueCat getOfferings', e);
       } finally {
         if (mounted) setRcLoadingPrices(false);
@@ -1796,7 +1800,7 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
 
   async function submit() {
     if (submittingRef.current) {
-      console.log('[ProfileSetupScreen] submit déjà en cours, tap ignoré');
+      devLog('[ProfileSetupScreen] submit déjà en cours, tap ignoré');
       return;
     }
     submittingRef.current = true;
@@ -1808,11 +1812,11 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
       height_cm: height,
       weight_kg: weight,
     };
-    console.log('[ProfileSetupScreen] submit tap — payload:', JSON.stringify(payload), 'onDone defined:', typeof onDone === 'function');
+    devLog('[ProfileSetupScreen] submit tap — payload:', JSON.stringify(payload), 'onDone defined:', typeof onDone === 'function');
     try {
       if (typeof onDone === 'function') await onDone(payload);
     } catch (e) {
-      console.log('[ProfileSetupScreen] onDone threw:', e?.message || String(e));
+      devLog('[ProfileSetupScreen] onDone threw:', e?.message || String(e));
     }
     submittingRef.current = false;
     setSubmitting(false);
@@ -2056,7 +2060,7 @@ function App() {
 
   useEffect(() => {
     if (__DEV__) {
-      console.log('[FluidBody] emojis inline', JSON.stringify({ fire: '🔥', lock: '🔒', check: '✓', play: '▶' }));
+      devLog('[FluidBody] emojis inline', JSON.stringify({ fire: '🔥', lock: '🔒', check: '✓', play: '▶' }));
     }
   }, []);
 
@@ -2116,30 +2120,30 @@ function App() {
   const profileSetupSavingRef = useRef(false);
   async function handleProfileSetupSave(payload) {
     if (profileSetupSavingRef.current) {
-      console.log('[ProfileSetup] save déjà en cours, ignore appel');
+      devLog('[ProfileSetup] save déjà en cours, ignore appel');
       return;
     }
     profileSetupSavingRef.current = true;
     try {
-      console.log('[ProfileSetup] === START ===');
-      console.log('[ProfileSetup] payload reçu:', JSON.stringify(payload));
+      devLog('[ProfileSetup] === START ===');
+      devLog('[ProfileSetup] payload reçu:', JSON.stringify(payload));
       setProfileSetupShown(true);
       AsyncStorage.setItem('fluid_profile_setup_done', '1').catch(function(e) { devWarn('profile setup flag persist', e); });
       const cleanPrenom = payload.prenom ? String(payload.prenom).trim().slice(0, 50) : null;
       if (cleanPrenom) setPrenom(cleanPrenom);
-      if (!supabase) { console.log('[ProfileSetup] supabase null, skip cloud save'); return; }
+      if (!supabase) { devLog('[ProfileSetup] supabase null, skip cloud save'); return; }
 
-      console.log('[ProfileSetup] >>> getSession()');
+      devLog('[ProfileSetup] >>> getSession()');
       const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
-      console.log('[ProfileSetup] <<< getSession() result:', JSON.stringify({ userId: session?.user?.id || null, error: sessionErr?.message || null }));
-      if (!session?.user) { console.log('[ProfileSetup] pas de session active, abort'); return; }
+      devLog('[ProfileSetup] <<< getSession() result:', JSON.stringify({ userId: session?.user?.id || null, error: sessionErr?.message || null }));
+      if (!session?.user) { devLog('[ProfileSetup] pas de session active, abort'); return; }
 
       // updateUser en fire-and-forget — secondaire, ne bloque pas l'upsert
       if (cleanPrenom) {
-        console.log('[ProfileSetup] >>> auth.updateUser fire-and-forget (prenom:"' + cleanPrenom + '")');
+        devLog('[ProfileSetup] >>> auth.updateUser fire-and-forget (prenom:"' + cleanPrenom + '")');
         supabase.auth.updateUser({ data: { prenom: cleanPrenom } })
-          .then(function(meta) { console.log('[ProfileSetup] (bg) updateUser done:', JSON.stringify({ ok: !meta.error, error: meta.error?.message || null })); })
-          .catch(function(e) { console.log('[ProfileSetup] (bg) updateUser threw:', e?.message || String(e)); });
+          .then(function(meta) { devLog('[ProfileSetup] (bg) updateUser done:', JSON.stringify({ ok: !meta.error, error: meta.error?.message || null })); })
+          .catch(function(e) { devLog('[ProfileSetup] (bg) updateUser threw:', e?.message || String(e)); });
       }
 
       const row = {
@@ -2151,7 +2155,7 @@ function App() {
         height_cm: payload.height_cm != null ? payload.height_cm : null,
         weight_kg: payload.weight_kg != null ? payload.weight_kg : null,
       };
-      console.log('[ProfileSetup] row complète (toutes colonnes):', JSON.stringify({
+      devLog('[ProfileSetup] row complète (toutes colonnes):', JSON.stringify({
         id: row.id,
         prenom: row.prenom,
         gender: row.gender,
@@ -2160,24 +2164,24 @@ function App() {
         weight_kg: row.weight_kg,
         updated_at: row.updated_at,
       }));
-      console.log('[ProfileSetup] colonnes envoyées:', Object.keys(row).join(', '));
+      devLog('[ProfileSetup] colonnes envoyées:', Object.keys(row).join(', '));
 
-      console.log('[ProfileSetup] >>> profiles.upsert(row)');
+      devLog('[ProfileSetup] >>> profiles.upsert(row)');
       try {
         const TIMEOUT_SENTINEL = { __timeout: true };
         const upsertPromise = supabase.from('profiles').upsert(row);
         const timeoutPromise = new Promise(function(resolve) { setTimeout(function() { resolve(TIMEOUT_SENTINEL); }, 15000); });
         const res = await Promise.race([upsertPromise, timeoutPromise]);
         if (res === TIMEOUT_SENTINEL) {
-          console.log('[ProfileSetup] <<< upsert TIMEOUT (15s) — flow continue, upsert poursuit en background');
+          devLog('[ProfileSetup] <<< upsert TIMEOUT (15s) — flow continue, upsert poursuit en background');
           // log async result quand la promise se résout finalement
           upsertPromise.then(function(r) {
-            console.log('[ProfileSetup] (bg-late) upsert finalement résolu:', JSON.stringify({ error: r.error?.message || null, status: r.status }));
+            devLog('[ProfileSetup] (bg-late) upsert finalement résolu:', JSON.stringify({ error: r.error?.message || null, status: r.status }));
           }).catch(function(e) {
-            console.log('[ProfileSetup] (bg-late) upsert finalement rejeté:', e?.message || String(e));
+            devLog('[ProfileSetup] (bg-late) upsert finalement rejeté:', e?.message || String(e));
           });
         } else {
-          console.log('[ProfileSetup] <<< upsert FULL result:', JSON.stringify({
+          devLog('[ProfileSetup] <<< upsert FULL result:', JSON.stringify({
             data: res.data || null,
             error: res.error ? {
               message: res.error.message,
@@ -2190,17 +2194,17 @@ function App() {
             count: res.count,
           }));
           if (res.error) {
-            console.log('[ProfileSetup] <<< upsert ERROR (résumé):', res.error.message, '| code:', res.error.code, '| status:', res.status);
+            devLog('[ProfileSetup] <<< upsert ERROR (résumé):', res.error.message, '| code:', res.error.code, '| status:', res.status);
           } else {
-            console.log('[ProfileSetup] <<< upsert OK — status:', res.status, '| statusText:', res.statusText);
+            devLog('[ProfileSetup] <<< upsert OK — status:', res.status, '| statusText:', res.statusText);
           }
         }
       } catch(e) {
-        console.log('[ProfileSetup] <<< upsert threw:', e?.message || String(e));
+        devLog('[ProfileSetup] <<< upsert threw:', e?.message || String(e));
       }
-      console.log('[ProfileSetup] === END ===');
+      devLog('[ProfileSetup] === END ===');
     } catch (e) {
-      console.log('[ProfileSetup] catch global:', e?.message || String(e));
+      devLog('[ProfileSetup] catch global:', e?.message || String(e));
       devWarn('Supabase profile setup upsert', e);
     } finally {
       profileSetupSavingRef.current = false;
