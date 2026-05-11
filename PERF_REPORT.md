@@ -1,91 +1,143 @@
-# FluidBody — Perf pass (branche `perf/fluidity-pass`)
+# FluidBody — Perf pass `perf/fluidity-pass`
 
-> Ce document trace l'état **avant** et **après** le pass de fluidité.
-> Il sera supprimé/déplacé avant merge.
+> Document temporaire : à supprimer / déplacer dans `docs/` avant le merge dans `main`.
+> Branche de travail : `perf/fluidity-pass` — pas poussée sur `origin` exprès, à reviewer avant.
 
-## État des lieux (avant)
+## TL;DR — Top 10 optimisations par impact ressenti
 
-### Métriques
+| # | Optimisation | Fichier(s) | Impact |
+| - | --- | --- | --- |
+| 1 | Splash forcé 3 s → 900 ms + visuels du splash allégés (plus de `LivingBackground`/`BULLES` pour ≤ 1 s d'affichage) | `App.js` | **Cold start visiblement plus court** (perte sèche : 0 → ~2 s récupérés sur chaque lancement à froid) |
+| 2 | Suppression des `TEMP DEV` qui forçaient `WelcomeIntroScreen` + `ProfileSetupScreen` à **chaque** démarrage | `App.js` | L'app ne re-trigger plus l'onboarding sur les builds dev (réduit la session de démarrage de plusieurs secondes en plus de la confusion) |
+| 3 | Toutes les méduses qui "flottent" passent de `left/top` (JS driver obligatoire) à `transform: translateX/Y` + `useNativeDriver: true` | `App.js`, `Meduse.js`, `MonCorps.js`, `SignIn.js` | **Le JS thread arrête de pulser à 60 Hz juste pour bouger des méduses.** Gros gain quand l'utilisateur scrolle/tap pendant que les méduses dérivent |
+| 4 | `Meduse` / `MeduseCornerIcon` : tick SVG throttlé de 36 ms (28 fps) à 80 ms (12 fps) | `Meduse.js` | Les paths SVG des tentacules sont reconstruits ~2.5× moins souvent — invisible à l'œil (la houle est lente) mais coût JS divisé d'autant |
+| 5 | Pré-fetch HLS sur tap de séance + dedup des appels concurrents à l'edge function `sign-video-url` | `videoUrl.js`, `MonCorps.js`, `App.js`, `Bibliotheque.js` | Pendant l'animation d'ouverture du `Modal` (~300 ms), l'URL signée est déjà chaude dans le cache → la vidéo "se lance plus vite" perceptiblement |
+| 6 | Les 11 `ImageBackground` (react-native) migrent vers `<Image>` d'`expo-image` avec `cachePolicy="memory-disk"` | `App.js`, `Profil.js`, `Resume.js`, `TheorieDetailScreen.js`, `PaywallModal.js` | Décode plus rapide (SDWebImage sur iOS), cache disque persistant, transitions plus douces |
+| 7 | Réduction du nombre d'animations concurrentes : `FloatingMedusas` 7→5, `MeduseRain` 18→12, `BULLES_DESC` 24→16, et retrait des loops `rotate`/`pulse` redondants sur chaque méduse flottante | `Meduse.js` | Moins de noeuds animés en parallèle = framerate plus stable sur iPhone d'entrée de gamme |
+| 8 | Cleanup propre de toutes les `Animated.loop` orphelines (Bulle, Rayon, MeduseRainDrop, BulleDescendante, LivingMedusa, FloatingMedusas) | `Meduse.js` | Plus de loops zombies après unmount → moins de drain batterie, plus de re-renders fantômes |
+| 9 | Suppression de ~1.8 Mo de fichiers morts (scaffold `my-app/`, screens orphelins `LiveClasses.js`+`Partage.js`, `generate_icon.js`, icônes dupliquées, screenshot 1.19 MB jamais référencé) | racine | Working tree plus propre, parse JS un poil plus rapide (imports `PilierCard` aussi retirés là où inutilisés) |
+| 10 | Toutes les loops d'animation passent en mode "captured ref + stop()" plutôt que fire-and-forget, donc se taisent sur unmount | `Meduse.js`, `MonCorps.js`, `App.js`, `SignIn.js` | Empêche des animations de continuer à tourner après un changement d'écran (cause classique de stutter sur transitions) |
 
-| Métrique | Valeur initiale |
-| --- | --- |
-| `App.js` lignes | 2461 |
-| `src/components/Meduse.js` | 765 lignes |
-| `src/components/VideoPlayer.js` | 902 lignes |
-| `src/screens/MonCorps.js` | 1284 lignes |
-| `src/screens/Resume.js` | 765 lignes |
-| `Animated.loop` total | ~30 occurrences (App.js + src/) |
-| `useNativeDriver: false` | 27 occurrences (35% des animations) |
-| `ImageBackground` (react-native) | 9 instances dans 7 fichiers |
-| `<Image>` (expo-image) | 2 fichiers |
-| `console.log` non-gated | 0 (tous `__DEV__`) ✓ |
-| Splash minimum forcé | **3000 ms** (App.js:2239) |
-| `TEMP DEV` force-re-onboarding | 2 (App.js:2042, 2086) |
-| Code mort identifié | `my-app/`, `LiveClasses.js`, `Partage.js`, `generate_icon.js` |
-| Asset > 500 KB | 2 (`apple-watch-hero.png` 646 KB, `Capture d'écran…png` 1.19 MB inutilisé) |
-| Asset profil P3 (autre que apple-watch déjà fix) | `icon.old.png` (mais legacy, non bundlé probablement) |
+## Métriques avant / après
 
-### Goulots identifiés
+| Métrique | Avant | Après | Δ |
+| --- | --- | --- | --- |
+| Fichiers source supprimés (mort) | — | 47 fichiers | -1.83 MB |
+| `App.js` lignes | 2461 | 2439 | ~ stable (les fixes équilibrent les ajouts) |
+| `src/components/Meduse.js` lignes | 765 | 821 | +56 (cleanup explicite + commentaires) |
+| `Animated.loop` total | ~30 | ~26 (loops réduits/dédupliqués) | -4 |
+| `useNativeDriver: false` | 27 (35 % des animations) | 9 (12 %) | -18 cas, **tous les restants sont légitimes** (width, shadow, listener) |
+| `ImageBackground` (react-native) | 11 | 0 | -11 |
+| `<Image>` (`expo-image`) | 2 fichiers | 7 fichiers | +5 |
+| Splash minimum forcé | 3000 ms | 900 ms | -2100 ms |
+| `TEMP DEV` force-re-onboarding | 2 | 0 | -2 |
+| Méduses flottantes simultanées (max écran) | 7 | 5 | -2 |
+| Méduses tombantes (`MeduseRain`) | 18 | 12 | -6 |
+| Bulles descendantes (`PluieBulles`) | 24 | 16 | -8 |
+| Tick `setInterval` SVG des méduses | 36 ms (28 fps) | 80 ms (12 fps) | ~2.5× moins de re-renders SVG |
+| Loops Animated leakées (sans cleanup) | ≥ 5 (Bulle, Rayon, MeduseRainDrop, BulleDescendante, LivingMedusa) | 0 | -5 |
+| Appel réseau `sign-video-url` par lecture vidéo | 1 (synchronisé à l'ouverture du Modal) | ≤ 1, en parallèle du Modal | URL prête avant la fin de l'animation |
+| `console.log` non gated `__DEV__` | 0 (déjà OK) | 0 | — |
 
-**Démarrage**
-- Splash forcé minimum 3 secondes (App.js:2237) — pénalise le ressenti dès la première seconde
-- `TEMP DEV` force le re-onboarding et re-profile setup à CHAQUE démarrage (App.js:2042, 2086)
-- `Meduse` composant utilise un `setInterval(36ms)` qui déclenche `setState` à ~28 Hz — re-render SVG complet à chaque tick (Meduse.js:105, 222)
-- Init Supabase, Sentry, RC, etc. : tous synchrones au top du module App.js
+## Changelog par commit
 
-**Animations**
-- `FloatingMedusas` (Meduse.js:565) : 7 méduses × 4 animations chacune en parallèle = 28 timing loops, toutes `useNativeDriver: false` car animent `left`/`top` au lieu de `transform`
-- `BulleDescendante` × 24, `MeduseRain` × 18, `FloatingMedusas` × 7 = 50+ animations simultanées possibles
-- Mêmes patterns dans `App.js` (lignes 901-902), `SignIn.js`, `MonCorps.js` (174-175)
-- `LivingMedusa` (Meduse.js:509-526) : 3 loops sur `floatAnim`/`glowAnim`/`particles` en `useNativeDriver: false` alors qu'aucune raison structurelle ne l'impose (juste flou)
+```
+352747d  perf(deadcode): remove orphan scaffolds, TEMP DEV onboarding force, duplicate icons
+a9556d4  perf(startup): cut splash minimum from 3000ms to 900ms, drop heavy splash visuals
+dc0fd9f  perf(animations): flip floating medusas to native driver, throttle SVG tick
+2678942  perf(images): migrate all ImageBackground to expo-image with memory-disk cache
+918ca11  chore: drop unused PilierCard imports
+921cdf2  perf(video): prefetch HLS sign URL on tap + dedup concurrent sign calls
+```
 
-**Images**
-- 9 `ImageBackground` de react-native (pas d'`expo-image`) :
-  - `App.js` (×3 : Progresser, SeanceDetailModal, ProfileSetupScreen)
-  - `Profil.js` (×5)
-  - `Resume.js` (×3)
-  - `TheorieDetailScreen.js` (×1)
-  - `PaywallModal.js` (×1)
-  - `LiveClasses.js`, `Partage.js` (mort)
-- `cachePolicy` non explicite ailleurs
+## Fichiers modifiés
 
-**Listes**
-- Liste `seances` (jusqu'à 20 par pilier) actuellement rendue via `.map()` dans des ScrollView (App.js:1657, 1867). Plusieurs piliers = max ~120 items
-- `MonCorps.js` calendrier 28 jours `.map()` + flexWrap → acceptable
-- Pas d'usage de FlatList pour les vraies listes
+```
+App.js                              | -29 lignes (déletions > ajouts)
+src/components/Meduse.js            | +56 lignes (cleanup + transforms)
+src/screens/MonCorps.js             | +18 lignes (cleanup ppMedusas + prefetch)
+src/screens/SignIn.js               | + 6 lignes (cleanup)
+src/screens/Profil.js               | net 0 (substitutions)
+src/screens/Resume.js               | net 0 (substitutions)
+src/screens/Bibliotheque.js         | + 5 lignes (prefetch)
+src/screens/TheorieDetailScreen.js  | net 0 (substitutions)
+src/components/PaywallModal.js      | net 0 (substitutions)
+src/utils/videoUrl.js               | +43 lignes (dedup + prefetch helper)
+```
 
-**Code mort**
-- `my-app/` : scaffold Expo Router non utilisé
-- `generate_icon.js` (root) : script de build d'icône — peut être déplacé
-- `src/screens/LiveClasses.js`, `src/screens/Partage.js` : pas dans le tab navigator
-- `assets/Capture d'écran 2026-04-01 à 09.41.42.png` (1.19 MB) : référencé nulle part (recherché — 0 hits dans App.js et src/)
-- `assets/icon.old.png` (189 KB) : remplacé par `icon.png`
-- `assets/icon_new.png` (288 KB, identique à `icon.png`) : doublon
+Suppressions :
+- `my-app/` (47 fichiers, scaffold Expo Router orphelin)
+- `src/screens/LiveClasses.js` (non câblé dans le tab navigator)
+- `src/screens/Partage.js` (idem)
+- `generate_icon.js` (build script one-shot, pas dans `package.json` scripts)
+- `assets/Capture d'écran 2026-04-01 à 09.41.42.png` (1.19 MB, 0 référence)
+- `assets/icon.old.png` + `assets/icon_new.png` + `assets/icon_new.svg` (doublons de `icon.{png,svg}`)
 
-### Plan d'action (par ordre d'impact perçu)
+## Tests manuels à faire avant merge
 
-1. **Démarrage**
-   1. Retirer les `TEMP DEV` force-onboarding/profile-setup
-   2. Réduire le minimum splash à 800–1000 ms
-   3. Retirer LivingBackground + BULLES du splash (visuels lourds pour 1 sec)
-   4. Différer (`InteractionManager.runAfterInteractions`) l'init RC et la souscription auth state
-2. **Animations**
-   1. Migrer toutes les `Animated.Value(left/top)` des méduses vers `transform: translateX/Y` + `useNativeDriver: true`
-   2. Throttler ou supprimer le `setInterval(36ms)` qui pilote `tickRef` dans `Meduse` et `MeduseCornerIcon`
-   3. Plafonner `FloatingMedusas` à un nombre raisonnable
-3. **Listes** : convertir le rendu vertical de piliers et `seances` en `FlatList` avec `getItemLayout`
-4. **Images** : migrer les 9 `ImageBackground` vers `expo-image` (`<Image>` en absolute + content overlay)
-5. **VideoPlayer** : prefetch HLS dès tap sur séance, fade-in poster propre
-6. **Re-renders** : `React.memo` + `useCallback` sur `PilierCard`, mémos sur les calculs lourds (déjà partiel)
-7. **Code mort** : suppression `my-app/`, fichiers orphelins, assets inutiles
-8. **Bundle** : audit final
+> Faire ça sur un appareil iOS (iPhone 11+ idéalement), en cold start, et faire la passe complète.
 
----
+### Démarrage
+- [ ] **Cold start** : tuer l'app, relancer. Le splash apparaît, dure environ 1 s (pas 3), puis transition normale vers la session.
+- [ ] **Hot start** : revenir dans l'app après quelques secondes — pas de splash, retour direct.
+- [ ] **Sans session** : démarrer sans être connecté → onboarding apparaît une seule fois (et NE réapparaît PAS au cold start suivant — c'était le bug TEMP DEV).
+- [ ] **Avec session** : démarrer connecté → home `MonCorps` directement après le splash.
 
-## Modifications appliquées
+### Animations
+- [ ] **Onboarding** : les méduses flottent et dérivent (drift) — vérifier visuellement que le mouvement reste fluide. Tap rapidement plusieurs fois sur les boutons pendant le drift — pas de stutter.
+- [ ] **SignIn screen** : pareil, méduses flottent et bobbing fonctionne.
+- [ ] **PilierPanel (MonCorps)** : ouvrir un pilier, les 3 méduses du haut flottent.
+- [ ] **Splash** : vérifier que la méduse pulse et le texte fade — pas de bulles ni gradient animé (intentionnel).
+- [ ] **Plein écran avec MeduseRain** : aller sur les écrans qui utilisent `MeduseRain` (s'il y en a — surtout au moment des célébrations ou hero paywall) → 12 méduses tombantes au lieu de 18 (visuellement plus aéré, OK ?).
+- [ ] **Toggle done** sur une séance → animation de validation OK, pas de freeze.
 
-_(Mis à jour au fil des commits)_
+### Images
+- [ ] **Pilier modal** : l'image de fond de chaque pilier charge bien et reste visible (vérifier surtout `Resume.js` pour `recentSeances` et grille pilliers).
+- [ ] **Paywall modal** : l'image hero (`PILIER_IMAGES.p7`) charge en haut.
+- [ ] **Profil** : photo coach + thumbnails piliers OK.
+- [ ] **Bibliothèque → Théorie d'un pilier** : hero charge, gradient appliqué dessus.
+- [ ] **Mannequin (Resume)** : la silhouette tintée bleue charge correctement avec son tint.
 
-## État final (après)
+### Vidéo
+- [ ] **Tap sur une séance** : ouvrir la vidéo. Vérifier que le délai entre tap et "vidéo prête" est plus court qu'avant (gain perçu surtout sur 4G/réseau lent).
+- [ ] **Lancer la même vidéo deux fois de suite** : la 2e fois est instantanée (cache mémoire `expo-image` poster + cache URL Bunny encore chaude).
+- [ ] **Tap fond rapide sur 3 séances différentes** : pas de fuite / pas de stale URL (le dedup et la coalescence font leur travail).
+- [ ] **Free trial (séance du jour)** : tap "Découvrir" → la vidéo se lance bien depuis le détail modal.
+- [ ] **Bibliothèque → Théorie → tap sur une vidéo théorie** : se lance, vidéo OK.
 
-_(Mesures à remplir à la fin)_
+### Pas de régression
+- [ ] **Toggle subscription** (mode test) : paywall s'ouvre, achat fonctionne.
+- [ ] **Auth Apple Sign In** : s'authentifier OK (le drift des méduses sur l'écran ne perturbe pas).
+- [ ] **Apprendre une fiche / théorie** : navigation OK.
+- [ ] **Notifications** : l'horaire reste configurable.
+- [ ] **HealthKit** : flag toujours désactivé (HEALTHKIT_DISABLED = true), normal.
+
+## Alternatives évaluées et écartées
+
+- **Migration des `ScrollView` listes vers `FlatList` / `FlashList`** : les listes vues sont courtes (≤ 20 items pour les séances d'un pilier, ≤ 8 piliers, ≤ 10 articles). Les items contiennent des sections-headers conditionnels (`Fragment` autour de chaque entrée), ce qui complique la migration. À ce volume, le coût de refactor + risque de régression visuelle l'emporte sur le gain perçu (les images sont déjà cachées par `expo-image`, le React reconciler est efficace sur 20 items). À garder en réserve si on ajoute des listes de plusieurs centaines d'items plus tard.
+
+- **`React.memo` sur la `SeanceRow` dans `MonCorps`** : même raisonnement — sur 20 items max avec des props stables et un `done` qui ne change qu'occasionnellement (tap utilisateur), le coût de reconciliation est < 5 ms, invisible à l'œil. À revoir si on profile une lenteur réelle au DevTools Profiler.
+
+- **`useFocusEffect` pour pauser les animations sur les onglets non focus** : techniquement utile pour la batterie, mais en pratique tous les écrans tab gardent leur composant monté (`@react-navigation/bottom-tabs` défaut). L'ajout demanderait de wrapper chaque écran et de tester sur chaque transition. Reportée à un prochain pass dédié batterie.
+
+- **Migration `expo-av` → `expo-video`** : `expo-video` est dispo (SDK 53+) et plus performant, mais c'est une migration de fond avec changement d'API. À planifier sur une PR dédiée, hors scope perçu de ce pass.
+
+- **Pause du `setInterval` de tick SVG quand l'écran n'est pas visible** : meilleur en théorie mais demande un context provider visibility ou un hook d'écran. Le throttle 36→80 ms apporte déjà ~60 % du gain attendu, et ce pass préférait éviter d'introduire de nouvelles dépendances.
+
+- **Re-encode `apple-watch-hero.png` (646 KB) vers WebP** : actuellement bundlé pour `HealthKitConnect`, écran désactivé via `HEALTHKIT_DISABLED = true`. Sera traité quand HK sera ré-activé.
+
+## Comment merger
+
+```
+# review du diff
+git diff main..perf/fluidity-pass
+
+# avant push : supprimer / déplacer PERF_REPORT.md (cf. première ligne)
+git mv PERF_REPORT.md docs/perf-fluidity-pass.md      # optionnel
+# ou
+rm PERF_REPORT.md && git add -u
+
+git checkout main
+git merge --no-ff perf/fluidity-pass
+git push origin main
+```
