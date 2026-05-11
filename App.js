@@ -624,7 +624,8 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
   }
 
   async function handleAppleSignIn() {
-    if (!supabase) return;
+    if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
+    if (!AppleAuth) { Alert.alert('Apple Sign In', 'Module expo-apple-authentication non chargé. Vérifie le plugin dans app.json.'); return; }
     if (!appleAvailable) {
       Alert.alert('FluidBody+', tr.auth_apple_unavailable || 'Sign in with Apple est disponible sur iOS uniquement.');
       return;
@@ -637,19 +638,30 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
           AppleAuth.AppleAuthenticationScope.EMAIL,
         ],
       });
-      if (!credential.identityToken) { setError('Apple identity token manquant.'); setLoading(false); return; }
+      if (!credential.identityToken) {
+        const msg = 'Apple identity token manquant.';
+        setError(msg); Alert.alert('Apple Sign In', msg);
+        setLoading(false); return;
+      }
       const { error: err } = await supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken,
       });
-      if (err) { setError(err.message); setLoading(false); return; }
+      if (err) {
+        setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || 'Erreur Supabase');
+        setLoading(false); return;
+      }
       const applePrenom = credential.fullName?.givenName || '';
       setLoading(false);
       onSuccess && onSuccess();
       postAuthProfileSync(applePrenom).catch(function(e) { devWarn('postAuthProfileSync apple (background)', e); });
       return;
     } catch (e) {
-      if (e?.code !== 'ERR_REQUEST_CANCELED') setError(e?.message || tr.ob_auth_err_net);
+      if (e?.code !== 'ERR_REQUEST_CANCELED') {
+        const msg = e?.message || tr.ob_auth_err_net || 'Erreur Apple Sign In';
+        setError(msg);
+        Alert.alert('Apple Sign In — erreur', `${msg}\n\nCode: ${e?.code || 'n/a'}`);
+      }
       setLoading(false);
     }
   }
@@ -854,20 +866,32 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
   }
 
   async function handleAppleSignIn() {
-    if (!supabase) return;
+    if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
+    if (!AppleAuth) { Alert.alert('Apple Sign In', 'Module expo-apple-authentication non chargé. Vérifie le plugin dans app.json.'); return; }
     if (!appleAvailable) { Alert.alert('FluidBody+', 'Sign in with Apple disponible sur iOS uniquement.'); return; }
     setLoading(true); setError('');
     try {
       const credential = await AppleAuth.signInAsync({
         requestedScopes: [AppleAuth.AppleAuthenticationScope.FULL_NAME, AppleAuth.AppleAuthenticationScope.EMAIL],
       });
-      if (!credential.identityToken) { setError('Apple identity token manquant.'); setLoading(false); return; }
+      if (!credential.identityToken) {
+        const msg = 'Apple identity token manquant.';
+        setError(msg); Alert.alert('Apple Sign In', msg);
+        setLoading(false); return;
+      }
       const { error: err } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken });
-      if (err) { setError(err.message); setLoading(false); return; }
+      if (err) {
+        setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || 'Erreur Supabase');
+        setLoading(false); return;
+      }
       setLoading(false);
       finish();
     } catch (e) {
-      if (e?.code !== 'ERR_REQUEST_CANCELED') setError(e?.message || tr.ob_auth_err_net);
+      if (e?.code !== 'ERR_REQUEST_CANCELED') {
+        const msg = e?.message || tr.ob_auth_err_net || 'Erreur Apple Sign In';
+        setError(msg);
+        Alert.alert('Apple Sign In — erreur', `${msg}\n\nCode: ${e?.code || 'n/a'}`);
+      }
       setLoading(false);
     }
   }
