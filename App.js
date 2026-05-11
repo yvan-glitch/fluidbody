@@ -80,6 +80,7 @@ import { U_JELLY, U_WAVE, FREE_SEANCE_INDEX, ZONE_TO_PILIER, T, SEANCES_FR, SEAN
 import { Linking as RNLinking } from 'react-native';
 import { Bulle, Rayon, Meduse, MeduseCornerIcon, VideoPlaceholderMeduse, BULLES, BULLES_MONCORPS, BULLES_ONBOARDING, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState, LivingMedusa, FloatingMedusas, MeduseRain, PluieBulles } from './src/components/Meduse';
 import VideoPlayer, { VIDEO_RESUME_PREFIX } from './src/components/VideoPlayer';
+import { prefetchSignedVideoUrl, buildSessionId } from './src/utils/videoUrl';
 import supabase from './src/lib/supabase';
 import PaywallModal, { PRODUCT_IDS } from './src/components/PaywallModal';
 import StretchTimerModal from './src/components/Timer';
@@ -1484,7 +1485,13 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         onClose={() => { setFreeDetailVisible(false); setFreeVideoPlaying(false); }}
         sdj={getSeanceDuJour(done, tensionIdxs, lang)}
         lang={lang}
-        onPlay={() => { setFreeDetailVisible(false); setFreeVideoPlaying(true); }}
+        onPlay={() => {
+          const sdj = getSeanceDuJour(done, tensionIdxs, lang);
+          const sid = sdj ? buildSessionId(sdj.pilier.key, sdj.idx) : null;
+          if (sid) prefetchSignedVideoUrl(sid, 'hls');
+          setFreeDetailVisible(false);
+          setFreeVideoPlaying(true);
+        }}
       />
       {freeVideoPlaying && (function() {
         var sdj = getSeanceDuJour(done, tensionIdxs, lang);
