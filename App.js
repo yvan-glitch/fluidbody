@@ -4,6 +4,45 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState, KeyboardAvoidingView, ImageBackground, PanResponder, Share } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+// ─── SENTRY ───────────────────────────────────────────────────────────────────
+// Init AVANT tout import qui pourrait throw. Safe-require pour Expo Go.
+// DSN absent → Sentry no-op (les helpers `Sentry.*` restent appelables).
+let Sentry = null;
+try { Sentry = require('@sentry/react-native'); } catch (e) {}
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN || '';
+if (Sentry && SENTRY_DSN) {
+  try {
+    Sentry.init({
+      dsn: SENTRY_DSN,
+      enableNative: true,
+      enableNativeCrashHandling: true,
+      enableAutoSessionTracking: true,
+      tracesSampleRate: 0,
+      debug: false,
+      environment: __DEV__ ? 'development' : 'production',
+      beforeSend(event) {
+        if (event?.user) {
+          delete event.user.email;
+          delete event.user.ip_address;
+          delete event.user.username;
+        }
+        return event;
+      },
+    });
+  } catch (e) {
+    if (__DEV__) console.warn('Sentry init failed:', e);
+  }
+}
+function sentryCapture(error, ctx) {
+  if (!Sentry || !SENTRY_DSN) return;
+  try {
+    if (ctx) Sentry.withScope(scope => {
+      Object.entries(ctx).forEach(([k, v]) => scope.setExtra(k, v));
+      Sentry.captureException(error);
+    });
+    else Sentry.captureException(error);
+  } catch (e) {}
+}
 import { ErrorBoundary } from './components/ErrorBoundary';
 // RevenueCat (achats Apple) — indisponible dans Expo Go, donc import "safe"
 let Purchases = null;
@@ -54,29 +93,32 @@ import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResum
 import { LogBox } from 'react-native';
 
 // ─── GLOBAL ERROR HANDLER (PROD ONLY) ─────────────────────────────────────────
-// En production (TestFlight / App Store), on intercepte les erreurs JS uncaught
-// et on les affiche à l'écran pour pouvoir diagnostiquer les bugs silencieux.
+// En prod : on envoie l'erreur à Sentry et on affiche un message générique.
+// Si Sentry n'est pas configuré (DSN vide), on affiche quand même un message
+// utilisateur — pas de stack trace exposée en TestFlight.
+let __fatalAlertShown = false;
 if (!__DEV__) {
   if (typeof ErrorUtils !== 'undefined' && ErrorUtils.getGlobalHandler) {
     const originalHandler = ErrorUtils.getGlobalHandler();
     ErrorUtils.setGlobalHandler((error, isFatal) => {
-      if (typeof console !== 'undefined') {
-        console.error('FLUIDBODY_FATAL:', error?.message || String(error), error?.stack || '');
+      sentryCapture(error, { isFatal: !!isFatal, source: 'globalHandler' });
+      if (isFatal && !__fatalAlertShown) {
+        __fatalAlertShown = true;
+        setTimeout(() => {
+          Alert.alert(
+            'Une erreur est survenue',
+            "L'équipe a été notifiée. Tu peux relancer l'app.",
+            [{ text: 'OK', onPress: () => { __fatalAlertShown = false; } }]
+          );
+        }, 100);
       }
-      setTimeout(() => {
-        Alert.alert(
-          'Erreur (debug TestFlight)',
-          `${error?.message || 'Unknown error'}\n\nStack:\n${(error?.stack || '').slice(0, 500)}`,
-          [{ text: 'OK' }]
-        );
-      }, 100);
       if (typeof originalHandler === 'function') originalHandler(error, isFatal);
     });
   }
   if (typeof process !== 'undefined' && typeof process.on === 'function') {
     try {
       process.on('unhandledRejection', (reason) => {
-        Alert.alert('Promise rejetée (debug)', String(reason).slice(0, 500));
+        sentryCapture(reason instanceof Error ? reason : new Error(String(reason)), { source: 'unhandledRejection' });
       });
     } catch (e) {}
   }
@@ -2249,6 +2291,14 @@ function App() {
     return () => subscription?.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!Sentry || !SENTRY_DSN) return;
+    try {
+      if (supaUser?.id) Sentry.setUser({ id: supaUser.id });
+      else Sentry.setUser(null);
+    } catch (e) {}
+  }, [supaUser]);
+
   async function handleOnboardingDone(p, l, t) {
     setPrenom(p); setLang(l); setTensionIdxs(t); setOnboardingDone(true);
     sendWelcomeNotification(p, l);
@@ -2394,13 +2444,17 @@ function App() {
   return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} />;
 }
 
-export default function AppWithBoundary() {
+function AppWithBoundary() {
   return (
-    <ErrorBoundary>
+    <ErrorBoundary onError={(error, info) => sentryCapture(error, { componentStack: info?.componentStack, source: 'ErrorBoundary' })}>
       <App />
     </ErrorBoundary>
   );
 }
+
+export default (Sentry && SENTRY_DSN && typeof Sentry.wrap === 'function')
+  ? Sentry.wrap(AppWithBoundary)
+  : AppWithBoundary;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, alignItems: 'center', justifyContent: 'center' },
