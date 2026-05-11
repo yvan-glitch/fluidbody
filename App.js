@@ -1,9 +1,10 @@
 import 'react-native-url-polyfill/auto';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState, KeyboardAvoidingView, ImageBackground, PanResponder, Share } from 'react-native';
+import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState, KeyboardAvoidingView, PanResponder, Share } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { Image as ExpoImage } from 'expo-image';
 // ─── SENTRY ───────────────────────────────────────────────────────────────────
 // Init AVANT tout import qui pourrait throw. Safe-require pour Expo Go.
 // DSN absent → Sentry no-op (les helpers `Sentry.*` restent appelables).
@@ -539,7 +540,7 @@ function Progresser({ done, lang, tensionIdxs }) {
               <View key={p.key} style={{ backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
                   <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden', borderWidth: 1.5, borderColor: '#AEEF4D', marginRight: 14 }}>
-                    <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} />
+                    <ExpoImage source={PILIER_IMAGES[p.key]} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -580,13 +581,12 @@ function SeanceDetailModal({ visible, onClose, sdj, lang, onPlay }) {
     <Modal visible animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: "#000000" }}>
         <View style={{ height: SH * 0.42, width: "100%" }}>
-          <ImageBackground source={PILIER_IMAGES[sdj.pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
-            <LinearGradient colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.7)"]} style={{ flex: 1 }}>
-              <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={{ position: "absolute", top: 56, left: 20, width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
-                <Text style={{ fontSize: 18, color: "#ffffff" }}>{"\u2190"}</Text>
-              </TouchableOpacity>
-            </LinearGradient>
-          </ImageBackground>
+          <ExpoImage source={PILIER_IMAGES[sdj.pilier.key]} contentFit="cover" cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.7)"]} style={{ flex: 1 }}>
+            <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={{ position: "absolute", top: 56, left: 20, width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ fontSize: 18, color: "#ffffff" }}>{"\u2190"}</Text>
+            </TouchableOpacity>
+          </LinearGradient>
         </View>
         <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 }}>
           <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 10 }}>{tr.free_try_once}</Text>
@@ -1641,9 +1641,8 @@ function WelcomeIntroScreen({ onDone, lang }) {
           {tiles.map(function(src, i) {
             return (
               <View key={'wel-' + i} style={{ width: tileW, height: tileH, borderRadius: 14, overflow: 'hidden' }}>
-                <ImageBackground source={src} resizeMode="cover" style={{ flex: 1 }}>
-                  <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,14,24,0.4)']} style={{ flex: 1 }} />
-                </ImageBackground>
+                <ExpoImage source={src} contentFit="cover" cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,14,24,0.4)']} style={{ flex: 1 }} />
               </View>
             );
           })}

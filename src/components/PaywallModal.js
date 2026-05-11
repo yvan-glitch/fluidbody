@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, Alert, Dimensions, ImageBackground, Linking, Platform, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, Alert, Dimensions, Linking, Platform, StyleSheet } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import AnimatedPlus from './AnimatedPlus';
@@ -110,7 +111,8 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
         </View>
         <ScrollView style={{ zIndex: 2 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
-          <ImageBackground source={PILIER_IMAGES.p7} resizeMode="cover" style={{ width: SW, height: Math.round(SH * 0.45), justifyContent: 'flex-end' }}>
+          <View style={{ width: SW, height: Math.round(SH * 0.45), justifyContent: 'flex-end' }}>
+            <ExpoImage source={PILIER_IMAGES.p7} contentFit="cover" cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
             <LinearGradient
               colors={['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.55)', '#000000']}
               locations={[0, 0.55, 1]}
@@ -126,7 +128,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               </View>
               <Text style={{ fontSize: 34, fontWeight: '800', color: '#ffffff', lineHeight: 38, letterSpacing: -0.5 }}>{heroTitle}</Text>
             </View>
-          </ImageBackground>
+          </View>
 
           <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
             {planCard('yearly', annualLabel, annualSub, yearlyDisplay)}
