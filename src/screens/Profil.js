@@ -64,14 +64,14 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
 
   useEffect(function() {
     if (!supabase || !supaUser) {
-      console.log('[Profil] fetch skipped — supabase=' + !!supabase + ' supaUser=' + !!supaUser);
+      if (__DEV__) console.log('[Profil] fetch skipped — supabase=' + !!supabase + ' supaUser=' + !!supaUser);
       return;
     }
-    console.log('[Profil] fetching profile for user.id:', supaUser.id);
+    if (__DEV__) console.log('[Profil] fetching profile for user.id:', supaUser.id);
     var cancelled = false;
     supabase.from('profiles').select('prenom, gender, birth_date, height_cm, weight_kg').eq('id', supaUser.id).maybeSingle().then(function(res) {
       if (cancelled) return;
-      console.log('[Profil] fetched res:', JSON.stringify({ data: res?.data || null, error: res?.error?.message || null }));
+      if (__DEV__) console.log('[Profil] fetched res:', JSON.stringify({ data: res?.data || null, error: res?.error?.message || null }));
       if (!res || !res.data) return;
       setProfileData({
         gender: res.data.gender || null,
@@ -80,7 +80,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         weight_kg: res.data.weight_kg != null ? res.data.weight_kg : null,
       });
     }).catch(function(e) {
-      console.log('[Profil] fetch threw:', e?.message || e);
+      if (__DEV__) console.log('[Profil] fetch threw:', e?.message || e);
     });
     return function() { cancelled = true; };
   }, [supaUser && supaUser.id, profileRefreshKey]);
