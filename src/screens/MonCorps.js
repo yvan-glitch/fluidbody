@@ -159,24 +159,35 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
   const [resumeIndices, setResumeIndices] = useState(() => new Set());
 
   var ppMedusas = useRef([
-    { x: new Animated.Value(SW - 80), y: new Animated.Value(40), size: 70 },
-    { x: new Animated.Value(20), y: new Animated.Value(SH * 0.06), size: 54 },
-    { x: new Animated.Value(SW * 0.4), y: new Animated.Value(SH * 0.1), size: 42 },
+    { baseX: SW - 80, baseY: 40, size: 70, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    { baseX: 20, baseY: SH * 0.06, size: 54, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    { baseX: SW * 0.4, baseY: SH * 0.1, size: 42, dx: new Animated.Value(0), dy: new Animated.Value(0) },
   ]).current;
 
   useEffect(function() {
-    ppMedusas.forEach(function(m) {
+    let mounted = true;
+    const timeouts = [];
+    const currentDrifts = [];
+    ppMedusas.forEach(function(m, idx) {
       function drift() {
+        if (!mounted) return;
         var toX = 10 + Math.random() * (SW - m.size - 20);
         var toY = 40 + Math.random() * (SH - m.size - 140);
         var dur = 10000 + Math.random() * 6000;
-        Animated.parallel([
-          Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
-          Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
-        ]).start(function() { drift(); });
+        var p = Animated.parallel([
+          Animated.timing(m.dx, { toValue: toX - m.baseX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
+          Animated.timing(m.dy, { toValue: toY - m.baseY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
+        ]);
+        currentDrifts[idx] = p;
+        p.start(function() { if (mounted) drift(); });
       }
-      setTimeout(function() { drift(); }, Math.random() * 2000);
+      timeouts.push(setTimeout(function() { drift(); }, Math.random() * 2000));
     });
+    return function() {
+      mounted = false;
+      timeouts.forEach(function(t) { clearTimeout(t); });
+      currentDrifts.forEach(function(d) { try { d && d.stop && d.stop(); } catch (e) {} });
+    };
   }, []);
 
   useEffect(() => {
@@ -256,7 +267,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r'+i} delay={b.delay + 2000} x={b.x + SW * 0.35} size={b.size} duration={b.duration} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r2'+i} delay={b.delay + 5000} x={b.x + SW * 0.65} size={b.size} duration={b.duration} />)}
       {ppMedusas.map(function(m, i) {
         return (
-          <Animated.View key={'ppm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 2, opacity: 0.9, left: m.x, top: m.y }}>
+          <Animated.View key={'ppm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 2, opacity: 0.9, left: m.baseX, top: m.baseY, transform: [{ translateX: m.dx }, { translateY: m.dy }] }}>
             <MeduseCornerIcon size={m.size} breathCycleMs={3000 + i * 600} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
           </Animated.View>
         );
