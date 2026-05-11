@@ -1,9 +1,16 @@
 import * as FileSystem from 'expo-file-system';
 import * as Crypto from 'expo-crypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 
 const DOWNLOADS_DIR = FileSystem.documentDirectory + 'downloads/';
 const DOWNLOADS_KEY = 'fluid_downloads';
+
+// XOR with a derived seed key is a placeholder, not real DRM. It prevents
+// casual file extraction from the device's documents directory but offers no
+// protection against a determined attacker — the seed is constant per app and
+// derivable from the bundled JS. Replace with expo-secure-store + a per-user
+// key before this is treated as security-relevant.
 const ENCRYPTION_SEED = 'com.ytissot.fluidbody.offline.v1';
 
 // Ensure downloads directory exists
@@ -30,12 +37,6 @@ function xorCrypt(data, keyHex) {
   return result;
 }
 
-// Convert HLS URL to MP4 download URL
-function hlsToMp4(url) {
-  if (!url) return null;
-  return url.replace(/\/playlist\.m3u8$/, '/play_720p.mp4');
-}
-
 // Get download state from AsyncStorage
 async function getDownloads() {
   try {
@@ -54,12 +55,15 @@ function getEncPath(pilierKey, seanceIndex) {
   return DOWNLOADS_DIR + pilierKey + '_' + seanceIndex + '.enc';
 }
 
-// Download and encrypt a video
+// Download and encrypt a video. The URL is signed server-side; the caller
+// only supplies the session id, never a raw Bunny URL.
 // Returns a callback to track progress: onProgress(progress 0-1)
-async function downloadVideo(pilierKey, seanceIndex, videoUrl, onProgress) {
+async function downloadVideo(pilierKey, seanceIndex, onProgress) {
   await ensureDir();
-  const mp4Url = hlsToMp4(videoUrl);
-  if (!mp4Url) throw new Error('Invalid video URL');
+  const sessionId = buildSessionId(pilierKey, seanceIndex);
+  if (!sessionId) throw new Error('Invalid session');
+  const mp4Url = await getSignedVideoUrl(sessionId, 'mp4');
+  if (!mp4Url) throw new Error('Could not sign download URL');
 
   const downloads = await getDownloads();
   const dlKey = pilierKey + '_' + seanceIndex;
@@ -195,5 +199,4 @@ export {
   getDownloads,
   getStorageUsed,
   formatBytes,
-  hlsToMp4,
 };

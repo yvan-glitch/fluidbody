@@ -79,6 +79,7 @@ import { U_JELLY, U_WAVE, FREE_SEANCE_INDEX, ZONE_TO_PILIER, T, SEANCES_FR, SEAN
 import { Linking as RNLinking } from 'react-native';
 import { Bulle, Rayon, Meduse, MeduseCornerIcon, VideoPlaceholderMeduse, BULLES, BULLES_MONCORPS, BULLES_ONBOARDING, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState, LivingMedusa, FloatingMedusas, MeduseRain, PluieBulles } from './src/components/Meduse';
 import VideoPlayer, { VIDEO_RESUME_PREFIX } from './src/components/VideoPlayer';
+import supabase from './src/lib/supabase';
 import PaywallModal, { PRODUCT_IDS } from './src/components/PaywallModal';
 import StretchTimerModal from './src/components/Timer';
 import AnimatedPlus from './src/components/AnimatedPlus';
@@ -1196,34 +1197,6 @@ async function sendWelcomeNotification(prenom, lang = 'fr') {
 
 const FLUID_SUB_KEY = 'fluid_sub';
 const DONE_KEY = 'fluidbody_done';
-
-// ══════════════════════════════════
-// SUPABASE
-// ══════════════════════════════════
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
-
-let supabase = null;
-try {
-  const { createClient } = require('@supabase/supabase-js');
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    throw new Error('SUPABASE_URL ou SUPABASE_ANON_KEY manquant');
-  }
-  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      storage: AsyncStorage,
-      storageKey: 'fluidbody.supabase.auth.v1',
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: false,
-    },
-    realtime: { transport: () => null },
-  });
-  if (__DEV__) devLog('Supabase créé avec succès');
-} catch (e) {
-  supabase = null;
-  if (__DEV__) console.error('Erreur Supabase:', e?.message != null ? e.message : String(e));
-}
 
 // ══════════════════════════════════
 // MAIN APP
