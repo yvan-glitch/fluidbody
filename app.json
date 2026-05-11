@@ -57,6 +57,12 @@
         "projectId": "c94beda1-885e-48cd-83ca-2a1e2f10da79"
       }
     },
+    "updates": {
+      "url": "https://u.expo.dev/c94beda1-885e-48cd-83ca-2a1e2f10da79"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "plugins": [
       "expo-localization",
       "react-native-health",
