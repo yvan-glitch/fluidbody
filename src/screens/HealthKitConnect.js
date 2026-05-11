@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Text, View, Image, TouchableOpacity, Animated, Easing, Dimensions, StyleSheet, Alert, Platform } from 'react-native';
+import { Text, View, TouchableOpacity, Animated, Easing, Dimensions, StyleSheet, Alert, Platform } from 'react-native';
+// expo-image au lieu de l'Image de react-native — RCTImageLoader +
+// CGImageSourceCreateThumbnailAtIndex throw NSException sur les PNG larges
+// avec profil couleur Display P3 (cf. apple-watch-hero.png, 882x806 P3) sous
+// New Architecture / Fabric. expo-image utilise SDWebImage (iOS) qui gère
+// proprement les wide-gamut PNGs.
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Rect, Defs, LinearGradient as SvgLG, Stop } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -172,7 +178,7 @@ export default function HealthKitConnectScreen({ lang, onDone }) {
             shadowRadius: 24,
           }}>
             {APPLE_WATCH_HERO ? (
-              <Image source={APPLE_WATCH_HERO} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              <Image source={APPLE_WATCH_HERO} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={0} />
             ) : (
               <View style={{ width: '100%', height: '100%', backgroundColor: 'rgba(8,26,38,0.6)', alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, paddingHorizontal: 18, textAlign: 'center' }}>

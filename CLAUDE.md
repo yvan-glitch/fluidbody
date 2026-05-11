@@ -68,6 +68,31 @@ No test runner or linter is configured.
 
 `metro.config.js` adds Node.js polyfills (`node-libs-react-native`) for Supabase compatibility, with mock `net`/`tls`.
 
+## Crash Monitoring (Sentry)
+
+- DSN injected via `EXPO_PUBLIC_SENTRY_DSN` (see `.env.example`). Empty → Sentry is a no-op.
+- Init lives at the top of `App.js` (before any other native module loads). Native iOS/Android crashes are captured automatically.
+- `Sentry.setUser({ id })` is wired to the Supabase auth state — only the user ID is sent, no email/PII (`beforeSend` strips email/IP/username).
+- `ErrorBoundary` forwards JS render errors to Sentry via `onError`.
+- The global `ErrorUtils` handler in prod (`App.js:95`) sends to Sentry and shows a generic alert ("Une erreur est survenue, l'équipe a été notifiée") — no stack trace is exposed.
+- All `console.log/warn/error` calls in app code are gated behind `__DEV__` (or routed through `devLog`/`devWarn` helpers) so prod logs stay clean.
+
+**To enable for TestFlight:**
+1. Create a "React Native" project on sentry.io.
+2. Put the public DSN in your local `.env`: `EXPO_PUBLIC_SENTRY_DSN=https://...@...ingest.sentry.io/...`
+3. `eas build --profile production --platform ios` — the env var is bundled at build time.
+4. Verify on the Sentry dashboard: trigger a JS error from a dev build, confirm the event arrives. Native crash symbolication needs sourcemap/dSYM upload (wire `sentry-cli` in an EAS post-publish hook later — not done yet).
+
+## HealthKit (currently disabled)
+
+Onboarding screen `HealthKitConnectScreen` is gated by the `HEALTHKIT_DISABLED` constant in `App.js` (~line 2093). Original crash: NSException at `apple-watch-hero.png` decode (882×806 Display P3 PNG) via `RCTImageLoader` + `CGImageSourceCreateThumbnailAtIndex` under New Architecture (builds 33/34/35).
+
+Two mitigations are already applied:
+1. `HealthKitConnect.js` now uses `<Image>` from `expo-image` (SDWebImage on iOS) instead of RN's `Image` — same fix pattern as commit 6e55733.
+2. `apple-watch-hero.png` re-encoded from Display P3 → sRGB via `sips`.
+
+**Re-enabling:** set `HEALTHKIT_DISABLED = false`, ship a TestFlight build, watch Sentry for ~24 h. If clean → remove the flag entirely. If the crash persists, fall back to one of: disable New Arch (`newArchEnabled: false` in `app.json`), downscale the hero image to ~600×548, or replace it with a vector SVG.
+
 ## Notes
 
 - The `my-app/` directory is an unrelated Expo Router scaffold (not part of the main app)
