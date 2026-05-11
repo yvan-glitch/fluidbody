@@ -397,7 +397,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     if (!s.isLoaded && s.error) {
       setStatus(s);
       syncKeepAwake(s);
-      console.log('Video playback error:', { uri: uriRef.current, error: s.error });
+      if (__DEV__) console.log('Video playback error:', { uri: uriRef.current, error: s.error });
       if (__DEV__) devWarn('Video playback error', s.error);
       // Fallback: si l'URL spécifique échoue, basculer sur la démo pour éviter un écran bloqué
       if (hasRealVideo && uriRef.current !== VIDEO_DEMO) {

@@ -80,7 +80,8 @@
           "color": "#AEEF4D"
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "@sentry/react-native"
     ]
   }
 }
