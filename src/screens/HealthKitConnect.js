@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Text, View, Image, TouchableOpacity, Animated, Easing, Dimensions, StyleSheet, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Rect, Defs, LinearGradient as SvgLG, Stop } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { T } from '../constants/data';
 import { Bulle, BULLES_ONBOARDING } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
@@ -44,23 +45,17 @@ function HealthHeartIcon({ size = 64 }) {
 }
 
 let AppleHealthKit = null;
-try { AppleHealthKit = require('react-native-health').default; } catch(e) {}
+try {
+  AppleHealthKit = require('react-native-health').default || require('react-native-health');
+} catch (e) {
+  if (__DEV__) console.warn('react-native-health unavailable:', e);
+}
+// NOTE: ne PAS accéder à AppleHealthKit.Constants ici (load time).
+// L'accès traverse le bridge natif et peut throw NSException si HKHealthStore
+// n'est pas correctement init côté natif → crash Hermes.
+// Les permissions sont calculées paresseusement DANS le handler du bouton.
 
-const HK_REQ_PERMISSIONS = AppleHealthKit ? {
-  permissions: {
-    read: [
-      AppleHealthKit.Constants?.Permissions?.ActiveEnergyBurned,
-      AppleHealthKit.Constants?.Permissions?.AppleExerciseTime,
-      AppleHealthKit.Constants?.Permissions?.AppleStandTime,
-      AppleHealthKit.Constants?.Permissions?.HeartRate,
-      AppleHealthKit.Constants?.Permissions?.Workout,
-    ].filter(Boolean),
-    write: [
-      AppleHealthKit.Constants?.Permissions?.ActiveEnergyBurned,
-      AppleHealthKit.Constants?.Permissions?.Workout,
-    ].filter(Boolean),
-  },
-} : null;
+const HK_PROMPT_FLAG = 'fluid_hk_prompt_done';
 
 export default function HealthKitConnectScreen({ lang, onDone }) {
   const tr = T[lang] || T.fr;
@@ -88,32 +83,59 @@ export default function HealthKitConnectScreen({ lang, onDone }) {
     };
   }, []);
 
-  function showLaterToast() {
-    if (typeof onDone === 'function') {
-      // Best-effort toast: an alert without buttons doesn't exist on RN, use an Alert quick popup
-      Alert.alert('FluidBody+', tr.hk_later_toast || 'Tu pourras autoriser HealthKit plus tard dans Réglages.');
+  function buildHkPermissions() {
+    if (!AppleHealthKit) return null;
+    try {
+      const C = (AppleHealthKit.Constants && AppleHealthKit.Constants.Permissions) || {};
+      return {
+        permissions: {
+          read: [C.Steps, C.ActiveEnergyBurned, C.AppleExerciseTime, C.AppleStandTime, C.HeartRate, C.Workout].filter(Boolean),
+          write: [C.ActiveEnergyBurned, C.Workout].filter(Boolean),
+        },
+      };
+    } catch (e) {
+      if (__DEV__) console.warn('HK permissions throw:', e);
+      return null;
     }
   }
 
-  function handleConnect() {
+  async function handleConnect() {
     if (requesting) return;
-    if (!AppleHealthKit || Platform.OS !== 'ios' || !HK_REQ_PERMISSIONS) {
-      onDone && onDone({ granted: false });
+    // ① Marque TOUJOURS le prompt comme done en premier — l'utilisateur ne le revoit plus
+    try { await AsyncStorage.setItem(HK_PROMPT_FLAG, '1'); } catch (e) {}
+    // ② Si pas d'AppleHealthKit ou pas iOS → on saute proprement
+    if (!AppleHealthKit || Platform.OS !== 'ios') {
+      onDone && onDone({ granted: false, reason: 'unavailable' });
+      return;
+    }
+    // ③ Construit les permissions LAZILY (ne touche pas le bridge au load time)
+    const perms = buildHkPermissions();
+    if (!perms) {
+      onDone && onDone({ granted: false, reason: 'perms_unavailable' });
       return;
     }
     setRequesting(true);
-    AppleHealthKit.initHealthKit(HK_REQ_PERMISSIONS, function(err) {
+    // ④ Try/catch SYNC autour de l'appel — si le natif throw NSException
+    //    avant d'invoquer le callback, on l'attrape ici
+    try {
+      AppleHealthKit.initHealthKit(perms, function (err) {
+        setRequesting(false);
+        if (err) {
+          if (__DEV__) console.warn('HK init err:', err);
+          onDone && onDone({ granted: false, error: err });
+        } else {
+          onDone && onDone({ granted: true });
+        }
+      });
+    } catch (e) {
+      if (__DEV__) console.warn('HK init throw:', e);
       setRequesting(false);
-      if (err) {
-        showLaterToast();
-        onDone && onDone({ granted: false, error: err });
-      } else {
-        onDone && onDone({ granted: true });
-      }
-    });
+      onDone && onDone({ granted: false, error: e });
+    }
   }
 
-  function handleSkip() {
+  async function handleSkip() {
+    try { await AsyncStorage.setItem(HK_PROMPT_FLAG, '1'); } catch (e) {}
     if (typeof onDone === 'function') onDone({ skipped: true });
   }
 
