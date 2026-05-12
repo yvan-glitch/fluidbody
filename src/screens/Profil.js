@@ -4,6 +4,7 @@ import { Image as ExpoImage } from 'expo-image';
 import GlassButton from '../components/GlassButton';
 import { GlassCard, GlassView, GLASS_RADII } from '../components/ui';
 import { useTheme } from '../theme/ThemeProvider';
+import { THEME_MODES } from '../theme';
 import LivingBackground from '../components/LivingBackground';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -38,6 +39,8 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var tr = T[lang] || T['fr'];
   var themeCtx = useTheme();
   var theme = themeCtx.theme;
+  var setThemeMode = themeCtx.setMode;
+  var themeMode = themeCtx.mode;
   // Section title accent colour — green on dark glass, the deeper accent
   // text token on light glass. Used by the small caps headings of each
   // settings section.
@@ -443,6 +446,55 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             </View>
           </GlassCard></View>
         )}
+
+{/* Apparence — segmented Auto/Clair/Sombre. Lives high in the
+            screen so it's easy to find. The active segment uses the brand
+            accent substrate; theme switches happen instantly via context,
+            the ThemeProvider's cross-fade handles the visual transition. */}
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
+          <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.appearance_section || 'Apparence'}</Text>
+            <View style={{ flexDirection: 'row', borderRadius: 14, padding: 4, backgroundColor: theme.mode === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: theme.colors.hairline }}>
+              {THEME_MODES.map(function(m) {
+                var active = themeMode === m;
+                var label = (
+                  m === 'auto' ? (tr.appearance_auto || 'Automatique')
+                  : m === 'light' ? (tr.appearance_light || 'Clair')
+                  : (tr.appearance_dark || 'Sombre')
+                );
+                var icon = m === 'auto' ? '◐' : m === 'light' ? '☀' : '☾';
+                return (
+                  <TouchableOpacity
+                    key={m}
+                    onPress={function() { setThemeMode(m); }}
+                    activeOpacity={0.85}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={label}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 10,
+                      borderRadius: 11,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: active
+                        ? (theme.mode === 'light' ? 'rgba(91,168,0,0.18)' : 'rgba(174,239,77,0.18)')
+                        : 'transparent',
+                      borderWidth: active ? 1 : 0,
+                      borderColor: active ? theme.colors.accent : 'transparent',
+                    }}
+                  >
+                    <Text style={{ fontSize: 14, color: active ? theme.colors.accentText : theme.colors.textSecondary, marginBottom: 2 }}>{icon}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: active ? '700' : '500', color: active ? theme.colors.accentText : theme.colors.textSecondary }}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 10, lineHeight: 16 }}>
+              {tr.appearance_hint || 'Automatique suit le réglage iOS.'}
+            </Text>
+          </GlassCard>
+        </View>
 
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dl_title || 'Téléchargements'}</Text>
