@@ -16,6 +16,13 @@
 
 import { Platform } from 'react-native';
 
+// HK désactivé globalement après le crash NSException de build #43 sur
+// iOS 26.5 + New Arch (cf. App.js HEALTHKIT_DISABLED). isSupported() le
+// reflète, donc ensureHealthKitInit() résout sur { ok: false } et toutes
+// les lectures/écritures retournent leur valeur "vide" sans toucher
+// react-native-health.
+const HEALTHKIT_DISABLED = true;
+
 let AppleHealthKit = null;
 try {
   AppleHealthKit = require('react-native-health').default || require('react-native-health');
@@ -25,6 +32,7 @@ let initialised = false;
 let initInFlight = null;
 
 function isSupported() {
+  if (HEALTHKIT_DISABLED) return false;
   return !!AppleHealthKit && Platform.OS === 'ios';
 }
 

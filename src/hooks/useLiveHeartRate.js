@@ -26,6 +26,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
+// HK désactivé globalement après le crash NSException de build #43 sur
+// iOS 26.5 + New Arch (cf. App.js HEALTHKIT_DISABLED). Tant que ce flag
+// est true, aucun appel natif AppleHealthKit.* n'est émis depuis le hook.
+const HEALTHKIT_DISABLED = true;
+
 let AppleHealthKit = null;
 try {
   AppleHealthKit = require('react-native-health').default || require('react-native-health');
@@ -43,7 +48,7 @@ function isAppleWatchSource(sourceName) {
 
 function probeAppleWatchPresence() {
   return new Promise(function (resolve) {
-    if (!AppleHealthKit || Platform.OS !== 'ios') {
+    if (HEALTHKIT_DISABLED || !AppleHealthKit || Platform.OS !== 'ios') {
       resolve(false);
       return;
     }
@@ -69,7 +74,7 @@ function probeAppleWatchPresence() {
 
 function fetchRecentHr() {
   return new Promise(function (resolve) {
-    if (!AppleHealthKit || Platform.OS !== 'ios') {
+    if (HEALTHKIT_DISABLED || !AppleHealthKit || Platform.OS !== 'ios') {
       resolve(null);
       return;
     }
@@ -155,7 +160,7 @@ export default function useLiveHeartRate(opts) {
   }, []);
 
   const start = useCallback(function () {
-    if (!enabled || !AppleHealthKit || Platform.OS !== 'ios') return;
+    if (HEALTHKIT_DISABLED || !enabled || !AppleHealthKit || Platform.OS !== 'ios') return;
     if (pollHandleRef.current) return;
     aggRef.current = { sum: 0, count: 0, max: 0, min: Infinity, startedAt: Date.now(), samples: [] };
     lastMeasuredAtRef.current = null;
