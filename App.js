@@ -1183,43 +1183,66 @@ if (Notifications) {
   } catch(e) {}
 }
 
+// expo-notifications 0.32 + iOS 26.5: l'ancien format de trigger
+// `{ weekday, hour, minute, repeats: true }` lève une NSException côté
+// natif (cf. crash build #43, EXC_BAD_ACCESS dans NSException→JSError
+// converter, dladdr sur callStackReturnAddresses). Helpers ci-dessous.
+function _trigDaily(hour, minute) {
+  var TYPES = Notifications && Notifications.SchedulableTriggerInputTypes;
+  return { type: (TYPES && TYPES.DAILY) || 'daily', hour: hour, minute: minute };
+}
+function _trigWeekly(weekday, hour, minute) {
+  var TYPES = Notifications && Notifications.SchedulableTriggerInputTypes;
+  return { type: (TYPES && TYPES.WEEKLY) || 'weekly', weekday: weekday, hour: hour, minute: minute };
+}
+function _trigTimeInterval(seconds, repeats) {
+  var TYPES = Notifications && Notifications.SchedulableTriggerInputTypes;
+  return { type: (TYPES && TYPES.TIME_INTERVAL) || 'timeInterval', seconds: seconds, repeats: !!repeats };
+}
+
 async function setupNotifications(lang = 'fr') {
   try {
     if (!Notifications || !Device) return;
     if (!Device.isDevice) return;
     const { status } = await Notifications.requestPermissionsAsync();
     if (status !== 'granted') return;
-    await Notifications.cancelAllScheduledNotificationsAsync();
+    try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (e) { sentryCapture(e, { where: 'setupNotifications.cancelAll' }); }
     const tr = T[lang] || T['fr'];
     var savedHour = parseInt(await AsyncStorage.getItem('fluid_notif_hour')) || 9;
     var pauseEnabled = (await AsyncStorage.getItem('fluid_notif_pause_enabled')) !== 'false';
     var quoteEnabled = (await AsyncStorage.getItem('fluid_quote_enabled')) !== 'false';
     var quoteHour = parseInt(await AsyncStorage.getItem('fluid_quote_hour')) || 8;
-    await Notifications.scheduleNotificationAsync({ content: { title: tr.notif_title, body: tr.notif_body, sound: true }, trigger: { hour: savedHour, minute: 0, repeats: true } });
+    try {
+      await Notifications.scheduleNotificationAsync({ content: { title: tr.notif_title, body: tr.notif_body, sound: true }, trigger: _trigDaily(savedHour, 0) });
+    } catch (e) { sentryCapture(e, { where: 'setupNotifications.dailyMain', hour: savedHour }); }
     // Phrase du jour — Sabrina : rotation quotidienne, re-schedulée à chaque ouverture
     if (quoteEnabled) {
       var quotes = SABRINA_QUOTES[lang] || SABRINA_QUOTES['fr'];
       if (quotes && quotes.length) {
         var d = new Date();
         var idx = (d.getDate() + d.getMonth() * 31) % quotes.length;
-        await Notifications.scheduleNotificationAsync({
-          content: { title: tr.notif_quote_title || 'Phrase du jour', body: quotes[idx], sound: false },
-          trigger: { hour: quoteHour, minute: 0, repeats: true },
-        });
+        try {
+          await Notifications.scheduleNotificationAsync({
+            content: { title: tr.notif_quote_title || 'Phrase du jour', body: quotes[idx], sound: false },
+            trigger: _trigDaily(quoteHour, 0),
+          });
+        } catch (e) { sentryCapture(e, { where: 'setupNotifications.quote', hour: quoteHour }); }
       }
     }
     // Pause Active — Office : toutes les heures 9h-18h en semaine
     if (pauseEnabled) {
       for (var h = 9; h <= 17; h++) {
         for (var wd = 2; wd <= 6; wd++) {
-          await Notifications.scheduleNotificationAsync({
-            content: { title: tr.notif_pause_title || 'Pause Active', body: tr.notif_pause_body || 'C\'est le moment de bouger ! 5 min d\'étirements au bureau.', sound: true },
-            trigger: { weekday: wd, hour: h, minute: 0, repeats: true },
-          });
+          try {
+            await Notifications.scheduleNotificationAsync({
+              content: { title: tr.notif_pause_title || 'Pause Active', body: tr.notif_pause_body || 'C\'est le moment de bouger ! 5 min d\'étirements au bureau.', sound: true },
+              trigger: _trigWeekly(wd, h, 0),
+            });
+          } catch (e) { sentryCapture(e, { where: 'setupNotifications.pause', weekday: wd, hour: h }); }
         }
       }
     }
-  } catch(e) {}
+  } catch(e) { sentryCapture(e, { where: 'setupNotifications.outer' }); }
 }
 
 async function sendWelcomeNotification(prenom, lang = 'fr') {
@@ -1238,10 +1261,10 @@ async function sendWelcomeNotification(prenom, lang = 'fr') {
     const body = typeof tr.notif_welcome_body === 'function' ? tr.notif_welcome_body(prenom) : tr.notif_welcome_body;
     await Notifications.scheduleNotificationAsync({
       content: { title: tr.notif_welcome_title, body: body, sound: true },
-      trigger: { seconds: 3 },
+      trigger: _trigTimeInterval(3, false),
     });
     await AsyncStorage.setItem(WELCOME_KEY, '1');
-  } catch(e) {}
+  } catch(e) { sentryCapture(e, { where: 'sendWelcomeNotification' }); }
 }
 
 const FLUID_SUB_KEY = 'fluid_sub';
