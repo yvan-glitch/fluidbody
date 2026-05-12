@@ -41,6 +41,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var [pauseEnabled, setPauseEnabled] = useState(true);
   var [quoteEnabled, setQuoteEnabled] = useState(true);
   var [quoteHour, setQuoteHour] = useState(8);
+  var [showHrEnabled, setShowHrEnabled] = useState(true);
   var [storageUsed, setStorageUsed] = useState('0 B');
   var [profileData, setProfileData] = useState({ gender: null, birth_date: null, height_cm: null, weight_kg: null });
   var [profileEditMode, setProfileEditMode] = useState(false);
@@ -57,6 +58,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     AsyncStorage.getItem('fluid_notif_pause_enabled').then(function(v) { setPauseEnabled(v !== 'false'); });
     AsyncStorage.getItem('fluid_quote_enabled').then(function(v) { setQuoteEnabled(v !== 'false'); });
     AsyncStorage.getItem('fluid_quote_hour').then(function(v) { if (v) setQuoteHour(parseInt(v) || 8); });
+    AsyncStorage.getItem('fluid_show_hr').then(function(v) { setShowHrEnabled(v !== 'false'); });
     try {
       var { getStorageUsed, formatBytes } = require('../components/DownloadManager');
       getStorageUsed().then(function(s) { setStorageUsed(formatBytes(s)); });
@@ -80,6 +82,10 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         height_cm: res.data.height_cm != null ? res.data.height_cm : null,
         weight_kg: res.data.weight_kg != null ? res.data.weight_kg : null,
       });
+      // Miroir AsyncStorage : VideoPlayer en a besoin pour la FCmax.
+      try {
+        if (res.data.birth_date) AsyncStorage.setItem('fluid_birth_date', res.data.birth_date);
+      } catch (e) {}
     }).catch(function(e) {
       if (__DEV__) console.log('[Profil] fetch threw:', e?.message || e);
     });
@@ -113,6 +119,11 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     };
     setProfileData(next);
     setProfileEditMode(false);
+    // Miroir AsyncStorage pour les composants offline (VideoPlayer / FCmax).
+    try {
+      if (next.birth_date) await AsyncStorage.setItem('fluid_birth_date', next.birth_date);
+      else await AsyncStorage.removeItem('fluid_birth_date');
+    } catch (e) {}
     if (!supabase || !supaUser) return;
     setProfileSaving(true);
     try {
@@ -403,6 +414,25 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             </View>
           )}
         </View>
+
+        {Platform.OS === 'ios' && (
+          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.session_settings_title || 'Pendant la séance'}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>{tr.show_hr_label || 'Afficher la fréquence cardiaque'}</Text>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{tr.show_hr_sub || 'Apple Watch requise · pill discret en haut à droite'}</Text>
+              </View>
+              <TouchableOpacity onPress={function() {
+                var next = !showHrEnabled;
+                setShowHrEnabled(next);
+                AsyncStorage.setItem('fluid_show_hr', String(next));
+              }} style={{ width: 50, height: 28, borderRadius: 14, backgroundColor: showHrEnabled ? '#AEEF4D' : 'rgba(255,255,255,0.15)', justifyContent: 'center', paddingHorizontal: 2 }}>
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#ffffff', alignSelf: showHrEnabled ? 'flex-end' : 'flex-start' }} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dl_title || 'Téléchargements'}</Text>

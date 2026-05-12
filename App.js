@@ -2105,6 +2105,10 @@ function App() {
       AsyncStorage.setItem('fluid_profile_setup_done', '1').catch(function(e) { devWarn('profile setup flag persist', e); });
       const cleanPrenom = payload.prenom ? String(payload.prenom).trim().slice(0, 50) : null;
       if (cleanPrenom) setPrenom(cleanPrenom);
+      // Miroir AsyncStorage de la DOB pour les composants offline (VideoPlayer / FCmax).
+      try {
+        if (payload && payload.birth_date) await AsyncStorage.setItem('fluid_birth_date', payload.birth_date);
+      } catch (e) {}
       if (!supabase) { devLog('[ProfileSetup] supabase null, skip cloud save'); return; }
 
       devLog('[ProfileSetup] >>> getSession()');
