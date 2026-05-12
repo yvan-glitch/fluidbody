@@ -243,7 +243,10 @@ function getSmartRecommendation(done, tensionIdxs, lang) {
 // ══════════════════════════════════
 // WEEKLY SUMMARY CARD
 // ══════════════════════════════════
-function WeeklySummary({ streak, lang }) {
+// Streak is shown in the all-time stats card below — keep this block
+// strictly week-scoped (sessions + minutes over the last 7 days) so the
+// two cards answer different questions.
+function WeeklySummary({ lang }) {
   var [weekSessions, setWeekSessions] = useState(0);
   var [weekMinutes, setWeekMinutes] = useState(0);
   var tr = T[lang] || T['fr'];
@@ -282,10 +285,6 @@ function WeeklySummary({ streak, lang }) {
         <View style={{ alignItems: 'center' }}>
           <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff' }}>{weekMinutes}'</Text>
           <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{tr.weekly_minutes_label || 'Minutes'}</Text>
-        </View>
-        <View style={{ alignItems: 'center' }}>
-          <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff' }}>🔥{streak || 0}</Text>
-          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>Streak</Text>
         </View>
       </View>
     </View>
@@ -349,7 +348,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
           </View>
         </View>
 
-        <WeeklySummary streak={streak} lang={lang} />
+        <WeeklySummary lang={lang} />
 
         {(function() {
           var stIdx = getMeduseState(pct, streak);
@@ -410,6 +409,9 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
           );
         })()}
 
+        <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.resume_total || 'Au total'}</Text>
+        </View>
         <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 16 }}>
           <View style={[localStyles.statCard, { flex: 1 }]}>
             <Text style={{ fontSize: 28, fontWeight: '200', color: '#AEEF4D' }}>{totalDone}</Text>
