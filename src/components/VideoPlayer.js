@@ -277,7 +277,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   var [showCcPicker, setShowCcPicker] = useState(false);
   var [playbackRate, setPlaybackRate] = useState(1.0);
 
-  // Fetch a fresh signed HLS URL whenever we need one (initial mount or after
+  // Fetch a fresh signed MP4 URL whenever we need one (initial mount or after
   // a forced reset). The token is short-lived, so we always re-resolve through
   // the cache instead of caching the URL in component state long-term.
   useEffect(function() {
@@ -285,7 +285,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     let cancelled = false;
     setUri('');
     hasRestoredRef.current = false;
-    getSignedVideoUrl(sessionId, 'hls')
+    getSignedVideoUrl(sessionId, 'mp4')
       .then(function(signed) { if (!cancelled) setUri(signed); })
       .catch(function(err) {
         if (cancelled) return;
