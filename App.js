@@ -86,6 +86,7 @@ import PaywallModal, { PRODUCT_IDS } from './src/components/PaywallModal';
 import StretchTimerModal from './src/components/Timer';
 import AnimatedPlus from './src/components/AnimatedPlus';
 import GlassButton from './src/components/GlassButton';
+import { GlassView, GlassCard, GlassSheet, GLASS_RADII } from './src/components/ui';
 import Confetti from './src/components/Confetti';
 import LivingBackground from './src/components/LivingBackground';
 import SignInScreen from './src/screens/SignIn';
@@ -282,33 +283,46 @@ function CustomTabBar({ state, descriptors, navigation }) {
   })).current;
 
   return (
-    <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: BAR_H, zIndex: 1000, elevation: 12, shadowColor: '#ffffff', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }} {...panResponder.panHandlers}>
-      <View style={{ flex: 1, borderRadius: BAR_H / 2, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
-        <BlurView intensity={Platform.OS === 'ios' ? 40 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.45)' }} />
-        <LinearGradient colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }} pointerEvents="none" />
-        <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.18)']} locations={[0, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '50%' }} pointerEvents="none" />
-        <Animated.View style={{ position: 'absolute', top: (BAR_H - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: pillH / 2, backgroundColor: 'rgba(174,239,77,0.15)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.4)', transform: [{ translateX: indicatorX }] }}>
-          <LinearGradient colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', borderTopLeftRadius: pillH / 2, borderTopRightRadius: pillH / 2 }} pointerEvents="none" />
+    <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: BAR_H, zIndex: 1000 }} {...panResponder.panHandlers}>
+      <GlassView
+        intensity={80}
+        tint="dark"
+        borderRadius={BAR_H / 2}
+        elevated
+        contentStyle={{ height: BAR_H }}
+      >
+        {/* Animated focus pill — drawn above the substrate so it sits on top of
+            the specular highlight but under the row of icons. */}
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', top: (BAR_H - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: pillH / 2, backgroundColor: 'rgba(174,239,77,0.18)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.45)', transform: [{ translateX: indicatorX }] }}>
+          <LinearGradient colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', borderTopLeftRadius: pillH / 2, borderTopRightRadius: pillH / 2 }} pointerEvents="none" />
         </Animated.View>
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
         {state.routes.map(function(route, index) {
           var options = descriptors[route.key].options;
           var isFocused = state.index === index;
-          var color = isFocused ? '#AEEF4D' : 'rgba(255,255,255,0.45)';
+          var color = isFocused ? '#AEEF4D' : 'rgba(255,255,255,0.55)';
           var onPress = function() {
             var event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
           };
           var IconComp = options.tabBarIcon;
           return (
-            <TouchableOpacity key={route.key} onPress={onPress} activeOpacity={0.7} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: BAR_H }}>
+            <TouchableOpacity
+              key={route.key}
+              onPress={onPress}
+              activeOpacity={0.7}
+              accessibilityRole="tab"
+              accessibilityLabel={route.name}
+              accessibilityState={isFocused ? { selected: true } : undefined}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: BAR_H }}
+            >
               {IconComp && IconComp({ color: color, size: 20, focused: isFocused })}
               <Text style={{ fontSize: 10, fontWeight: '600', color: color, marginTop: 2, letterSpacing: 0.2 }}>{route.name}</Text>
             </TouchableOpacity>
           );
         })}
         </View>
-      </View>
+      </GlassView>
     </View>
   );
 }
