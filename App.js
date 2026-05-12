@@ -2520,6 +2520,12 @@ function App() {
           }}
         >
           <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+          {/* Aquatic bubbles — keep the splash alive while the app boots.
+              Use BULLES_ONBOARDING (12 bubbles, light set) — visible enough
+              to read as movement, not so dense it competes with the logo. */}
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            {BULLES_ONBOARDING.map(function(b, i) { return <Bulle key={'sp-' + i} {...b} />; })}
+          </View>
           {/* Glow effect behind medusa */}
           <Animated.View style={{ position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(0,190,208,0.08)', opacity: splashGlow, transform: [{ scale: splashGlow.interpolate({ inputRange: [0.3, 0.8], outputRange: [1, 1.5] }) }] }} />
           {/* Medusa */}
