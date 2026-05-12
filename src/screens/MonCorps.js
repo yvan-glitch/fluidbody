@@ -240,10 +240,10 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       return;
     }
     hapticLight();
-    // Prefetch HLS manifest URL in parallel with the modal open animation —
+    // Prefetch signed MP4 URL in parallel with the modal open animation —
     // by the time VideoPlayer mounts, the signed URL is already in cache.
     const sessionId = buildSessionId(pilier.key, i);
-    if (sessionId) prefetchSignedVideoUrl(sessionId, 'hls');
+    if (sessionId) prefetchSignedVideoUrl(sessionId, 'mp4');
     setActiveVideo(i);
   }
 

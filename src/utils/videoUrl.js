@@ -25,7 +25,7 @@ function cacheKey(sessionId, kind, lang) {
   return lang ? `${sessionId}|${kind}|${lang}` : `${sessionId}|${kind}`;
 }
 
-export async function getSignedVideoUrl(sessionId, kind = 'hls', lang) {
+export async function getSignedVideoUrl(sessionId, kind = 'mp4', lang) {
   if (!sessionId) throw new Error('sessionId required');
   if (!supabase) throw new Error('Supabase non configuré');
 
@@ -75,7 +75,7 @@ export async function getSignedVideoUrl(sessionId, kind = 'hls', lang) {
  * Failures are swallowed silently: the real VideoPlayer call will retry and
  * surface the error to the user there.
  */
-export function prefetchSignedVideoUrl(sessionId, kind = 'hls', lang) {
+export function prefetchSignedVideoUrl(sessionId, kind = 'mp4', lang) {
   if (!sessionId) return;
   getSignedVideoUrl(sessionId, kind, lang).catch(() => {});
 }

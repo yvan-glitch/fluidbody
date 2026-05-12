@@ -1586,7 +1586,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         onPlay={() => {
           const sdj = getSeanceDuJour(done, tensionIdxs, lang);
           const sid = sdj ? buildSessionId(sdj.pilier.key, sdj.idx) : null;
-          if (sid) prefetchSignedVideoUrl(sid, 'hls');
+          if (sid) prefetchSignedVideoUrl(sid, 'mp4');
           setFreeDetailVisible(false);
           setFreeVideoPlaying(true);
         }}
