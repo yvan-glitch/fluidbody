@@ -45,6 +45,7 @@ function sentryCapture(error, ctx) {
   } catch (e) {}
 }
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 // RevenueCat (achats Apple) — indisponible dans Expo Go, donc import "safe"
 let Purchases = null;
 try {
@@ -2492,12 +2493,14 @@ function App() {
 
 function AppWithBoundary() {
   return (
-    <ErrorBoundary onError={(error, info) => sentryCapture(error, { componentStack: info?.componentStack, source: 'ErrorBoundary' })}>
-      <ThemeProvider>
-        <ThemedStatusBar />
-        <App />
-      </ThemeProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary onError={(error, info) => sentryCapture(error, { componentStack: info?.componentStack, source: 'ErrorBoundary' })}>
+        <ThemeProvider>
+          <ThemedStatusBar />
+          <App />
+        </ThemeProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 
