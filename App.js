@@ -87,6 +87,8 @@ import StretchTimerModal from './src/components/Timer';
 import AnimatedPlus from './src/components/AnimatedPlus';
 import GlassButton from './src/components/GlassButton';
 import { GlassView, GlassCard, GlassSheet, GLASS_RADII } from './src/components/ui';
+import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
+import ThemedStatusBar from './src/theme/ThemedStatusBar';
 import Confetti from './src/components/Confetti';
 import LivingBackground from './src/components/LivingBackground';
 import SignInScreen from './src/screens/SignIn';
@@ -2441,7 +2443,10 @@ function App() {
 function AppWithBoundary() {
   return (
     <ErrorBoundary onError={(error, info) => sentryCapture(error, { componentStack: info?.componentStack, source: 'ErrorBoundary' })}>
-      <App />
+      <ThemeProvider>
+        <ThemedStatusBar />
+        <App />
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
