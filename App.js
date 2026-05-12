@@ -92,6 +92,7 @@ import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import ThemedStatusBar from './src/theme/ThemedStatusBar';
 import Confetti from './src/components/Confetti';
 import LivingBackground from './src/components/LivingBackground';
+import CoachWelcomeOverlay, { isCoachWelcomeSeen } from './src/components/CoachWelcomeOverlay';
 import SignInScreen from './src/screens/SignIn';
 import HealthKitConnectScreen from './src/screens/HealthKitConnect';
 import MonCorps, { MetricTile } from './src/screens/MonCorps';
@@ -1303,6 +1304,19 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [profileRefreshKey, setProfileRefreshKey] = useState(0);
   const [rcPackagesByProductId, setRcPackagesByProductId] = useState({});
   const [rcLoadingPrices, setRcLoadingPrices] = useState(false);
+  const [coachWelcomeVisible, setCoachWelcomeVisible] = useState(false);
+
+  // First-launch coach welcome — once per install, opened ~700ms after MainApp
+  // mounts so the user sees the tab bar settle first (less jarring than a hard
+  // takeover). Flag in AsyncStorage; see `CoachWelcomeOverlay`.
+  useEffect(function() {
+    let cancelled = false;
+    isCoachWelcomeSeen().then(function(seen) {
+      if (cancelled || seen) return;
+      setTimeout(function() { if (!cancelled) setCoachWelcomeVisible(true); }, 700);
+    });
+    return function() { cancelled = true; };
+  }, []);
 
   useEffect(function() { try { initHealthKit(); } catch (e) { if (__DEV__) console.warn('initHealthKit throw:', e); } }, []);
 
@@ -1695,6 +1709,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           </View>
         </Modal>
       )}
+      <CoachWelcomeOverlay
+        visible={coachWelcomeVisible}
+        lang={lang}
+        prenom={prenom}
+        onDone={function() { setCoachWelcomeVisible(false); }}
+      />
     </>
   );
 }
