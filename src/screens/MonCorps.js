@@ -19,6 +19,7 @@ import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from '../utils';
+import { safeNativeCall, safeNativeFire, diag } from '../utils/safeNativeCall';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
@@ -554,10 +555,8 @@ function MetricTile({ children }) {
 
 async function scheduleProgNotifications(prog, idx, lang) {
   if (!Notifications) return [];
-  try {
-    var status = await Notifications.requestPermissionsAsync();
-    if (status.status !== 'granted') return [];
-  } catch(e) { sentryCaptureSafe(e, { where: 'scheduleProgNotifications.requestPermissions' }); return []; }
+  var status = await safeNativeCall('notif.requestPermissionsAsync.progSave', function() { return Notifications.requestPermissionsAsync(); }, null);
+  if (!status || status.status !== 'granted') return [];
   var tr = T[lang] || T['fr'];
   var pilierNames = getPiliers(lang).filter(function(p) { return prog.piliers.includes(p.key); }).map(function(p) { return p.label; });
   var pilierStr = pilierNames.join(', ');
@@ -565,19 +564,19 @@ async function scheduleProgNotifications(prog, idx, lang) {
   var ids = [];
   var selectedDays = prog.selectedDays || [1, 2, 3, 4, 5];
   for (var d = 0; d < selectedDays.length; d++) {
-    try {
-      var weekday = selectedDays[d] + 1;
-      if (weekday > 7) weekday = 1;
-      // Garde-fous : si les valeurs sont corrompues, on saute pour \u00E9viter
-      // une NSException c\u00F4t\u00E9 natif (cf. crash build #43 sur iOS 26.5).
-      if (typeof weekday !== 'number' || weekday < 1 || weekday > 7) continue;
-      if (typeof hour !== 'number' || hour < 0 || hour > 23) continue;
-      var id = await Notifications.scheduleNotificationAsync({
-        content: { title: 'FluidBody+ \uD83D\uDCAA', body: (tr.prog_notif_body || "C'est l'heure de ta s\u00E9ance") + ' ' + pilierStr + ' \u00B7 ' + prog.duree, sound: true },
-        trigger: trigWeekly(weekday, hour, 0),
+    var weekday = selectedDays[d] + 1;
+    if (weekday > 7) weekday = 1;
+    // Garde-fous : si les valeurs sont corrompues, on saute pour \u00E9viter
+    // une NSException c\u00F4t\u00E9 natif (cf. crash build #43 sur iOS 26.5).
+    if (typeof weekday !== 'number' || weekday < 1 || weekday > 7) continue;
+    if (typeof hour !== 'number' || hour < 0 || hour > 23) continue;
+    var id = await safeNativeCall('notif.schedule.prog', (function(wd_, hr_, body_) { return function() {
+      return Notifications.scheduleNotificationAsync({
+        content: { title: 'FluidBody+ \uD83D\uDCAA', body: body_, sound: true },
+        trigger: trigWeekly(wd_, hr_, 0),
       });
-      ids.push(id);
-    } catch(e) { sentryCaptureSafe(e, { where: 'scheduleProgNotifications.schedule', weekday: selectedDays[d], hour: hour }); }
+    }; })(weekday, hour, (tr.prog_notif_body || "C'est l'heure de ta s\u00E9ance") + ' ' + pilierStr + ' \u00B7 ' + prog.duree), null);
+    if (id != null) ids.push(id);
   }
   return ids;
 }
@@ -585,7 +584,9 @@ async function scheduleProgNotifications(prog, idx, lang) {
 async function cancelProgNotifications(notifIds) {
   if (!Notifications || !notifIds) return;
   for (var i = 0; i < notifIds.length; i++) {
-    try { await Notifications.cancelScheduledNotificationAsync(notifIds[i]); } catch(e) {}
+    await safeNativeCall('notif.cancelScheduled.prog', (function(id_) { return function() {
+      return Notifications.cancelScheduledNotificationAsync(id_);
+    }; })(notifIds[i]), null);
   }
 }
 

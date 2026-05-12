@@ -28,6 +28,7 @@ import LivingBackground from './LivingBackground';
 import { Bulle, BULLES_ONBOARDING } from './Meduse';
 import GlassButton from './ui/GlassButton';
 import { T } from '../constants/data';
+import { safeNativeFire } from '../utils/safeNativeCall';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -36,11 +37,15 @@ try { HapticsMod = require('expo-haptics'); } catch (e) {}
 
 function hapticImpact() {
   if (Platform.OS === 'web' || !HapticsMod) return;
-  try { HapticsMod.impactAsync(HapticsMod.ImpactFeedbackStyle.Soft); } catch (e) {}
+  safeNativeFire('haptic.impactSoft.breath', function() {
+    return HapticsMod.impactAsync(HapticsMod.ImpactFeedbackStyle.Soft);
+  });
 }
 function hapticSuccess() {
   if (Platform.OS === 'web' || !HapticsMod) return;
-  try { HapticsMod.notificationAsync(HapticsMod.NotificationFeedbackType.Success); } catch (e) {}
+  safeNativeFire('haptic.notificationSuccess.breath', function() {
+    return HapticsMod.notificationAsync(HapticsMod.NotificationFeedbackType.Success);
+  });
 }
 
 const DEFAULT_PATTERN = { inhale: 4, holdIn: 4, exhale: 6, holdOut: 2 };

@@ -18,6 +18,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { T } from '../constants/data';
+import { safeNativeCall } from './safeNativeCall';
 
 let Notifications = null;
 let Device = null;
@@ -110,26 +111,27 @@ export async function scheduleStreakProtectionToday({ streak, lang }) {
   if (now.getHours() < 21 || now.getHours() > 22) return false;
   if (await hasDoneSessionToday()) return false;
   try {
-    const perm = await Notifications.getPermissionsAsync();
-    if (perm.status !== 'granted') return false;
+    const perm = await safeNativeCall('notif.getPermissionsAsync.streakProt', function() { return Notifications.getPermissionsAsync(); }, null);
+    if (!perm || perm.status !== 'granted') return false;
     // Avoid scheduling twice in the same evening.
     const existingId = await AsyncStorage.getItem(STREAK_PROT_ID_KEY);
     if (existingId) {
-      try {
-        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-        const stillThere = (scheduled || []).some(function (n) { return n.identifier === existingId; });
-        if (stillThere) return false;
-      } catch (e) {}
+      const scheduled = await safeNativeCall('notif.getAllScheduled.streakProt', function() { return Notifications.getAllScheduledNotificationsAsync(); }, null);
+      const stillThere = (scheduled || []).some(function (n) { return n.identifier === existingId; });
+      if (stillThere) return false;
     }
     const tr = T[lang] || T.fr;
     const title = tr.notif_streak_prot_title || 'Garde ta série 🔥';
     const body = (tr.notif_streak_prot_body
       ? (typeof tr.notif_streak_prot_body === 'function' ? tr.notif_streak_prot_body(streak) : tr.notif_streak_prot_body)
       : `Tu en es à ${streak} jours. Une mini-séance de 5 min suffit pour la prolonger.`);
-    const id = await Notifications.scheduleNotificationAsync({
-      content: { title: title, body: body, sound: true },
-      trigger: trigTimeInterval(60, false),
-    });
+    const id = await safeNativeCall('notif.schedule.streakProt', function() {
+      return Notifications.scheduleNotificationAsync({
+        content: { title: title, body: body, sound: true },
+        trigger: trigTimeInterval(60, false),
+      });
+    }, null);
+    if (id == null) return false;
     await AsyncStorage.setItem(STREAK_PROT_ID_KEY, String(id));
     return true;
   } catch (e) { return false; }
@@ -143,8 +145,8 @@ export async function schedulePostOnboardingNudge({ lang }) {
   if (!isReady()) return false;
   try {
     if (await AsyncStorage.getItem(ONBOARDING_NUDGE_KEY)) return false;
-    const perm = await Notifications.getPermissionsAsync();
-    if (perm.status !== 'granted') return false;
+    const perm = await safeNativeCall('notif.getPermissionsAsync.nudge', function() { return Notifications.getPermissionsAsync(); }, null);
+    if (!perm || perm.status !== 'granted') return false;
     const firstRaw = await AsyncStorage.getItem(ONBOARDING_FIRST_OPEN_KEY);
     let firstTs = firstRaw ? parseInt(firstRaw, 10) : 0;
     if (!firstTs) {
@@ -159,14 +161,16 @@ export async function schedulePostOnboardingNudge({ lang }) {
     const seconds = Math.max(60, target - elapsed);
     if (seconds > 72 * 3600) return false; // too late, skip
     const tr = T[lang] || T.fr;
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: tr.notif_nudge_title || 'Sabrina t\'attend',
-        body: tr.notif_nudge_body || '10 minutes suffisent pour découvrir ta première séance.',
-        sound: false,
-      },
-      trigger: trigTimeInterval(seconds, false),
-    });
+    await safeNativeCall('notif.schedule.nudge', function() {
+      return Notifications.scheduleNotificationAsync({
+        content: {
+          title: tr.notif_nudge_title || 'Sabrina t\'attend',
+          body: tr.notif_nudge_body || '10 minutes suffisent pour découvrir ta première séance.',
+          sound: false,
+        },
+        trigger: trigTimeInterval(seconds, false),
+      });
+    }, null);
     await AsyncStorage.setItem(ONBOARDING_NUDGE_KEY, '1');
     return true;
   } catch (e) { return false; }
@@ -183,17 +187,19 @@ export async function scheduleMilestoneReward({ milestoneNum, lang, prenom }) {
   if (!isReady()) return false;
   if (MILESTONE_PUSH_TARGETS.indexOf(milestoneNum) === -1) return false;
   try {
-    const perm = await Notifications.getPermissionsAsync();
-    if (perm.status !== 'granted') return false;
+    const perm = await safeNativeCall('notif.getPermissionsAsync.milestone', function() { return Notifications.getPermissionsAsync(); }, null);
+    if (!perm || perm.status !== 'granted') return false;
     const tr = T[lang] || T.fr;
     const titleFn = tr.notif_milestone_title;
     const bodyFn = tr.notif_milestone_body;
     const title = typeof titleFn === 'function' ? titleFn(milestoneNum, prenom) : (titleFn || `${milestoneNum} séances 🌟`);
     const body = typeof bodyFn === 'function' ? bodyFn(milestoneNum, prenom) : (bodyFn || 'Tu construis quelque chose de durable. Continue.');
-    await Notifications.scheduleNotificationAsync({
-      content: { title: title, body: body, sound: false },
-      trigger: trigTimeInterval(8, false),
-    });
+    await safeNativeCall('notif.schedule.milestone', function() {
+      return Notifications.scheduleNotificationAsync({
+        content: { title: title, body: body, sound: false },
+        trigger: trigTimeInterval(8, false),
+      });
+    }, null);
     return true;
   } catch (e) { return false; }
 }
