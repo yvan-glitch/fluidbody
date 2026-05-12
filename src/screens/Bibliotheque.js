@@ -340,7 +340,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         onClose={() => setOpenTheoryPilier(null)}
         onPlay={(seance, idx) => {
           const sid = buildSessionId(openTheoryPilier.pilier.key, idx);
-          if (sid) prefetchSignedVideoUrl(sid, 'hls');
+          if (sid) prefetchSignedVideoUrl(sid, 'mp4');
           setActiveTheory({ pilier: openTheoryPilier.pilier, seance, idx });
         }}
       />

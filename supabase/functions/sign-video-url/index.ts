@@ -132,7 +132,8 @@ Deno.serve(async (req) => {
     return json({ error: "bad-request" }, 400);
   }
   const sessionId = (body.session_id || "").trim();
-  const kind: Kind = body.kind === "mp4" || body.kind === "vtt" ? body.kind : "hls";
+  const kind: Kind =
+    body.kind === "hls" || body.kind === "vtt" ? body.kind : "mp4";
   const lang = typeof body.lang === "string" ? body.lang : undefined;
   if (!/^[a-z0-9]+_\d+$/i.test(sessionId)) {
     return json({ error: "bad-session-id" }, 400);
