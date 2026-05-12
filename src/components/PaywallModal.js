@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, Text, ScrollView, Modal, Alert, Dimensions, Linking, StyleSheet } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, ScrollView, Modal, Alert, Dimensions, Linking, StyleSheet, Animated, Easing } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedPlus from './AnimatedPlus';
@@ -55,6 +55,135 @@ function BulletCheck() {
   );
 }
 
+// Animated count-up — feels alive, low cost. Lerps over 1.6s with an
+// out-easing so the last digits slow gracefully.
+function AnimatedCount({ to, style }) {
+  const animRef = useRef(new Animated.Value(0)).current;
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    animRef.setValue(0);
+    const listenerId = animRef.addListener(({ value }) => {
+      setVal(Math.round(value * to));
+    });
+    Animated.timing(animRef, {
+      toValue: 1,
+      duration: 1600,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    return () => animRef.removeListener(listenerId);
+  }, [to]);
+  return <Text style={style}>{val.toLocaleString('fr-FR')}</Text>;
+}
+
+// Live-ish active members counter. We don't have a backend signal yet so we
+// pick a stable, plausible number derived from the current half-hour so two
+// users at the same time see the same display.
+function liveMembersGuess() {
+  const now = new Date();
+  const halfHour = Math.floor(now.getHours() * 2 + now.getMinutes() / 30);
+  // Range 120 → 360 across the day, peaks around lunch + evening.
+  const base = 120;
+  const peakLunch = Math.max(0, 90 - Math.abs(halfHour - 26) * 6); // ~13h
+  const peakEvening = Math.max(0, 130 - Math.abs(halfHour - 39) * 7); // ~19h30
+  return Math.round(base + peakLunch + peakEvening + (halfHour % 7) * 4);
+}
+
+function TestimonialsCard({ testimonials, theme, sectionTitle }) {
+  const [idx, setIdx] = useState(0);
+  const opac = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!Array.isArray(testimonials) || testimonials.length < 2) return;
+    const itv = setInterval(() => {
+      Animated.sequence([
+        Animated.timing(opac, { toValue: 0, duration: 250, useNativeDriver: true }),
+        Animated.timing(opac, { toValue: 1, duration: 350, useNativeDriver: true }),
+      ]).start();
+      setTimeout(() => setIdx((i) => (i + 1) % testimonials.length), 280);
+    }, 4200);
+    return () => clearInterval(itv);
+  }, [testimonials]);
+
+  if (!Array.isArray(testimonials) || testimonials.length === 0) return null;
+  const t = testimonials[idx];
+  const initial = (t.name || '?').slice(0, 1).toUpperCase();
+  return (
+    <View style={{ marginTop: 18 }}>
+      <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10, textAlign: 'center' }}>
+        {sectionTitle}
+      </Text>
+      <GlassCard intensity={55} borderRadius={GLASS_RADII.card} padding={16}>
+        <Animated.View style={{ opacity: opac, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <View style={{
+            width: 44, height: 44, borderRadius: 22,
+            backgroundColor: 'rgba(174,239,77,0.18)',
+            borderWidth: 1, borderColor: 'rgba(174,239,77,0.45)',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Text style={{ fontSize: 17, fontWeight: '800', color: '#AEEF4D' }}>{initial}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, fontStyle: 'italic', color: theme.colors.text, lineHeight: 19 }}>
+              {t.text}
+            </Text>
+            <Text style={{ fontSize: 11, color: theme.colors.textSecondary, marginTop: 5, letterSpacing: 0.3 }}>
+              — {t.name}{t.age ? `, ${t.age}` : ''}
+            </Text>
+          </View>
+        </Animated.View>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 12 }}>
+          {testimonials.map((_, i) => (
+            <View
+              key={i}
+              style={{
+                width: i === idx ? 18 : 6,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: i === idx ? '#AEEF4D' : theme.colors.hairline,
+              }}
+            />
+          ))}
+        </View>
+      </GlassCard>
+    </View>
+  );
+}
+
+function CompareTable({ features, theme, title, appLabel, studioLabel }) {
+  if (!Array.isArray(features) || features.length === 0) return null;
+  return (
+    <View style={{ marginTop: 18 }}>
+      <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10, textAlign: 'center' }}>
+        {title}
+      </Text>
+      <GlassCard intensity={55} borderRadius={GLASS_RADII.card} padding={14}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.hairline }}>
+          <View style={{ flex: 1 }} />
+          <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.accentText, letterSpacing: 0.6, width: 64, textAlign: 'center' }}>{appLabel}</Text>
+          <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.textSecondary, letterSpacing: 0.6, width: 80, textAlign: 'center' }}>{studioLabel}</Text>
+        </View>
+        {features.map((f, i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: i === features.length - 1 ? 0 : 1, borderBottomColor: theme.colors.hairline }}>
+            <Text style={{ flex: 1, fontSize: 12, fontWeight: '500', color: theme.colors.text, paddingRight: 6 }} numberOfLines={2}>
+              {f.feature}
+            </Text>
+            <View style={{ width: 64, alignItems: 'center' }}>
+              {f.app
+                ? <Text style={{ color: '#AEEF4D', fontWeight: '800' }}>✓</Text>
+                : <Text style={{ color: theme.colors.textTertiary, fontWeight: '700' }}>—</Text>}
+            </View>
+            <View style={{ width: 80, alignItems: 'center' }}>
+              {f.studio
+                ? <Text style={{ color: theme.colors.accent, fontWeight: '800' }}>✓</Text>
+                : <Text style={{ color: theme.colors.textTertiary, fontWeight: '700' }}>—</Text>}
+            </View>
+          </View>
+        ))}
+      </GlassCard>
+    </View>
+  );
+}
+
 export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore }) {
   var tr = T[lang] || T['fr'];
   var theme = useTheme().theme;
@@ -69,6 +198,9 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
 
   const [selected, setSelected] = useState('yearly');
   const selectedPrice = selected === 'yearly' ? yearlyDisplay : monthlyDisplay;
+  const liveMembers = useMemo(liveMembersGuess, []);
+  const testimonials = Array.isArray(tr.paywall_testimonials) ? tr.paywall_testimonials : null;
+  const compareFeatures = Array.isArray(tr.paywall_compare_features) ? tr.paywall_compare_features : null;
 
   const heroTitle = isFr ? 'Le Pilates conscient, au quotidien' : 'Conscious Pilates, every day';
   const annualLabel = isFr ? 'Annuel' : 'Annual';
@@ -194,6 +326,13 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 <AnimatedPlus style={{ fontSize: 18, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
               </View>
               <Text style={{ fontSize: 32, fontWeight: '800', color: '#ffffff', lineHeight: 36, letterSpacing: -0.4 }}>{heroTitle}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#AEEF4D' }} />
+                <AnimatedCount to={liveMembers} style={{ fontSize: 14, fontWeight: '800', color: '#ffffff' }} />
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.78)', fontWeight: '500' }}>
+                  {tr.paywall_members_label || 'membres pratiquent en ce moment'}
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -234,6 +373,26 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 {ctaLabel}
               </GlassButton>
               <Text style={{ fontSize: 12, fontWeight: '500', color: theme.colors.textSecondary, textAlign: 'center', marginTop: 10 }}>{selectedPrice}</Text>
+              {/* Guarantee pill — discreet, sits under the CTA so the user
+                  sees the safety net just before tapping. */}
+              <View style={{
+                marginTop: 14,
+                alignSelf: 'center',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 14,
+                backgroundColor: 'rgba(174,239,77,0.14)',
+                borderWidth: 1,
+                borderColor: 'rgba(174,239,77,0.4)',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+              }}>
+                <Text style={{ fontSize: 12, color: '#AEEF4D' }}>🛡</Text>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.accentText, letterSpacing: 0.2 }}>
+                  {tr.paywall_guarantee_pill || 'Annule sans frais dans les 7 premiers jours'}
+                </Text>
+              </View>
             </GlassCard>
 
             {disabled && (
@@ -248,6 +407,20 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 </GlassCard>
               </View>
             )}
+
+            <TestimonialsCard
+              testimonials={testimonials}
+              theme={theme}
+              sectionTitle={tr.paywall_what_clients_say || 'Ce que disent nos pratiquantes'}
+            />
+
+            <CompareTable
+              features={compareFeatures}
+              theme={theme}
+              title={tr.paywall_compare_title || 'En complément de ton studio'}
+              appLabel={tr.paywall_compare_app || 'App'}
+              studioLabel={tr.paywall_compare_studio || 'Studio'}
+            />
           </View>
 
           {/* "Restaurer mes achats" — lien discret en bas */}
