@@ -11,6 +11,7 @@ import { Bulle, Rayon, MeduseCornerIcon, FloatingMedusas, BULLES, BULLES_MONCORP
 import AnimatedPlus from '../components/AnimatedPlus';
 import GlassButton from '../components/GlassButton';
 import { GlassCard, GLASS_RADII } from '../components/ui';
+import { useTheme } from '../theme/ThemeProvider';
 import LivingBackground from '../components/LivingBackground';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
@@ -601,6 +602,7 @@ function ZoneIcon({ idx, color, size }) {
 
 function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout }) {
   var tr = T[lang] || T["fr"];
+  var theme = useTheme().theme;
   var navigation = useNavigation();
   var [openPilier, setOpenPilier] = useState(null);
   var [openInitialIdx, setOpenInitialIdx] = useState(null);
@@ -644,7 +646,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
 
   return (
     <View style={localStyles.screen}>
-      <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={theme.colors.bgGradient} locations={theme.colors.bgGradientStops} style={StyleSheet.absoluteFill} />
       <LivingBackground />
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: "none" }}>
         <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
