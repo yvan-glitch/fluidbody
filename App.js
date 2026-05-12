@@ -1334,7 +1334,18 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     return function() { cancelled = true; };
   }, []);
 
-  useEffect(function() { try { initHealthKit(); } catch (e) { if (__DEV__) console.warn('initHealthKit throw:', e); } }, []);
+  useEffect(function() {
+    // Defer HK init by ~400ms so it doesn't compete with the mount-time
+    // RC + notification burst (which themselves are deferred 800ms). HK is
+    // already proven stable post-Kingstinct migration but we keep it off
+    // the first paint to be safe.
+    diag('mainapp.initHealthKit.deferred', 'scheduled');
+    var hkTimer = setTimeout(function() {
+      diag('mainapp.initHealthKit.deferred', 'fired');
+      try { initHealthKit(); } catch (e) { if (__DEV__) console.warn('initHealthKit throw:', e); }
+    }, 400);
+    return function() { try { clearTimeout(hkTimer); } catch (e) {} };
+  }, []);
 
   const rcSupported = Platform.OS === 'ios';
   const rcDisabled = !Purchases || !rcSupported || (Device && Device.isDevice === false);
@@ -1433,11 +1444,21 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         else if (lastDate) { await AsyncStorage.setItem(STREAK_KEY, '0'); setStreak(0); }
       } catch (e) {}
     }
-    loadData();
-    setupNotifications(lang);
-    // Schedule the 24h post-onboarding nudge (no-op if already scheduled or
-    // permission denied).
-    schedulePostOnboardingNudge({ lang: lang });
+    // Defer native-heavy startup work by 800ms so the WelcomeIntro → MainApp
+    // transition (and its confetti) finishes before we hammer the RN
+    // TurboModule queue with RC + notification scheduling. This is a
+    // mitigation for the build #46 crash on iOS 26.4.2 where an NSException
+    // thrown during this very burst kills the converter.
+    diag('mainapp.mount.deferred', 'scheduled');
+    var deferTimer = setTimeout(function() {
+      diag('mainapp.mount.deferred', 'fired');
+      loadData();
+      setupNotifications(lang);
+      // Schedule the 24h post-onboarding nudge (no-op if already scheduled or
+      // permission denied).
+      schedulePostOnboardingNudge({ lang: lang });
+    }, 800);
+    return function() { try { clearTimeout(deferTimer); } catch (e) {} };
   }, []);
 
   // Streak protection — re-evaluated on every streak change, on cold start,
@@ -1453,6 +1474,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     if (rcDisabled) return;
     let mounted = true;
     let customerInfoListener = null;
+    let rcDeferTimer = null;
 
     async function initRevenueCat() {
       const configured = safeNativeCall('rc.configure', function() {
@@ -1516,9 +1538,20 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       }
     }
 
-    initRevenueCat();
+    // Defer the RC init burst by ~1.2s so the WelcomeIntro → MainApp
+    // transition finishes first. The deferred-loadData hook above already
+    // shifts the early getCustomerInfo by 800ms; pushing the listener +
+    // offerings fetch slightly further keeps them off the same animation
+    // frame as the confetti tear-down.
+    diag('mainapp.initRevenueCat.deferred', 'scheduled');
+    rcDeferTimer = setTimeout(function() {
+      if (!mounted) return;
+      diag('mainapp.initRevenueCat.deferred', 'fired');
+      initRevenueCat();
+    }, 1200);
     return () => {
       mounted = false;
+      if (rcDeferTimer) { try { clearTimeout(rcDeferTimer); } catch (e) {} }
       if (customerInfoListener) {
         safeNativeCall('rc.removeCustomerInfoUpdateListener', function() {
           Purchases.removeCustomerInfoUpdateListener(customerInfoListener);
@@ -1780,12 +1813,22 @@ function WelcomeIntroScreen({ onDone, lang }) {
   function handleSubmit() {
     if (submittingRef.current) return;
     submittingRef.current = true;
+    diag('welcomeIntro.handleSubmit', 'start');
     if (selectedIdxs.length === 0) {
+      diag('welcomeIntro.handleSubmit.noConfetti', 'done');
       onDone(selectedIdxs);
       return;
     }
+    diag('welcomeIntro.confetti', 'start');
     setConfettiActive(true);
-    setTimeout(function() { onDone(selectedIdxs); }, 2000);
+    // Bumped from 2000 → 2500ms so the confetti animation + RN cleanup
+    // finish on the main thread before MainApp mounts and the deferred
+    // native burst kicks in. Mitigation for the build #46 iOS 26.4.2
+    // crash in the TurboModule queue.
+    setTimeout(function() {
+      diag('welcomeIntro.onDone', 'fire');
+      onDone(selectedIdxs);
+    }, 2500);
   }
 
   return (

@@ -614,20 +614,52 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
 
   async function saveProg() {
     try {
+      diag('saveProg', 'start');
       var prog = { piliers: selected, duree: dureeOptions[duree], jours: joursOptions[jours - 2 < 0 ? 0 : jours - 2], date: new Date().toISOString(), notifHour: notifHour, selectedDays: selectedDays };
-      var notifIds = [];
-      try {
-        notifIds = await scheduleProgNotifications(prog, 0, lang);
-      } catch (e) { sentryCaptureSafe(e, { where: 'saveProg.scheduleProgNotifications' }); }
-      prog.notifIds = notifIds || [];
+      // Persist FIRST, so even if notification scheduling later throws and
+      // somehow corrupts the bridge, the program is on disk.
       try {
         var raw = await AsyncStorage.getItem('fluid_custom_programs');
         var list = raw ? JSON.parse(raw) : [];
         list.push(prog);
         await AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(list));
+        diag('saveProg.persistAsyncStorage', 'done');
       } catch(e) { sentryCaptureSafe(e, { where: 'saveProg.persistAsyncStorage' }); }
+      // Then schedule the rappels — defer them by 600ms so the modal can
+      // start its slide-out before we hit the notification scheduler in a
+      // tight loop. The notif IDs are persisted in a second pass after the
+      // schedule completes.
       setSaved(true);
-      setTimeout(function() { if (onSaved) onSaved(); onClose(); setSaved(false); }, 1500);
+      diag('saveProg.scheduleProgNotifications.deferred', 'scheduled');
+      setTimeout(function() {
+        diag('saveProg.scheduleProgNotifications.deferred', 'fired');
+        scheduleProgNotifications(prog, 0, lang)
+          .then(function(ids) {
+            diag('saveProg.scheduleProgNotifications', 'done');
+            if (ids && ids.length) {
+              prog.notifIds = ids;
+              AsyncStorage.getItem('fluid_custom_programs').then(function(raw2) {
+                try {
+                  var list2 = raw2 ? JSON.parse(raw2) : [];
+                  if (list2.length) {
+                    list2[list2.length - 1].notifIds = ids;
+                    AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(list2));
+                  }
+                } catch (e) {}
+              });
+            }
+          })
+          .catch(function(e) { sentryCaptureSafe(e, { where: 'saveProg.scheduleProgNotifications' }); });
+      }, 600);
+      // Close the modal after the user reads the "saved" state. Extended
+      // 1500 → 1800ms so the slide-out is not preempted by the deferred
+      // notification scheduler.
+      setTimeout(function() {
+        diag('saveProg.close', 'fire');
+        if (onSaved) onSaved();
+        onClose();
+        setSaved(false);
+      }, 1800);
     } catch (e) {
       sentryCaptureSafe(e, { where: 'saveProg.outer' });
       if (__DEV__) console.warn('saveProg failed:', e);
@@ -806,7 +838,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   var [showBreathing, setShowBreathing] = useState(false);
   var [breathDoneToday, setBreathDoneToday] = useState(false);
 
-  useEffect(function() { loadSavedPrograms(); }, []);
+  useEffect(function() { diag('MonCorps.mount', 'start'); loadSavedPrograms(); diag('MonCorps.mount', 'done'); }, []);
 
   // Re-check whether the breath ring is already closed for today, every time
   // the modal closes (so the pill flips to "done" without a manual refresh).
@@ -867,6 +899,13 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: "900", color: "#AEEF4D", fontSize: 34 }}>+</AnimatedPlus>
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          {(function() {
+            // Defensive guard: if the breath pill ever throws during render
+            // (post Sprint-B addition, suspected in the build #46 mount
+            // burst) we silently drop it instead of crashing the whole
+            // home screen. The pill is non-critical UI.
+            try {
+              return (
           <TouchableOpacity
             onPress={function() { hapticLight(); setShowBreathing(true); }}
             activeOpacity={0.85}
@@ -892,6 +931,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               {breathDoneToday ? (tr.breath_pill_done || 'Respiration ✓') : (tr.breath_pill || 'Respirer 60s')}
             </Text>
           </TouchableOpacity>
+              );
+            } catch (e) {
+              if (__DEV__) console.warn('[breath-pill] render throw:', e);
+              return null;
+            }
+          })()}
           {prenom ? (
             <TouchableOpacity
               onPress={function() { try { navigation.navigate(tr.tabs[3]); } catch(e) {} }}
@@ -1503,7 +1548,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         <PilierPanel pilier={openPilier} done={done[openPilier.key] || Array(20).fill(false)} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); setOpenInitialIdx(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} saveHealthKitWorkout={saveHealthKitWorkout} initialSeanceIdx={openInitialIdx} />
       )}
       <CreateProgramScreen visible={showCreateProg} onClose={function() { setShowCreateProg(false); }} lang={lang} onSaved={loadSavedPrograms} />
-      <BreathingCheckIn visible={showBreathing} onClose={function() { setShowBreathing(false); }} lang={lang} />
+      {(function() {
+        // Defensive guard around the BreathingCheckIn modal — non-critical
+        // UI, never render-throw the whole screen if Sprint-B regression hits.
+        try { return <BreathingCheckIn visible={showBreathing} onClose={function() { setShowBreathing(false); }} lang={lang} />; }
+        catch (e) { if (__DEV__) console.warn('[breath-modal] render throw:', e); return null; }
+      })()}
     </View>
   );
 }
