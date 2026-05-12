@@ -50,18 +50,41 @@ function HealthHeartIcon({ size = 64 }) {
   );
 }
 
-let AppleHealthKit = null;
+let HK = null;
 try {
-  AppleHealthKit = require('react-native-health').default || require('react-native-health');
+  HK = require('@kingstinct/react-native-healthkit');
 } catch (e) {
-  if (__DEV__) console.warn('react-native-health unavailable:', e);
+  if (__DEV__) console.warn('@kingstinct/react-native-healthkit unavailable:', e);
 }
-// NOTE: ne PAS accéder à AppleHealthKit.Constants ici (load time).
-// L'accès traverse le bridge natif et peut throw NSException si HKHealthStore
-// n'est pas correctement init côté natif → crash Hermes.
-// Les permissions sont calculées paresseusement DANS le handler du bouton.
 
 const HK_PROMPT_FLAG = 'fluid_hk_prompt_done';
+
+// Identifiants HealthKit lus / écrits par l'app. Hardcodés en strings : le
+// binding Kingstinct n'a pas de Constants au load time (ce qui supprime la
+// catégorie de crash NSException qu'on avait avec react-native-health).
+const HK_READ = [
+  'HKQuantityTypeIdentifierHeartRate',
+  'HKQuantityTypeIdentifierActiveEnergyBurned',
+  'HKQuantityTypeIdentifierAppleExerciseTime',
+  'HKQuantityTypeIdentifierAppleStandTime',
+  'HKQuantityTypeIdentifierBodyMass',
+  'HKQuantityTypeIdentifierHeight',
+  'HKQuantityTypeIdentifierStepCount',
+  'HKCharacteristicTypeIdentifierDateOfBirth',
+  'HKCharacteristicTypeIdentifierBiologicalSex',
+  'HKWorkoutTypeIdentifier',
+];
+const HK_WRITE = [
+  'HKQuantityTypeIdentifierActiveEnergyBurned',
+  'HKQuantityTypeIdentifierHeartRate',
+  'HKWorkoutTypeIdentifier',
+];
+
+// AuthorizationStatus enum (Kingstinct + Apple) : notDetermined=0,
+// sharingDenied=1, sharingAuthorized=2. Probe WRITE pour ActiveEnergyBurned
+// (READ status n'est jamais fiable côté HealthKit par confidentialité).
+const AUTH_SHARING_AUTHORIZED = 2;
+const PROBE_WRITE_ID = 'HKQuantityTypeIdentifierActiveEnergyBurned';
 
 export default function HealthKitConnectScreen({ lang, onDone }) {
   const tr = T[lang] || T.fr;
@@ -90,104 +113,44 @@ export default function HealthKitConnectScreen({ lang, onDone }) {
     };
   }, []);
 
-  function buildHkPermissions() {
-    if (!AppleHealthKit) return null;
-    try {
-      const C = (AppleHealthKit.Constants && AppleHealthKit.Constants.Permissions) || {};
-      return {
-        permissions: {
-          read: [
-            C.HeartRate,
-            C.ActiveEnergyBurned,
-            C.AppleExerciseTime,
-            C.AppleStandTime,
-            C.Workout,
-            C.WorkoutRoute,
-            C.BodyMass,
-            C.Height,
-            C.DateOfBirth,
-            C.BiologicalSex,
-            C.Steps,
-          ].filter(Boolean),
-          write: [C.ActiveEnergyBurned, C.Workout, C.HeartRate].filter(Boolean),
-        },
-      };
-    } catch (e) {
-      if (__DEV__) console.warn('HK permissions throw:', e);
-      return null;
-    }
-  }
-
-  // HealthKit privacy : `getAuthStatus` ne renvoie un statut fiable QUE pour
-  // les permissions WRITE. Pour les permissions READ, iOS ment toujours
-  // (sharingDenied) pour empêcher l'app de deviner que le user a refusé.
-  // Donc on probe l'auth WRITE pour ActiveEnergyBurned : si elle est
+  // HealthKit privacy : `authorizationStatusFor` ne renvoie un statut fiable
+  // QUE pour les permissions WRITE. Pour les permissions READ, iOS ment
+  // toujours (sharingDenied) pour empêcher l'app de deviner que le user a
+  // refusé. Donc on probe l'auth WRITE pour ActiveEnergyBurned : si elle est
   // sharingAuthorized, on suppose que le user a vu et validé la feuille de
   // permissions. Si elle est notDetermined / sharingDenied, on déclenche
   // l'UI "refusé".
   function probeWriteAuthorized() {
-    return new Promise(function (resolve) {
-      try {
-        const C = (AppleHealthKit.Constants && AppleHealthKit.Constants.Permissions) || {};
-        const probe = C.ActiveEnergyBurned;
-        if (!probe || typeof AppleHealthKit.getAuthStatus !== 'function') {
-          resolve(true);
-          return;
-        }
-        AppleHealthKit.getAuthStatus({ permissions: { read: [], write: [probe] } }, function (err, status) {
-          if (err) { resolve(true); return; }
-          // status.permissions.write est un tableau d'entiers
-          // 0 = notDetermined, 1 = sharingDenied, 2 = sharingAuthorized
-          try {
-            const arr = (status && status.permissions && status.permissions.write) || [];
-            const granted = arr.length > 0 && arr[0] === 2;
-            resolve(!!granted);
-          } catch (e) {
-            resolve(true);
-          }
-        });
-      } catch (e) {
-        resolve(true);
-      }
-    });
+    try {
+      if (!HK || typeof HK.authorizationStatusFor !== 'function') return true;
+      const status = HK.authorizationStatusFor(PROBE_WRITE_ID);
+      return status === AUTH_SHARING_AUTHORIZED;
+    } catch (e) {
+      return true;
+    }
   }
 
   async function handleConnect() {
     if (requesting) return;
     // ① Marque TOUJOURS le prompt comme done en premier — l'utilisateur ne le revoit plus
     try { await AsyncStorage.setItem(HK_PROMPT_FLAG, '1'); } catch (e) {}
-    // ② Si pas d'AppleHealthKit ou pas iOS → on saute proprement
-    if (!AppleHealthKit || Platform.OS !== 'ios') {
+    // ② Si pas de binding HK ou pas iOS → on saute proprement
+    if (!HK || Platform.OS !== 'ios') {
       onDone && onDone({ granted: false, reason: 'unavailable' });
       return;
     }
-    // ③ Construit les permissions LAZILY (ne touche pas le bridge au load time)
-    const perms = buildHkPermissions();
-    if (!perms) {
-      onDone && onDone({ granted: false, reason: 'perms_unavailable' });
-      return;
-    }
     setRequesting(true);
-    // ④ Try/catch SYNC autour de l'appel — si le natif throw NSException
-    //    avant d'invoquer le callback, on l'attrape ici
     try {
-      AppleHealthKit.initHealthKit(perms, async function (err) {
-        if (err) {
-          setRequesting(false);
-          if (__DEV__) console.warn('HK init err:', err);
-          setRefused(true);
-          return;
-        }
-        // ⑤ Probe le statut WRITE pour savoir si le user a réellement accepté.
-        //    Sur READ, iOS ment toujours pour préserver la confidentialité.
-        const granted = await probeWriteAuthorized();
-        setRequesting(false);
-        if (!granted) {
-          setRefused(true);
-          return;
-        }
-        onDone && onDone({ granted: true });
-      });
+      // requestAuthorization retourne true dès que la feuille a été présentée.
+      // Le statut réel se lit ensuite via authorizationStatusFor (WRITE only).
+      await HK.requestAuthorization({ toShare: HK_WRITE, toRead: HK_READ });
+      const granted = probeWriteAuthorized();
+      setRequesting(false);
+      if (!granted) {
+        setRefused(true);
+        return;
+      }
+      onDone && onDone({ granted: true });
     } catch (e) {
       if (__DEV__) console.warn('HK init throw:', e);
       setRequesting(false);
