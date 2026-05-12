@@ -229,8 +229,28 @@ function VideoPlayPauseIcon({ playing, size = 36 }) {
 
 export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, isDemo, onDemoLimit, saveHealthKitWorkout, userBirthDate, showHeartRate }) {
   const tr = T[lang] || T['fr'];
-  const hrEnabled = showHeartRate !== false;
+
+  // showHeartRate / userBirthDate peuvent venir en prop (override pour tests)
+  // ou être lus depuis AsyncStorage. Defaults : toggle=true, DOB=null.
+  // Lecture optimiste : pas de blocage du 1er render — quand AsyncStorage
+  // répond, un re-render fait apparaître le pill.
+  const [showHrPref, setShowHrPref] = useState(showHeartRate !== false);
+  const [birthDatePref, setBirthDatePref] = useState(userBirthDate || null);
+  useEffect(function() {
+    let cancelled = false;
+    Promise.all([
+      AsyncStorage.getItem('fluid_show_hr').catch(function() { return null; }),
+      AsyncStorage.getItem('fluid_birth_date').catch(function() { return null; }),
+    ]).then(function(values) {
+      if (cancelled) return;
+      if (showHeartRate == null) setShowHrPref(values[0] !== 'false');
+      if (!userBirthDate && values[1]) setBirthDatePref(values[1]);
+    });
+    return function() { cancelled = true; };
+  }, []);
+  const hrEnabled = (showHeartRate != null) ? showHeartRate : showHrPref;
   const hr = useLiveHeartRate({ enabled: hrEnabled });
+  const effectiveBirthDate = userBirthDate || birthDatePref;
   const videoRef = useRef(null);
   const lastStatusRef = useRef({});
   const hasRestoredRef = useRef(false);
@@ -653,7 +673,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             but goes 50% opacity — see HeartRatePill. */}
         {hrEnabled && hr.hasAppleWatch && hr.bpm != null && (
           <View pointerEvents="box-none" style={{ position: 'absolute', top: 50, right: 16, zIndex: 220 }}>
-            <HeartRatePill bpm={hr.bpm} isLive={hr.isLive} birthDateIso={userBirthDate} />
+            <HeartRatePill bpm={hr.bpm} isLive={hr.isLive} birthDateIso={effectiveBirthDate} />
           </View>
         )}
         <View pointerEvents="none" style={{ position: 'absolute', top: (hrEnabled && hr.hasAppleWatch && hr.bpm != null) ? 90 : 50, right: 16, zIndex: 210 }}>
