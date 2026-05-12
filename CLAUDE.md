@@ -117,15 +117,52 @@ real protection layer.
 3. `eas build --profile production --platform ios` — the env var is bundled at build time.
 4. Verify on the Sentry dashboard: trigger a JS error from a dev build, confirm the event arrives. Native crash symbolication needs sourcemap/dSYM upload (wire `sentry-cli` in an EAS post-publish hook later — not done yet).
 
-## HealthKit (currently disabled)
+## HealthKit
 
-Onboarding screen `HealthKitConnectScreen` is gated by the `HEALTHKIT_DISABLED` constant in `App.js` (~line 2093). Original crash: NSException at `apple-watch-hero.png` decode (882×806 Display P3 PNG) via `RCTImageLoader` + `CGImageSourceCreateThumbnailAtIndex` under New Architecture (builds 33/34/35).
+The app uses **`@kingstinct/react-native-healthkit` v14** (Nitro Modules).
+It replaced the legacy `react-native-health` 1.19 binding in May 2026 after
+that lib crashed with NSException on iOS 26.5 + New Arch
+(`EXC_BAD_ACCESS` in `TurboModuleConvertUtils::convertNSExceptionToJSError`).
+Nitro bypasses the legacy ObjC TurboModule bridge that owns that crash class.
 
-Two mitigations are already applied:
-1. `HealthKitConnect.js` now uses `<Image>` from `expo-image` (SDWebImage on iOS) instead of RN's `Image` — same fix pattern as commit 6e55733.
-2. `apple-watch-hero.png` re-encoded from Display P3 → sRGB via `sips`.
+### Call sites
+- **`App.js`** — top-level `initHealthKit()` (called once on app mount) and
+  `saveHealthKitWorkout(durationMinutes, extras)` (called from `VideoPlayer`
+  on session end). Activity type: `HKWorkoutActivityType.pilates = 66`.
+- **`src/utils/healthkit.js`** — promise-based helpers used by Activity,
+  ProfileOnboarding, Profil and `profileSync.js`. Keeps the legacy export
+  shape (`ensureHealthKitInit`, `readActivitySummary`, `readDayDetails`,
+  `readDayWorkouts`, `readActivityHistory`, `readLatestWeightKg`,
+  `readLatestHeightCm`, `writeWeightKg`, `writeHeightCm`, `readDateOfBirth`,
+  `readBiologicalSex`).
+- **`src/hooks/useLiveHeartRate.js`** — 4-second polling on
+  `queryQuantitySamples('HKQuantityTypeIdentifierHeartRate', ...)` with a 30-s
+  lookback. Picks the most recent Apple Watch sample (source-name match
+  on `/apple\s*watch/i`).
+- **`src/screens/HealthKitConnect.js`** — onboarding permission sheet.
+  Uses `requestAuthorization({toShare, toRead})` + `authorizationStatusFor`
+  on a WRITE type to probe whether the user actually granted (READ status is
+  always reported as `sharingDenied` by HealthKit for privacy).
 
-**Re-enabling:** set `HEALTHKIT_DISABLED = false`, ship a TestFlight build, watch Sentry for ~24 h. If clean → remove the flag entirely. If the crash persists, fall back to one of: disable New Arch (`newArchEnabled: false` in `app.json`), downscale the hero image to ~600×548, or replace it with a vector SVG.
+### Kill switch
+`HEALTHKIT_DISABLED` is hoisted at module scope in `App.js`, `healthkit.js`
+and `useLiveHeartRate.js`. Set to `false` by default. Flip to `true` if a
+future iOS version causes a regression; the JS kill switch avoids needing a
+native rebuild. The flag also auto-marks the onboarding HK prompt as done so
+the user doesn't see the permission screen while it's disabled.
+
+### Image fix (kept from previous mitigation)
+`HealthKitConnect.js` uses `<Image>` from `expo-image` (SDWebImage) instead
+of RN's `Image` to avoid the `RCTImageLoader` + `CGImageSourceCreateThumbnailAtIndex`
+crash on the 882×806 Display P3 `apple-watch-hero.png`. The PNG was also
+re-encoded from Display P3 → sRGB via `sips`.
+
+### Permissions (declared in `app.json` plugin block)
+- Read: HeartRate, ActiveEnergyBurned, BasalEnergyBurned, AppleExerciseTime,
+  AppleStandTime, BodyMass, Height, StepCount, DistanceWalkingRunning,
+  FlightsClimbed, DateOfBirth, BiologicalSex, Workout
+- Write: ActiveEnergyBurned, HeartRate, BodyMass, Height, Workout
+- Background delivery: enabled (`com.apple.developer.healthkit.background-delivery`)
 
 ## Notes
 
