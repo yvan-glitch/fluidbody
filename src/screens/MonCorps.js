@@ -10,6 +10,7 @@ import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES, FREE_MONTHLY_SELECTI
 import { Bulle, Rayon, MeduseCornerIcon, FloatingMedusas, BULLES, BULLES_MONCORPS } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import GlassButton from '../components/GlassButton';
+import { GlassCard, GLASS_RADII } from '../components/ui';
 import LivingBackground from '../components/LivingBackground';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
@@ -355,20 +356,21 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
   );
 }
 
-/** Tuiles SEANCES / STREAK / PROGRESSION — verre (BlurView) comme les controles video. */
+/** Tuiles SEANCES / STREAK / PROGRESSION — Liquid Glass over the aquatic background. */
 function MetricTile({ children }) {
-  if (Platform.OS === 'web') {
-    return (
-      <View style={[localStyles.metricShell, localStyles.metricWebFallback]}>
-        <View style={localStyles.metricBlurInner}>{children}</View>
-      </View>
-    );
-  }
   return (
-    <View style={localStyles.metricShell}>
-      <BlurView intensity={Platform.OS === 'ios' ? 34 : 26} tint="dark" style={localStyles.metricBlurInner}>
-        {children}
-      </BlurView>
+    <View style={{ flex: 1 }}>
+      <GlassCard
+        intensity={60}
+        tint="dark"
+        borderRadius={GLASS_RADII.card}
+        padding={10}
+        elevated
+      >
+        <View style={{ alignItems: 'center', justifyContent: 'center', minHeight: 64 }}>
+          {children}
+        </View>
+      </GlassCard>
     </View>
   );
 }
@@ -1279,20 +1281,6 @@ const localStyles = StyleSheet.create({
   screen: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   logoRow: { position: 'absolute', top: 54, left: 0, right: 0, zIndex: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, gap: 10 },
   logoWordmark: { fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 },
-  metricShell: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
-    shadowColor: '#000',
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  metricBlurInner: { padding: 10, alignItems: 'center', justifyContent: 'center', minHeight: 64 },
-  metricWebFallback: { backgroundColor: 'rgba(255,255,255,0.14)' },
 });
 
 export default MonCorps;

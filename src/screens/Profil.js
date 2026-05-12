@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { Text, StyleSheet, View, TouchableOpacity, ScrollView, Share, Alert, Modal, Dimensions, TextInput, Platform } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import GlassButton from '../components/GlassButton';
+import { GlassCard, GlassView, GLASS_RADII } from '../components/ui';
 import LivingBackground from '../components/LivingBackground';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -222,15 +223,17 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </TouchableOpacity>
         )}
         <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: '#000000' }}>{prenom ? prenom.slice(0, 2).toUpperCase() : 'YT'}</Text>
+          <GlassCard intensity={60} tint="dark" padding={18} borderRadius={GLASS_RADII.cardLg}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 20, fontWeight: '800', color: '#000000' }}>{prenom ? prenom.slice(0, 2).toUpperCase() : 'YT'}</Text>
+              </View>
+              <View>
+                <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.4 }}>{prenom || 'Profil'}</Text>
+                <Text style={{ fontSize: 13, color: 'rgba(174,239,77,0.7)' }}>FluidBody · Pilates</Text>
+              </View>
             </View>
-            <View>
-              <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff' }}>{prenom || 'Profil'}</Text>
-              <Text style={{ fontSize: 13, color: 'rgba(174,239,77,0.6)' }}>FluidBody · Pilates</Text>
-            </View>
-          </View>
+          </GlassCard>
         </View>
 
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
