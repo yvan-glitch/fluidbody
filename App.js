@@ -139,11 +139,11 @@ if (!__DEV__) {
 // TurboModule responsable du crash NSException de build #43 sur iOS 26.5 +
 // New Arch (EXC_BAD_ACCESS dans convertNSExceptionToJSError → dladdr).
 //
-// HEALTHKIT_DISABLED — kill switch hoisté au scope module. Reste à true le
-// temps que la migration soit validée sur un build TestFlight. Le commit
-// "feat(health): re-enable HealthKit after migration" le passera à false
-// une fois le binding Kingstinct confirmé stable.
-const HEALTHKIT_DISABLED = true;
+// HEALTHKIT_DISABLED — kill switch hoisté au scope module. Garde-fou pour
+// désactiver HealthKit côté JS si un nouveau crash apparaît sur une version
+// iOS future (ex: iOS 27), sans avoir à pousser un build natif. false par
+// défaut maintenant que la migration Kingstinct est en place.
+const HEALTHKIT_DISABLED = false;
 
 // HKWorkoutActivityType.pilates = 66 (cf. Apple HKWorkoutActivityType.pilates,
 // dispo depuis watchOS 5 / iOS 10). On hardcode l'entier pour ne pas avoir à
@@ -2136,8 +2136,8 @@ function App() {
   }
 
   // HEALTHKIT_DISABLED est hoisté au scope module (cf. App.js ~ligne 142).
-  // Reste à true tant que la migration Kingstinct n'est pas validée sur
-  // device — sera flipé à false dans un commit séparé.
+  // Si activé en kill-switch, on auto-marque le prompt comme done pour que
+  // l'utilisateur ne voie pas l'écran de permission HK.
 
   useEffect(() => {
     if (HEALTHKIT_DISABLED) {
