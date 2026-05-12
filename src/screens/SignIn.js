@@ -28,25 +28,34 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
 
   const floatingMedusas = useRef([
-    { x: new Animated.Value(SW - 80), y: new Animated.Value(SH * 0.12), size: 72, breath: 3200 },
-    { x: new Animated.Value(30), y: new Animated.Value(SH * 0.4), size: 58, breath: 3600 },
-    { x: new Animated.Value(SW * 0.5), y: new Animated.Value(SH * 0.65), size: 50, breath: 4000 },
-    { x: new Animated.Value(SW * 0.75), y: new Animated.Value(SH * 0.8), size: 44, breath: 3800 },
+    { baseX: SW - 80, baseY: SH * 0.12, size: 72, breath: 3200, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    { baseX: 30, baseY: SH * 0.4, size: 58, breath: 3600, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    { baseX: SW * 0.5, baseY: SH * 0.65, size: 50, breath: 4000, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    { baseX: SW * 0.75, baseY: SH * 0.8, size: 44, breath: 3800, dx: new Animated.Value(0), dy: new Animated.Value(0) },
   ]).current;
 
   useEffect(() => {
-    floatingMedusas.forEach(function(m) {
+    let mounted = true;
+    const currentDrifts = [];
+    floatingMedusas.forEach(function(m, idx) {
       function drift() {
+        if (!mounted) return;
         var toX = 10 + Math.random() * (SW - m.size - 20);
         var toY = 60 + Math.random() * (SH - m.size - 160);
         var dur = 12000 + Math.random() * 8000;
-        Animated.parallel([
-          Animated.timing(m.x, { toValue: toX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
-          Animated.timing(m.y, { toValue: toY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: false }),
-        ]).start(function() { drift(); });
+        var p = Animated.parallel([
+          Animated.timing(m.dx, { toValue: toX - m.baseX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
+          Animated.timing(m.dy, { toValue: toY - m.baseY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
+        ]);
+        currentDrifts[idx] = p;
+        p.start(function() { if (mounted) drift(); });
       }
       drift();
     });
+    return function() {
+      mounted = false;
+      currentDrifts.forEach(function(d) { try { d && d.stop && d.stop(); } catch (e) {} });
+    };
   }, []);
 
   async function handleSignIn() {
@@ -149,7 +158,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
       </View>
       {floatingMedusas.map(function(m, i) {
         return (
-          <Animated.View key={'si-fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.7, left: m.x, top: m.y }}>
+          <Animated.View key={'si-fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.7, left: m.baseX, top: m.baseY, transform: [{ translateX: m.dx }, { translateY: m.dy }] }}>
             <MeduseCornerIcon size={m.size} breathCycleMs={m.breath} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
           </Animated.View>
         );

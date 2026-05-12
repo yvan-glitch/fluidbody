@@ -10,6 +10,11 @@ import supabase from '../lib/supabase';
 
 const SAFETY_MARGIN_MS = 60_000; // re-sign 1 min before the token expires
 const cache = new Map();
+// In-flight promise dedup : when two callers ask for the same (sessionId, kind,
+// lang) simultaneously (e.g. user taps séance → prefetch starts, then the
+// VideoPlayer mounts and asks for the same URL), we share the pending Promise
+// instead of firing a second sign-video-url request.
+const inflight = new Map();
 
 export function buildSessionId(pilierKey, seanceIndex) {
   if (!pilierKey || seanceIndex == null) return null;
@@ -29,24 +34,50 @@ export async function getSignedVideoUrl(sessionId, kind = 'hls', lang) {
   const cached = cache.get(key);
   if (cached && cached.expiresAt - SAFETY_MARGIN_MS > now) return cached.url;
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('not-signed-in');
+  // Coalesce duplicate concurrent calls
+  const pending = inflight.get(key);
+  if (pending) return pending;
 
-  const { data, error } = await supabase.functions.invoke('sign-video-url', {
-    body: { session_id: sessionId, kind, lang },
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  });
+  const promise = (async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('not-signed-in');
 
-  if (error) {
-    const err = new Error(error.message || 'sign-video-url-failed');
-    err.status = error.context?.status || error.status;
-    throw err;
+    const { data, error } = await supabase.functions.invoke('sign-video-url', {
+      body: { session_id: sessionId, kind, lang },
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+
+    if (error) {
+      const err = new Error(error.message || 'sign-video-url-failed');
+      err.status = error.context?.status || error.status;
+      throw err;
+    }
+    const { url, expires } = data || {};
+    if (!url || !expires) throw new Error('invalid-sign-response');
+
+    cache.set(key, { url, expiresAt: expires * 1000 });
+    return url;
+  })();
+
+  inflight.set(key, promise);
+  try {
+    return await promise;
+  } finally {
+    inflight.delete(key);
   }
-  const { url, expires } = data || {};
-  if (!url || !expires) throw new Error('invalid-sign-response');
+}
 
-  cache.set(key, { url, expiresAt: expires * 1000 });
-  return url;
+/**
+ * Kick off the sign-video-url request without awaiting — typically called on
+ * the tap that will navigate to the VideoPlayer, so by the time the modal
+ * finishes its open animation the URL is already cached (or close to ready).
+ *
+ * Failures are swallowed silently: the real VideoPlayer call will retry and
+ * surface the error to the user there.
+ */
+export function prefetchSignedVideoUrl(sessionId, kind = 'hls', lang) {
+  if (!sessionId) return;
+  getSignedVideoUrl(sessionId, kind, lang).catch(() => {});
 }
 
 export function clearVideoUrlCache(sessionId) {
