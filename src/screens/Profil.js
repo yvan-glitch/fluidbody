@@ -288,7 +288,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </View>
         </View>
 
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#AEEF4D' }}>
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={60} tint="dark" padding={20} borderRadius={GLASS_RADII.card} substrateColor="rgba(174,239,77,0.10)">
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.coach_title || 'Votre Coach'}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
             <View style={{ width: 70, height: 70, borderRadius: 35, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginRight: 14 }}>
@@ -303,7 +303,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           <TouchableOpacity activeOpacity={0.85} onPress={function() { setShowCoachBio(true); }} style={{ paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center' }}>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.coach_more || 'En savoir plus'}</Text>
           </TouchableOpacity>
-        </View>
+        </GlassCard></View>
 
         <Modal visible={showCoachBio} animationType="slide" transparent statusBarTranslucent>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.6)', justifyContent: 'center' }}>
@@ -345,7 +345,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </TouchableOpacity>
         )}
 
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} tint="dark" padding={20} borderRadius={GLASS_RADII.card}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.notif_section || 'Rappels'}</Text>
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -416,10 +416,10 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               </View>
             </View>
           )}
-        </View>
+        </GlassCard></View>
 
         {Platform.OS === 'ios' && (
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+          <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} tint="dark" padding={20} borderRadius={GLASS_RADII.card}>
             <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.session_settings_title || 'Pendant la séance'}</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1, paddingRight: 12 }}>
@@ -434,10 +434,10 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#ffffff', alignSelf: showHrEnabled ? 'flex-end' : 'flex-start' }} />
               </TouchableOpacity>
             </View>
-          </View>
+          </GlassCard></View>
         )}
 
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} tint="dark" padding={20} borderRadius={GLASS_RADII.card}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dl_title || 'Téléchargements'}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>{tr.dl_storage || 'Espace utilisé'}</Text>
@@ -457,36 +457,40 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           }} style={{ paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(255,50,50,0.1)', alignItems: 'center' }}>
             <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,90,90,0.9)' }}>{tr.dl_delete_all || 'Tout supprimer'}</Text>
           </TouchableOpacity>
+        </GlassCard></View>
+
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
+          <GlassCard intensity={55} tint="dark" padding={20} borderRadius={GLASS_RADII.card}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 12, letterSpacing: -0.2 }}>{tr.subscription_status_label}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '400', color: '#AEEF4D', marginBottom: 16 }}>{isAdmin ? 'Admin · accès complet' : (isSubscriber ? tr.subscription_status_active : tr.subscription_status_free)}</Text>
+            <TouchableOpacity onPress={onRestorePurchases} accessibilityRole="button" accessibilityLabel={tr.subscription_reset} style={{ paddingVertical: 13, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.10)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.22)', alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>{tr.subscription_reset}</Text>
+            </TouchableOpacity>
+          </GlassCard>
         </View>
 
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 12 }}>{tr.subscription_status_label}</Text>
-          <Text style={{ fontSize: 15, fontWeight: '400', color: '#AEEF4D', marginBottom: 16 }}>{isAdmin ? 'Admin · accès complet' : (isSubscriber ? tr.subscription_status_active : tr.subscription_status_free)}</Text>
-          <TouchableOpacity onPress={onRestorePurchases} style={{ paddingVertical: 13, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.10)', alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>{tr.subscription_reset}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 14 }}>{tr.mon_compte}</Text>
-          {supaUser && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
-              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>Email</Text>
-              <Text style={{ fontSize: 14, color: '#AEEF4D' }} numberOfLines={1}>{supaUser.email}</Text>
-            </View>
-          )}
-          {tr.compte_info.map(function(item, i) {
-            return (
-              <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: i < tr.compte_info.length - 1 ? 0.5 : 0, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
-                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{item[0]}</Text>
-                <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{item[1]}</Text>
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
+          <GlassCard intensity={55} tint="dark" padding={20} borderRadius={GLASS_RADII.card}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 14, letterSpacing: -0.2 }}>{tr.mon_compte}</Text>
+            {supaUser && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>Email</Text>
+                <Text style={{ fontSize: 14, color: '#AEEF4D' }} numberOfLines={1}>{supaUser.email}</Text>
               </View>
-            );
-          })}
+            )}
+            {tr.compte_info.map(function(item, i) {
+              return (
+                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: i < tr.compte_info.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>{item[0]}</Text>
+                  <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{item[1]}</Text>
+                </View>
+              );
+            })}
+          </GlassCard>
         </View>
 
         {supaUser && (
-          <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+          <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} tint="dark" padding={20} borderRadius={GLASS_RADII.card}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff' }}>{tr.profile_card_title || 'Mon profil'}</Text>
               <TouchableOpacity
@@ -591,10 +595,10 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 </View>
               </View>
             )}
-          </View>
+          </GlassCard></View>
         )}
 
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)' }}>
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} tint="dark" padding={20} borderRadius={GLASS_RADII.card}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dev_title || 'Développeur'}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
             <View style={{ width: 70, height: 70, borderRadius: 35, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginRight: 14 }}>
@@ -608,7 +612,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           <TouchableOpacity activeOpacity={0.85} onPress={function() { setShowDevBio(true); }} style={{ paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center' }}>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.dev_more || 'En savoir plus'}</Text>
           </TouchableOpacity>
-        </View>
+        </GlassCard></View>
 
         <Modal visible={showDevBio} animationType="slide" transparent statusBarTranslucent>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.6)', justifyContent: 'center' }}>
@@ -650,7 +654,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </View>
         )}
 
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 20 }}>
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} tint="dark" padding={20} borderRadius={GLASS_RADII.card}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginBottom: 12 }}>{tr.profil_donnees_title || 'Confidentialité'}</Text>
           <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 20, marginBottom: 14 }}>{tr.profil_donnees_desc || 'Vos données restent sur votre appareil. Aucune donnée personnelle n\'est envoyée à des serveurs tiers. Les séances, la progression et les préférences sont stockées localement via AsyncStorage. Si vous vous connectez, seul votre email est synchronisé via Supabase pour sauvegarder votre profil.'}</Text>
           <View style={{ borderTopWidth: 0.5, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 12, gap: 8 }}>
@@ -667,7 +671,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.7)', flex: 1 }}>{tr.profil_donnees_healthkit || 'HealthKit : données lues uniquement, jamais partagées'}</Text>
             </View>
           </View>
-        </View>
+        </GlassCard></View>
 
         {supaUser && onLogout && (
           <View style={{ marginHorizontal: 20, marginTop: 40, marginBottom: 48 }}>
