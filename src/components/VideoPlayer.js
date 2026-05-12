@@ -15,6 +15,7 @@ import HeartRatePill from './HeartRatePill';
 import { GlassView, GlassButton, GLASS_RADII, GLASS_EASING, GLASS_DURATIONS } from './ui';
 import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import useLiveHeartRate from '../hooks/useLiveHeartRate';
+import { recordSessionHour } from '../utils/notifications';
 
 // ── Small utilities (local copies to avoid circular deps) ──
 // Haptics are fired by GlassButton (FAIT) via `haptic="success"`, so
@@ -571,6 +572,9 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
       var total = raw ? parseInt(raw) : 0;
       await AsyncStorage.setItem(key, String(total + minutes));
     } catch(e) {}
+    // Feed the smart-notification preferred-hour learner so future reminders
+    // land near the user's actual training time.
+    try { recordSessionHour(new Date()); } catch (e) {}
     // Stop HR session first, capture summary, then forward to the workout save.
     var summary = null;
     if (hrStartedRef.current) {
