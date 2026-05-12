@@ -140,8 +140,19 @@ function buildHkPermissions() {
     const C = (AppleHealthKit.Constants && AppleHealthKit.Constants.Permissions) || {};
     return {
       permissions: {
-        read: [C.ActiveEnergyBurned, C.AppleExerciseTime, C.AppleStandTime, C.Workout].filter(Boolean),
-        write: [C.ActiveEnergyBurned, C.Workout].filter(Boolean),
+        read: [
+          C.HeartRate,
+          C.ActiveEnergyBurned,
+          C.AppleExerciseTime,
+          C.AppleStandTime,
+          C.Workout,
+          C.WorkoutRoute,
+          C.BodyMass,
+          C.Height,
+          C.DateOfBirth,
+          C.BiologicalSex,
+        ].filter(Boolean),
+        write: [C.ActiveEnergyBurned, C.Workout, C.HeartRate].filter(Boolean),
       },
     };
   } catch (e) {
@@ -165,14 +176,32 @@ function initHealthKit() {
   }
 }
 
-function saveHealthKitWorkout(durationMinutes) {
+// Pilates est dispo dans HKWorkoutActivityType depuis watchOS 5 (= partout
+// sur les Apple Watch que nos users vont avoir). Le binding `react-native-health`
+// expose la constante via Constants.Activities.Pilates ; on garde un fallback
+// FunctionalStrengthTraining si la constante n'est pas exposée par la version installée.
+function workoutTypeForPilates() {
+  if (!AppleHealthKit) return 'FunctionalStrengthTraining';
+  try {
+    const A = (AppleHealthKit.Constants && AppleHealthKit.Constants.Activities) || {};
+    return A.Pilates || A.MindAndBody || A.FunctionalStrengthTraining || 'FunctionalStrengthTraining';
+  } catch (e) {
+    return 'FunctionalStrengthTraining';
+  }
+}
+
+function saveHealthKitWorkout(durationMinutes, extras) {
   if (!AppleHealthKit || !hkInitialized || Platform.OS !== 'ios') return;
   try {
     var now = new Date();
     var start = new Date(now.getTime() - durationMinutes * 60000);
-    var calories = Math.round(durationMinutes * 5);
+    // Calories : si la live HR a tourné, on a une estimation plus juste via avg HR.
+    // Sinon on garde l'estimation forfaitaire 5 kcal/min (Pilates léger).
+    var calories = (extras && Number.isFinite(extras.energyBurned))
+      ? Math.max(1, Math.round(extras.energyBurned))
+      : Math.round(durationMinutes * 5);
     var options = {
-      type: 'FunctionalStrengthTraining',
+      type: workoutTypeForPilates(),
       startDate: start.toISOString(),
       endDate: now.toISOString(),
       energyBurned: calories,
@@ -2034,19 +2063,11 @@ function App() {
     AsyncStorage.setItem('fluid_welcome_intro_done', '1').catch(function(e) { devWarn('welcome flag persist', e); });
   }
 
-  // Feature flag : écran HealthKitConnect désactivé sur l'onboarding.
-  // Cause d'origine (builds 33/34/35) : NSException au décodage de
-  // apple-watch-hero.png (882x806, profil Display P3) via RCTImageLoader +
-  // CGImageSourceCreateThumbnailAtIndex sous New Architecture / Fabric.
-  // Fix appliqué (à valider en TestFlight) :
-  //   1. HealthKitConnect.js migré vers <Image> de expo-image (SDWebImage iOS)
-  //      au lieu de l'Image RN — même mitigation que commit 6e55733.
-  //   2. apple-watch-hero.png reconverti de Display P3 → sRGB via sips.
-  // Pour ré-activer après validation : passer ce flag à false, push un build
-  // sur TestFlight, observer Sentry. Si zéro crash sur ~24h, retirer le flag.
-  // Si crash persiste : (a) tenter newArchEnabled:false temporaire,
-  // (b) downscale l'image à 600x548, (c) remplacer par un SVG vectoriel.
-  const HEALTHKIT_DISABLED = true;
+  // Écran HealthKitConnect réactivé après fix du crash hero PNG
+  // (expo-image + reconversion sRGB). Si Sentry remonte une régression du
+  // NSException CGImageSourceCreateThumbnailAtIndex, repasser à true et
+  // investiguer (downscale 600x548 ou SVG vectoriel comme fallback).
+  const HEALTHKIT_DISABLED = false;
 
   useEffect(() => {
     if (HEALTHKIT_DISABLED) {

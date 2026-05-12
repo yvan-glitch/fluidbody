@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Text, View, TouchableOpacity, Animated, Easing, Dimensions, StyleSheet, Alert, Platform } from 'react-native';
+import { Text, View, TouchableOpacity, Animated, Easing, Dimensions, StyleSheet, Alert, Platform, Linking } from 'react-native';
 // expo-image au lieu de l'Image de react-native — RCTImageLoader +
 // CGImageSourceCreateThumbnailAtIndex throw NSException sur les PNG larges
 // avec profil couleur Display P3 (cf. apple-watch-hero.png, 882x806 P3) sous
@@ -66,6 +66,7 @@ const HK_PROMPT_FLAG = 'fluid_hk_prompt_done';
 export default function HealthKitConnectScreen({ lang, onDone }) {
   const tr = T[lang] || T.fr;
   const [requesting, setRequesting] = useState(false);
+  const [refused, setRefused] = useState(false);
 
   const watchScale = useRef(new Animated.Value(0.94)).current;
   const watchOpacity = useRef(new Animated.Value(0)).current;
@@ -95,14 +96,60 @@ export default function HealthKitConnectScreen({ lang, onDone }) {
       const C = (AppleHealthKit.Constants && AppleHealthKit.Constants.Permissions) || {};
       return {
         permissions: {
-          read: [C.Steps, C.ActiveEnergyBurned, C.AppleExerciseTime, C.AppleStandTime, C.HeartRate, C.Workout].filter(Boolean),
-          write: [C.ActiveEnergyBurned, C.Workout].filter(Boolean),
+          read: [
+            C.HeartRate,
+            C.ActiveEnergyBurned,
+            C.AppleExerciseTime,
+            C.AppleStandTime,
+            C.Workout,
+            C.WorkoutRoute,
+            C.BodyMass,
+            C.Height,
+            C.DateOfBirth,
+            C.BiologicalSex,
+            C.Steps,
+          ].filter(Boolean),
+          write: [C.ActiveEnergyBurned, C.Workout, C.HeartRate].filter(Boolean),
         },
       };
     } catch (e) {
       if (__DEV__) console.warn('HK permissions throw:', e);
       return null;
     }
+  }
+
+  // HealthKit privacy : `getAuthStatus` ne renvoie un statut fiable QUE pour
+  // les permissions WRITE. Pour les permissions READ, iOS ment toujours
+  // (sharingDenied) pour empêcher l'app de deviner que le user a refusé.
+  // Donc on probe l'auth WRITE pour ActiveEnergyBurned : si elle est
+  // sharingAuthorized, on suppose que le user a vu et validé la feuille de
+  // permissions. Si elle est notDetermined / sharingDenied, on déclenche
+  // l'UI "refusé".
+  function probeWriteAuthorized() {
+    return new Promise(function (resolve) {
+      try {
+        const C = (AppleHealthKit.Constants && AppleHealthKit.Constants.Permissions) || {};
+        const probe = C.ActiveEnergyBurned;
+        if (!probe || typeof AppleHealthKit.getAuthStatus !== 'function') {
+          resolve(true);
+          return;
+        }
+        AppleHealthKit.getAuthStatus({ permissions: { read: [], write: [probe] } }, function (err, status) {
+          if (err) { resolve(true); return; }
+          // status.permissions.write est un tableau d'entiers
+          // 0 = notDetermined, 1 = sharingDenied, 2 = sharingAuthorized
+          try {
+            const arr = (status && status.permissions && status.permissions.write) || [];
+            const granted = arr.length > 0 && arr[0] === 2;
+            resolve(!!granted);
+          } catch (e) {
+            resolve(true);
+          }
+        });
+      } catch (e) {
+        resolve(true);
+      }
+    });
   }
 
   async function handleConnect() {
@@ -124,20 +171,36 @@ export default function HealthKitConnectScreen({ lang, onDone }) {
     // ④ Try/catch SYNC autour de l'appel — si le natif throw NSException
     //    avant d'invoquer le callback, on l'attrape ici
     try {
-      AppleHealthKit.initHealthKit(perms, function (err) {
-        setRequesting(false);
+      AppleHealthKit.initHealthKit(perms, async function (err) {
         if (err) {
+          setRequesting(false);
           if (__DEV__) console.warn('HK init err:', err);
-          onDone && onDone({ granted: false, error: err });
-        } else {
-          onDone && onDone({ granted: true });
+          setRefused(true);
+          return;
         }
+        // ⑤ Probe le statut WRITE pour savoir si le user a réellement accepté.
+        //    Sur READ, iOS ment toujours pour préserver la confidentialité.
+        const granted = await probeWriteAuthorized();
+        setRequesting(false);
+        if (!granted) {
+          setRefused(true);
+          return;
+        }
+        onDone && onDone({ granted: true });
       });
     } catch (e) {
       if (__DEV__) console.warn('HK init throw:', e);
       setRequesting(false);
-      onDone && onDone({ granted: false, error: e });
+      setRefused(true);
     }
+  }
+
+  function openHealthSettings() {
+    // L'URL `x-apple-health://` ouvre l'app Santé. Pour aller directement à
+    // l'écran Sources de l'app Fluidbody dans Santé, il faut passer par les
+    // réglages app (qui contiennent un sous-menu Santé). Sur iOS, `app-settings:`
+    // ouvre la page Réglages de notre app — l'utilisateur y trouve "Santé" en bas.
+    try { Linking.openURL('app-settings:'); } catch (e) {}
   }
 
   async function handleSkip() {
@@ -208,9 +271,18 @@ export default function HealthKitConnectScreen({ lang, onDone }) {
           </Animated.View>
         </View>
 
-        {/* CTA */}
+        {/* Toast "refusé" — apparaît si HK init err ou si probe WRITE = denied/notDetermined */}
+        {refused && (
+          <View style={{ alignSelf: 'stretch', marginBottom: 12, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, backgroundColor: 'rgba(255,59,48,0.15)', borderWidth: 1, borderColor: 'rgba(255,59,48,0.4)' }}>
+            <Text style={{ fontSize: 13, color: '#FFD2D0', lineHeight: 18 }}>
+              {tr.hk_refused || "Permission refusée. Ouvre Réglages > Santé > Sources de données pour autoriser Fluidbody, puis appuie sur Réessayer."}
+            </Text>
+          </View>
+        )}
+
+        {/* CTA — bascule entre "CONNECTER" et "RÉESSAYER" + bouton Réglages */}
         <TouchableOpacity
-          onPress={handleConnect}
+          onPress={refused ? handleConnect : handleConnect}
           disabled={requesting}
           activeOpacity={0.85}
           style={{
@@ -229,9 +301,21 @@ export default function HealthKitConnectScreen({ lang, onDone }) {
           }}
         >
           <Text style={{ fontSize: 16, fontWeight: '700', color: '#000000', letterSpacing: 1 }}>
-            {requesting ? '…' : (tr.hk_connect || 'CONNECTER')}
+            {requesting ? '…' : (refused ? (tr.hk_retry || 'RÉESSAYER') : (tr.hk_connect || 'CONNECTER'))}
           </Text>
         </TouchableOpacity>
+
+        {refused && (
+          <TouchableOpacity
+            onPress={openHealthSettings}
+            activeOpacity={0.7}
+            style={{ alignSelf: 'center', marginTop: 14, paddingVertical: 8, paddingHorizontal: 14 }}
+          >
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', textDecorationLine: 'underline' }}>
+              {tr.hk_open_settings || 'Ouvrir Réglages'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
