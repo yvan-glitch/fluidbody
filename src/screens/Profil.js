@@ -54,7 +54,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var [quoteHour, setQuoteHour] = useState(8);
   var [showHrEnabled, setShowHrEnabled] = useState(true);
   var [storageUsed, setStorageUsed] = useState('0 B');
-  var [profileData, setProfileData] = useState({ gender: null, birth_date: null, height_cm: null, weight_kg: null });
+  var [profileData, setProfileData] = useState({ gender: null, birth_date: null, height_cm: null, weight_kg: null, practice_level: null, frequency: null, goals: [] });
   var [profileEditMode, setProfileEditMode] = useState(false);
   var [profileSaving, setProfileSaving] = useState(false);
   var [editGender, setEditGender] = useState(null);
@@ -83,7 +83,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     }
     if (__DEV__) console.log('[Profil] fetching profile for user.id:', supaUser.id);
     var cancelled = false;
-    supabase.from('profiles').select('prenom, gender, birth_date, height_cm, weight_kg').eq('id', supaUser.id).maybeSingle().then(function(res) {
+    supabase.from('profiles').select('prenom, gender, birth_date, height_cm, weight_kg, practice_level, frequency, goals').eq('id', supaUser.id).maybeSingle().then(function(res) {
       if (cancelled) return;
       if (__DEV__) console.log('[Profil] fetched res:', JSON.stringify({ data: res?.data || null, error: res?.error?.message || null }));
       if (!res || !res.data) return;
@@ -92,6 +92,9 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         birth_date: res.data.birth_date || null,
         height_cm: res.data.height_cm != null ? res.data.height_cm : null,
         weight_kg: res.data.weight_kg != null ? res.data.weight_kg : null,
+        practice_level: res.data.practice_level || null,
+        frequency: res.data.frequency || null,
+        goals: Array.isArray(res.data.goals) ? res.data.goals : [],
       });
       // Miroir AsyncStorage : VideoPlayer en a besoin pour la FCmax.
       try {
@@ -151,10 +154,34 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   }
 
   function genderLabel(key) {
-    if (key === 'female') return tr.profile_gender_female || 'Femme';
-    if (key === 'male') return tr.profile_gender_male || 'Homme';
-    if (key === 'other') return tr.profile_gender_other || 'Autre';
+    if (key === 'female') return tr.profile_gender_female || tr.onb_gender_female || 'Femme';
+    if (key === 'male') return tr.profile_gender_male || tr.onb_gender_male || 'Homme';
+    if (key === 'other' || key === 'nonbinary') return tr.onb_gender_nonbinary || tr.profile_gender_other || 'Non-binaire';
+    if (key === 'undisclosed') return tr.onb_gender_undisclosed || 'Préfère ne pas dire';
     return tr.profile_not_set || 'Non renseigné';
+  }
+  function practiceLabel(key) {
+    if (key === 'beginner') return tr.onb_practice_beginner || 'Débutant';
+    if (key === 'intermediate') return tr.onb_practice_intermediate || 'Intermédiaire';
+    if (key === 'advanced') return tr.onb_practice_advanced || 'Avancé';
+    return tr.profile_not_set || 'Non renseigné';
+  }
+  function frequencyLabel(key) {
+    if (key === '1-2') return tr.onb_frequency_low || '1–2 fois';
+    if (key === '3-4') return tr.onb_frequency_mid || '3–4 fois';
+    if (key === '5+') return tr.onb_frequency_high || '5+ fois';
+    return tr.profile_not_set || 'Non renseigné';
+  }
+  function goalsLabel(arr) {
+    if (!Array.isArray(arr) || arr.length === 0) return tr.profile_not_set || 'Non renseigné';
+    var map = {
+      tone: tr.onb_goal_tone || 'Tonifier',
+      flex: tr.onb_goal_flex || 'Souplesse',
+      posture: tr.onb_goal_posture || 'Posture',
+      recovery: tr.onb_goal_recovery || 'Récupération',
+      serenity: tr.onb_goal_serenity || 'Sérénité',
+    };
+    return arr.map(function(k) { return map[k] || k; }).join(' · ');
   }
   function formatBirth(iso) {
     if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return tr.profile_not_set || 'Non renseigné';
@@ -551,7 +578,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         {supaUser && (
           <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.profile_card_title || 'Mon profil'}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.profile_section_personal || tr.profile_card_title || 'Mes infos personnelles'}</Text>
               <TouchableOpacity
                 onPress={function() {
                   if (onEditProfile) {
@@ -561,6 +588,9 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                       birth_date: profileData.birth_date,
                       height_cm: profileData.height_cm,
                       weight_kg: profileData.weight_kg,
+                      practice_level: profileData.practice_level,
+                      frequency: profileData.frequency,
+                      goals: profileData.goals,
                     });
                   } else {
                     startProfileEdit();
@@ -569,27 +599,58 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 activeOpacity={0.7}
               >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.profile_edit_btn || 'Modifier'}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.accentText }}>{tr.profile_edit_btn || 'Modifier'}</Text>
               </TouchableOpacity>
             </View>
 
             {!profileEditMode ? (
               <View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+                {/* Identité */}
+                <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.accentText, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 4 }}>
+                  {tr.profile_section_identity || 'Identité'}
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: theme.colors.hairline }}>
                   <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.profile_gender_label || 'Genre'}</Text>
-                  <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{genderLabel(profileData.gender)}</Text>
+                  <Text style={{ fontSize: 14, color: theme.colors.accentText }}>{genderLabel(profileData.gender)}</Text>
                 </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: theme.colors.hairline }}>
                   <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.profile_birth_label || 'Date de naissance'}</Text>
-                  <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{formatBirth(profileData.birth_date)}</Text>
+                  <Text style={{ fontSize: 14, color: theme.colors.accentText }}>{formatBirth(profileData.birth_date)}</Text>
                 </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+
+                {/* Mesures */}
+                <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.accentText, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 14, marginBottom: 4 }}>
+                  {tr.profile_section_measures || 'Mesures'}
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: theme.colors.hairline }}>
                   <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.profile_height_label || 'Taille (cm)'}</Text>
-                  <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{profileData.height_cm != null ? profileData.height_cm + ' cm' : (tr.profile_not_set || 'Non renseigné')}</Text>
+                  <Text style={{ fontSize: 14, color: theme.colors.accentText }}>{profileData.height_cm != null ? profileData.height_cm + ' cm' : (tr.profile_not_set || 'Non renseigné')}</Text>
                 </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: theme.colors.hairline }}>
                   <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.profile_weight_label || 'Poids (kg)'}</Text>
-                  <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{profileData.weight_kg != null ? profileData.weight_kg + ' kg' : (tr.profile_not_set || 'Non renseigné')}</Text>
+                  <Text style={{ fontSize: 14, color: theme.colors.accentText }}>{profileData.weight_kg != null ? profileData.weight_kg + ' kg' : (tr.profile_not_set || 'Non renseigné')}</Text>
+                </View>
+
+                {/* Pratique */}
+                <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.accentText, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 14, marginBottom: 4 }}>
+                  {tr.profile_section_practice || 'Pratique'}
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: theme.colors.hairline }}>
+                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.profile_practice_level || 'Niveau'}</Text>
+                  <Text style={{ fontSize: 14, color: theme.colors.accentText }}>{practiceLabel(profileData.practice_level)}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: theme.colors.hairline }}>
+                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.profile_frequency || 'Fréquence'}</Text>
+                  <Text style={{ fontSize: 14, color: theme.colors.accentText }}>{frequencyLabel(profileData.frequency)}</Text>
+                </View>
+
+                {/* Objectifs */}
+                <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.accentText, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 14, marginBottom: 4 }}>
+                  {tr.profile_section_goals || 'Objectifs'}
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10 }}>
+                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.profile_goals || 'Objectifs'}</Text>
+                  <Text style={{ fontSize: 14, color: theme.colors.accentText, flex: 1, textAlign: 'right' }} numberOfLines={2}>{goalsLabel(profileData.goals)}</Text>
                 </View>
               </View>
             ) : (
