@@ -94,6 +94,9 @@ import LivingBackground from './src/components/LivingBackground';
 import SignInScreen from './src/screens/SignIn';
 import HealthKitConnectScreen from './src/screens/HealthKitConnect';
 import MonCorps, { MetricTile } from './src/screens/MonCorps';
+import ActivityScreen from './src/screens/Activity';
+import ProfileOnboardingScreen from './src/screens/ProfileOnboarding';
+import { flushPendingProfileSync, syncProfilePatch, refreshFromRemote } from './src/utils/profileSync';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
 import { LogBox } from 'react-native';
 
@@ -400,6 +403,22 @@ function TabIconBiblio({ color, size }) {
       <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
         <Path d="M4 4h16v16H4z" stroke={c} strokeWidth={1.6} strokeLinejoin="round" fill="none" />
         <Path d="M8 8h8M8 12h8M8 16h5" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+      </Svg>
+    </View>
+  );
+}
+
+function TabIconActivity({ color, size }) {
+  var c = tabBarIconTint(color);
+  var s = size ?? 22;
+  // Three concentric circles, Apple Fitness style — keeps Apple's red/green/
+  // blue palette so the icon reads correctly in both light and dark themes.
+  return (
+    <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <Circle cx={12} cy={12} r={10} stroke="#FF375F" strokeWidth={2.2} fill="none" opacity={0.95} />
+        <Circle cx={12} cy={12} r={6.5}  stroke="#A0FF49" strokeWidth={2.0} fill="none" opacity={0.95} />
+        <Circle cx={12} cy={12} r={3}   stroke="#1AECFF" strokeWidth={1.8} fill="none" opacity={0.95} />
       </Svg>
     </View>
   );
@@ -1226,6 +1245,10 @@ async function sendWelcomeNotification(prenom, lang = 'fr') {
 
 const FLUID_SUB_KEY = 'fluid_sub';
 const DONE_KEY = 'fluidbody_done';
+// Seance-streak (count of consecutive days a séance was completed). Distinct
+// from the *closed-rings* streak handled in ActivityScreen.
+const STREAK_KEY = 'fluid_streak_seance_count';
+const STREAK_DATE_KEY = 'fluid_streak_seance_last_date';
 
 // ══════════════════════════════════
 // MAIN APP
@@ -1512,6 +1535,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     }
   }
 
+  // Flush any pending profile sync on cold start when a session is available.
+  useEffect(function() {
+    if (!supaUser?.id) return undefined;
+    flushPendingProfileSync({ userId: supaUser.id }).catch(function() {});
+  }, [supaUser && supaUser.id]);
+
   return (
     <>
       <PaywallModal
@@ -1595,6 +1624,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       <NavigationContainer>
           <Tab.Navigator tabBar={function(props) { return <CustomTabBar {...props} />; }} screenOptions={{ headerShown: false }}>
           <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} onTensionChange={onTensionChange} streak={streak} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} saveHealthKitWorkout={saveHealthKitWorkout} />}</Tab.Screen>
+          <Tab.Screen name={tr.activity_tab || 'Activité'} options={{ tabBarIcon: (props) => <TabIconActivity {...props} /> }}>{() => <ActivityScreen lang={lang} supabase={supabase} supaUser={supaUser} done={done} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={function() { setShowAuthScreen(true); }} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={async () => {
@@ -1610,10 +1640,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       </NavigationContainer>
       <StretchTimerModal visible={showStretchTimer} onClose={function() { setShowStretchTimer(false); }} lang={lang} />
       <Modal visible={editingProfile} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setEditingProfile(false); }}>
-        <ProfileSetupScreen
+        <ProfileOnboardingScreen
           lang={lang}
           initialData={editingProfileInitial}
+          supaUser={supaUser}
           ctaLabel={(T[lang] || T.fr).profile_save_btn || 'Enregistrer'}
+          onClose={function() { setEditingProfile(false); }}
           onDone={async function(payload) {
             await handleProfileSetupSave(payload);
             setEditingProfile(false);
@@ -2255,6 +2287,18 @@ function App() {
         if (upErr) devWarn('profiles upsert hydrate', upErr);
         else setPrenom(prenomToStore);
       }
+      // Push any pending offline edits (best effort).
+      try { await flushPendingProfileSync({ userId: user.id }); } catch (e) { devWarn('flushPendingProfileSync', e); }
+      // Refresh the local cache with the authoritative remote row so the
+      // Activity / ProfileOnboarding screens see latest goals + streak.
+      try { await refreshFromRemote(user.id); } catch (e) {}
+      // If the remote row already marks onboarding complete, skip the
+      // ProfileOnboarding gate even if AsyncStorage hasn't been written
+      // yet on this device.
+      if (profile && profile.onboarding_completed) {
+        setProfileSetupShown(true);
+        AsyncStorage.setItem('fluid_profile_setup_done', '1').catch(function() {});
+      }
     }
 
     function finishLoading() {
@@ -2425,7 +2469,11 @@ function App() {
   }
 
   if (profileSetupShown === false) {
-    return <ProfileSetupScreen lang={lang} onDone={handleProfileSetupSave} />;
+    return <ProfileOnboardingScreen
+      lang={lang}
+      supaUser={supaUser}
+      onDone={handleProfileSetupSave}
+    />;
   }
 
   if (welcomeShown === false) {
