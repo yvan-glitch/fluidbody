@@ -181,15 +181,22 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     var dd = parseInt(editD, 10), mm = parseInt(editM, 10), yy = parseInt(editY, 10);
     var birth = null;
     if (dd && mm && yy && yy >= 1900 && yy <= new Date().getFullYear() && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
-      birth = yy + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+      // Reject impossible days (Feb 30, Apr 31, etc.) by round-tripping through Date.
+      var probe = new Date(yy, mm - 1, dd);
+      if (probe.getFullYear() === yy && probe.getMonth() === mm - 1 && probe.getDate() === dd) {
+        birth = yy + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+      }
     }
     var h = parseInt(editHeight, 10);
     var w = parseInt(editWeight, 10);
+    // Bounds matched to ProfileOnboarding (120–220 cm, 30–200 kg).
+    var heightOk = isFinite(h) && h >= 120 && h <= 220;
+    var weightOk = isFinite(w) && w >= 30 && w <= 200;
     var next = {
       gender: editGender || null,
       birth_date: birth,
-      height_cm: isFinite(h) && h > 0 ? h : null,
-      weight_kg: isFinite(w) && w > 0 ? w : null,
+      height_cm: heightOk ? h : null,
+      weight_kg: weightOk ? w : null,
     };
     setProfileData(next);
     setProfileEditMode(false);

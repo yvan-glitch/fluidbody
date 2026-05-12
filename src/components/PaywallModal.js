@@ -94,14 +94,19 @@ function TestimonialsCard({ testimonials, theme, sectionTitle }) {
   const opac = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (!Array.isArray(testimonials) || testimonials.length < 2) return;
+    let pendingSwap = null;
     const itv = setInterval(() => {
       Animated.sequence([
         Animated.timing(opac, { toValue: 0, duration: 250, useNativeDriver: true }),
         Animated.timing(opac, { toValue: 1, duration: 350, useNativeDriver: true }),
       ]).start();
-      setTimeout(() => setIdx((i) => (i + 1) % testimonials.length), 280);
+      if (pendingSwap) clearTimeout(pendingSwap);
+      pendingSwap = setTimeout(() => { setIdx((i) => (i + 1) % testimonials.length); }, 280);
     }, 4200);
-    return () => clearInterval(itv);
+    return () => {
+      clearInterval(itv);
+      if (pendingSwap) clearTimeout(pendingSwap);
+    };
   }, [testimonials]);
 
   if (!Array.isArray(testimonials) || testimonials.length === 0) return null;
