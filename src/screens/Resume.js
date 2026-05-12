@@ -15,30 +15,50 @@ import LivingBackground from '../components/LivingBackground';
 import { getPiliers, getSeances } from '../utils';
 
 // HealthKit — optional native module
+// HK est désactivé globalement après le crash NSException de build #43 sur
+// iOS 26.5 + New Arch (cf. App.js HEALTHKIT_DISABLED). On garde le module
+// importé pour ne pas casser l'arbre de dépendances mais on neutralise
+// tous les appels natifs. NE PAS appeler AppleHealthKit.* sans flipper le
+// flag global d'abord — la lib peut throw NSException et le converter RN
+// crashe en lisant callStackReturnAddresses via dladdr sur iOS 26.5.
+const HEALTHKIT_DISABLED = true;
+
 let AppleHealthKit = null;
 let hkInitialized = false;
 try { AppleHealthKit = require('react-native-health').default; } catch(e) {}
 
-const HK_PERMISSIONS = AppleHealthKit ? {
-  permissions: {
-    read: [
-      AppleHealthKit.Constants?.Permissions?.ActiveEnergyBurned,
-      AppleHealthKit.Constants?.Permissions?.AppleExerciseTime,
-      AppleHealthKit.Constants?.Permissions?.AppleStandTime,
-    ].filter(Boolean),
-  },
-} : null;
-
-function initHealthKit() {
-  if (!AppleHealthKit || hkInitialized || Platform.OS !== 'ios') return;
-  AppleHealthKit.initHealthKit(HK_PERMISSIONS, function(err) {
-    if (err) { if (__DEV__) console.log('HealthKit init error:', err); return; }
-    hkInitialized = true;
-  });
+// Lazy: ne plus accéder à AppleHealthKit.Constants au load time (cf. crash
+// hero PNG report). Les permissions sont calculées dans initHealthKit().
+function buildHkPermissions() {
+  if (HEALTHKIT_DISABLED || !AppleHealthKit) return null;
+  try {
+    const C = (AppleHealthKit.Constants && AppleHealthKit.Constants.Permissions) || {};
+    return {
+      permissions: {
+        read: [C.ActiveEnergyBurned, C.AppleExerciseTime, C.AppleStandTime].filter(Boolean),
+      },
+    };
+  } catch (e) { return null; }
 }
 
-// Try to init on load
-initHealthKit();
+function initHealthKit() {
+  if (HEALTHKIT_DISABLED) return;
+  if (!AppleHealthKit || hkInitialized || Platform.OS !== 'ios') return;
+  const perms = buildHkPermissions();
+  if (!perms) return;
+  try {
+    AppleHealthKit.initHealthKit(perms, function(err) {
+      if (err) { if (__DEV__) console.log('HealthKit init error:', err); return; }
+      hkInitialized = true;
+    });
+  } catch (e) { if (__DEV__) console.warn('Resume HK init throw:', e); }
+}
+
+// Ancien appel module-load `initHealthKit()` retiré : il s'exécutait au
+// premier import de l'écran et déclenchait AppleHealthKit.initHealthKit
+// sans aucun garde — risque de crash NSException au boot sur iOS 26.5.
+// Le screen se réinitialisera explicitement dans un useEffect si HK est
+// ré-activé un jour.
 
 function getHealthKitSummary(cb) {
   if (!AppleHealthKit || !hkInitialized || Platform.OS !== 'ios') { cb({ cal: 0, exMin: 0, standHr: 0 }); return; }

@@ -138,10 +138,23 @@ if (!__DEV__) {
 // L'accès traverse le bridge natif et peut throw NSException si HKHealthStore
 // n'est pas correctement init → crash Hermes au démarrage de l'app.
 // Les permissions sont calculées LAZILY dans initHealthKit().
+//
+// HEALTHKIT_DISABLED — kill switch hoisté au scope module (était local au
+// composant App() avant ce hotfix). Tous les sites d'appel à
+// react-native-health doivent le respecter. Re-disabled après le crash
+// 2026-05-12 sur l'écran HealthKitConnect (build #43, iOS 26.5):
+// EXC_BAD_ACCESS dans TurboModuleConvertUtils::convertNSExceptionToJSError
+// → dladdr sur [NSException callStackReturnAddresses]. La lib
+// react-native-health 1.19 ne supporte pas le combo iOS 26.5 + New Arch
+// (Fabric/TurboModules) sans patch. À ré-activer dans un sprint dédié
+// après évaluation de @kingstinct/react-native-healthkit ou du binding
+// officiel Expo.
+const HEALTHKIT_DISABLED = true;
 
 let hkInitialized = false;
 
 function buildHkPermissions() {
+  if (HEALTHKIT_DISABLED) return null;
   if (!AppleHealthKit) return null;
   try {
     const C = (AppleHealthKit.Constants && AppleHealthKit.Constants.Permissions) || {};
@@ -169,17 +182,23 @@ function buildHkPermissions() {
 }
 
 function initHealthKit() {
+  if (HEALTHKIT_DISABLED) return;
   if (!AppleHealthKit || hkInitialized || Platform.OS !== 'ios') return;
   const perms = buildHkPermissions();
   if (!perms) return;
   try {
     AppleHealthKit.initHealthKit(perms, function(err) {
-      if (err) { if (__DEV__) devLog('HealthKit init error:', err); return; }
+      if (err) {
+        if (__DEV__) devLog('HealthKit init error:', err);
+        sentryCapture(err instanceof Error ? err : new Error(String(err && err.message || err)), { where: 'initHealthKit.callback' });
+        return;
+      }
       hkInitialized = true;
       if (__DEV__) devLog('HealthKit initialized');
     });
   } catch (e) {
     if (__DEV__) console.warn('HealthKit init throw:', e);
+    sentryCapture(e, { where: 'initHealthKit.syncThrow' });
   }
 }
 
@@ -198,6 +217,7 @@ function workoutTypeForPilates() {
 }
 
 function saveHealthKitWorkout(durationMinutes, extras) {
+  if (HEALTHKIT_DISABLED) return;
   if (!AppleHealthKit || !hkInitialized || Platform.OS !== 'ios') return;
   try {
     var now = new Date();
@@ -215,6 +235,7 @@ function saveHealthKitWorkout(durationMinutes, extras) {
       energyBurnedUnit: 'calorie',
     };
     AppleHealthKit.saveWorkout(options, function(err, res) {
+      if (err) sentryCapture(err instanceof Error ? err : new Error(String(err && err.message || err)), { where: 'saveHealthKitWorkout.callback' });
       if (__DEV__) {
         if (err) devLog('HealthKit workout save error:', err);
         else devLog('HealthKit workout saved:', durationMinutes + 'min, ' + calories + 'cal');
@@ -222,6 +243,7 @@ function saveHealthKitWorkout(durationMinutes, extras) {
     });
   } catch (e) {
     if (__DEV__) console.warn('HealthKit save throw:', e);
+    sentryCapture(e, { where: 'saveHealthKitWorkout.syncThrow' });
   }
 }
 
@@ -2137,11 +2159,9 @@ function App() {
     AsyncStorage.setItem('fluid_welcome_intro_done', '1').catch(function(e) { devWarn('welcome flag persist', e); });
   }
 
-  // Écran HealthKitConnect réactivé après fix du crash hero PNG
-  // (expo-image + reconversion sRGB). Si Sentry remonte une régression du
-  // NSException CGImageSourceCreateThumbnailAtIndex, repasser à true et
-  // investiguer (downscale 600x548 ou SVG vectoriel comme fallback).
-  const HEALTHKIT_DISABLED = false;
+  // HEALTHKIT_DISABLED est désormais hoisté au scope module (cf. App.js ~ligne
+  // 142). Re-désactivé après le crash NSException de build #43 sur iOS 26.5
+  // depuis HealthKitConnect.handleConnect → AppleHealthKit.initHealthKit.
 
   useEffect(() => {
     if (HEALTHKIT_DISABLED) {
