@@ -1292,6 +1292,7 @@ const STREAK_DATE_KEY = 'fluid_streak_seance_last_date';
 // MAIN APP
 // ══════════════════════════════════
 function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChange }) {
+  diag('MainApp.render', 'enter');
   const tr = T[lang] || T['fr'];
   const [done, setDone] = useState({
     p1: Array(20).fill(false), p2: Array(20).fill(false), p3: Array(20).fill(false),
@@ -2232,8 +2233,10 @@ function App() {
   }, []);
 
   function dismissWelcomeIntro() {
+    diag('dismissWelcomeIntro', 'start');
     setWelcomeShown(true);
     AsyncStorage.setItem('fluid_welcome_intro_done', '1').catch(function(e) { devWarn('welcome flag persist', e); });
+    diag('dismissWelcomeIntro', 'done');
   }
 
   // HEALTHKIT_DISABLED est hoisté au scope module (cf. App.js ~ligne 142).
@@ -2598,16 +2601,20 @@ function App() {
   }
 
   if (welcomeShown === false) {
+    diag('App.render', 'WelcomeIntroScreen');
     return <WelcomeIntroScreen lang={lang} onDone={function(idxs) {
+      diag('App.welcome.onDone', 'fire');
       if (Array.isArray(idxs) && idxs.length > 0) handleTensionChange(idxs);
       dismissWelcomeIntro();
     }} />;
   }
 
   if (hkPromptShown === false) {
-    return <HealthKitConnectScreen lang={lang} onDone={function() { dismissHkPrompt(); }} />;
+    diag('App.render', 'HealthKitConnectScreen');
+    return <HealthKitConnectScreen lang={lang} onDone={function() { diag('App.hkPrompt.onDone', 'fire'); dismissHkPrompt(); }} />;
   }
 
+  diag('App.render', 'MainApp');
   return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} />;
 }
 
