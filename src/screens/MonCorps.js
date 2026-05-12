@@ -8,6 +8,7 @@ import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES, FREE_MONTHLY_SELECTION } from '../constants/data';
 import SeanceShareCard from '../components/SeanceShareCard';
+import BreathingCheckIn, { isBreathDoneToday } from '../components/BreathingCheckIn';
 import { Bulle, Rayon, MeduseCornerIcon, FloatingMedusas, BULLES, BULLES_MONCORPS } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import GlassButton from '../components/GlassButton';
@@ -801,8 +802,18 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   var [savedPrograms, setSavedPrograms] = useState([]);
   var [searchQuery, setSearchQuery] = useState('');
   var [searchEtape, setSearchEtape] = useState(null);
+  var [showBreathing, setShowBreathing] = useState(false);
+  var [breathDoneToday, setBreathDoneToday] = useState(false);
 
   useEffect(function() { loadSavedPrograms(); }, []);
+
+  // Re-check whether the breath ring is already closed for today, every time
+  // the modal closes (so the pill flips to "done" without a manual refresh).
+  useEffect(function() {
+    let cancelled = false;
+    isBreathDoneToday().then(function(d) { if (!cancelled) setBreathDoneToday(!!d); });
+    return function() { cancelled = true; };
+  }, [showBreathing]);
   function loadSavedPrograms() {
     AsyncStorage.getItem('fluid_custom_programs').then(function(raw) {
       if (raw) { try { setSavedPrograms(JSON.parse(raw)); } catch(e) {} }
@@ -854,15 +865,42 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         <Text style={localStyles.logoWordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
           FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: "900", color: "#AEEF4D", fontSize: 34 }}>+</AnimatedPlus>
         </Text>
-        {prenom ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <TouchableOpacity
-            onPress={function() { try { navigation.navigate(tr.tabs[3]); } catch(e) {} }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            activeOpacity={0.7}
+            onPress={function() { hapticLight(); setShowBreathing(true); }}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={breathDoneToday ? (tr.breath_pill_done || 'Respiration faite') : (tr.breath_pill || 'Respirer 60s')}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 14,
+              backgroundColor: breathDoneToday ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.08)',
+              borderWidth: 1,
+              borderColor: breathDoneToday ? 'rgba(174,239,77,0.55)' : 'rgba(255,255,255,0.18)',
+            }}
           >
-            <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(174,239,77,0.6)' }}>{tr.bonjour(prenom)}</Text>
+            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+              <Circle cx="12" cy="12" r="9" stroke={breathDoneToday ? '#AEEF4D' : 'rgba(255,255,255,0.78)'} strokeWidth={1.6} />
+              <Circle cx="12" cy="12" r="4.5" stroke={breathDoneToday ? '#AEEF4D' : 'rgba(255,255,255,0.78)'} strokeWidth={1.2} opacity={0.6} />
+            </Svg>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: breathDoneToday ? '#AEEF4D' : 'rgba(255,255,255,0.86)', letterSpacing: 0.3 }}>
+              {breathDoneToday ? (tr.breath_pill_done || 'Respiration ✓') : (tr.breath_pill || 'Respirer 60s')}
+            </Text>
           </TouchableOpacity>
-        ) : null}
+          {prenom ? (
+            <TouchableOpacity
+              onPress={function() { try { navigation.navigate(tr.tabs[3]); } catch(e) {} }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(174,239,77,0.6)' }}>{tr.bonjour(prenom)}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
       <View style={{ position: "absolute", top: 105, left: 0, right: 0, zIndex: 5, marginTop: 20 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
@@ -1464,6 +1502,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         <PilierPanel pilier={openPilier} done={done[openPilier.key] || Array(20).fill(false)} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); setOpenInitialIdx(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} saveHealthKitWorkout={saveHealthKitWorkout} initialSeanceIdx={openInitialIdx} />
       )}
       <CreateProgramScreen visible={showCreateProg} onClose={function() { setShowCreateProg(false); }} lang={lang} onSaved={loadSavedPrograms} />
+      <BreathingCheckIn visible={showBreathing} onClose={function() { setShowBreathing(false); }} lang={lang} />
     </View>
   );
 }
