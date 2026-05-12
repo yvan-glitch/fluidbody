@@ -24,9 +24,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
-// HK désactivé tant que la migration Kingstinct n'est pas validée sur device.
-// Sera flipé à false dans le commit "feat(health): re-enable" séparé.
-const HEALTHKIT_DISABLED = true;
+// HK kill-switch — à garder pour pouvoir désactiver HealthKit côté JS sans
+// rebuild natif si un nouveau crash apparaît sur une version iOS future.
+const HEALTHKIT_DISABLED = false;
 
 let HK = null;
 try {

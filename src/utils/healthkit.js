@@ -12,10 +12,9 @@
 
 import { Platform } from 'react-native';
 
-// HK désactivé tant que la migration n'est pas validée sur device. Une fois
-// le binding Kingstinct validé sur iOS 26.5 + New Arch, ce flag passe à false
-// (cf. commit séparé "feat(health): re-enable HealthKit after migration").
-const HEALTHKIT_DISABLED = true;
+// HK kill-switch — à garder pour pouvoir désactiver HealthKit côté JS sans
+// rebuild natif si un nouveau crash apparaît sur une version iOS future.
+const HEALTHKIT_DISABLED = false;
 
 let HK = null;
 try {
