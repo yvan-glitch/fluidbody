@@ -5,14 +5,12 @@
 //   we can do (without a companion watchOS app) is poll HKHealthStore for the
 //   most recent HeartRate samples authored by the Apple Watch and bracket the
 //   session with a single HKWorkout record on stop().
-//   react-native-health doesn't expose HKWorkoutBuilder (iOS 17+) yet, so
-//   `saveWorkout` after-the-fact is the only path.
 //
 // What we do:
-//   • One-shot Apple-Watch heuristic on mount (7-day HR window, sourceName
+//   • One-shot Apple-Watch heuristic on mount (7-day HR window, source name
 //     contains "Apple Watch" — covers all watch models).
 //   • start() captures `startedAt`, starts a 4s polling loop on
-//     getHeartRateSamples({ last 30s window }).
+//     queryQuantitySamples for HeartRate over the last 30s.
 //   • stop() halts the loop and returns a session summary (durationMs,
 //     avgBpm, maxBpm, minBpm, sampleCount) so the caller can save it as
 //     a workout via saveHealthKitWorkout.
@@ -26,89 +24,83 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
-// HK désactivé globalement après le crash NSException de build #43 sur
-// iOS 26.5 + New Arch (cf. App.js HEALTHKIT_DISABLED). Tant que ce flag
-// est true, aucun appel natif AppleHealthKit.* n'est émis depuis le hook.
+// HK désactivé tant que la migration Kingstinct n'est pas validée sur device.
+// Sera flipé à false dans le commit "feat(health): re-enable" séparé.
 const HEALTHKIT_DISABLED = true;
 
-let AppleHealthKit = null;
+let HK = null;
 try {
-  AppleHealthKit = require('react-native-health').default || require('react-native-health');
+  HK = require('@kingstinct/react-native-healthkit');
 } catch (e) {}
 
+const HR_ID = 'HKQuantityTypeIdentifierHeartRate';
 const POLL_INTERVAL_MS = 4000;
 const SAMPLE_LOOKBACK_MS = 30000;
 const STALE_THRESHOLD_MS = 15000;
 const APPLE_WATCH_PROBE_DAYS = 7;
+
+function sourceNameOf(sample) {
+  try {
+    if (sample && sample.sourceRevision && sample.sourceRevision.source) {
+      return sample.sourceRevision.source.name || null;
+    }
+  } catch (e) {}
+  return null;
+}
 
 function isAppleWatchSource(sourceName) {
   if (!sourceName) return false;
   return /apple\s*watch/i.test(sourceName);
 }
 
-function probeAppleWatchPresence() {
-  return new Promise(function (resolve) {
-    if (HEALTHKIT_DISABLED || !AppleHealthKit || Platform.OS !== 'ios') {
-      resolve(false);
-      return;
-    }
-    try {
-      const end = new Date();
-      const start = new Date(end.getTime() - APPLE_WATCH_PROBE_DAYS * 24 * 3600 * 1000);
-      AppleHealthKit.getHeartRateSamples(
-        { startDate: start.toISOString(), endDate: end.toISOString(), limit: 50, ascending: false },
-        function (err, samples) {
-          if (err || !Array.isArray(samples)) {
-            resolve(false);
-            return;
-          }
-          const seen = samples.some(function (s) { return isAppleWatchSource(s.sourceName); });
-          resolve(seen);
-        },
-      );
-    } catch (e) {
-      resolve(false);
-    }
-  });
+async function probeAppleWatchPresence() {
+  if (HEALTHKIT_DISABLED || !HK || Platform.OS !== 'ios') return false;
+  try {
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - APPLE_WATCH_PROBE_DAYS * 24 * 3600 * 1000);
+    const samples = await HK.queryQuantitySamples(HR_ID, {
+      limit: 50,
+      ascending: false,
+      unit: 'count/min',
+      filter: { date: { startDate, endDate } },
+    });
+    if (!Array.isArray(samples)) return false;
+    return samples.some(function (s) { return isAppleWatchSource(sourceNameOf(s)); });
+  } catch (e) {
+    return false;
+  }
 }
 
-function fetchRecentHr() {
-  return new Promise(function (resolve) {
-    if (HEALTHKIT_DISABLED || !AppleHealthKit || Platform.OS !== 'ios') {
-      resolve(null);
-      return;
-    }
-    try {
-      const end = new Date();
-      const start = new Date(end.getTime() - SAMPLE_LOOKBACK_MS);
-      AppleHealthKit.getHeartRateSamples(
-        { startDate: start.toISOString(), endDate: end.toISOString(), limit: 5, ascending: false },
-        function (err, samples) {
-          if (err || !Array.isArray(samples) || samples.length === 0) {
-            resolve(null);
-            return;
-          }
-          // Préférence : sample Apple Watch le plus récent. Sinon, le plus
-          // récent tout court (utile si la watch n'a pas encore re-sync mais
-          // qu'un autre device — sleep tracker tiers, par ex. — a posté).
-          const watch = samples.find(function (s) { return isAppleWatchSource(s.sourceName); });
-          const chosen = watch || samples[0];
-          const bpm = Math.round(Number(chosen.value) || 0);
-          if (!bpm || bpm < 30 || bpm > 230) {
-            resolve(null);
-            return;
-          }
-          resolve({
-            bpm: bpm,
-            source: chosen.sourceName || 'unknown',
-            measuredAt: new Date(chosen.endDate || chosen.startDate).getTime(),
-          });
-        },
-      );
-    } catch (e) {
-      resolve(null);
-    }
-  });
+async function fetchRecentHr() {
+  if (HEALTHKIT_DISABLED || !HK || Platform.OS !== 'ios') return null;
+  try {
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - SAMPLE_LOOKBACK_MS);
+    const samples = await HK.queryQuantitySamples(HR_ID, {
+      limit: 5,
+      ascending: false,
+      unit: 'count/min',
+      filter: { date: { startDate, endDate } },
+    });
+    if (!Array.isArray(samples) || samples.length === 0) return null;
+    // Préférence : sample Apple Watch le plus récent. Sinon, le plus récent
+    // tout court (utile si la watch n'a pas encore re-sync mais qu'un autre
+    // device — sleep tracker tiers, par ex. — a posté).
+    const watch = samples.find(function (s) { return isAppleWatchSource(sourceNameOf(s)); });
+    const chosen = watch || samples[0];
+    const bpm = Math.round(Number(chosen.quantity) || 0);
+    if (!bpm || bpm < 30 || bpm > 230) return null;
+    const measuredAt = chosen.endDate instanceof Date
+      ? chosen.endDate.getTime()
+      : new Date(chosen.endDate || chosen.startDate).getTime();
+    return {
+      bpm: bpm,
+      source: sourceNameOf(chosen) || 'unknown',
+      measuredAt: measuredAt,
+    };
+  } catch (e) {
+    return null;
+  }
 }
 
 /**
@@ -160,7 +152,7 @@ export default function useLiveHeartRate(opts) {
   }, []);
 
   const start = useCallback(function () {
-    if (HEALTHKIT_DISABLED || !enabled || !AppleHealthKit || Platform.OS !== 'ios') return;
+    if (HEALTHKIT_DISABLED || !enabled || !HK || Platform.OS !== 'ios') return;
     if (pollHandleRef.current) return;
     aggRef.current = { sum: 0, count: 0, max: 0, min: Infinity, startedAt: Date.now(), samples: [] };
     lastMeasuredAtRef.current = null;
@@ -190,7 +182,7 @@ export default function useLiveHeartRate(opts) {
     };
   }, []);
 
-  // Hard-stop on unmount — pas de zombie interval qui sondé HealthKit après
+  // Hard-stop on unmount — pas de zombie interval qui sonde HealthKit après
   // la dispatch du VideoPlayer.
   useEffect(function () {
     return function () {

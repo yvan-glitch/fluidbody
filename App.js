@@ -63,11 +63,11 @@ let AppleAuth = null;
 try { AppleAuth = require('expo-apple-authentication'); } catch(e) {}
 let DateTimePicker = null;
 try { DateTimePicker = require('@react-native-community/datetimepicker').default; } catch(e) {}
-let AppleHealthKit = null;
+let HK = null;
 try {
-  AppleHealthKit = require('react-native-health').default || require('react-native-health');
+  HK = require('@kingstinct/react-native-healthkit');
 } catch (e) {
-  if (__DEV__) console.warn('react-native-health unavailable:', e);
+  if (__DEV__) console.warn('@kingstinct/react-native-healthkit unavailable:', e);
 }
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Svg, { Path, Circle, Ellipse, Line, Rect, Defs, RadialGradient, Stop, G } from 'react-native-svg';
@@ -134,113 +134,89 @@ if (!__DEV__) {
 }
 
 // ── HEALTHKIT ──────────────────────────────────────────
-// NOTE: NE PAS accéder à AppleHealthKit.Constants ici (load time).
-// L'accès traverse le bridge natif et peut throw NSException si HKHealthStore
-// n'est pas correctement init → crash Hermes au démarrage de l'app.
-// Les permissions sont calculées LAZILY dans initHealthKit().
+// Migré depuis react-native-health 1.19 vers @kingstinct/react-native-healthkit
+// v14 (Nitro Modules). Le binding moderne contourne le bridge ObjC
+// TurboModule responsable du crash NSException de build #43 sur iOS 26.5 +
+// New Arch (EXC_BAD_ACCESS dans convertNSExceptionToJSError → dladdr).
 //
-// HEALTHKIT_DISABLED — kill switch hoisté au scope module (était local au
-// composant App() avant ce hotfix). Tous les sites d'appel à
-// react-native-health doivent le respecter. Re-disabled après le crash
-// 2026-05-12 sur l'écran HealthKitConnect (build #43, iOS 26.5):
-// EXC_BAD_ACCESS dans TurboModuleConvertUtils::convertNSExceptionToJSError
-// → dladdr sur [NSException callStackReturnAddresses]. La lib
-// react-native-health 1.19 ne supporte pas le combo iOS 26.5 + New Arch
-// (Fabric/TurboModules) sans patch. À ré-activer dans un sprint dédié
-// après évaluation de @kingstinct/react-native-healthkit ou du binding
-// officiel Expo.
+// HEALTHKIT_DISABLED — kill switch hoisté au scope module. Reste à true le
+// temps que la migration soit validée sur un build TestFlight. Le commit
+// "feat(health): re-enable HealthKit after migration" le passera à false
+// une fois le binding Kingstinct confirmé stable.
 const HEALTHKIT_DISABLED = true;
+
+// HKWorkoutActivityType.pilates = 66 (cf. Apple HKWorkoutActivityType.pilates,
+// dispo depuis watchOS 5 / iOS 10). On hardcode l'entier pour ne pas avoir à
+// importer l'enum depuis le binding au load time du module.
+const WORKOUT_ACTIVITY_PILATES = 66;
+
+const HK_READ_PERMS = [
+  'HKQuantityTypeIdentifierHeartRate',
+  'HKQuantityTypeIdentifierActiveEnergyBurned',
+  'HKQuantityTypeIdentifierAppleExerciseTime',
+  'HKQuantityTypeIdentifierAppleStandTime',
+  'HKQuantityTypeIdentifierBodyMass',
+  'HKQuantityTypeIdentifierHeight',
+  'HKCharacteristicTypeIdentifierDateOfBirth',
+  'HKCharacteristicTypeIdentifierBiologicalSex',
+  'HKWorkoutTypeIdentifier',
+];
+
+const HK_WRITE_PERMS = [
+  'HKQuantityTypeIdentifierActiveEnergyBurned',
+  'HKQuantityTypeIdentifierHeartRate',
+  'HKWorkoutTypeIdentifier',
+];
 
 let hkInitialized = false;
 
-function buildHkPermissions() {
-  if (HEALTHKIT_DISABLED) return null;
-  if (!AppleHealthKit) return null;
-  try {
-    const C = (AppleHealthKit.Constants && AppleHealthKit.Constants.Permissions) || {};
-    return {
-      permissions: {
-        read: [
-          C.HeartRate,
-          C.ActiveEnergyBurned,
-          C.AppleExerciseTime,
-          C.AppleStandTime,
-          C.Workout,
-          C.WorkoutRoute,
-          C.BodyMass,
-          C.Height,
-          C.DateOfBirth,
-          C.BiologicalSex,
-        ].filter(Boolean),
-        write: [C.ActiveEnergyBurned, C.Workout, C.HeartRate].filter(Boolean),
-      },
-    };
-  } catch (e) {
-    if (__DEV__) console.warn('HK perms throw:', e);
-    return null;
-  }
-}
-
 function initHealthKit() {
   if (HEALTHKIT_DISABLED) return;
-  if (!AppleHealthKit || hkInitialized || Platform.OS !== 'ios') return;
-  const perms = buildHkPermissions();
-  if (!perms) return;
-  try {
-    AppleHealthKit.initHealthKit(perms, function(err) {
-      if (err) {
-        if (__DEV__) devLog('HealthKit init error:', err);
-        sentryCapture(err instanceof Error ? err : new Error(String(err && err.message || err)), { where: 'initHealthKit.callback' });
-        return;
-      }
+  if (!HK || hkInitialized || Platform.OS !== 'ios') return;
+  // requestAuthorization retourne `Promise<boolean>` — true = la feuille a été
+  // présentée (accepté ou refusé, on ne peut pas le distinguer côté READ par
+  // confidentialité). On considère cela suffisant pour marquer hkInitialized.
+  HK.requestAuthorization({ toShare: HK_WRITE_PERMS, toRead: HK_READ_PERMS })
+    .then(function () {
       hkInitialized = true;
-      if (__DEV__) devLog('HealthKit initialized');
+      if (__DEV__) devLog('HealthKit initialized (kingstinct)');
+    })
+    .catch(function (err) {
+      if (__DEV__) devLog('HealthKit init error:', err);
+      sentryCapture(err instanceof Error ? err : new Error(String(err && err.message || err)), { where: 'initHealthKit.kingstinct' });
     });
-  } catch (e) {
-    if (__DEV__) console.warn('HealthKit init throw:', e);
-    sentryCapture(e, { where: 'initHealthKit.syncThrow' });
-  }
-}
-
-// Pilates est dispo dans HKWorkoutActivityType depuis watchOS 5 (= partout
-// sur les Apple Watch que nos users vont avoir). Le binding `react-native-health`
-// expose la constante via Constants.Activities.Pilates ; on garde un fallback
-// FunctionalStrengthTraining si la constante n'est pas exposée par la version installée.
-function workoutTypeForPilates() {
-  if (!AppleHealthKit) return 'FunctionalStrengthTraining';
-  try {
-    const A = (AppleHealthKit.Constants && AppleHealthKit.Constants.Activities) || {};
-    return A.Pilates || A.MindAndBody || A.FunctionalStrengthTraining || 'FunctionalStrengthTraining';
-  } catch (e) {
-    return 'FunctionalStrengthTraining';
-  }
 }
 
 function saveHealthKitWorkout(durationMinutes, extras) {
   if (HEALTHKIT_DISABLED) return;
-  if (!AppleHealthKit || !hkInitialized || Platform.OS !== 'ios') return;
+  if (!HK || !hkInitialized || Platform.OS !== 'ios') return;
   try {
-    var now = new Date();
-    var start = new Date(now.getTime() - durationMinutes * 60000);
+    var endDate = new Date();
+    var startDate = new Date(endDate.getTime() - durationMinutes * 60000);
     // Calories : si la live HR a tourné, on a une estimation plus juste via avg HR.
     // Sinon on garde l'estimation forfaitaire 5 kcal/min (Pilates léger).
     var calories = (extras && Number.isFinite(extras.energyBurned))
       ? Math.max(1, Math.round(extras.energyBurned))
       : Math.round(durationMinutes * 5);
-    var options = {
-      type: workoutTypeForPilates(),
-      startDate: start.toISOString(),
-      endDate: now.toISOString(),
-      energyBurned: calories,
-      energyBurnedUnit: 'calorie',
-    };
-    AppleHealthKit.saveWorkout(options, function(err, res) {
-      if (err) sentryCapture(err instanceof Error ? err : new Error(String(err && err.message || err)), { where: 'saveHealthKitWorkout.callback' });
-      if (__DEV__) {
-        if (err) devLog('HealthKit workout save error:', err);
-        else devLog('HealthKit workout saved:', durationMinutes + 'min, ' + calories + 'cal');
-      }
-    });
+    // Quantities échantillonnées pendant le workout : energy burned. On
+    // pourrait aussi pousser les HR samples ici mais ils sont déjà côté
+    // Apple Watch — éviter les doublons.
+    var quantities = [{
+      startDate: startDate,
+      endDate: endDate,
+      quantityType: 'HKQuantityTypeIdentifierActiveEnergyBurned',
+      quantity: calories,
+      unit: 'kcal',
+    }];
+    var totals = { energyBurned: calories };
+    HK.saveWorkoutSample(WORKOUT_ACTIVITY_PILATES, quantities, startDate, endDate, totals)
+      .then(function () {
+        if (__DEV__) devLog('HealthKit workout saved:', durationMinutes + 'min, ' + calories + 'cal');
+      })
+      .catch(function (err) {
+        if (__DEV__) devLog('HealthKit workout save error:', err);
+        sentryCapture(err instanceof Error ? err : new Error(String(err && err.message || err)), { where: 'saveHealthKitWorkout.kingstinct' });
+      });
   } catch (e) {
     if (__DEV__) console.warn('HealthKit save throw:', e);
     sentryCapture(e, { where: 'saveHealthKitWorkout.syncThrow' });
@@ -2159,9 +2135,9 @@ function App() {
     AsyncStorage.setItem('fluid_welcome_intro_done', '1').catch(function(e) { devWarn('welcome flag persist', e); });
   }
 
-  // HEALTHKIT_DISABLED est désormais hoisté au scope module (cf. App.js ~ligne
-  // 142). Re-désactivé après le crash NSException de build #43 sur iOS 26.5
-  // depuis HealthKitConnect.handleConnect → AppleHealthKit.initHealthKit.
+  // HEALTHKIT_DISABLED est hoisté au scope module (cf. App.js ~ligne 142).
+  // Reste à true tant que la migration Kingstinct n'est pas validée sur
+  // device — sera flipé à false dans un commit séparé.
 
   useEffect(() => {
     if (HEALTHKIT_DISABLED) {
