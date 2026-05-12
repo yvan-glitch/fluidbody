@@ -1317,6 +1317,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [rcPackagesByProductId, setRcPackagesByProductId] = useState({});
   const [rcLoadingPrices, setRcLoadingPrices] = useState(false);
   const [coachWelcomeVisible, setCoachWelcomeVisible] = useState(false);
+  const [purchaseConfettiActive, setPurchaseConfettiActive] = useState(false);
 
   // First-launch coach welcome — once per install, opened ~700ms after MainApp
   // mounts so the user sees the tab bar settle first (less jarring than a hard
@@ -1367,6 +1368,14 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       const active = !!customerInfo?.entitlements?.active?.[RC_ENTITLEMENT_ID];
       await setSubscriptionActive(active);
       setPaywallVisible(false);
+      if (active) {
+        // Confettis méduses — fires after the paywall slide-out so the
+        // transition reads as a reward, not a flash on top of the modal.
+        setTimeout(function() {
+          setPurchaseConfettiActive(true);
+          setTimeout(function() { setPurchaseConfettiActive(false); }, 3000);
+        }, 350);
+      }
     } catch (e) {
       if (__DEV__) devLog('IAP Error:', e);
       devWarn('RevenueCat purchasePackage', e);
@@ -1743,6 +1752,11 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         prenom={prenom}
         onDone={function() { setCoachWelcomeVisible(false); }}
       />
+      {purchaseConfettiActive && (
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
+          <Confetti count={90} duration={2800} />
+        </View>
+      )}
     </>
   );
 }
