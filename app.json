@@ -32,8 +32,8 @@
             }
           }
         },
-        "NSHealthShareUsageDescription": "FluidBody utilise HealthKit pour enregistrer vos séances et remplir vos anneaux Fitness.",
-        "NSHealthUpdateUsageDescription": "FluidBody enregistre vos séances de Pilates comme exercices dans Santé."
+        "NSHealthShareUsageDescription": "Fluidbody utilise votre fréquence cardiaque mesurée par votre Apple Watch pour afficher en temps réel votre intensité d'effort pendant les séances de Pilates et enregistrer votre activité dans l'app Santé. — Fluidbody uses heart-rate data from your Apple Watch to display your real-time effort intensity during Pilates sessions and to log your activity in the Health app.",
+        "NSHealthUpdateUsageDescription": "Fluidbody enregistre vos séances de Pilates dans Apple Santé (durée, calories estimées, fréquence cardiaque) pour que vous puissiez suivre votre progression. — Fluidbody logs your Pilates sessions to Apple Health (duration, estimated calories, heart rate) so you can track your progress."
       },
       "entitlements": {
         "com.apple.developer.healthkit": true
@@ -68,8 +68,8 @@
       [
         "react-native-health",
         {
-          "healthSharePermission": "FluidBody utilise HealthKit pour enregistrer vos séances et remplir vos anneaux Fitness.",
-          "healthUpdatePermission": "FluidBody enregistre vos séances de Pilates comme exercices dans Santé.",
+          "healthSharePermission": "Fluidbody utilise votre fréquence cardiaque mesurée par votre Apple Watch pour afficher en temps réel votre intensité d'effort pendant les séances de Pilates et enregistrer votre activité dans l'app Santé.",
+          "healthUpdatePermission": "Fluidbody enregistre vos séances de Pilates dans Apple Santé (durée, calories estimées, fréquence cardiaque) pour que vous puissiez suivre votre progression.",
           "isClinicalDataEnabled": false
         }
       ],

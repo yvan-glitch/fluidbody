@@ -10,6 +10,8 @@ import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES, FREE_MONTHLY_SELECTI
 import { Bulle, Rayon, MeduseCornerIcon, FloatingMedusas, BULLES, BULLES_MONCORPS } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import GlassButton from '../components/GlassButton';
+import { GlassCard, GLASS_RADII } from '../components/ui';
+import { useTheme } from '../theme/ThemeProvider';
 import LivingBackground from '../components/LivingBackground';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
@@ -355,20 +357,21 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
   );
 }
 
-/** Tuiles SEANCES / STREAK / PROGRESSION — verre (BlurView) comme les controles video. */
+/** Tuiles SEANCES / STREAK / PROGRESSION — Liquid Glass over the aquatic background. */
 function MetricTile({ children }) {
-  if (Platform.OS === 'web') {
-    return (
-      <View style={[localStyles.metricShell, localStyles.metricWebFallback]}>
-        <View style={localStyles.metricBlurInner}>{children}</View>
-      </View>
-    );
-  }
   return (
-    <View style={localStyles.metricShell}>
-      <BlurView intensity={Platform.OS === 'ios' ? 34 : 26} tint="dark" style={localStyles.metricBlurInner}>
-        {children}
-      </BlurView>
+    <View style={{ flex: 1 }}>
+      <GlassCard
+        intensity={60}
+        tint="dark"
+        borderRadius={GLASS_RADII.card}
+        padding={10}
+        elevated
+      >
+        <View style={{ alignItems: 'center', justifyContent: 'center', minHeight: 64 }}>
+          {children}
+        </View>
+      </GlassCard>
     </View>
   );
 }
@@ -599,6 +602,7 @@ function ZoneIcon({ idx, color, size }) {
 
 function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout }) {
   var tr = T[lang] || T["fr"];
+  var theme = useTheme().theme;
   var navigation = useNavigation();
   var [openPilier, setOpenPilier] = useState(null);
   var [openInitialIdx, setOpenInitialIdx] = useState(null);
@@ -642,7 +646,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
 
   return (
     <View style={localStyles.screen}>
-      <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={theme.colors.bgGradient} locations={theme.colors.bgGradientStops} style={StyleSheet.absoluteFill} />
       <LivingBackground />
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: "none" }}>
         <Rayon left={20} width={45} delay={0} duration={9000} opacity={0.18} />
@@ -1279,20 +1283,6 @@ const localStyles = StyleSheet.create({
   screen: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   logoRow: { position: 'absolute', top: 54, left: 0, right: 0, zIndex: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, gap: 10 },
   logoWordmark: { fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 },
-  metricShell: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
-    shadowColor: '#000',
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  metricBlurInner: { padding: 10, alignItems: 'center', justifyContent: 'center', minHeight: 64 },
-  metricWebFallback: { backgroundColor: 'rgba(255,255,255,0.14)' },
 });
 
 export default MonCorps;

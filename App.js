@@ -86,11 +86,17 @@ import PaywallModal, { PRODUCT_IDS } from './src/components/PaywallModal';
 import StretchTimerModal from './src/components/Timer';
 import AnimatedPlus from './src/components/AnimatedPlus';
 import GlassButton from './src/components/GlassButton';
+import { GlassView, GlassCard, GlassSheet, GLASS_RADII } from './src/components/ui';
+import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
+import ThemedStatusBar from './src/theme/ThemedStatusBar';
 import Confetti from './src/components/Confetti';
 import LivingBackground from './src/components/LivingBackground';
 import SignInScreen from './src/screens/SignIn';
 import HealthKitConnectScreen from './src/screens/HealthKitConnect';
 import MonCorps, { MetricTile } from './src/screens/MonCorps';
+import ActivityScreen from './src/screens/Activity';
+import ProfileOnboardingScreen from './src/screens/ProfileOnboarding';
+import { flushPendingProfileSync, syncProfilePatch, refreshFromRemote } from './src/utils/profileSync';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
 import { LogBox } from 'react-native';
 
@@ -140,8 +146,19 @@ function buildHkPermissions() {
     const C = (AppleHealthKit.Constants && AppleHealthKit.Constants.Permissions) || {};
     return {
       permissions: {
-        read: [C.ActiveEnergyBurned, C.AppleExerciseTime, C.AppleStandTime, C.Workout].filter(Boolean),
-        write: [C.ActiveEnergyBurned, C.Workout].filter(Boolean),
+        read: [
+          C.HeartRate,
+          C.ActiveEnergyBurned,
+          C.AppleExerciseTime,
+          C.AppleStandTime,
+          C.Workout,
+          C.WorkoutRoute,
+          C.BodyMass,
+          C.Height,
+          C.DateOfBirth,
+          C.BiologicalSex,
+        ].filter(Boolean),
+        write: [C.ActiveEnergyBurned, C.Workout, C.HeartRate].filter(Boolean),
       },
     };
   } catch (e) {
@@ -165,14 +182,32 @@ function initHealthKit() {
   }
 }
 
-function saveHealthKitWorkout(durationMinutes) {
+// Pilates est dispo dans HKWorkoutActivityType depuis watchOS 5 (= partout
+// sur les Apple Watch que nos users vont avoir). Le binding `react-native-health`
+// expose la constante via Constants.Activities.Pilates ; on garde un fallback
+// FunctionalStrengthTraining si la constante n'est pas exposée par la version installée.
+function workoutTypeForPilates() {
+  if (!AppleHealthKit) return 'FunctionalStrengthTraining';
+  try {
+    const A = (AppleHealthKit.Constants && AppleHealthKit.Constants.Activities) || {};
+    return A.Pilates || A.MindAndBody || A.FunctionalStrengthTraining || 'FunctionalStrengthTraining';
+  } catch (e) {
+    return 'FunctionalStrengthTraining';
+  }
+}
+
+function saveHealthKitWorkout(durationMinutes, extras) {
   if (!AppleHealthKit || !hkInitialized || Platform.OS !== 'ios') return;
   try {
     var now = new Date();
     var start = new Date(now.getTime() - durationMinutes * 60000);
-    var calories = Math.round(durationMinutes * 5);
+    // Calories : si la live HR a tourné, on a une estimation plus juste via avg HR.
+    // Sinon on garde l'estimation forfaitaire 5 kcal/min (Pilates léger).
+    var calories = (extras && Number.isFinite(extras.energyBurned))
+      ? Math.max(1, Math.round(extras.energyBurned))
+      : Math.round(durationMinutes * 5);
     var options = {
-      type: 'FunctionalStrengthTraining',
+      type: workoutTypeForPilates(),
       startDate: start.toISOString(),
       endDate: now.toISOString(),
       energyBurned: calories,
@@ -215,6 +250,7 @@ function tabBarIconTint(color) {
 }
 
 function CustomTabBar({ state, descriptors, navigation }) {
+  var theme = useTheme().theme;
   var tabCount = state.routes.length;
   var barW = SW - 40;
   var tabW = barW / tabCount;
@@ -253,33 +289,47 @@ function CustomTabBar({ state, descriptors, navigation }) {
   })).current;
 
   return (
-    <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: BAR_H, zIndex: 1000, elevation: 12, shadowColor: '#ffffff', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }} {...panResponder.panHandlers}>
-      <View style={{ flex: 1, borderRadius: BAR_H / 2, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
-        <BlurView intensity={Platform.OS === 'ios' ? 40 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.45)' }} />
-        <LinearGradient colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }} pointerEvents="none" />
-        <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.18)']} locations={[0, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '50%' }} pointerEvents="none" />
-        <Animated.View style={{ position: 'absolute', top: (BAR_H - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: pillH / 2, backgroundColor: 'rgba(174,239,77,0.15)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.4)', transform: [{ translateX: indicatorX }] }}>
-          <LinearGradient colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', borderTopLeftRadius: pillH / 2, borderTopRightRadius: pillH / 2 }} pointerEvents="none" />
+    <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: BAR_H, zIndex: 1000 }} {...panResponder.panHandlers}>
+      <GlassView
+        intensity={80}
+        borderRadius={BAR_H / 2}
+        elevated
+        contentStyle={{ height: BAR_H }}
+      >
+        {/* Animated focus pill — drawn above the substrate so it sits on top of
+            the specular highlight but under the row of icons. Substrate
+            picks the brand accent's substrateAccent token so it works on
+            both light and dark glass. */}
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', top: (BAR_H - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: pillH / 2, backgroundColor: theme.glass.substrateAccent, borderWidth: 1, borderColor: theme.colors.accent, transform: [{ translateX: indicatorX }] }}>
+          <LinearGradient colors={theme.glass.highlightColors} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', borderTopLeftRadius: pillH / 2, borderTopRightRadius: pillH / 2 }} pointerEvents="none" />
         </Animated.View>
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
         {state.routes.map(function(route, index) {
           var options = descriptors[route.key].options;
           var isFocused = state.index === index;
-          var color = isFocused ? '#AEEF4D' : 'rgba(255,255,255,0.45)';
+          var color = isFocused ? theme.colors.accentText : theme.colors.textSecondary;
           var onPress = function() {
             var event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
           };
           var IconComp = options.tabBarIcon;
           return (
-            <TouchableOpacity key={route.key} onPress={onPress} activeOpacity={0.7} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: BAR_H }}>
+            <TouchableOpacity
+              key={route.key}
+              onPress={onPress}
+              activeOpacity={0.7}
+              accessibilityRole="tab"
+              accessibilityLabel={route.name}
+              accessibilityState={isFocused ? { selected: true } : undefined}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: BAR_H }}
+            >
               {IconComp && IconComp({ color: color, size: 20, focused: isFocused })}
               <Text style={{ fontSize: 10, fontWeight: '600', color: color, marginTop: 2, letterSpacing: 0.2 }}>{route.name}</Text>
             </TouchableOpacity>
           );
         })}
         </View>
-      </View>
+      </GlassView>
     </View>
   );
 }
@@ -353,6 +403,22 @@ function TabIconBiblio({ color, size }) {
       <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
         <Path d="M4 4h16v16H4z" stroke={c} strokeWidth={1.6} strokeLinejoin="round" fill="none" />
         <Path d="M8 8h8M8 12h8M8 16h5" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+      </Svg>
+    </View>
+  );
+}
+
+function TabIconActivity({ color, size }) {
+  var c = tabBarIconTint(color);
+  var s = size ?? 22;
+  // Three concentric circles, Apple Fitness style — keeps Apple's red/green/
+  // blue palette so the icon reads correctly in both light and dark themes.
+  return (
+    <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <Circle cx={12} cy={12} r={10} stroke="#FF375F" strokeWidth={2.2} fill="none" opacity={0.95} />
+        <Circle cx={12} cy={12} r={6.5}  stroke="#A0FF49" strokeWidth={2.0} fill="none" opacity={0.95} />
+        <Circle cx={12} cy={12} r={3}   stroke="#1AECFF" strokeWidth={1.8} fill="none" opacity={0.95} />
       </Svg>
     </View>
   );
@@ -1179,6 +1245,10 @@ async function sendWelcomeNotification(prenom, lang = 'fr') {
 
 const FLUID_SUB_KEY = 'fluid_sub';
 const DONE_KEY = 'fluidbody_done';
+// Seance-streak (count of consecutive days a séance was completed). Distinct
+// from the *closed-rings* streak handled in ActivityScreen.
+const STREAK_KEY = 'fluid_streak_seance_count';
+const STREAK_DATE_KEY = 'fluid_streak_seance_last_date';
 
 // ══════════════════════════════════
 // MAIN APP
@@ -1465,6 +1535,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     }
   }
 
+  // Flush any pending profile sync on cold start when a session is available.
+  useEffect(function() {
+    if (!supaUser?.id) return undefined;
+    flushPendingProfileSync({ userId: supaUser.id }).catch(function() {});
+  }, [supaUser && supaUser.id]);
+
   return (
     <>
       <PaywallModal
@@ -1548,6 +1624,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       <NavigationContainer>
           <Tab.Navigator tabBar={function(props) { return <CustomTabBar {...props} />; }} screenOptions={{ headerShown: false }}>
           <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} onTensionChange={onTensionChange} streak={streak} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} saveHealthKitWorkout={saveHealthKitWorkout} />}</Tab.Screen>
+          <Tab.Screen name={tr.activity_tab || 'Activité'} options={{ tabBarIcon: (props) => <TabIconActivity {...props} /> }}>{() => <ActivityScreen lang={lang} supabase={supabase} supaUser={supaUser} done={done} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={function() { setShowAuthScreen(true); }} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
           <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={async () => {
@@ -1563,10 +1640,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       </NavigationContainer>
       <StretchTimerModal visible={showStretchTimer} onClose={function() { setShowStretchTimer(false); }} lang={lang} />
       <Modal visible={editingProfile} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setEditingProfile(false); }}>
-        <ProfileSetupScreen
+        <ProfileOnboardingScreen
           lang={lang}
           initialData={editingProfileInitial}
+          supaUser={supaUser}
           ctaLabel={(T[lang] || T.fr).profile_save_btn || 'Enregistrer'}
+          onClose={function() { setEditingProfile(false); }}
           onDone={async function(payload) {
             await handleProfileSetupSave(payload);
             setEditingProfile(false);
@@ -2034,19 +2113,11 @@ function App() {
     AsyncStorage.setItem('fluid_welcome_intro_done', '1').catch(function(e) { devWarn('welcome flag persist', e); });
   }
 
-  // Feature flag : écran HealthKitConnect désactivé sur l'onboarding.
-  // Cause d'origine (builds 33/34/35) : NSException au décodage de
-  // apple-watch-hero.png (882x806, profil Display P3) via RCTImageLoader +
-  // CGImageSourceCreateThumbnailAtIndex sous New Architecture / Fabric.
-  // Fix appliqué (à valider en TestFlight) :
-  //   1. HealthKitConnect.js migré vers <Image> de expo-image (SDWebImage iOS)
-  //      au lieu de l'Image RN — même mitigation que commit 6e55733.
-  //   2. apple-watch-hero.png reconverti de Display P3 → sRGB via sips.
-  // Pour ré-activer après validation : passer ce flag à false, push un build
-  // sur TestFlight, observer Sentry. Si zéro crash sur ~24h, retirer le flag.
-  // Si crash persiste : (a) tenter newArchEnabled:false temporaire,
-  // (b) downscale l'image à 600x548, (c) remplacer par un SVG vectoriel.
-  const HEALTHKIT_DISABLED = true;
+  // Écran HealthKitConnect réactivé après fix du crash hero PNG
+  // (expo-image + reconversion sRGB). Si Sentry remonte une régression du
+  // NSException CGImageSourceCreateThumbnailAtIndex, repasser à true et
+  // investiguer (downscale 600x548 ou SVG vectoriel comme fallback).
+  const HEALTHKIT_DISABLED = false;
 
   useEffect(() => {
     if (HEALTHKIT_DISABLED) {
@@ -2084,6 +2155,10 @@ function App() {
       AsyncStorage.setItem('fluid_profile_setup_done', '1').catch(function(e) { devWarn('profile setup flag persist', e); });
       const cleanPrenom = payload.prenom ? String(payload.prenom).trim().slice(0, 50) : null;
       if (cleanPrenom) setPrenom(cleanPrenom);
+      // Miroir AsyncStorage de la DOB pour les composants offline (VideoPlayer / FCmax).
+      try {
+        if (payload && payload.birth_date) await AsyncStorage.setItem('fluid_birth_date', payload.birth_date);
+      } catch (e) {}
       if (!supabase) { devLog('[ProfileSetup] supabase null, skip cloud save'); return; }
 
       devLog('[ProfileSetup] >>> getSession()');
@@ -2211,6 +2286,18 @@ function App() {
         });
         if (upErr) devWarn('profiles upsert hydrate', upErr);
         else setPrenom(prenomToStore);
+      }
+      // Push any pending offline edits (best effort).
+      try { await flushPendingProfileSync({ userId: user.id }); } catch (e) { devWarn('flushPendingProfileSync', e); }
+      // Refresh the local cache with the authoritative remote row so the
+      // Activity / ProfileOnboarding screens see latest goals + streak.
+      try { await refreshFromRemote(user.id); } catch (e) {}
+      // If the remote row already marks onboarding complete, skip the
+      // ProfileOnboarding gate even if AsyncStorage hasn't been written
+      // yet on this device.
+      if (profile && profile.onboarding_completed) {
+        setProfileSetupShown(true);
+        AsyncStorage.setItem('fluid_profile_setup_done', '1').catch(function() {});
       }
     }
 
@@ -2382,7 +2469,11 @@ function App() {
   }
 
   if (profileSetupShown === false) {
-    return <ProfileSetupScreen lang={lang} onDone={handleProfileSetupSave} />;
+    return <ProfileOnboardingScreen
+      lang={lang}
+      supaUser={supaUser}
+      onDone={handleProfileSetupSave}
+    />;
   }
 
   if (welcomeShown === false) {
@@ -2402,7 +2493,10 @@ function App() {
 function AppWithBoundary() {
   return (
     <ErrorBoundary onError={(error, info) => sentryCapture(error, { componentStack: info?.componentStack, source: 'ErrorBoundary' })}>
-      <App />
+      <ThemeProvider>
+        <ThemedStatusBar />
+        <App />
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
