@@ -12,7 +12,9 @@ import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { T } from '../constants/data';
 import { VideoPlaceholderMeduse } from './Meduse';
 import LiquidGlassCapsule from './LiquidGlassCapsule';
+import HeartRatePill from './HeartRatePill';
 import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
+import useLiveHeartRate from '../hooks/useLiveHeartRate';
 
 // ── Optional native modules (safe for Expo Go) ──
 let HapticsMod = null;
@@ -225,8 +227,10 @@ function VideoPlayPauseIcon({ playing, size = 36 }) {
 
 // ── Main VideoPlayer component ──
 
-export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, isDemo, onDemoLimit, saveHealthKitWorkout }) {
+export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, isDemo, onDemoLimit, saveHealthKitWorkout, userBirthDate, showHeartRate }) {
   const tr = T[lang] || T['fr'];
+  const hrEnabled = showHeartRate !== false;
+  const hr = useLiveHeartRate({ enabled: hrEnabled });
   const videoRef = useRef(null);
   const lastStatusRef = useRef({});
   const hasRestoredRef = useRef(false);
@@ -506,6 +510,30 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
 
   function getElapsedMinutes() { return Math.max(1, Math.round(elapsedSec / 60)); }
 
+  // Start the live-HR polling session the FIRST time the video actually
+  // reaches a playing state — not on mount. Otherwise we'd open a HealthKit
+  // observer just for users scrolling through previews.
+  const hrStartedRef = useRef(false);
+  useEffect(function() {
+    if (!hrEnabled) return;
+    if (hrStartedRef.current) return;
+    if (!status?.isPlaying) return;
+    hrStartedRef.current = true;
+    try { hr.start(); } catch (e) { if (__DEV__) devWarn('hr.start', e); }
+  }, [hrEnabled, status?.isPlaying]);
+
+  // Make sure the polling interval is shut down whatever the exit path
+  // (back press, complete, swipe-down on the modal). The hook also cleans
+  // on unmount but stopping here means we keep the HR summary in scope
+  // for saveExerciseTime below.
+  useEffect(function() {
+    return function() {
+      if (hrStartedRef.current) {
+        try { hr.stop(); } catch (e) {}
+      }
+    };
+  }, []);
+
   // Save exercise time locally for activity rings
   async function saveExerciseTime(minutes) {
     try {
@@ -514,7 +542,27 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
       var total = raw ? parseInt(raw) : 0;
       await AsyncStorage.setItem(key, String(total + minutes));
     } catch(e) {}
-    if (saveHealthKitWorkout) saveHealthKitWorkout(minutes);
+    // Stop HR session first, capture summary, then forward to the workout save.
+    var summary = null;
+    if (hrStartedRef.current) {
+      try { summary = hr.stop(); } catch (e) {}
+      hrStartedRef.current = false;
+    }
+    if (saveHealthKitWorkout) {
+      // Si on a une avgBpm valable, on remonte une estimation kcal un peu plus
+      // honnête : Pilates oscille entre 4 et 7 kcal/min selon l'intensité.
+      // 0.06 * avgBpm × min reste un proxy grossier mais corrige les sessions
+      // intenses (Pilates avancé sur reformer ≈ 6 kcal/min, vs 3 kcal/min en
+      // séance Comprendre).
+      var extras = null;
+      if (summary && Number.isFinite(summary.avgBpm) && summary.avgBpm > 0) {
+        extras = { energyBurned: Math.round(minutes * Math.max(3, summary.avgBpm * 0.06)) };
+      }
+      try { saveHealthKitWorkout(minutes, extras); } catch (e) {
+        // Backward compat : si l'ancienne signature 1-arg est appelée par mistake
+        if (__DEV__) devWarn('saveHealthKitWorkout extras', e);
+      }
+    }
   }
 
   const progress = status.durationMillis ? status.positionMillis / status.durationMillis : 0;
@@ -599,7 +647,16 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             <Text style={{ fontSize: 22, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'] }}>{Math.round(elapsedSec / 60 * 5)}<Text style={{ fontSize: 14, fontWeight: '800', color: '#FF3B30' }}> KCAL</Text></Text>
           </View>
         </View>
-        <View pointerEvents="none" style={{ position: 'absolute', top: 50, right: 16, zIndex: 210 }}>
+        {/* HR pill (top-right). Only shows when (a) display flag on, (b) Apple
+            Watch detected, (c) at least one BPM sample has come through.
+            Pill stays mounted across stale (isLive=false) for visual continuity
+            but goes 50% opacity — see HeartRatePill. */}
+        {hrEnabled && hr.hasAppleWatch && hr.bpm != null && (
+          <View pointerEvents="box-none" style={{ position: 'absolute', top: 50, right: 16, zIndex: 220 }}>
+            <HeartRatePill bpm={hr.bpm} isLive={hr.isLive} birthDateIso={userBirthDate} />
+          </View>
+        )}
+        <View pointerEvents="none" style={{ position: 'absolute', top: (hrEnabled && hr.hasAppleWatch && hr.bpm != null) ? 90 : 50, right: 16, zIndex: 210 }}>
           <View style={{ width: 44, height: 44 }}>
             <Svg width={44} height={44} viewBox="0 0 44 44">
               <Circle cx="22" cy="22" r="19" stroke="rgba(255,59,48,0.3)" strokeWidth={3} fill="none" />
