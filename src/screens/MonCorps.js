@@ -1,12 +1,14 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, TextInput } from 'react-native';
+import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, TextInput, Share } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES, FREE_MONTHLY_SELECTION } from '../constants/data';
+import SeanceShareCard from '../components/SeanceShareCard';
+import BreathingCheckIn, { isBreathDoneToday } from '../components/BreathingCheckIn';
 import { Bulle, Rayon, MeduseCornerIcon, FloatingMedusas, BULLES, BULLES_MONCORPS } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import GlassButton from '../components/GlassButton';
@@ -78,11 +80,45 @@ var LIVE_SCHEDULE = [
 var DAY_FULL_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 var DAY_FULL_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function CelebrationOverlay({ visible, onDone, pilier, lang }) {
+// Parse "15 min" / "1'59''" / "2'29''" \u2192 integer minutes (rounded up to 1).
+function parseDurationMinutes(label) {
+  if (!label || typeof label !== 'string') return 5;
+  // Format "Nm" or "N min"
+  const mMin = label.match(/(\d+)\s*min/i);
+  if (mMin) return Math.max(1, parseInt(mMin[1], 10));
+  // Format "M'SS''" \u2014 e.g. "1'59''"
+  const mApos = label.match(/(\d+)\s*['\u2019]\s*(\d+)/);
+  if (mApos) {
+    const m = parseInt(mApos[1], 10);
+    const s = parseInt(mApos[2], 10);
+    return Math.max(1, Math.round(m + s / 60));
+  }
+  // Bare integer
+  const mInt = label.match(/(\d+)/);
+  if (mInt) return Math.max(1, parseInt(mInt[1], 10));
+  return 5;
+}
+
+function formatShareDate(lang) {
+  try {
+    const d = new Date();
+    const locale = (lang || 'fr').toLowerCase().indexOf('fr') === 0 ? 'fr-FR' : 'en-GB';
+    return d.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+  } catch (e) {
+    const d = new Date();
+    return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+  }
+}
+
+function CelebrationOverlay({ visible, onDone, pilier, lang, seance }) {
   const tr = T[lang] || T['fr'];
   const scaleAnim  = useRef(new Animated.Value(0)).current;
   const opacAnim   = useRef(new Animated.Value(0)).current;
   const medalAnim  = useRef(new Animated.Value(0)).current;
+  const shareUiAnim = useRef(new Animated.Value(0)).current;
+  const autoDismissRef = useRef(null);
+  const shareRef = useRef(null);
+  const [sharing, setSharing] = useState(false);
   const EMOJIS = ['\uD83C\uDF89', '\u2B50', '\u2728', '\uD83E\uDEBC', '\uD83D\uDCAA', '\uD83C\uDFC6', U_WAVE, U_DROP, '\uD83D\uDCAB', '\uD83C\uDF38'];
   const particles  = useRef(Array.from({ length: 35 }, () => {
     const angle = Math.random() * Math.PI * 2;
@@ -100,6 +136,29 @@ function CelebrationOverlay({ visible, onDone, pilier, lang }) {
     };
   })).current;
 
+  // Share-card payload \u2014 derived once from the s\u00E9ance tuple. Kcal is a coarse
+  // Pilates proxy (5 kcal/min). When the parallel HK migration lands and
+  // VideoPlayer starts passing the real avg/max BPM here, the share card will
+  // automatically pick those up via the optional props.
+  const shareData = useMemo(() => {
+    const durationLabel = Array.isArray(seance) && typeof seance[1] === 'string' ? seance[1] : '5 min';
+    const seanceLabel = Array.isArray(seance) ? seance[0] : (pilier?.label || '');
+    const minutes = parseDurationMinutes(durationLabel);
+    return {
+      seanceLabel: seanceLabel,
+      durationMin: minutes,
+      kcal: Math.round(minutes * 5),
+      dateLabel: formatShareDate(lang),
+    };
+  }, [seance, pilier, lang]);
+
+  function clearAutoDismiss() {
+    if (autoDismissRef.current) {
+      clearTimeout(autoDismissRef.current);
+      autoDismissRef.current = null;
+    }
+  }
+
   useEffect(() => {
     if (!visible) return;
     hapticSuccess();
@@ -111,6 +170,12 @@ function CelebrationOverlay({ visible, onDone, pilier, lang }) {
       Animated.timing(medalAnim, { toValue: 1,  duration: 400, easing: Easing.out(Easing.back(2)), useNativeDriver: true }),
       Animated.timing(medalAnim, { toValue: 0.9,duration: 200, easing: Easing.inOut(Easing.sin),  useNativeDriver: true }),
       Animated.timing(medalAnim, { toValue: 1,  duration: 200, easing: Easing.inOut(Easing.sin),  useNativeDriver: true }),
+    ]).start();
+    // Share row appears once the particles settle (\u2248 1.4s in) so the moment
+    // reads as celebration first, action second.
+    Animated.sequence([
+      Animated.delay(1400),
+      Animated.timing(shareUiAnim, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
     particles.forEach((p, i) => {
       p.x.setValue(0); p.y.setValue(0); p.o.setValue(1); p.s.setValue(0); p.rot.setValue(0);
@@ -125,8 +190,38 @@ function CelebrationOverlay({ visible, onDone, pilier, lang }) {
         ]).start();
       }, i * 30);
     });
-    setTimeout(onDone, 3200);
+    // Auto-dismiss after 6s \u2014 long enough to read + decide to share, but not
+    // so long the user gets stuck on the celebration screen.
+    autoDismissRef.current = setTimeout(onDone, 6000);
+    return clearAutoDismiss;
   }, [visible]);
+
+  async function handleShare() {
+    if (sharing) return;
+    clearAutoDismiss();
+    setSharing(true);
+    try {
+      if (!shareRef.current || typeof shareRef.current.capture !== 'function') {
+        // Fallback: text-only share.
+        await Share.share({ message: (tr.share_card_message || 'S\u00E9ance termin\u00E9e avec FLUIDBODY+ \uD83E\uDEBC') + '\nhttps://apps.apple.com/app/fluidbody/id6746387875' });
+        return;
+      }
+      const uri = await shareRef.current.capture();
+      try {
+        await Share.share({
+          url: uri,
+          message: (tr.share_card_message || 'S\u00E9ance termin\u00E9e avec FLUIDBODY+ \uD83E\uDEBC'),
+        });
+      } catch (shareErr) {
+        // Android sometimes doesn't accept `url` \u2014 retry with message only.
+        await Share.share({ message: tr.share_card_message || 'S\u00E9ance termin\u00E9e avec FLUIDBODY+ \uD83E\uDEBC' });
+      }
+    } catch (e) {
+      sentryCaptureSafe(e, { where: 'CelebrationOverlay.handleShare' });
+    } finally {
+      setSharing(false);
+    }
+  }
 
   if (!visible) return null;
   return (
@@ -156,7 +251,7 @@ function CelebrationOverlay({ visible, onDone, pilier, lang }) {
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.48)',
         alignItems: 'center',
-        width: 300,
+        width: 320,
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOpacity: 0.45,
@@ -171,7 +266,60 @@ function CelebrationOverlay({ visible, onDone, pilier, lang }) {
         <Text style={{ fontSize: 22, fontWeight: '200', color: 'rgba(255,255,255,0.96)', textAlign: 'center', lineHeight: 32 }}>{pilier?.label}</Text>
         <View style={{ width: 40, height: 1, backgroundColor: 'rgba(255,255,255,0.28)', marginVertical: 16 }} />
         <Text style={{ fontSize: 14, color: 'rgba(230,248,255,0.78)', textAlign: 'center', lineHeight: 22 }}>{tr.celebration.split('\n')[0]}{'\n'}{tr.celebration.split('\n')[1]}</Text>
+        <Animated.View style={{
+          opacity: shareUiAnim,
+          transform: [{ translateY: shareUiAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+          alignSelf: 'stretch',
+          flexDirection: 'row',
+          gap: 10,
+          marginTop: 22,
+        }}>
+          <TouchableOpacity
+            onPress={handleShare}
+            disabled={sharing}
+            activeOpacity={0.85}
+            style={{
+              flex: 1,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: '#AEEF4D',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'row',
+              gap: 6,
+              opacity: sharing ? 0.55 : 1,
+            }}
+          >
+            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none"><Path d="M12 2l3 3h-2v8h-2V5H9l3-3z" fill="#000" /><Path d="M4 14v6h16v-6" stroke="#000" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" /></Svg>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#000000' }}>{sharing ? '\u2026' : (tr.share_card_share_btn || 'Partager')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={function() { clearAutoDismiss(); onDone(); }}
+            activeOpacity={0.85}
+            style={{
+              flex: 1,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.18)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.86)' }}>{tr.share_card_continue || 'Continuer'}</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </Animated.View>
+      <SeanceShareCard
+        ref={shareRef}
+        pilier={pilier}
+        seanceLabel={shareData.seanceLabel}
+        durationMin={shareData.durationMin}
+        kcal={shareData.kcal}
+        dateLabel={shareData.dateLabel}
+        lang={lang}
+      />
     </View>
   );
 }
@@ -182,6 +330,9 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
   const doneCount = (done || []).filter(Boolean).length;
   const [activeVideo, setActiveVideo] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
+  // Remember the seance that just finished so the share card has its data
+  // even after `activeVideo` resets to null.
+  const [celebratedSeance, setCelebratedSeance] = useState(null);
   const [showDemoLimit, setShowDemoLimit] = useState(false);
   const [resumeIndices, setResumeIndices] = useState(() => new Set());
 
@@ -265,7 +416,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
           seanceIndex={activeVideo}
           isDemo={activeVideo === sdjIndex && !isSubscriber}
           onClose={() => { setShowDemoLimit(false); setActiveVideo(null); }}
-          onComplete={() => { onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
+          onComplete={() => { setCelebratedSeance(seances[activeVideo]); onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
           onDemoLimit={() => setShowDemoLimit(true)}
           saveHealthKitWorkout={saveHealthKitWorkout}
         />
@@ -377,7 +528,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
         })}
         <View style={{ height: 100 }} />
       </ScrollView>
-      <CelebrationOverlay visible={showCelebration} onDone={() => setShowCelebration(false)} pilier={pilier} lang={lang} />
+      <CelebrationOverlay visible={showCelebration} onDone={() => setShowCelebration(false)} pilier={pilier} lang={lang} seance={celebratedSeance} />
     </View>
   );
 }
@@ -651,8 +802,18 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   var [savedPrograms, setSavedPrograms] = useState([]);
   var [searchQuery, setSearchQuery] = useState('');
   var [searchEtape, setSearchEtape] = useState(null);
+  var [showBreathing, setShowBreathing] = useState(false);
+  var [breathDoneToday, setBreathDoneToday] = useState(false);
 
   useEffect(function() { loadSavedPrograms(); }, []);
+
+  // Re-check whether the breath ring is already closed for today, every time
+  // the modal closes (so the pill flips to "done" without a manual refresh).
+  useEffect(function() {
+    let cancelled = false;
+    isBreathDoneToday().then(function(d) { if (!cancelled) setBreathDoneToday(!!d); });
+    return function() { cancelled = true; };
+  }, [showBreathing]);
   function loadSavedPrograms() {
     AsyncStorage.getItem('fluid_custom_programs').then(function(raw) {
       if (raw) { try { setSavedPrograms(JSON.parse(raw)); } catch(e) {} }
@@ -704,15 +865,42 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         <Text style={localStyles.logoWordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
           FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: "900", color: "#AEEF4D", fontSize: 34 }}>+</AnimatedPlus>
         </Text>
-        {prenom ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <TouchableOpacity
-            onPress={function() { try { navigation.navigate(tr.tabs[3]); } catch(e) {} }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            activeOpacity={0.7}
+            onPress={function() { hapticLight(); setShowBreathing(true); }}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={breathDoneToday ? (tr.breath_pill_done || 'Respiration faite') : (tr.breath_pill || 'Respirer 60s')}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 14,
+              backgroundColor: breathDoneToday ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.08)',
+              borderWidth: 1,
+              borderColor: breathDoneToday ? 'rgba(174,239,77,0.55)' : 'rgba(255,255,255,0.18)',
+            }}
           >
-            <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(174,239,77,0.6)' }}>{tr.bonjour(prenom)}</Text>
+            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+              <Circle cx="12" cy="12" r="9" stroke={breathDoneToday ? '#AEEF4D' : 'rgba(255,255,255,0.78)'} strokeWidth={1.6} />
+              <Circle cx="12" cy="12" r="4.5" stroke={breathDoneToday ? '#AEEF4D' : 'rgba(255,255,255,0.78)'} strokeWidth={1.2} opacity={0.6} />
+            </Svg>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: breathDoneToday ? '#AEEF4D' : 'rgba(255,255,255,0.86)', letterSpacing: 0.3 }}>
+              {breathDoneToday ? (tr.breath_pill_done || 'Respiration ✓') : (tr.breath_pill || 'Respirer 60s')}
+            </Text>
           </TouchableOpacity>
-        ) : null}
+          {prenom ? (
+            <TouchableOpacity
+              onPress={function() { try { navigation.navigate(tr.tabs[3]); } catch(e) {} }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(174,239,77,0.6)' }}>{tr.bonjour(prenom)}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
       <View style={{ position: "absolute", top: 105, left: 0, right: 0, zIndex: 5, marginTop: 20 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
@@ -1314,6 +1502,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         <PilierPanel pilier={openPilier} done={done[openPilier.key] || Array(20).fill(false)} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); setOpenInitialIdx(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} saveHealthKitWorkout={saveHealthKitWorkout} initialSeanceIdx={openInitialIdx} />
       )}
       <CreateProgramScreen visible={showCreateProg} onClose={function() { setShowCreateProg(false); }} lang={lang} onSaved={loadSavedPrograms} />
+      <BreathingCheckIn visible={showBreathing} onClose={function() { setShowBreathing(false); }} lang={lang} />
     </View>
   );
 }

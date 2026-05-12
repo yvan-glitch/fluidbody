@@ -63,6 +63,66 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var [editY, setEditY] = useState('');
   var [editHeight, setEditHeight] = useState('');
   var [editWeight, setEditWeight] = useState('');
+  // Easter egg — 5 taps on the avatar pill within 3s, admin-only. Opens the
+  // "Coach mode" debug panel.
+  var [coachModeVisible, setCoachModeVisible] = useState(false);
+  var [coachModeStats, setCoachModeStats] = useState(null);
+  var tapCountRef = useRef(0);
+  var tapTimerRef = useRef(null);
+
+  function handleAvatarTap() {
+    if (!isAdmin) return;
+    tapCountRef.current += 1;
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    tapTimerRef.current = setTimeout(function() { tapCountRef.current = 0; }, 3000);
+    if (tapCountRef.current >= 5) {
+      tapCountRef.current = 0;
+      try {
+        var H = require('expo-haptics');
+        H.notificationAsync(H.NotificationFeedbackType.Success);
+      } catch (e) {}
+      openCoachMode();
+    }
+  }
+
+  async function openCoachMode() {
+    try {
+      var keys = await AsyncStorage.getAllKeys();
+      var fluidKeys = keys.filter(function(k) { return k.startsWith('fluid'); });
+      var totalDone = done ? Object.values(done).flat().filter(Boolean).length : 0;
+      // Sum the per-day exercise minutes for context.
+      var exerciseKeys = fluidKeys.filter(function(k) { return k.startsWith('fluid_exercise_'); });
+      var totalMin = 0;
+      for (var i = 0; i < exerciseKeys.length; i++) {
+        try {
+          var raw = await AsyncStorage.getItem(exerciseKeys[i]);
+          totalMin += raw ? parseInt(raw, 10) || 0 : 0;
+        } catch (e) {}
+      }
+      setCoachModeStats({
+        totalDone: totalDone,
+        streak: streak || 0,
+        totalMin: totalMin,
+        fluidKeysCount: fluidKeys.length,
+        adminEmail: supaUser && supaUser.email,
+      });
+      setCoachModeVisible(true);
+    } catch (e) {}
+  }
+
+  async function coachActionResetMilestones() {
+    try { await AsyncStorage.removeItem('fluid_milestones_seen'); Alert.alert('Coach mode', 'Milestones réinitialisés.'); } catch (e) {}
+  }
+  async function coachActionForceBreath() {
+    try {
+      var k = 'fluid_breath_' + new Date().toISOString().slice(0, 10);
+      await AsyncStorage.setItem(k, '1');
+      Alert.alert('Coach mode', 'Respiration du jour marquée comme faite.');
+    } catch (e) {}
+  }
+  async function coachActionResetCoachWelcome() {
+    try { await AsyncStorage.removeItem('fluid_coach_welcome_seen'); Alert.alert('Coach mode', 'Welcome overlay réarmé pour le prochain lancement.'); } catch (e) {}
+  }
 
   useEffect(function() {
     AsyncStorage.getItem('fluid_notif_hour').then(function(v) { if (v) setNotifHour(parseInt(v) || 9); });
@@ -260,17 +320,19 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </TouchableOpacity>
         )}
         <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-          <GlassCard intensity={60} padding={18} borderRadius={GLASS_RADII.cardLg}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 20, fontWeight: '800', color: '#000000' }}>{prenom ? prenom.slice(0, 2).toUpperCase() : 'YT'}</Text>
+          <TouchableOpacity activeOpacity={0.92} onPress={handleAvatarTap} accessible={false}>
+            <GlassCard intensity={60} padding={18} borderRadius={GLASS_RADII.cardLg}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 20, fontWeight: '800', color: '#000000' }}>{prenom ? prenom.slice(0, 2).toUpperCase() : 'YT'}</Text>
+                </View>
+                <View>
+                  <Text style={{ fontSize: 24, fontWeight: '800', color: theme.colors.text, letterSpacing: -0.4 }}>{prenom || 'Profil'}</Text>
+                  <Text style={{ fontSize: 13, color: theme.colors.accentText, opacity: 0.85 }}>FluidBody · Pilates</Text>
+                </View>
               </View>
-              <View>
-                <Text style={{ fontSize: 24, fontWeight: '800', color: theme.colors.text, letterSpacing: -0.4 }}>{prenom || 'Profil'}</Text>
-                <Text style={{ fontSize: 13, color: theme.colors.accentText, opacity: 0.85 }}>FluidBody · Pilates</Text>
-              </View>
-            </View>
-          </GlassCard>
+            </GlassCard>
+          </TouchableOpacity>
         </View>
 
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
@@ -825,6 +887,60 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </View>
         )}
       </ScrollView>
+
+      <Modal visible={coachModeVisible} transparent animationType="fade" statusBarTranslucent onRequestClose={function() { setCoachModeVisible(false); }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,8,18,0.85)', justifyContent: 'center', paddingHorizontal: 20 }}>
+          <View style={{ borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}>
+            <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ padding: 24, backgroundColor: 'rgba(10,20,35,0.7)' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.85)', letterSpacing: 3, fontWeight: '700' }}>COACH MODE</Text>
+                <TouchableOpacity onPress={function() { setCoachModeVisible(false); }} hitSlop={10}>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>{'✕'}</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', marginBottom: 4, letterSpacing: -0.3 }}>Outils admin</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginBottom: 18 }}>{coachModeStats && coachModeStats.adminEmail ? coachModeStats.adminEmail : 'Admin'}</Text>
+
+              {coachModeStats && (
+                <View style={{ marginBottom: 18, gap: 6 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Séances cochées</Text>
+                    <Text style={{ color: '#AEEF4D', fontSize: 13, fontWeight: '700' }}>{coachModeStats.totalDone}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Streak</Text>
+                    <Text style={{ color: '#AEEF4D', fontSize: 13, fontWeight: '700' }}>{coachModeStats.streak} j</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Minutes cumulées</Text>
+                    <Text style={{ color: '#AEEF4D', fontSize: 13, fontWeight: '700' }}>{coachModeStats.totalMin}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Clés AsyncStorage</Text>
+                    <Text style={{ color: '#AEEF4D', fontSize: 13, fontWeight: '700' }}>{coachModeStats.fluidKeysCount}</Text>
+                  </View>
+                </View>
+              )}
+
+              <View style={{ gap: 10 }}>
+                <TouchableOpacity onPress={coachActionResetMilestones} activeOpacity={0.85} style={{ paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' }}>
+                  <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }}>Reset jalons "déjà vus"</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={coachActionForceBreath} activeOpacity={0.85} style={{ paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' }}>
+                  <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }}>Marquer respiration faite</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={coachActionResetCoachWelcome} activeOpacity={0.85} style={{ paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' }}>
+                  <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }}>Réarmer Coach welcome overlay</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 18, textAlign: 'center', letterSpacing: 1 }}>
+                Easter egg admin · 5 taps sur le pavé prénom
+              </Text>
+            </BlurView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
