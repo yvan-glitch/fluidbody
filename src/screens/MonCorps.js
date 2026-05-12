@@ -21,6 +21,31 @@ import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResum
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
 
+// Sentry safe-require (no-op si DSN absent).
+let Sentry = null;
+try { Sentry = require('@sentry/react-native'); } catch(e) {}
+function sentryCaptureSafe(error, ctx) {
+  if (!Sentry) return;
+  try {
+    if (ctx) Sentry.withScope(function(scope) {
+      Object.keys(ctx).forEach(function(k) { scope.setExtra(k, ctx[k]); });
+      Sentry.captureException(error instanceof Error ? error : new Error(String(error && error.message || error)));
+    });
+    else Sentry.captureException(error instanceof Error ? error : new Error(String(error && error.message || error)));
+  } catch (e) {}
+}
+
+// expo-notifications 0.32 + iOS 26.5: l'ancien format de trigger
+// `{ weekday, hour, minute, repeats: true }` lève une NSException côté natif
+// que le convertisseur RN n'arrive pas à transformer en JSError sur iOS 26.5
+// (crash dans dladdr lisant callStackReturnAddresses). On migre vers
+// SchedulableTriggerInputTypes, qui est le seul format stable.
+// Fallback string si la constante manque (safe).
+function trigWeekly(weekday, hour, minute) {
+  var TYPES = Notifications && Notifications.SchedulableTriggerInputTypes;
+  return { type: (TYPES && TYPES.WEEKLY) || 'weekly', weekday: weekday, hour: hour, minute: minute };
+}
+
 const PROG_IMAGES = {
   reveil: require('../../assets/programs/reveil-matinal.jpg'),
   dos: require('../../assets/programs/mal-de-dos.jpg'),
@@ -381,7 +406,7 @@ async function scheduleProgNotifications(prog, idx, lang) {
   try {
     var status = await Notifications.requestPermissionsAsync();
     if (status.status !== 'granted') return [];
-  } catch(e) { return []; }
+  } catch(e) { sentryCaptureSafe(e, { where: 'scheduleProgNotifications.requestPermissions' }); return []; }
   var tr = T[lang] || T['fr'];
   var pilierNames = getPiliers(lang).filter(function(p) { return prog.piliers.includes(p.key); }).map(function(p) { return p.label; });
   var pilierStr = pilierNames.join(', ');
@@ -392,12 +417,16 @@ async function scheduleProgNotifications(prog, idx, lang) {
     try {
       var weekday = selectedDays[d] + 1;
       if (weekday > 7) weekday = 1;
+      // Garde-fous : si les valeurs sont corrompues, on saute pour \u00E9viter
+      // une NSException c\u00F4t\u00E9 natif (cf. crash build #43 sur iOS 26.5).
+      if (typeof weekday !== 'number' || weekday < 1 || weekday > 7) continue;
+      if (typeof hour !== 'number' || hour < 0 || hour > 23) continue;
       var id = await Notifications.scheduleNotificationAsync({
         content: { title: 'FluidBody+ \uD83D\uDCAA', body: (tr.prog_notif_body || "C'est l'heure de ta s\u00E9ance") + ' ' + pilierStr + ' \u00B7 ' + prog.duree, sound: true },
-        trigger: { weekday: weekday, hour: hour, minute: 0, repeats: true },
+        trigger: trigWeekly(weekday, hour, 0),
       });
       ids.push(id);
-    } catch(e) {}
+    } catch(e) { sentryCaptureSafe(e, { where: 'scheduleProgNotifications.schedule', weekday: selectedDays[d], hour: hour }); }
   }
   return ids;
 }
@@ -432,17 +461,27 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
   }
 
   async function saveProg() {
-    var prog = { piliers: selected, duree: dureeOptions[duree], jours: joursOptions[jours - 2 < 0 ? 0 : jours - 2], date: new Date().toISOString(), notifHour: notifHour, selectedDays: selectedDays };
-    var notifIds = await scheduleProgNotifications(prog, 0, lang);
-    prog.notifIds = notifIds;
     try {
-      var raw = await AsyncStorage.getItem('fluid_custom_programs');
-      var list = raw ? JSON.parse(raw) : [];
-      list.push(prog);
-      await AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(list));
-    } catch(e) {}
-    setSaved(true);
-    setTimeout(function() { if (onSaved) onSaved(); onClose(); setSaved(false); }, 1500);
+      var prog = { piliers: selected, duree: dureeOptions[duree], jours: joursOptions[jours - 2 < 0 ? 0 : jours - 2], date: new Date().toISOString(), notifHour: notifHour, selectedDays: selectedDays };
+      var notifIds = [];
+      try {
+        notifIds = await scheduleProgNotifications(prog, 0, lang);
+      } catch (e) { sentryCaptureSafe(e, { where: 'saveProg.scheduleProgNotifications' }); }
+      prog.notifIds = notifIds || [];
+      try {
+        var raw = await AsyncStorage.getItem('fluid_custom_programs');
+        var list = raw ? JSON.parse(raw) : [];
+        list.push(prog);
+        await AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(list));
+      } catch(e) { sentryCaptureSafe(e, { where: 'saveProg.persistAsyncStorage' }); }
+      setSaved(true);
+      setTimeout(function() { if (onSaved) onSaved(); onClose(); setSaved(false); }, 1500);
+    } catch (e) {
+      sentryCaptureSafe(e, { where: 'saveProg.outer' });
+      if (__DEV__) console.warn('saveProg failed:', e);
+      setSaved(false);
+      try { onClose(); } catch(_) {}
+    }
   }
 
   return (
