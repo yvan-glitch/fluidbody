@@ -99,6 +99,12 @@ import MonCorps, { MetricTile } from './src/screens/MonCorps';
 import ActivityScreen from './src/screens/Activity';
 import ProfileOnboardingScreen from './src/screens/ProfileOnboarding';
 import { flushPendingProfileSync, syncProfilePatch, refreshFromRemote } from './src/utils/profileSync';
+import {
+  getPreferredHour,
+  scheduleStreakProtectionToday,
+  schedulePostOnboardingNudge,
+  scheduleMilestoneReward,
+} from './src/utils/notifications';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
 import { LogBox } from 'react-native';
 
@@ -1207,7 +1213,13 @@ async function setupNotifications(lang = 'fr') {
     if (status !== 'granted') return;
     try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (e) { sentryCapture(e, { where: 'setupNotifications.cancelAll' }); }
     const tr = T[lang] || T['fr'];
-    var savedHour = parseInt(await AsyncStorage.getItem('fluid_notif_hour')) || 9;
+    // Adaptive default: if the user never set a custom hour, lean on the
+    // 14-day session-hour median (falls back to 18h when we don't have
+    // enough data). Once the user picks an hour from Settings the explicit
+    // value wins.
+    var rawHour = await AsyncStorage.getItem('fluid_notif_hour');
+    var savedHour = rawHour != null && rawHour !== '' ? parseInt(rawHour) : await getPreferredHour();
+    if (!Number.isFinite(savedHour) || savedHour < 0 || savedHour > 23) savedHour = 18;
     var pauseEnabled = (await AsyncStorage.getItem('fluid_notif_pause_enabled')) !== 'false';
     var quoteEnabled = (await AsyncStorage.getItem('fluid_quote_enabled')) !== 'false';
     var quoteHour = parseInt(await AsyncStorage.getItem('fluid_quote_hour')) || 8;
@@ -1424,7 +1436,19 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     }
     loadData();
     setupNotifications(lang);
+    // Schedule the 24h post-onboarding nudge (no-op if already scheduled or
+    // permission denied).
+    schedulePostOnboardingNudge({ lang: lang });
   }, []);
+
+  // Streak protection — re-evaluated on every streak change, on cold start,
+  // and when the user backgrounds + foregrounds the app (AppState handler in
+  // the inner App component already triggers a re-render via setSupaUser /
+  // setSubscriptionActive paths, so we just react to `streak`).
+  useEffect(() => {
+    if (!streak || streak < 3) return;
+    scheduleStreakProtectionToday({ streak: streak, lang: lang });
+  }, [streak, lang]);
 
   useEffect(() => {
     if (rcDisabled) return;
@@ -1527,7 +1551,8 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     }
     // Milestone celebrations
     if (!done[key][idx]) {
-      var MILESTONES = [5, 10, 15, 20, 25, 30, 35, 40];
+      var MILESTONES = [5, 7, 10, 15, 20, 25, 30, 35, 40, 100];
+      var PUSH_MILESTONES = [7, 30, 100];
       var newTotal = 0;
       Object.values(next).forEach(function(arr) {
         if (arr) arr.forEach(function(v) { if (v) newTotal++; });
@@ -1539,6 +1564,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
             seen.push(newTotal);
             AsyncStorage.setItem('fluid_milestones_seen', JSON.stringify(seen));
             setMilestoneNum(newTotal);
+            if (PUSH_MILESTONES.includes(newTotal)) {
+              scheduleMilestoneReward({ milestoneNum: newTotal, lang: lang, prenom: prenom });
+            }
           }
         });
       }
