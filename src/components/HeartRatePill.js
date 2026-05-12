@@ -100,6 +100,7 @@ export default function HeartRatePill({ bpm, isLive, birthDateIso, onPress, styl
       <GlassView
         intensity={70}
         tint="dark"
+        forceDark
         borderRadius={GLASS_RADII.pill}
         highlight
         bevel
