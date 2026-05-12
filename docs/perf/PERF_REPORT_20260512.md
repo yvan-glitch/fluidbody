@@ -1,7 +1,7 @@
 # FluidBody — Perf pass `perf/fluidity-pass`
 
-> Document temporaire : à supprimer / déplacer dans `docs/` avant le merge dans `main`.
-> Branche de travail : `perf/fluidity-pass` — pas poussée sur `origin` exprès, à reviewer avant.
+> Archivé le 2026-05-12 lors du merge de `perf/fluidity-pass` dans `main`.
+> Branche d'origine : `perf/fluidity-pass`. Conservé ici pour traçabilité des gains de perf.
 
 ## TL;DR — Top 10 optimisations par impact ressenti
 
