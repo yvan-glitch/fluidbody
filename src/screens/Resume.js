@@ -1,207 +1,25 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, ScrollView,
-  Animated, Easing, Dimensions, Platform, StyleSheet,
+  Dimensions, StyleSheet,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Circle, Defs, RadialGradient, Stop, Ellipse, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, Ellipse } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { T, ZONE_TO_PILIER, PILIER_IMAGES } from '../constants/data';
-import { Bulle, FloatingMedusas, MeduseCornerIcon, BULLES, LivingMedusa, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState } from '../components/Meduse';
+import { Bulle, BULLES, LivingMedusa, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import LivingBackground from '../components/LivingBackground';
 import { getPiliers, getSeances } from '../utils';
 
-// HealthKit — optional native module
-// HK est désactivé globalement après le crash NSException de build #43 sur
-// iOS 26.5 + New Arch (cf. App.js HEALTHKIT_DISABLED). On garde le module
-// importé pour ne pas casser l'arbre de dépendances mais on neutralise
-// tous les appels natifs. NE PAS appeler AppleHealthKit.* sans flipper le
-// flag global d'abord — la lib peut throw NSException et le converter RN
-// crashe en lisant callStackReturnAddresses via dladdr sur iOS 26.5.
-const HEALTHKIT_DISABLED = true;
-
-let AppleHealthKit = null;
-let hkInitialized = false;
-try { AppleHealthKit = require('react-native-health').default; } catch(e) {}
-
-// Lazy: ne plus accéder à AppleHealthKit.Constants au load time (cf. crash
-// hero PNG report). Les permissions sont calculées dans initHealthKit().
-function buildHkPermissions() {
-  if (HEALTHKIT_DISABLED || !AppleHealthKit) return null;
-  try {
-    const C = (AppleHealthKit.Constants && AppleHealthKit.Constants.Permissions) || {};
-    return {
-      permissions: {
-        read: [C.ActiveEnergyBurned, C.AppleExerciseTime, C.AppleStandTime].filter(Boolean),
-      },
-    };
-  } catch (e) { return null; }
-}
-
-function initHealthKit() {
-  if (HEALTHKIT_DISABLED) return;
-  if (!AppleHealthKit || hkInitialized || Platform.OS !== 'ios') return;
-  const perms = buildHkPermissions();
-  if (!perms) return;
-  try {
-    AppleHealthKit.initHealthKit(perms, function(err) {
-      if (err) { if (__DEV__) console.log('HealthKit init error:', err); return; }
-      hkInitialized = true;
-    });
-  } catch (e) { if (__DEV__) console.warn('Resume HK init throw:', e); }
-}
-
-// Ancien appel module-load `initHealthKit()` retiré : il s'exécutait au
-// premier import de l'écran et déclenchait AppleHealthKit.initHealthKit
-// sans aucun garde — risque de crash NSException au boot sur iOS 26.5.
-// Le screen se réinitialisera explicitement dans un useEffect si HK est
-// ré-activé un jour.
-
-function getHealthKitSummary(cb) {
-  if (!AppleHealthKit || !hkInitialized || Platform.OS !== 'ios') { cb({ cal: 0, exMin: 0, standHr: 0 }); return; }
-  var now = new Date();
-  var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  var opts = { startDate: startOfDay, endDate: now.toISOString() };
-  var result = { cal: 0, exMin: 0, standHr: 0 };
-  var remaining = 3;
-  function done() { remaining--; if (remaining <= 0) cb(result); }
-  try {
-    AppleHealthKit.getActiveEnergyBurned(opts, function(err, res) { if (!err && res && res.length) { result.cal = Math.round(res.reduce(function(s, r) { return s + (r.value || 0); }, 0)); } done(); });
-  } catch(e) { done(); }
-  try {
-    AppleHealthKit.getAppleExerciseTime(opts, function(err, res) { if (!err && res && res.length) { result.exMin = Math.round(res.reduce(function(s, r) { return s + (r.value || 0); }, 0)); } done(); });
-  } catch(e) { done(); }
-  try {
-    AppleHealthKit.getAppleStandTime(opts, function(err, res) { if (!err && res && res.length) { result.standHr = Math.round(res.reduce(function(s, r) { return s + (r.value || 0); }, 0) / 60); } done(); });
-  } catch(e) { done(); }
-}
+// Activité HK (anneaux Move/Exercise/Stand, détails journaliers,
+// tendances, streak rings-closed) → écran "Activité" dédié. Le présent
+// écran "Résumé" reste centré sur la progression FluidBody : méduse,
+// carte corporelle par pilier, séances complétées, streak séances.
 
 const { width: SW } = Dimensions.get('window');
-
-
-// ══════════════════════════════════
-// ACTIVITY RING
-// ══════════════════════════════════
-function AppleWatchIcon({ size = 34 }) {
-  var pulse = useRef(new Animated.Value(1)).current;
-  var glow = useRef(new Animated.Value(0)).current;
-  useEffect(function() {
-    var loopP = Animated.loop(Animated.sequence([
-      Animated.timing(pulse, { toValue: 1.20, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse, { toValue: 1.0, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ]));
-    var loopG = Animated.loop(Animated.sequence([
-      Animated.timing(glow, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-      Animated.timing(glow, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-    ]));
-    loopP.start();
-    loopG.start();
-    return function() { loopP.stop(); loopG.stop(); };
-  }, []);
-  return (
-    <Animated.View style={{
-      shadowColor: '#FF3B30',
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: glow.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.75] }),
-      shadowRadius: glow.interpolate({ inputRange: [0, 1], outputRange: [6, 16] }),
-    }}>
-      <Animated.View style={{ transform: [{ scale: pulse }] }}>
-      <Svg width={size} height={Math.round(size * 28 / 22)} viewBox="0 0 24 30" fill="none">
-        {/* Crown */}
-        <Path d="M19.5 11 L21 11 L21 14 L19.5 14" stroke="rgba(255,255,255,0.7)" strokeWidth={1.4} strokeLinecap="round" fill="none" />
-        <Path d="M19.5 16 L21 16 L21 18 L19.5 18" stroke="rgba(255,255,255,0.5)" strokeWidth={1.2} strokeLinecap="round" fill="none" />
-        {/* Strap top */}
-        <Path d="M7 0 L17 0 L16 6 L8 6 Z" fill="rgba(255,255,255,0.55)" />
-        {/* Strap bottom */}
-        <Path d="M8 24 L16 24 L17 30 L7 30 Z" fill="rgba(255,255,255,0.55)" />
-        {/* Watch body */}
-        <Rect x={3} y={6} width={18} height={18} rx={4.5} stroke="rgba(255,255,255,0.85)" strokeWidth={1.4} fill="rgba(0,0,0,0.35)" />
-        {/* Inner ring */}
-        <Circle cx={12} cy={15} r={5} stroke="#FF3B30" strokeWidth={1.2} fill="none" />
-        <Circle cx={12} cy={15} r={3.2} stroke="#30D158" strokeWidth={1.0} fill="none" />
-        <Circle cx={12} cy={15} r={1.4} fill="#0A84FF" />
-      </Svg>
-      </Animated.View>
-    </Animated.View>
-  );
-}
-
-function getJellyfishGlow(progress) {
-  var p = Math.max(0, Math.min(1, progress));
-  return {
-    bellOpacity: 0.45 + (1.0 - 0.45) * p,
-    haloRadius: 8 + (22 - 8) * p,
-    haloOpacity: 0.18 + (0.55 - 0.18) * p,
-    auraOpacity: 0.16 + (0.36 - 0.16) * p,
-  };
-}
-
-function JellyfishMetric({ progress, color, size = 88 }) {
-  var anim = useRef(new Animated.Value(0)).current;
-  var pulse = useRef(new Animated.Value(1)).current;
-  var [glow, setGlow] = useState(getJellyfishGlow(0));
-  var rgbColor = color.replace(/^#/, '');
-  var r = parseInt(rgbColor.slice(0, 2), 16);
-  var g = parseInt(rgbColor.slice(2, 4), 16);
-  var b = parseInt(rgbColor.slice(4, 6), 16);
-  var tintRgba = 'rgba(' + r + ',' + g + ',' + b + ',1)';
-
-  useEffect(function() {
-    var listener = anim.addListener(function(v) { setGlow(getJellyfishGlow(v.value)); });
-    var target = Math.max(0, Math.min(1, progress));
-    Animated.timing(anim, { toValue: target, duration: anim._value === 0 ? 900 : 600, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
-    return function() { anim.removeListener(listener); };
-  }, [progress]);
-
-  useEffect(function() {
-    if (progress <= 0) return;
-    var loop = Animated.loop(Animated.sequence([
-      Animated.timing(pulse, { toValue: 1.04, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse, { toValue: 1.0, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ]));
-    loop.start();
-    return function() { loop.stop(); };
-  }, [progress > 0]);
-
-  return (
-    <Animated.View style={{
-      width: size,
-      height: size,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: color,
-      shadowOpacity: glow.haloOpacity,
-      shadowRadius: glow.haloRadius,
-      shadowOffset: { width: 0, height: 0 },
-      transform: [{ scale: pulse }],
-    }}>
-      {/* Aura colorée derrière (renforce la lecture de la teinte) */}
-      <View style={{
-        position: 'absolute',
-        width: size * 0.78,
-        height: size * 0.78,
-        borderRadius: size,
-        backgroundColor: color,
-        opacity: glow.auraOpacity,
-      }} />
-      <Animated.View style={{ opacity: glow.bellOpacity }}>
-        <MeduseCornerIcon size={size} tint={tintRgba} breathCycleMs={null} />
-      </Animated.View>
-      {/* Voile teinté par-dessus pour intensifier la couleur (additive) */}
-      <View style={{
-        position: 'absolute',
-        width: size * 0.62,
-        height: size * 0.62,
-        borderRadius: size,
-        backgroundColor: color,
-        opacity: glow.auraOpacity * 0.45,
-      }} pointerEvents="none" />
-    </Animated.View>
-  );
-}
 
 // ══════════════════════════════════
 // CALENDRIER HEATMAP + RECOMMANDATION
@@ -494,19 +312,6 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
   var totalDoneCapped = Math.min(totalDone, 40);
   var pct = Math.round(totalDoneCapped / 40 * 100);
   var recommendedPiliers = (tensionIdxs || []).map(function(i) { return ZONE_TO_PILIER[i]; });
-  var [hkData, setHkData] = useState({ cal: 0, exMin: 0, standHr: 0 });
-  var [localExMin, setLocalExMin] = useState(0);
-
-  useEffect(function() {
-    function refresh() {
-      getHealthKitSummary(function(data) { setHkData(data); });
-      var key = 'fluid_exercise_' + new Date().toISOString().slice(0, 10);
-      AsyncStorage.getItem(key).then(function(raw) { if (raw) setLocalExMin(parseInt(raw) || 0); });
-    }
-    refresh();
-    var interval = setInterval(refresh, 60000);
-    return function() { clearInterval(interval); };
-  }, []);
 
   var now = new Date();
   var dayNames = { fr: ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'], en: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'], es: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'], it: ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'] };
@@ -514,11 +319,6 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
   var dn = (dayNames[lang] || dayNames.fr)[now.getDay()];
   var mn = (monthNames[lang] || monthNames.fr)[now.getMonth()];
   var dateStr = dn + ' ' + now.getDate() + ' ' + mn;
-
-  var calGoal = 400; var exGoal = 30; var standGoal = 12;
-  var effectiveExMin = Math.max(hkData.exMin, localExMin);
-  var effectiveCal = Math.max(hkData.cal, localExMin * 5);
-  var calPct = effectiveCal / calGoal; var exPct = effectiveExMin / exGoal; var standPct = hkData.standHr / standGoal;
 
   var recentSeances = [];
   piliers.forEach(function(p) {
@@ -550,36 +350,6 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
         </View>
 
         <WeeklySummary streak={streak} lang={lang} />
-
-        <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, paddingTop: 10, paddingBottom: 20, paddingHorizontal: 20, marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.resume_activite || 'Activité'}</Text>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.55)', letterSpacing: 2, textTransform: 'uppercase' }}>{tr.live_today || "Aujourd'hui"}</Text>
-            </View>
-            <AppleWatchIcon size={34} />
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-start' }}>
-            {[
-              { label: tr.resume_bouger || 'Bouger', color: '#FF3B30', value: effectiveCal, goal: calGoal, unit: 'cal', progress: calPct },
-              { label: tr.resume_exercice || 'Exercice', color: '#30D158', value: effectiveExMin, goal: exGoal, unit: 'min', progress: exPct },
-              { label: tr.resume_debout || 'Debout', color: '#0A84FF', value: hkData.standHr, goal: standGoal, unit: 'h', progress: standPct },
-            ].map(function(m) {
-              return (
-                <View key={m.label} style={{ flex: 1, alignItems: 'center' }}>
-                  <JellyfishMetric progress={m.progress} color={m.color} size={88} />
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
-                    <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: m.color }} />
-                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>{m.label}</Text>
-                  </View>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: m.color, marginTop: 2 }}>
-                    {m.value}<Text style={{ fontSize: 11, fontWeight: '400', color: 'rgba(255,255,255,0.55)' }}>/{m.goal} {m.unit}</Text>
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
 
         {(function() {
           var stIdx = getMeduseState(pct, streak);
