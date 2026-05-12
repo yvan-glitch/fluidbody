@@ -1,13 +1,19 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, Alert, Dimensions, Linking, Platform, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Modal, Alert, Dimensions, Linking, StyleSheet } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import AnimatedPlus from './AnimatedPlus';
-import GlassButton from './GlassButton';
 import LivingBackground from './LivingBackground';
 import { Bulle, FloatingMedusas, BULLES_ONBOARDING } from './Meduse';
 import { T, PILIER_IMAGES } from '../constants/data';
+import {
+  GlassView,
+  GlassButton,
+  GlassCard,
+  GlassPressable,
+  GLASS_RADII,
+} from './ui';
+import { useTheme } from '../theme/ThemeProvider';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -33,8 +39,26 @@ function withPeriod(s, suffix) {
   return `${s}${suffix}`;
 }
 
+// Bénéfices listés sur le paywall. Petites icônes inline pour éviter
+// d'ajouter une dep d'icônes ici — on reste cohérents avec le reste du repo.
+function BulletCheck() {
+  return (
+    <View style={{
+      width: 22, height: 22, borderRadius: 11,
+      backgroundColor: 'rgba(174,239,77,0.18)',
+      borderWidth: 1, borderColor: 'rgba(174,239,77,0.45)',
+      alignItems: 'center', justifyContent: 'center',
+      marginRight: 12,
+    }}>
+      <Text style={{ color: '#AEEF4D', fontWeight: '800', fontSize: 12, marginTop: -1 }}>✓</Text>
+    </View>
+  );
+}
+
 export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore }) {
   var tr = T[lang] || T['fr'];
+  var theme = useTheme().theme;
+  var isLight = theme.mode === 'light';
   var isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   var monthlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.monthly];
   var yearlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.yearly];
@@ -52,6 +76,18 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   const monthlyLabel = isFr ? 'Mensuel' : 'Monthly';
   const ctaLabel = isFr ? 'Commencer' : 'Start';
 
+  const benefits = isFr ? [
+    'Toutes les séances vidéo en HD',
+    'Téléchargements hors-ligne',
+    'Programmes personnalisés selon ton corps',
+    'Sans engagement, résiliable à tout moment',
+  ] : [
+    'All video sessions in HD',
+    'Offline downloads',
+    'Personalised programs for your body',
+    'Cancel anytime, no commitment',
+  ];
+
   function onCta() {
     if (loadingPrices) return;
     if (selected === 'yearly') {
@@ -62,117 +98,193 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
     Alert.alert('FluidBody+', isFr ? 'Abonnement disponible dans la version App Store.' : 'Subscription available in the App Store version.');
   }
 
-  function planCard(key, label, sub, priceText) {
+  // Pilule segmentée Mensuel / Annuel (toggle Liquid Glass).
+  function planPill(key, label, sub, priceText) {
     var active = selected === key;
     return (
-      <TouchableOpacity
+      <GlassPressable
         key={key}
-        activeOpacity={0.85}
         onPress={function() { setSelected(key); }}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 18,
-          paddingVertical: 16,
-          borderRadius: 16,
-          marginBottom: 10,
-          borderWidth: active ? 2 : 1,
-          borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.14)',
-          backgroundColor: active ? 'rgba(174,239,77,0.07)' : 'rgba(255,255,255,0.04)',
-        }}
+        accessibilityRole="radio"
+        accessibilityState={{ selected: active }}
+        accessibilityLabel={`${label} ${priceText}`}
+        accessibilityHint={sub || undefined}
+        style={{ flex: 1 }}
       >
-        <View style={{
-          width: 22, height: 22, borderRadius: 11, marginRight: 14,
-          borderWidth: 2,
-          borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.3)',
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          {active && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#AEEF4D' }} />}
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#ffffff' }}>{label}</Text>
-          {sub ? <Text style={{ fontSize: 12, fontWeight: '500', color: '#AEEF4D', marginTop: 2 }}>{sub}</Text> : null}
-        </View>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.92)' }}>{priceText}</Text>
-      </TouchableOpacity>
+        <GlassView
+          intensity={60}
+          borderRadius={GLASS_RADII.card}
+          substrateColor={active ? theme.glass.substrateAccent : theme.glass.substrate}
+          contentStyle={{
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            minHeight: 78,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: active ? theme.colors.accentText : theme.colors.text, letterSpacing: -0.2 }}>{label}</Text>
+              {sub ? <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.accentText, opacity: 0.85, marginTop: 4 }}>{sub}</Text> : null}
+            </View>
+            <View style={{
+              width: 18, height: 18, borderRadius: 9,
+              borderWidth: 2,
+              borderColor: active ? theme.colors.accent : theme.colors.textTertiary,
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              {active && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.accent }} />}
+            </View>
+          </View>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.text, marginTop: 6 }}>{priceText}</Text>
+        </GlassView>
+      </GlassPressable>
     );
   }
 
+  // Hero absorber: in dark mode we dip to pitch black so the hero image
+  // bleeds into the page; in light mode we land on the page bg colour to
+  // keep the surrounding glass card legible above it.
+  var heroAbsorber = isLight
+    ? ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.10)', theme.colors.bg]
+    : ['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.55)', '#000000'];
+
   return (
     <Modal visible={!!visible} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
-        <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+        <LinearGradient colors={theme.colors.bgGradient} locations={theme.colors.bgGradientStops} style={StyleSheet.absoluteFill} />
         <LivingBackground />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }} pointerEvents="none">
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, opacity: isLight ? 0.45 : 1 }} pointerEvents="none">
           {BULLES_ONBOARDING.map((b, i) => <Bulle key={`pw-${i}`} {...b} />)}
         </View>
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} pointerEvents="none">
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, opacity: isLight ? 0.6 : 1 }} pointerEvents="none">
           <FloatingMedusas />
         </View>
+
         <ScrollView style={{ zIndex: 2 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
-          <View style={{ width: SW, height: Math.round(SH * 0.45), justifyContent: 'flex-end' }}>
+          {/* Hero — image plein écran avec dégradé d'absorption sur le bas */}
+          <View style={{ width: SW, height: Math.round(SH * 0.42), justifyContent: 'flex-end' }}>
             <ExpoImage source={PILIER_IMAGES.p7} contentFit="cover" cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
             <LinearGradient
-              colors={['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.55)', '#000000']}
+              colors={heroAbsorber}
               locations={[0, 0.55, 1]}
               style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
             />
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={{ position: 'absolute', top: 56, right: 20, width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(30,30,40,0.7)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '600' }}>{'✕'}</Text>
-            </TouchableOpacity>
+            <GlassPressable
+              onPress={onClose}
+              accessibilityLabel="Fermer le paywall"
+              accessibilityRole="button"
+              style={{ position: 'absolute', top: 56, right: 20 }}
+            >
+              <GlassView
+                intensity={70}
+                tint="dark"
+                forceDark
+                borderRadius={17}
+                contentStyle={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '600' }}>✕</Text>
+              </GlassView>
+            </GlassPressable>
             <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 12 }}>
                 <Text style={{ fontSize: 18, fontWeight: '900', color: '#AEEF4D', letterSpacing: 3 }}>FLUIDBODY</Text>
                 <AnimatedPlus style={{ fontSize: 18, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
               </View>
-              <Text style={{ fontSize: 34, fontWeight: '800', color: '#ffffff', lineHeight: 38, letterSpacing: -0.5 }}>{heroTitle}</Text>
+              <Text style={{ fontSize: 32, fontWeight: '800', color: '#ffffff', lineHeight: 36, letterSpacing: -0.4 }}>{heroTitle}</Text>
             </View>
           </View>
 
-          <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
-            {planCard('yearly', annualLabel, annualSub, yearlyDisplay)}
-            {planCard('monthly', monthlyLabel, null, monthlyDisplay)}
-          </View>
-
-          {disabled && (
-            <View style={{ marginHorizontal: 20, marginTop: 8, backgroundColor: 'rgba(255,200,80,0.10)', borderWidth: 1, borderColor: 'rgba(255,200,80,0.25)', borderRadius: 14, padding: 12 }}>
-              <Text style={{ color: 'rgba(255,220,140,0.9)', fontSize: 12, lineHeight: 18, textAlign: 'center' }}>{tr.paywall_not_available}</Text>
-            </View>
-          )}
-
-          <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
-            <GlassButton
-              onPress={onCta}
-              disabled={disabled || loadingPrices}
-              size="lg"
-              textColor="#AEEF4D"
-              textStyle={{ fontSize: 16, fontWeight: '800' }}
+          {/* Carte centrale — c'est l'élément qui doit "respirer" Liquid Glass */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
+            <GlassCard
+              intensity={75}
+              borderRadius={GLASS_RADII.cardLg}
+              padding={20}
+              elevated
             >
-              {ctaLabel}
-            </GlassButton>
-            <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginTop: 12 }}>{selectedPrice}</Text>
+              {/* Bénéfices */}
+              <View style={{ marginBottom: 18 }}>
+                {benefits.map((b, i) => (
+                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: i === benefits.length - 1 ? 0 : 10 }}>
+                    <BulletCheck />
+                    <Text style={{ flex: 1, fontSize: 14, color: theme.colors.text, fontWeight: '500', letterSpacing: -0.1 }}>{b}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Toggle Mensuel / Annuel : 2 pilules glass côte-à-côte */}
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+                {planPill('yearly', annualLabel, annualSub, yearlyDisplay)}
+                {planPill('monthly', monthlyLabel, null, monthlyDisplay)}
+              </View>
+
+              {/* CTA principal */}
+              <GlassButton
+                variant="accent"
+                size="lg"
+                onPress={onCta}
+                disabled={disabled || loadingPrices}
+                loading={loadingPrices}
+                textStyle={{ fontSize: 16, fontWeight: '800', letterSpacing: -0.2 }}
+                accessibilityLabel={`${ctaLabel} ${selectedPrice}`}
+              >
+                {ctaLabel}
+              </GlassButton>
+              <Text style={{ fontSize: 12, fontWeight: '500', color: theme.colors.textSecondary, textAlign: 'center', marginTop: 10 }}>{selectedPrice}</Text>
+            </GlassCard>
+
+            {disabled && (
+              <View style={{ marginTop: 12 }}>
+                <GlassCard
+                  intensity={50}
+                  borderRadius={14}
+                  padding={12}
+                  substrateColor="rgba(255,200,80,0.18)"
+                >
+                  <Text style={{ color: isLight ? '#8A6500' : 'rgba(255,220,140,0.92)', fontSize: 12, lineHeight: 18, textAlign: 'center' }}>{tr.paywall_not_available}</Text>
+                </GlassCard>
+              </View>
+            )}
           </View>
 
-          <View style={{ paddingHorizontal: 60, marginTop: 18 }}>
+          {/* "Restaurer mes achats" — lien discret en bas */}
+          <View style={{ paddingHorizontal: 60, marginTop: 22 }}>
             <GlassButton
               onPress={onRestore}
               disabled={disabled}
+              variant="subtle"
               size="sm"
-              textColor="rgba(255,255,255,0.7)"
+              haptic="none"
+              accessibilityLabel={tr.paywall_restore}
               textStyle={{ fontSize: 13, fontWeight: '500' }}
             >
               {tr.paywall_restore}
             </GlassButton>
           </View>
 
-          <View style={{ marginTop: 22, marginHorizontal: 16, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(0,18,32,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)' }}>
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'center', lineHeight: 17 }}>
-              {tr.paywall_legal || "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période. Le paiement est débité via votre compte Apple. Gérez ou annulez dans Réglages > Apple ID > Abonnements."}
-            </Text>
-            <TouchableOpacity onPress={function() { Linking.openURL('https://yvan-glitch.github.io/fluidbody-privacy/'); }} activeOpacity={0.7} style={{ marginTop: 10 }}>
-              <Text style={{ fontSize: 12, color: '#AEEF4D', textAlign: 'center', textDecorationLine: 'underline', fontWeight: '600' }}>{tr.paywall_privacy_link || 'Politique de confidentialité'}</Text>
-            </TouchableOpacity>
+          {/* Légales — petite carte glass quasi-transparente, sans bevel pour rester discrète */}
+          <View style={{ marginTop: 18, paddingHorizontal: 16 }}>
+            <GlassCard
+              intensity={40}
+              borderRadius={14}
+              padding={14}
+              elevated={false}
+            >
+              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 17 }}>
+                {tr.paywall_legal || "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période. Le paiement est débité via votre compte Apple. Gérez ou annulez dans Réglages > Apple ID > Abonnements."}
+              </Text>
+              <GlassPressable
+                onPress={function() { Linking.openURL('https://yvan-glitch.github.io/fluidbody-privacy/'); }}
+                accessibilityRole="link"
+                accessibilityLabel={tr.paywall_privacy_link || 'Politique de confidentialité'}
+                style={{ marginTop: 10, alignSelf: 'center' }}
+              >
+                <Text style={{ fontSize: 12, color: theme.colors.accentText, textAlign: 'center', textDecorationLine: 'underline', fontWeight: '600' }}>{tr.paywall_privacy_link || 'Politique de confidentialité'}</Text>
+              </GlassPressable>
+            </GlassCard>
           </View>
 
         </ScrollView>
