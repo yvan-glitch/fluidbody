@@ -72,6 +72,12 @@ export function ThemeProvider({ children, initialMode }) {
   const prevBgRef = useRef(theme.colors.bg);
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const [overlayColor, setOverlayColor] = useState(null);
+  // While the cross-fade is running we want the new UI to be visible
+  // underneath but inert to taps — otherwise a quick double-tap on the
+  // appearance toggle can stack two transitions on top of each other.
+  // The overlay's wrapper takes `pointerEvents='box-only'` to swallow taps
+  // while the fade is active.
+  const [transitioning, setTransitioning] = useState(false);
 
   useEffect(function() {
     if (!hydrated) {
@@ -82,6 +88,7 @@ export function ThemeProvider({ children, initialMode }) {
     }
     if (prevBgRef.current === theme.colors.bg) return;
     setOverlayColor(prevBgRef.current);
+    setTransitioning(true);
     prevBgRef.current = theme.colors.bg;
     overlayOpacity.setValue(1);
     Animated.timing(overlayOpacity, {
@@ -90,7 +97,10 @@ export function ThemeProvider({ children, initialMode }) {
       easing: GLASS_EASING,
       useNativeDriver: true,
     }).start(function(res) {
-      if (res?.finished) setOverlayColor(null);
+      if (res?.finished) {
+        setOverlayColor(null);
+        setTransitioning(false);
+      }
     });
   }, [theme.colors.bg, hydrated]);
 
@@ -105,7 +115,13 @@ export function ThemeProvider({ children, initialMode }) {
   return (
     <ThemeContext.Provider value={value}>
       <View style={{ flex: 1 }}>
-        {children}
+        {/* Children stay interactive when no transition is running;
+            during a fade we wrap them so touches are absorbed by the
+            transient overlay above — keeps double-taps from queuing a
+            second flip mid-flight. */}
+        <View style={{ flex: 1 }} pointerEvents={transitioning ? 'none' : 'auto'}>
+          {children}
+        </View>
         {overlayColor != null ? (
           <Animated.View
             pointerEvents="none"
