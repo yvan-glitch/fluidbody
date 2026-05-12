@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check (informational)
+        run: npx tsc --noEmit || true
+
+      - name: Expo Doctor
+        run: npx --yes expo-doctor
+
+      - name: No console.log without __DEV__ guard
+        run: |
+          set +e
+          violations=$(git grep -nE "^\s*console\.(log|warn|info)\b" -- App.js 'src/**' 'components/**' \
+            | grep -v "if (__DEV__)" \
+            | grep -v "devLog\|devWarn")
+          if [ -n "$violations" ]; then
+            echo "::error::Found console.log/warn/info calls without __DEV__ guard:"
+            echo "$violations"
+            exit 1
+          fi
+
+      - name: No clear Bunny URLs in data.js
+        run: |
+          if git grep -n "vz-1a4e2cac-0dc.b-cdn.net" -- src/constants/data.js; then
+            echo "::error::Found clear Bunny CDN URLs in data.js (must go through the sign-video-url edge function)"
+            exit 1
+          fi
+
+      - name: App.js parses (JSX-aware)
+        run: |
+          node -e "require('@babel/parser').parse(require('fs').readFileSync('App.js','utf8'),{sourceType:'module',plugins:['jsx']})"
+
+      - name: SafeAreaProvider present at root
+        run: |
+          if ! grep -q "<SafeAreaProvider>" App.js; then
+            echo "::error::SafeAreaProvider not found in App.js root — components using useSafeAreaInsets will crash"
+            exit 1
+          fi
