@@ -12,46 +12,58 @@
 // On Android, BlurView falls back to a flat overlay (intensity 0); we
 // compensate by bumping the substrate alpha so the surface still reads
 // as a translucent material rather than fully transparent.
+//
+// THEME-AWARE: by default, every visual token (tint, substrate, bevel,
+// highlight, shadow opacity) is pulled from the active theme via
+// `useTheme()`. Pass `tint`, `substrateColor`, `forceDark`, etc. to
+// override per-call — typically only the VideoPlayer overlay needs that
+// since it always renders against pitch-black video.
 
 import { View, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  GLASS_HIGHLIGHT_COLORS,
   GLASS_HIGHLIGHT_START,
   GLASS_HIGHLIGHT_END,
-  GLASS_BEVEL_LIGHT,
-  GLASS_BEVEL_DARK,
-  GLASS_SUBSTRATE,
-  GLASS_SHADOW,
+  GLASS_SHADOW_BASE,
 } from './glassTokens';
-
-function pickSubstrate(tint) {
-  if (tint === 'dark') return GLASS_SUBSTRATE.dark;
-  if (tint === 'light') return GLASS_SUBSTRATE.light;
-  return GLASS_SUBSTRATE.default;
-}
+import { useTheme, useForcedDarkTheme } from '../../theme/ThemeProvider';
 
 export default function GlassView({
   children,
   intensity = 70,
-  tint = 'default',
+  tint,                  // 'dark' | 'light' | 'default' — override theme.glass.tint
   borderRadius = 18,
   highlight = true,
   bevel = true,
   elevated = true,
   substrateColor,        // override for accent/branded glass (e.g. green CTA)
+  forceDark = false,     // bypass theme — always render as dark glass (videoplayer overlay)
   style,
   contentStyle,
   pointerEvents,
   accessibilityLabel,
 }) {
+  // `useForcedDarkTheme()` returns the dark palette without subscribing to
+  // context — cheap, and avoids re-renders when the user toggles theme
+  // while a video is playing.
+  const themedTheme = useTheme().theme;
+  const forcedTheme = useForcedDarkTheme();
+  const theme = forceDark ? forcedTheme : themedTheme;
+  const g = theme.glass;
+
   // Android's BlurView is unreliable; bump the substrate so we don't read
   // as a flat transparent rectangle. We also clamp the iOS intensity into
   // a sane range — anything above ~85 looks milky.
   const iosIntensity = Math.max(0, Math.min(95, intensity));
   const androidFallback = Platform.OS === 'android';
-  const substrate = substrateColor || pickSubstrate(tint);
+
+  const resolvedTint = tint || g.tint;
+  const resolvedSubstrate = substrateColor || g.substrate;
+
+  const shadowStyle = elevated
+    ? Object.assign({}, GLASS_SHADOW_BASE, { shadowOpacity: g.shadowOpacity })
+    : null;
 
   // The bevel is built from two stacked absolute layers: one painting the
   // bright top/left edges, the other painting the dark bottom/right edges.
@@ -59,18 +71,14 @@ export default function GlassView({
   // collapse into mitered corners and break the radius.
   return (
     <View
-      style={[
-        elevated ? GLASS_SHADOW : null,
-        { borderRadius },
-        style,
-      ]}
+      style={[shadowStyle, { borderRadius }, style]}
       pointerEvents={pointerEvents}
       accessibilityLabel={accessibilityLabel}
     >
       <View style={{ borderRadius, overflow: 'hidden' }}>
         <BlurView
           intensity={iosIntensity}
-          tint={tint === 'default' ? 'default' : tint}
+          tint={resolvedTint === 'default' ? 'default' : resolvedTint}
           style={StyleSheet.absoluteFill}
         />
 
@@ -82,8 +90,8 @@ export default function GlassView({
             StyleSheet.absoluteFill,
             {
               backgroundColor: androidFallback
-                ? bumpAlpha(substrate, 0.18)
-                : substrate,
+                ? bumpAlpha(resolvedSubstrate, 0.18)
+                : resolvedSubstrate,
             },
           ]}
         />
@@ -91,7 +99,7 @@ export default function GlassView({
         {highlight ? (
           <LinearGradient
             pointerEvents="none"
-            colors={GLASS_HIGHLIGHT_COLORS}
+            colors={g.highlightColors}
             start={GLASS_HIGHLIGHT_START}
             end={GLASS_HIGHLIGHT_END}
             style={StyleSheet.absoluteFill}
@@ -108,8 +116,8 @@ export default function GlassView({
                   borderRadius,
                   borderTopWidth: 1,
                   borderLeftWidth: 1,
-                  borderTopColor: GLASS_BEVEL_LIGHT,
-                  borderLeftColor: GLASS_BEVEL_LIGHT,
+                  borderTopColor: g.bevelLight,
+                  borderLeftColor: g.bevelLight,
                   borderRightColor: 'transparent',
                   borderBottomColor: 'transparent',
                   borderRightWidth: 1,
@@ -127,8 +135,8 @@ export default function GlassView({
                   borderRightWidth: 1,
                   borderTopWidth: 1,
                   borderLeftWidth: 1,
-                  borderBottomColor: GLASS_BEVEL_DARK,
-                  borderRightColor: GLASS_BEVEL_DARK,
+                  borderBottomColor: g.bevelDark,
+                  borderRightColor: g.bevelDark,
                   borderTopColor: 'transparent',
                   borderLeftColor: 'transparent',
                 },

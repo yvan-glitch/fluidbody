@@ -170,6 +170,8 @@ function VideoSkip10Icon({ reverse, onPress, bumpTimer }) {
       <GlassView
         intensity={45}
         tint="dark"
+
+        forceDark
         borderRadius={SIZE / 2}
         contentStyle={{
           width: SIZE,
@@ -822,6 +824,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                     <GlassView
                       intensity={55}
                       tint="dark"
+
+                      forceDark
                       borderRadius={36}
                       contentStyle={{
                         width: 72,
@@ -852,6 +856,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                     <GlassView
                       intensity={45}
                       tint="dark"
+
+                      forceDark
                       borderRadius={16}
                       contentStyle={{
                         width: 32,
@@ -895,6 +901,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                 <GlassView
                   intensity={50}
                   tint="dark"
+
+                  forceDark
                   borderRadius={GLASS_RADII.button}
                   style={{ marginBottom: 16 }}
                   contentStyle={{
@@ -929,6 +937,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                 <Animated.View style={{ transform: [{ scale: doneScale }] }}>
                   <GlassButton
                     variant="accent"
+                    forceDark
                     size="lg"
                     haptic="success"
                     accessibilityLabel={tr.seance_done}
