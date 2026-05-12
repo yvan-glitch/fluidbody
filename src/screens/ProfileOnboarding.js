@@ -41,6 +41,13 @@ import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
 let DateTimePicker = null;
 try { DateTimePicker = require('@react-native-community/datetimepicker').default; } catch (e) {}
 
+let _HapticsMod = null;
+try { _HapticsMod = require('expo-haptics'); } catch (e) {}
+function _hapticSelection() {
+  if (Platform.OS === 'web' || !_HapticsMod) return;
+  try { _HapticsMod.selectionAsync(); } catch (e) {}
+}
+
 const { width: SW, height: SH } = Dimensions.get('window');
 
 const TOTAL_STEPS = 5;
@@ -354,6 +361,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
   }
 
   function toggleGoal(key) {
+    _hapticSelection();
     setGoals(function (prev) {
       const has = prev.indexOf(key) !== -1;
       if (has) return prev.filter(function (k) { return k !== key; });
@@ -472,7 +480,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
                     { key: 'undisclosed', label: tr.onb_gender_undisclosed || 'Prefer not to say' },
                   ]}
                   value={gender}
-                  onChange={setGender}
+                  onChange={function (v) { _hapticSelection(); setGender(v); }}
                   colors={colors}
                   glass={glass}
                 />
@@ -564,7 +572,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
                       { key: 'advanced', label: tr.onb_practice_advanced || 'Advanced', sub: tr.onb_practice_advanced_sub || '' },
                     ]}
                     value={practiceLevel}
-                    onChange={setPracticeLevel}
+                    onChange={function (v) { _hapticSelection(); setPracticeLevel(v); }}
                     colors={colors}
                     glass={glass}
                   />
@@ -581,7 +589,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
                     ].map(function (opt) {
                       const active = frequency === opt.key;
                       return (
-                        <Pressable key={opt.key} onPress={function () { setFrequency(opt.key); }} style={{ flex: 1 }}>
+                        <Pressable key={opt.key} onPress={function () { _hapticSelection(); setFrequency(opt.key); }} style={{ flex: 1 }}>
                           <GlassView
                             intensity={active ? 70 : 50}
                             tint={glass.tint}
