@@ -7,6 +7,7 @@ import { T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, Rayon, FloatingMedusas, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import VideoPlayer from '../components/VideoPlayer';
+import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import LivingBackground from '../components/LivingBackground';
 import TheorieDetailScreen from './TheorieDetailScreen';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
@@ -337,7 +338,11 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         isSubscriber={isSubscriber}
         onActivateSubscription={onActivateSubscription}
         onClose={() => setOpenTheoryPilier(null)}
-        onPlay={(seance, idx) => setActiveTheory({ pilier: openTheoryPilier.pilier, seance, idx })}
+        onPlay={(seance, idx) => {
+          const sid = buildSessionId(openTheoryPilier.pilier.key, idx);
+          if (sid) prefetchSignedVideoUrl(sid, 'hls');
+          setActiveTheory({ pilier: openTheoryPilier.pilier, seance, idx });
+        }}
       />
       {activeTheory && (
         <Modal visible animationType="fade" presentationStyle="fullScreen" statusBarTranslucent supportedOrientations={['portrait', 'landscape-left', 'landscape-right']} onRequestClose={() => setActiveTheory(null)}>

@@ -1,4 +1,5 @@
-import { Text, View, TouchableOpacity, ScrollView, ImageBackground, StyleSheet } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { T, PILIER_IMAGES } from '../constants/data';
@@ -34,13 +35,12 @@ export default function TheorieDetailScreen({ pilier, items, lang, isSubscriber,
       <ScrollView style={{ zIndex: 2 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
         {/* Hero image */}
         <View style={{ height: 220, overflow: 'hidden' }}>
-          <ImageBackground source={PILIER_IMAGES[pilier.key]} resizeMode="cover" style={{ flex: 1 }}>
-            <LinearGradient
-              colors={['rgba(0,10,26,0.2)', 'rgba(0,10,26,0.55)', '#000a1a']}
-              locations={[0, 0.55, 1]}
-              style={{ flex: 1 }}
-            />
-          </ImageBackground>
+          <ExpoImage source={PILIER_IMAGES[pilier.key]} contentFit="cover" cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
+          <LinearGradient
+            colors={['rgba(0,10,26,0.2)', 'rgba(0,10,26,0.55)', '#000a1a']}
+            locations={[0, 0.55, 1]}
+            style={{ flex: 1 }}
+          />
         </View>
 
         <View style={{ paddingHorizontal: 22, marginTop: -56 }}>

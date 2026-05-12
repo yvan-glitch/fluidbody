@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, ScrollView,
-  Animated, Easing, Dimensions, ImageBackground, Platform, StyleSheet,
+  Animated, Easing, Dimensions, Platform, StyleSheet,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Defs, RadialGradient, Stop, Ellipse, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -304,7 +305,7 @@ function BodyMapVisual({ done, lang }) {
         </View>
         {/* Mannequin image + zones colorées */}
         <View style={{ width: 110, height: 250, position: 'relative' }}>
-          <ImageBackground source={require('../../assets/mannequin.png')} resizeMode="contain" style={{ width: 110, height: 250, opacity: 0.7 }} imageStyle={{ tintColor: '#15A89C' }} />
+          <ExpoImage source={require('../../assets/mannequin.png')} contentFit="contain" cachePolicy="memory-disk" tintColor="#15A89C" style={{ width: 110, height: 250, opacity: 0.7 }} />
           {/* Zones colorées superposées */}
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
         <Svg width={110} height={250} viewBox="0 0 100 280">
@@ -699,7 +700,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
             return (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: i < recentSeances.length - 1 ? 0.5 : 0, borderBottomColor: 'rgba(174,239,77,0.12)' }}>
                 <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', marginRight: 12, borderWidth: 1.5, borderColor: '#AEEF4D' }}>
-                  <ImageBackground source={PILIER_IMAGES[s.pilier.key]} resizeMode="cover" style={{ flex: 1 }} />
+                  <ExpoImage source={PILIER_IMAGES[s.pilier.key]} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '500', color: '#ffffff' }}>{s.pilier.label}</Text>
@@ -720,7 +721,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
             return (
               <View key={p.key} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: idx < sortedPiliers.length - 1 ? 0.5 : 0, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
                 <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', marginRight: 12, borderWidth: 1.5, borderColor: '#AEEF4D' }}>
-                  <ImageBackground source={PILIER_IMAGES[p.key]} resizeMode="cover" style={{ flex: 1 }} />
+                  <ExpoImage source={PILIER_IMAGES[p.key]} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '500', color: '#ffffff' }}>{p.label}{isRec ? ' \u2605' : ''}</Text>

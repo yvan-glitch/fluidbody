@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, ScrollView, ImageBackground, Share, Alert, Modal, Dimensions, TextInput, Platform } from 'react-native';
+import { Text, StyleSheet, View, TouchableOpacity, ScrollView, Share, Alert, Modal, Dimensions, TextInput, Platform } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import GlassButton from '../components/GlassButton';
 import LivingBackground from '../components/LivingBackground';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -229,7 +230,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
                 <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff' }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 26 }}>+</AnimatedPlus></Text>
                 <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D' }}>
-                  <ImageBackground source={COACH_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
+                  <ExpoImage source={COACH_IMAGE} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
                 </View>
               </View>
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
@@ -248,7 +249,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: 10 }}>
                 <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', borderWidth: 1.5, borderColor: '#AEEF4D', marginRight: 10 }}>
-                  <ImageBackground source={PILIER_IMAGES[bestPilier.p.key]} resizeMode="cover" style={{ flex: 1 }} />
+                  <ExpoImage source={PILIER_IMAGES[bestPilier.p.key]} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff' }}>{bestPilier.p.label}</Text>
@@ -277,7 +278,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.coach_title || 'Votre Coach'}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
             <View style={{ width: 70, height: 70, borderRadius: 35, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginRight: 14 }}>
-              <ImageBackground source={COACH_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
+              <ExpoImage source={COACH_IMAGE} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff' }}>{tr.coach_name || 'Sabrina'}</Text>
@@ -298,7 +299,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={{ alignItems: 'center', marginBottom: 20 }}>
                   <View style={{ width: 90, height: 90, borderRadius: 45, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginBottom: 12 }}>
-                    <ImageBackground source={COACH_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
+                    <ExpoImage source={COACH_IMAGE} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
                   </View>
                   <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff' }}>{tr.coach_name || 'Sabrina'}</Text>
                   <Text style={{ fontSize: 13, color: '#AEEF4D', marginTop: 4 }}>{tr.coach_subtitle || 'Experte Pilates · 30 ans d\'expérience'}</Text>
@@ -564,7 +565,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dev_title || 'Développeur'}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
             <View style={{ width: 70, height: 70, borderRadius: 35, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginRight: 14 }}>
-              <ImageBackground source={DEV_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
+              <ExpoImage source={DEV_IMAGE} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff' }}>{tr.dev_name || 'Yvan'}</Text>
@@ -584,7 +585,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={{ alignItems: 'center', marginBottom: 20 }}>
                   <View style={{ width: 90, height: 90, borderRadius: 45, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginBottom: 12 }}>
-                    <ImageBackground source={DEV_IMAGE} resizeMode="cover" style={{ flex: 1 }} />
+                    <ExpoImage source={DEV_IMAGE} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
                   </View>
                   <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff' }}>{tr.dev_name || 'Yvan'}</Text>
                   <Text style={{ fontSize: 13, color: '#AEEF4D', marginTop: 4 }}>{tr.dev_subtitle || 'Fondateur · Ingénieur & Spécialiste Pilates'}</Text>
