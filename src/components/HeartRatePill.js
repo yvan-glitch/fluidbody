@@ -5,9 +5,10 @@
 // onPress is a hook left open for the future "session HR summary" sheet.
 
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, View, Text } from 'react-native';
+import { Animated, Easing, Pressable, View, Text } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { BlurView } from 'expo-blur';
+import GlassView from './ui/GlassView';
+import { GLASS_RADII } from './ui/glassTokens';
 
 const DEFAULT_HRMAX = 180;
 
@@ -86,58 +87,51 @@ export default function HeartRatePill({ bpm, isLive, birthDateIso, onPress, styl
   }, [bpm, isLive, pulse]);
 
   const Wrapper = onPress ? Pressable : View;
-  const content = (
-    <>
-      {Platform.OS === 'ios' && (
-        <BlurView intensity={28} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
-      )}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} pointerEvents="none" />
-      <Animated.View style={{ transform: [{ scale: pulse }] }}>
-        <HeartIcon size={13} color={isLive ? '#FF3B4F' : 'rgba(255,80,90,0.55)'} />
-      </Animated.View>
-      <Text style={{
-        marginLeft: 6,
-        fontSize: 15,
-        fontWeight: '700',
-        color: numberColor,
-        fontVariant: ['tabular-nums'],
-        letterSpacing: -0.3,
-      }}>
-        {bpm != null ? String(bpm) : '—'}
-      </Text>
-      <Text style={{
-        marginLeft: 3,
-        fontSize: 10,
-        fontWeight: '600',
-        color: 'rgba(255,255,255,0.55)',
-        letterSpacing: 0.4,
-      }}>bpm</Text>
-    </>
-  );
-
+  // The pill itself stays a fixed-height glass capsule. We let GlassView
+  // do the blur + specular + bevel + shadow; HeartRatePill just lays out
+  // the heart icon and number row on top.
   return (
     <Wrapper
       onPress={onPress}
       accessibilityLabel={bpm != null ? `${bpm} battements par minute` : 'Fréquence cardiaque indisponible'}
       accessibilityRole={onPress ? 'button' : undefined}
-      style={[{
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 10,
-        height: 30,
-        borderRadius: 15,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.16)',
-        opacity: isLive ? 1 : 0.5,
-        shadowColor: '#000',
-        shadowOpacity: 0.4,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 6,
-      }, style]}
+      style={[{ opacity: isLive ? 1 : 0.5 }, style]}
     >
-      {content}
+      <GlassView
+        intensity={70}
+        tint="dark"
+        borderRadius={GLASS_RADII.pill}
+        highlight
+        bevel
+        elevated
+        contentStyle={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 12,
+          height: 30,
+        }}
+      >
+        <Animated.View style={{ transform: [{ scale: pulse }] }}>
+          <HeartIcon size={13} color={isLive ? '#FF3B4F' : 'rgba(255,80,90,0.55)'} />
+        </Animated.View>
+        <Text style={{
+          marginLeft: 6,
+          fontSize: 15,
+          fontWeight: '700',
+          color: numberColor,
+          fontVariant: ['tabular-nums'],
+          letterSpacing: -0.3,
+        }}>
+          {bpm != null ? String(bpm) : '—'}
+        </Text>
+        <Text style={{
+          marginLeft: 3,
+          fontSize: 10,
+          fontWeight: '600',
+          color: 'rgba(255,255,255,0.55)',
+          letterSpacing: 0.4,
+        }}>bpm</Text>
+      </GlassView>
     </Wrapper>
   );
 }
