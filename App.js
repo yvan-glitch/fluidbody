@@ -247,6 +247,7 @@ function tabBarIconTint(color) {
 }
 
 function CustomTabBar({ state, descriptors, navigation }) {
+  var theme = useTheme().theme;
   var tabCount = state.routes.length;
   var barW = SW - 40;
   var tabW = barW / tabCount;
@@ -288,21 +289,22 @@ function CustomTabBar({ state, descriptors, navigation }) {
     <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: BAR_H, zIndex: 1000 }} {...panResponder.panHandlers}>
       <GlassView
         intensity={80}
-        tint="dark"
         borderRadius={BAR_H / 2}
         elevated
         contentStyle={{ height: BAR_H }}
       >
         {/* Animated focus pill — drawn above the substrate so it sits on top of
-            the specular highlight but under the row of icons. */}
-        <Animated.View pointerEvents="none" style={{ position: 'absolute', top: (BAR_H - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: pillH / 2, backgroundColor: 'rgba(174,239,77,0.18)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.45)', transform: [{ translateX: indicatorX }] }}>
-          <LinearGradient colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', borderTopLeftRadius: pillH / 2, borderTopRightRadius: pillH / 2 }} pointerEvents="none" />
+            the specular highlight but under the row of icons. Substrate
+            picks the brand accent's substrateAccent token so it works on
+            both light and dark glass. */}
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', top: (BAR_H - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: pillH / 2, backgroundColor: theme.glass.substrateAccent, borderWidth: 1, borderColor: theme.colors.accent, transform: [{ translateX: indicatorX }] }}>
+          <LinearGradient colors={theme.glass.highlightColors} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', borderTopLeftRadius: pillH / 2, borderTopRightRadius: pillH / 2 }} pointerEvents="none" />
         </Animated.View>
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
         {state.routes.map(function(route, index) {
           var options = descriptors[route.key].options;
           var isFocused = state.index === index;
-          var color = isFocused ? '#AEEF4D' : 'rgba(255,255,255,0.55)';
+          var color = isFocused ? theme.colors.accentText : theme.colors.textSecondary;
           var onPress = function() {
             var event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);

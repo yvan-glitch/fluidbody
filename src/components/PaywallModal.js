@@ -13,6 +13,7 @@ import {
   GlassPressable,
   GLASS_RADII,
 } from './ui';
+import { useTheme } from '../theme/ThemeProvider';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -56,6 +57,8 @@ function BulletCheck() {
 
 export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore }) {
   var tr = T[lang] || T['fr'];
+  var theme = useTheme().theme;
+  var isLight = theme.mode === 'light';
   var isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   var monthlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.monthly];
   var yearlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.yearly];
@@ -110,9 +113,8 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
       >
         <GlassView
           intensity={60}
-          tint="dark"
           borderRadius={GLASS_RADII.card}
-          substrateColor={active ? 'rgba(174,239,77,0.16)' : 'rgba(20,20,28,0.30)'}
+          substrateColor={active ? theme.glass.substrateAccent : theme.glass.substrate}
           contentStyle={{
             paddingVertical: 14,
             paddingHorizontal: 16,
@@ -123,33 +125,40 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: active ? '#AEEF4D' : '#ffffff', letterSpacing: -0.2 }}>{label}</Text>
-              {sub ? <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(174,239,77,0.85)', marginTop: 4 }}>{sub}</Text> : null}
+              <Text style={{ fontSize: 15, fontWeight: '700', color: active ? theme.colors.accentText : theme.colors.text, letterSpacing: -0.2 }}>{label}</Text>
+              {sub ? <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.accentText, opacity: 0.85, marginTop: 4 }}>{sub}</Text> : null}
             </View>
             <View style={{
               width: 18, height: 18, borderRadius: 9,
               borderWidth: 2,
-              borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.35)',
+              borderColor: active ? theme.colors.accent : theme.colors.textTertiary,
               alignItems: 'center', justifyContent: 'center',
             }}>
-              {active && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#AEEF4D' }} />}
+              {active && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.accent }} />}
             </View>
           </View>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.92)', marginTop: 6 }}>{priceText}</Text>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.text, marginTop: 6 }}>{priceText}</Text>
         </GlassView>
       </GlassPressable>
     );
   }
 
+  // Hero absorber: in dark mode we dip to pitch black so the hero image
+  // bleeds into the page; in light mode we land on the page bg colour to
+  // keep the surrounding glass card legible above it.
+  var heroAbsorber = isLight
+    ? ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.10)', theme.colors.bg]
+    : ['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.55)', '#000000'];
+
   return (
     <Modal visible={!!visible} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
-        <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+        <LinearGradient colors={theme.colors.bgGradient} locations={theme.colors.bgGradientStops} style={StyleSheet.absoluteFill} />
         <LivingBackground />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }} pointerEvents="none">
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, opacity: isLight ? 0.45 : 1 }} pointerEvents="none">
           {BULLES_ONBOARDING.map((b, i) => <Bulle key={`pw-${i}`} {...b} />)}
         </View>
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} pointerEvents="none">
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, opacity: isLight ? 0.6 : 1 }} pointerEvents="none">
           <FloatingMedusas />
         </View>
 
@@ -159,7 +168,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
           <View style={{ width: SW, height: Math.round(SH * 0.42), justifyContent: 'flex-end' }}>
             <ExpoImage source={PILIER_IMAGES.p7} contentFit="cover" cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
             <LinearGradient
-              colors={['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.55)', '#000000']}
+              colors={heroAbsorber}
               locations={[0, 0.55, 1]}
               style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
             />
@@ -172,6 +181,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               <GlassView
                 intensity={70}
                 tint="dark"
+                forceDark
                 borderRadius={17}
                 contentStyle={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }}
               >
@@ -191,7 +201,6 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
           <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
             <GlassCard
               intensity={75}
-              tint="dark"
               borderRadius={GLASS_RADII.cardLg}
               padding={20}
               elevated
@@ -201,7 +210,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 {benefits.map((b, i) => (
                   <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: i === benefits.length - 1 ? 0 : 10 }}>
                     <BulletCheck />
-                    <Text style={{ flex: 1, fontSize: 14, color: 'rgba(255,255,255,0.92)', fontWeight: '500', letterSpacing: -0.1 }}>{b}</Text>
+                    <Text style={{ flex: 1, fontSize: 14, color: theme.colors.text, fontWeight: '500', letterSpacing: -0.1 }}>{b}</Text>
                   </View>
                 ))}
               </View>
@@ -224,19 +233,18 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               >
                 {ctaLabel}
               </GlassButton>
-              <Text style={{ fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.55)', textAlign: 'center', marginTop: 10 }}>{selectedPrice}</Text>
+              <Text style={{ fontSize: 12, fontWeight: '500', color: theme.colors.textSecondary, textAlign: 'center', marginTop: 10 }}>{selectedPrice}</Text>
             </GlassCard>
 
             {disabled && (
               <View style={{ marginTop: 12 }}>
                 <GlassCard
                   intensity={50}
-                  tint="dark"
                   borderRadius={14}
                   padding={12}
-                  substrateColor="rgba(255,200,80,0.10)"
+                  substrateColor="rgba(255,200,80,0.18)"
                 >
-                  <Text style={{ color: 'rgba(255,220,140,0.92)', fontSize: 12, lineHeight: 18, textAlign: 'center' }}>{tr.paywall_not_available}</Text>
+                  <Text style={{ color: isLight ? '#8A6500' : 'rgba(255,220,140,0.92)', fontSize: 12, lineHeight: 18, textAlign: 'center' }}>{tr.paywall_not_available}</Text>
                 </GlassCard>
               </View>
             )}
@@ -261,13 +269,11 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
           <View style={{ marginTop: 18, paddingHorizontal: 16 }}>
             <GlassCard
               intensity={40}
-              tint="dark"
               borderRadius={14}
               padding={14}
-              substrateColor="rgba(0,18,32,0.45)"
               elevated={false}
             >
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.70)', textAlign: 'center', lineHeight: 17 }}>
+              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 17 }}>
                 {tr.paywall_legal || "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période. Le paiement est débité via votre compte Apple. Gérez ou annulez dans Réglages > Apple ID > Abonnements."}
               </Text>
               <GlassPressable
@@ -276,7 +282,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 accessibilityLabel={tr.paywall_privacy_link || 'Politique de confidentialité'}
                 style={{ marginTop: 10, alignSelf: 'center' }}
               >
-                <Text style={{ fontSize: 12, color: '#AEEF4D', textAlign: 'center', textDecorationLine: 'underline', fontWeight: '600' }}>{tr.paywall_privacy_link || 'Politique de confidentialité'}</Text>
+                <Text style={{ fontSize: 12, color: theme.colors.accentText, textAlign: 'center', textDecorationLine: 'underline', fontWeight: '600' }}>{tr.paywall_privacy_link || 'Politique de confidentialité'}</Text>
               </GlassPressable>
             </GlassCard>
           </View>
