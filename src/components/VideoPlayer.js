@@ -7,25 +7,18 @@ import { Video, ResizeMode, Audio } from 'expo-av';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BlurView } from 'expo-blur';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { T } from '../constants/data';
 import { VideoPlaceholderMeduse } from './Meduse';
 import LiquidGlassCapsule from './LiquidGlassCapsule';
 import HeartRatePill from './HeartRatePill';
+import { GlassView, GlassButton, GLASS_RADII, GLASS_EASING, GLASS_DURATIONS } from './ui';
 import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import useLiveHeartRate from '../hooks/useLiveHeartRate';
 
-// ── Optional native modules (safe for Expo Go) ──
-let HapticsMod = null;
-try { HapticsMod = require('expo-haptics'); } catch (e) {}
-
 // ── Small utilities (local copies to avoid circular deps) ──
-
-function hapticSuccess() {
-  if (Platform.OS === 'web' || !HapticsMod) return;
-  try { void HapticsMod.notificationAsync(HapticsMod.NotificationFeedbackType.Success); } catch (e) {}
-}
+// Haptics are fired by GlassButton (FAIT) via `haptic="success"`, so
+// VideoPlayer no longer needs its own expo-haptics safe-require.
 
 function devWarn(...args) {
   if (__DEV__) console.warn('[FluidBody]', ...args);
@@ -174,18 +167,17 @@ function VideoSkip10Icon({ reverse, onPress, bumpTimer }) {
       hitSlop={14}
       style={{ width: SIZE + 12, height: SIZE + 12, alignItems: 'center', justifyContent: 'center' }}
     >
-      <View
-        style={{
-          width: SIZE, height: SIZE, borderRadius: SIZE / 2,
-          borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-          alignItems: 'center', justifyContent: 'center',
-          overflow: 'hidden',
-          shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
-          elevation: 10,
+      <GlassView
+        intensity={45}
+        tint="dark"
+        borderRadius={SIZE / 2}
+        contentStyle={{
+          width: SIZE,
+          height: SIZE,
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.04)' }]} />
         <Svg width={SIZE} height={SIZE} viewBox="0 0 24 24" fill="none" style={{ position: 'absolute' }}>
           {reverse ? (
             <>
@@ -200,7 +192,7 @@ function VideoSkip10Icon({ reverse, onPress, bumpTimer }) {
           )}
         </Svg>
         <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff', letterSpacing: -0.3, marginTop: 1 }}>10</Text>
-      </View>
+      </GlassView>
     </Pressable>
   );
 }
@@ -261,6 +253,9 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   const [dims, setDims] = useState(Dimensions.get('window'));
   const playScale = useRef(new Animated.Value(1)).current;
   const doneScale = useRef(new Animated.Value(1)).current;
+  // Apple-curve opacity for the full controls overlay. Driven by `showControls`,
+  // animated separately so we can fade rather than hard-toggle.
+  const controlsOpacity = useRef(new Animated.Value(0)).current;
   const [videoLoadFailed, setVideoLoadFailed] = useState(false);
   const [videoResetKey, setVideoResetKey] = useState(0);
   const [titre, duree, etape, videoFlag] = seance;
@@ -373,6 +368,18 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     if (controlsTimer.current) clearTimeout(controlsTimer.current);
     setShowControls(false);
   }
+
+  // Drive the controls overlay opacity with the Apple symmetric easing curve.
+  // We keep the mount-state `showControls` separate from the opacity so that
+  // taps on the dim layer still register during the fade.
+  useEffect(function() {
+    Animated.timing(controlsOpacity, {
+      toValue: showControls ? 1 : 0,
+      duration: GLASS_DURATIONS.fast,
+      easing: GLASS_EASING,
+      useNativeDriver: true,
+    }).start();
+  }, [showControls]);
 
   function bumpTimer() {
     if (hasRealVideo) scheduleHide();
@@ -752,7 +759,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
       )}
 
       {!videoLoadFailed && showControls && (
-        <>
+        <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFillObject, { opacity: controlsOpacity }]}>
           <Pressable style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)' }]} onPress={hideControls} android_ripple={null} />
           <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
             {/* Top-left : X + PiP/fullscreen — capsule Liquid Glass */}
@@ -811,25 +818,20 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                   accessibilityLabel={status.isPlaying ? 'Pause' : 'Lecture'}
                   accessibilityRole="button"
                 >
-                  <Animated.View style={{
-                    width: 72,
-                    height: 72,
-                    borderRadius: 36,
-                    overflow: 'hidden',
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.15)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    shadowColor: '#000',
-                    shadowOpacity: 0.45,
-                    shadowRadius: 16,
-                    shadowOffset: { width: 0, height: 4 },
-                    elevation: 12,
-                    transform: [{ scale: playScale }],
-                  }}>
-                    <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
-                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.04)' }]} />
-                    <VideoPlayPauseIcon playing={!!status.isPlaying} size={32} />
+                  <Animated.View style={{ transform: [{ scale: playScale }] }}>
+                    <GlassView
+                      intensity={55}
+                      tint="dark"
+                      borderRadius={36}
+                      contentStyle={{
+                        width: 72,
+                        height: 72,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <VideoPlayPauseIcon playing={!!status.isPlaying} size={32} />
+                    </GlassView>
                   </Animated.View>
                 </Pressable>
                 <VideoSkip10Icon
@@ -846,17 +848,27 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingBottom: 32, paddingHorizontal: 20 }} pointerEvents="box-none">
               {hasRealVideo && (
                 <View style={{ alignItems: 'flex-end', marginBottom: 10 }}>
-                  <TouchableOpacity onPress={cyclePlaybackRate} hitSlop={10} style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
-                    <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
-                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.04)' }]} />
-                    {playbackRate === 1.0 ? (
-                      <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                        <Path d="M12 3 a9 9 0 1 1 -6.4 2.6" stroke="#FFFFFF" strokeWidth={1.6} strokeLinecap="round" fill="none" />
-                        <Path d="M12 12 L7 7" stroke="#FFFFFF" strokeWidth={1.6} strokeLinecap="round" fill="none" />
-                      </Svg>
-                    ) : (
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#FFFFFF' }}>{playbackRate}x</Text>
-                    )}
+                  <TouchableOpacity onPress={cyclePlaybackRate} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Vitesse de lecture ${playbackRate}x`}>
+                    <GlassView
+                      intensity={45}
+                      tint="dark"
+                      borderRadius={16}
+                      contentStyle={{
+                        width: 32,
+                        height: 32,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {playbackRate === 1.0 ? (
+                        <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                          <Path d="M12 3 a9 9 0 1 1 -6.4 2.6" stroke="#FFFFFF" strokeWidth={1.6} strokeLinecap="round" fill="none" />
+                          <Path d="M12 12 L7 7" stroke="#FFFFFF" strokeWidth={1.6} strokeLinecap="round" fill="none" />
+                        </Svg>
+                      ) : (
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#FFFFFF' }}>{playbackRate}x</Text>
+                      )}
+                    </GlassView>
                   </TouchableOpacity>
                 </View>
               )}
@@ -880,8 +892,20 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                 </View>
               )}
               {hasRealVideo && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: '#ffffff', minWidth: 44 }}>{formatTimeCode(status.positionMillis)}</Text>
+                <GlassView
+                  intensity={50}
+                  tint="dark"
+                  borderRadius={GLASS_RADII.button}
+                  style={{ marginBottom: 16 }}
+                  contentStyle={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: '#ffffff', minWidth: 44, fontVariant: ['tabular-nums'] }}>{formatTimeCode(status.positionMillis)}</Text>
                   <Pressable
                     accessibilityLabel="Barre de progression de la vidéo"
                     accessibilityRole="adjustable"
@@ -898,80 +922,41 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                       <View style={{ width: (progress * 100) + '%', height: '100%', backgroundColor: '#ffffff' }} />
                     </View>
                   </Pressable>
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: '#ffffff', minWidth: 44, textAlign: 'right' }}>{formatRemaining(status.positionMillis, status.durationMillis)}</Text>
-                </View>
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: '#ffffff', minWidth: 44, textAlign: 'right', fontVariant: ['tabular-nums'] }}>{formatRemaining(status.positionMillis, status.durationMillis)}</Text>
+                </GlassView>
               )}
-              {(progress >= 0.8 || !hasRealVideo || elapsedSec >= 60) && <Pressable
-                onPress={() => {
-                  bumpTimer();
-                  hapticSuccess();
-                  Animated.sequence([
-                    Animated.timing(doneScale, { toValue: 0.97, duration: 60, useNativeDriver: true }),
-                    Animated.spring(doneScale, { toValue: 1, friction: 4, tension: 280, useNativeDriver: true }),
-                  ]).start();
-                  completedRef.current = true;
-                  if (pilier?.key != null && seanceIndex != null) clearVideoResume(pilier.key, seanceIndex);
-                  saveExerciseTime(getElapsedMinutes());
-                  onComplete();
-                }}
-                style={{ alignSelf: 'stretch' }}
-              >
-                <Animated.View style={{
-                  borderRadius: 24,
-                  overflow: 'hidden',
-                  borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.26)',
-                  transform: [{ scale: doneScale }],
-                  shadowColor: '#000',
-                  shadowOpacity: Platform.OS === 'ios' ? 0.18 : 0.12,
-                  shadowRadius: 10,
-                  shadowOffset: { width: 0, height: 3 },
-                  elevation: Platform.OS === 'android' ? 5 : 0,
-                }}>
-                  {Platform.OS === 'web' ? (
-                    <View style={{
-                      height: 48,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      paddingHorizontal: 16,
-                      backgroundColor: 'rgba(255,255,255,0.06)',
-                    }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff', letterSpacing: 2, textTransform: 'uppercase' }}>
-                        {tr.seance_done}
-                      </Text>
-                    </View>
-                  ) : (
-                    <BlurView
-                      intensity={Platform.OS === 'ios' ? 14 : 10}
-                      tint="dark"
-                      style={{
-                        height: 48,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        paddingHorizontal: 16,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          fontWeight: '700',
-                          color: '#fff',
-                          letterSpacing: 2,
-                          textTransform: 'uppercase',
-                          textShadowColor: 'rgba(0,0,0,0.55)',
-                          textShadowOffset: { width: 0, height: 1 },
-                          textShadowRadius: 5,
-                        }}
-                      >
-                        {tr.seance_done}
-                      </Text>
-                    </BlurView>
-                  )}
+              {(progress >= 0.8 || !hasRealVideo || elapsedSec >= 60) && (
+                <Animated.View style={{ transform: [{ scale: doneScale }] }}>
+                  <GlassButton
+                    variant="accent"
+                    size="lg"
+                    haptic="success"
+                    accessibilityLabel={tr.seance_done}
+                    onPress={() => {
+                      bumpTimer();
+                      Animated.sequence([
+                        Animated.timing(doneScale, { toValue: 0.97, duration: 60, useNativeDriver: true }),
+                        Animated.spring(doneScale, { toValue: 1, friction: 4, tension: 280, useNativeDriver: true }),
+                      ]).start();
+                      completedRef.current = true;
+                      if (pilier?.key != null && seanceIndex != null) clearVideoResume(pilier.key, seanceIndex);
+                      saveExerciseTime(getElapsedMinutes());
+                      onComplete();
+                    }}
+                    textStyle={{
+                      fontSize: 14,
+                      letterSpacing: 2,
+                      textTransform: 'uppercase',
+                      fontWeight: '700',
+                    }}
+                  >
+                    {tr.seance_done}
+                  </GlassButton>
                 </Animated.View>
-              </Pressable>}
+              )}
             </View>
           </View>
-        </>
+        </Animated.View>
       )}
     </View>
   );
