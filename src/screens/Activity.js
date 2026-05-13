@@ -21,7 +21,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, Animated, Easing, RefreshControl,
-  Dimensions, StyleSheet, Platform, Modal, TextInput,
+  Dimensions, useWindowDimensions, StyleSheet, Platform, Modal, TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Polyline } from 'react-native-svg';
@@ -37,6 +37,7 @@ import Confetti from '../components/Confetti';
 import ActivityRings, { MiniActivityRings, RING_COLORS } from '../components/ActivityRings';
 import healthkit from '../utils/healthkit';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
+import { tabletContentStyle, TABLET_BREAKPOINT } from '../utils/responsive';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -134,8 +135,11 @@ function MetricRow({ icon, label, value, sub, color }) {
 }
 
 // ───────── Sparkline ─────────
-function Sparkline({ data, color, max, height = 36 }) {
-  const width = SW - 80;
+// width prop lets the parent override the static module-level fallback so
+// the sparkline tracks the centered content column on iPad. Falls back to
+// SW-80 if no width is provided (legacy callers, phone layout).
+function Sparkline({ data, color, max, height = 36, width: widthProp }) {
+  const width = widthProp || (SW - 80);
   const n = data.length;
   if (n < 2) return <View style={{ width, height }} />;
   const ceil = Math.max(max, 1, ...data);
@@ -275,6 +279,12 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
   const themeCtx = useTheme();
   const theme = themeCtx.theme;
   const colors = theme.colors;
+  // iPad: cap the scrollable content column and center it. Background
+  // (gradient, bubbles, medusas) keeps covering the full screen.
+  const winW = useWindowDimensions().width;
+  const contentCap = tabletContentStyle(winW, 560);
+  const ringSize = Math.min(300, (contentCap ? 520 : winW) - 60);
+  const sparkWidth = (contentCap ? 520 : winW) - 80;
 
   const [selectedDate, setSelectedDate] = useState(function () { return new Date(); });
   const dateKey = useMemo(function () { return dayKeyFromDate(selectedDate); }, [selectedDate]);
@@ -505,6 +515,7 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
         refreshControl={<RefreshControl tintColor={colors.text} refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
+       <View style={contentCap}>
         {/* Header: title + date stepper + streak */}
         <View style={{ paddingHorizontal: 22, marginBottom: 18 }}>
           <Text style={{ fontSize: 30, fontWeight: '800', color: colors.text, letterSpacing: -0.5 }}>
@@ -566,7 +577,7 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
         {/* Hero — three rings */}
         <View style={{ alignItems: 'center', marginBottom: 12 }}>
           <ActivityRings
-            size={Math.min(300, SW - 60)}
+            size={ringSize}
             strokeWidth={22}
             values={{ move: summary.moveKcal, exercise: summary.exerciseMin, stand: summary.standHours }}
             goals={goals}
@@ -696,7 +707,7 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
                       {Math.round(t.data.reduce(function (s, v) { return s + v; }, 0) / Math.max(1, t.data.length))} {t.label === (tr.activity_ring_move || 'Move') ? (tr.activity_unit_kcal || 'kcal') : t.label === (tr.activity_ring_exercise || 'Exercise') ? (tr.activity_unit_min || 'min') : (tr.activity_unit_hrs || 'hrs')}
                     </Text>
                   </View>
-                  <Sparkline data={t.data} color={t.color} max={t.max} />
+                  <Sparkline data={t.data} color={t.color} max={t.max} width={sparkWidth} />
                 </View>
               );
             })}
@@ -709,6 +720,7 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
             {tr.activity_goals_btn || 'Edit my goals'}
           </GlassButton>
         </View>
+       </View>
       </ScrollView>
 
       <RingDetailSheet
