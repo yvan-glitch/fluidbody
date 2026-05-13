@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, ScrollView, Share, Alert, Modal, Dimensions, TextInput, Platform } from 'react-native';
+import { Text, StyleSheet, View, TouchableOpacity, ScrollView, Share, Alert, Modal, Dimensions, useWindowDimensions, TextInput, Platform } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import GlassButton from '../components/GlassButton';
 import { GlassCard, GlassView, GLASS_RADII } from '../components/ui';
@@ -15,6 +15,7 @@ import { T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, FloatingMedusas, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import { getPiliers } from '../utils';
+import { tabletContentStyle } from '../utils/responsive';
 
 const COACH_IMAGE = require('../../assets/coach.jpg');
 const DEV_IMAGE = require('../../assets/yvan.webp');
@@ -41,6 +42,11 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var theme = themeCtx.theme;
   var setThemeMode = themeCtx.setMode;
   var themeMode = themeCtx.mode;
+  // iPad: cap the scrollable column so settings rows don't stretch
+  // ridiculously wide and feel desktop-y. Background still covers the
+  // full screen.
+  var winW = useWindowDimensions().width;
+  var contentCap = tabletContentStyle(winW, 560);
   // Section title accent colour — green on dark glass, the deeper accent
   // text token on light glass. Used by the small caps headings of each
   // settings section.
@@ -272,6 +278,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
       </View>
       <FloatingMedusas />
       <ScrollView contentContainerStyle={{ paddingTop: 62, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+       <View style={contentCap}>
         {!supaUser && onCreateAccount && (
           <TouchableOpacity
             onPress={onCreateAccount}
@@ -886,6 +893,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             </TouchableOpacity>
           </View>
         )}
+       </View>
       </ScrollView>
 
       <Modal visible={coachModeVisible} transparent animationType="fade" statusBarTranslucent onRequestClose={function() { setCoachModeVisible(false); }}>
