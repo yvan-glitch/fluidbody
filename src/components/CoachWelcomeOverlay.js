@@ -29,9 +29,18 @@ const STORAGE_KEY = 'fluid_coach_welcome_seen';
 let HapticsMod = null;
 try { HapticsMod = require('expo-haptics'); } catch (e) {}
 
+let _safeFire = null;
+try { _safeFire = require('../utils/safeNativeCall').safeNativeFire; } catch (e) {}
+
 function hapticSoft() {
   if (Platform.OS === 'web' || !HapticsMod) return;
-  try { HapticsMod.impactAsync(HapticsMod.ImpactFeedbackStyle.Soft); } catch (e) {}
+  if (_safeFire) {
+    _safeFire('haptic.impactSoft.coachWelcome', function() {
+      return HapticsMod.impactAsync(HapticsMod.ImpactFeedbackStyle.Soft);
+    });
+  } else {
+    try { HapticsMod.impactAsync(HapticsMod.ImpactFeedbackStyle.Soft); } catch (e) {}
+  }
 }
 
 // Three-beat copy: title, then a coach quote, then a small action prompt.
