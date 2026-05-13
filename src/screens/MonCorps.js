@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, TextInput, Share } from 'react-native';
+import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, useWindowDimensions, Modal, Platform, TextInput, Share } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -19,6 +19,7 @@ import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from '../utils';
+import { tabletContentStyle } from '../utils/responsive';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
@@ -794,6 +795,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   var tr = T[lang] || T["fr"];
   var theme = useTheme().theme;
   var navigation = useNavigation();
+  // iPad: cap the scrollable column under the tab bar so seance cards
+  // don't stretch laid out. Background bubbles/rayons/medusas still
+  // cover the full screen (and an extra column of bubbles is rendered
+  // on iPad via the IS_IPAD module constant).
+  var mcWinW = useWindowDimensions().width;
+  var mcContentCap = tabletContentStyle(mcWinW, 580);
   var [openPilier, setOpenPilier] = useState(null);
   var [openInitialIdx, setOpenInitialIdx] = useState(null);
   var [mcTab, setMcTab] = useState('pour_vous');
@@ -936,6 +943,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         contentContainerStyle={{ paddingTop: 190, paddingBottom: 110, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
       >
+       <View style={mcContentCap}>
         {mcTab === 'explorer' && sdj && (
           <TouchableOpacity onPress={function() { if (onTryFreeSession) onTryFreeSession(); }} activeOpacity={0.9} style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#AEEF4D' }}>
             <View style={{ height: 110 }}>
@@ -1497,6 +1505,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             </View>
           );
         })()}
+       </View>
       </ScrollView>
       {openPilier && (
         <PilierPanel pilier={openPilier} done={done[openPilier.key] || Array(20).fill(false)} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); setOpenInitialIdx(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} saveHealthKitWorkout={saveHealthKitWorkout} initialSeanceIdx={openInitialIdx} />
