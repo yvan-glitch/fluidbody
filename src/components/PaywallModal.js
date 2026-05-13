@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, Modal, Alert, Dimensions, Linking, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, ScrollView, Modal, Alert, Dimensions, useWindowDimensions, Linking, StyleSheet, Animated, Easing } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedPlus from './AnimatedPlus';
@@ -14,6 +14,7 @@ import {
   GLASS_RADII,
 } from './ui';
 import { useTheme } from '../theme/ThemeProvider';
+import { tabletContentStyle, TABLET_BREAKPOINT } from '../utils/responsive';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -199,6 +200,14 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   const [selected, setSelected] = useState('yearly');
   const selectedPrice = selected === 'yearly' ? yearlyDisplay : monthlyDisplay;
   const liveMembers = useMemo(liveMembersGuess, []);
+  // iPad: cap the centre card column to a phone-feel width. Hero stays
+  // full-width edge-to-edge; only the content under the hero centers.
+  const winDims = useWindowDimensions();
+  const winW = winDims.width;
+  const winH = winDims.height;
+  const contentCap = tabletContentStyle(winW, 560);
+  // Hero height — base off live height so rotation re-evaluates.
+  const heroHeight = Math.round(winH * (winW >= TABLET_BREAKPOINT ? 0.38 : 0.42));
   const testimonials = Array.isArray(tr.paywall_testimonials) ? tr.paywall_testimonials : null;
   const compareFeatures = Array.isArray(tr.paywall_compare_features) ? tr.paywall_compare_features : null;
 
@@ -297,7 +306,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
         <ScrollView style={{ zIndex: 2 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
           {/* Hero — image plein écran avec dégradé d'absorption sur le bas */}
-          <View style={{ width: SW, height: Math.round(SH * 0.42), justifyContent: 'flex-end' }}>
+          <View style={{ width: winW, height: heroHeight, justifyContent: 'flex-end' }}>
             <ExpoImage source={PILIER_IMAGES.p7} contentFit="cover" cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
             <LinearGradient
               colors={heroAbsorber}
@@ -337,7 +346,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
           </View>
 
           {/* Carte centrale — c'est l'élément qui doit "respirer" Liquid Glass */}
-          <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
+          <View style={[{ paddingHorizontal: 16, paddingTop: 20 }, contentCap]}>
             <GlassCard
               intensity={75}
               borderRadius={GLASS_RADII.cardLg}
@@ -424,7 +433,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
           </View>
 
           {/* "Restaurer mes achats" — lien discret en bas */}
-          <View style={{ paddingHorizontal: 60, marginTop: 22 }}>
+          <View style={[{ paddingHorizontal: 60, marginTop: 22 }, contentCap]}>
             <GlassButton
               onPress={onRestore}
               disabled={disabled}
@@ -439,7 +448,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
           </View>
 
           {/* Légales — petite carte glass quasi-transparente, sans bevel pour rester discrète */}
-          <View style={{ marginTop: 18, paddingHorizontal: 16 }}>
+          <View style={[{ marginTop: 18, paddingHorizontal: 16 }, contentCap]}>
             <GlassCard
               intensity={40}
               borderRadius={14}
