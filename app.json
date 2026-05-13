@@ -3,7 +3,7 @@
     "name": "FluidBody+",
     "slug": "fluidbody",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
@@ -14,6 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
+      "requireFullScreen": false,
       "bundleIdentifier": "com.ytissot.fluidbody",
       "usesAppleSignIn": true,
       "infoPlist": {
