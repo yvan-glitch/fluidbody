@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, ScrollView, TextInput, Dimensions, Modal } from 'react-native';
+import { Text, StyleSheet, View, TouchableOpacity, ScrollView, TextInput, Dimensions, useWindowDimensions, Modal } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Ellipse, Line, Rect } from 'react-native-svg';
@@ -12,6 +12,7 @@ import LivingBackground from '../components/LivingBackground';
 import TheorieDetailScreen from './TheorieDetailScreen';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import { getPiliers, getSeances } from '../utils';
+import { gridColsForWidth } from '../utils/responsive';
 
 const PROGRAM_IMAGES = {
   f1: require('../../assets/programs/reveil-matinal.jpg'),
@@ -361,9 +362,12 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
     </>
   );
 
+  const winWidth = useWindowDimensions().width;
   const cardGap = 12;
   const gridPadding = 20;
-  const cardWidth = (SCREEN_WIDTH - gridPadding * 2 - cardGap) / 2;
+  // 2 cols on phone, 3 on iPad (≥768), 4 on large iPad (≥1100).
+  const gridCols = gridColsForWidth(winWidth);
+  const cardWidth = (winWidth - gridPadding * 2 - cardGap * (gridCols - 1)) / gridCols;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
@@ -483,7 +487,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
           <View style={{
             flexDirection: 'row',
             flexWrap: 'wrap',
-            justifyContent: 'space-between',
+            justifyContent: 'flex-start',
             gap: cardGap,
           }}>
             {fiches.map((f, i) => (
@@ -555,7 +559,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
           <View style={{
             flexDirection: 'row',
             flexWrap: 'wrap',
-            justifyContent: 'space-between',
+            justifyContent: 'flex-start',
             gap: cardGap,
           }}>
             {theoryByPilier.map(({ pilier, items }, i) => (
