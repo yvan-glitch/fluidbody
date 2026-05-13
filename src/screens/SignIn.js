@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Alert, Animated, Easing, Dimensions, StyleSheet, Linking as RNLinking } from 'react-native';
+import { Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Alert, Animated, Easing, Dimensions, useWindowDimensions, StyleSheet, Linking as RNLinking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { T } from '../constants/data';
@@ -7,6 +7,7 @@ import { Bulle, Meduse, MeduseCornerIcon, BULLES_ONBOARDING } from '../component
 import AnimatedPlus from '../components/AnimatedPlus';
 import GlassButton from '../components/GlassButton';
 import LivingBackground from '../components/LivingBackground';
+import { tabletContentStyle, TABLET_BREAKPOINT } from '../utils/responsive';
 
 let AppleAuth = null;
 try { AppleAuth = require('expo-apple-authentication'); } catch(e) {}
@@ -15,6 +16,11 @@ const { width: SW, height: SH } = Dimensions.get('window');
 
 export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, onSwitchToSignUp, onSkip }) {
   const tr = T[lang] || T.fr;
+  // iPad: keep the form column to a phone-feel width. Background medusas
+  // and bubbles still cover the full screen for ambient effect.
+  const winDims = useWindowDimensions();
+  const winW = winDims.width;
+  const contentCap = tabletContentStyle(winW, 520);
   const [email, setEmail] = useState(prefillEmail || '');
   const [password, setPassword] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
@@ -164,7 +170,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
         );
       })}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 30 }}>
-        <View style={{ paddingHorizontal: 28, paddingBottom: 32, paddingTop: 16, backgroundColor: 'rgba(0,14,24,0.55)' }}>
+        <View style={[{ paddingHorizontal: 28, paddingBottom: 32, paddingTop: 16, backgroundColor: 'rgba(0,14,24,0.55)' }, contentCap]}>
           {appleAvailable ? (
             <GlassButton
               onPress={handleAppleSignIn}
