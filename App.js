@@ -1,7 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState, KeyboardAvoidingView, PanResponder, Share } from 'react-native';
+import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, useWindowDimensions, Alert, Modal, Platform, AppState, KeyboardAvoidingView, PanResponder, Share } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Image as ExpoImage } from 'expo-image';
@@ -258,7 +258,13 @@ function tabBarIconTint(color) {
 function CustomTabBar({ state, descriptors, navigation }) {
   var theme = useTheme().theme;
   var tabCount = state.routes.length;
-  var barW = SW - 40;
+  // useWindowDimensions so the bar re-layouts on iPad rotation / split-view.
+  // On tablets we cap the bar width to 520 and center it — full-width across
+  // a 13" iPad reads as oversized.
+  var winWidth = useWindowDimensions().width;
+  var TAB_BAR_MAX_W = 520;
+  var barW = winWidth >= 768 ? Math.min(TAB_BAR_MAX_W, winWidth - 40) : winWidth - 40;
+  var sideInset = (winWidth - barW) / 2;
   var tabW = barW / tabCount;
   var pad = 5;
   var pillW = tabW - pad * 2;
@@ -271,7 +277,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
   useEffect(function() {
     currentIdx.current = state.index;
     Animated.spring(indicatorX, { toValue: state.index * tabW + pad, useNativeDriver: true, damping: 18, stiffness: 180, mass: 0.8 }).start();
-  }, [state.index]);
+  }, [state.index, tabW]);
 
   var panResponder = useRef(PanResponder.create({
     onStartShouldSetPanResponder: function() { return true; },
@@ -295,7 +301,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
   })).current;
 
   return (
-    <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: BAR_H, zIndex: 1000 }} {...panResponder.panHandlers}>
+    <View style={{ position: 'absolute', bottom: 24, left: sideInset, width: barW, height: BAR_H, zIndex: 1000 }} {...panResponder.panHandlers}>
       <GlassView
         intensity={80}
         borderRadius={BAR_H / 2}
