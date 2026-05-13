@@ -24,7 +24,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, TextInput, Animated, Easing,
-  StyleSheet, Dimensions, Platform, KeyboardAvoidingView, Modal,
+  StyleSheet, Dimensions, useWindowDimensions, Platform, KeyboardAvoidingView, Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,6 +37,7 @@ import LivingBackground from '../components/LivingBackground';
 import { Bulle, BULLES_ONBOARDING, MeduseCornerIcon } from '../components/Meduse';
 import healthkit from '../utils/healthkit';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
+import { tabletContentStyle } from '../utils/responsive';
 
 let DateTimePicker = null;
 try { DateTimePicker = require('@react-native-community/datetimepicker').default; } catch (e) {}
@@ -164,6 +165,10 @@ function Slider({ min, max, value, onChange, color, hairline, label, unit }) {
 }
 
 export default function ProfileOnboardingScreen({ lang, initialData, supaUser, onDone, onClose, ctaLabel }) {
+  // iPad: cap each step's content to a 540px column so headlines, sliders
+  // and segmented choices stay readable instead of stretching laid out.
+  const _winW = useWindowDimensions().width;
+  const _contentCap = tabletContentStyle(_winW, 540);
   const tr = T[lang] || T.fr;
   const themeCtx = useTheme();
   const theme = themeCtx.theme;
@@ -423,7 +428,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
       </View>
 
       {/* Header bar — back chevron + progress pills + step count */}
-      <View style={{ paddingTop: 12 + insets.top, paddingHorizontal: 20, marginBottom: 14 }}>
+      <View style={[{ paddingTop: 12 + insets.top, paddingHorizontal: 20, marginBottom: 14 }, _contentCap]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
           <Pressable onPress={back} hitSlop={12} style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.glass.substrate, opacity: step === 0 && !onClose ? 0.0 : 1.0 }} disabled={step === 0 && !onClose}>
             <ChevronLeft color={colors.text} />
@@ -444,7 +449,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View style={{ opacity: stepO, transform: [{ translateY: stepY }] }}>
+          <Animated.View style={[{ opacity: stepO, transform: [{ translateY: stepY }] }, _contentCap]}>
             <Text style={{ fontSize: 28, fontWeight: '800', color: colors.text, letterSpacing: -0.5, marginBottom: 8, marginTop: 4 }}>
               {config.title}
             </Text>
@@ -651,8 +656,10 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
           </Animated.View>
         </ScrollView>
 
-        {/* Sticky CTA */}
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 22, paddingBottom: 18 + insets.bottom, paddingTop: 10 }}>
+        {/* Sticky CTA — capped to the same content column on iPad so the
+            button doesn't span a 13" Pro and detach from the form above. */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 22, paddingBottom: 18 + insets.bottom, paddingTop: 10, alignItems: 'center' }}>
+         <View style={_contentCap}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
             <View style={{ flex: 1 }} />
             {savingState === 'saving' ? <Text style={{ fontSize: 11, color: colors.textSecondary }}>{tr.onb_saving || 'Saving…'}</Text> : null}
@@ -669,6 +676,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
               ? (ctaLabel || tr.onb_finish || 'Finish')
               : (tr.onb_next || 'Next')}
           </GlassButton>
+         </View>
         </View>
       </KeyboardAvoidingView>
 
