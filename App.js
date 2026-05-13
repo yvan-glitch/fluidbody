@@ -106,6 +106,7 @@ import {
   scheduleMilestoneReward,
 } from './src/utils/notifications';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
+import { safeNativeCall, safeNativeFire, diag } from './src/utils/safeNativeCall';
 import { LogBox } from 'react-native';
 
 // ─── GLOBAL ERROR HANDLER (PROD ONLY) ─────────────────────────────────────────
@@ -1183,9 +1184,9 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
 // NOTIFICATIONS
 // ══════════════════════════════════
 if (Notifications) {
-  try {
+  safeNativeFire('notif.setNotificationHandler', function() {
     Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false }) });
-  } catch(e) {}
+  });
 }
 
 // expo-notifications 0.32 + iOS 26.5: l'ancien format de trigger
@@ -1209,9 +1210,9 @@ async function setupNotifications(lang = 'fr') {
   try {
     if (!Notifications || !Device) return;
     if (!Device.isDevice) return;
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status !== 'granted') return;
-    try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (e) { sentryCapture(e, { where: 'setupNotifications.cancelAll' }); }
+    const perm = await safeNativeCall('notif.requestPermissionsAsync', function() { return Notifications.requestPermissionsAsync(); }, null);
+    if (!perm || perm.status !== 'granted') return;
+    await safeNativeCall('notif.cancelAllScheduled', function() { return Notifications.cancelAllScheduledNotificationsAsync(); }, null);
     const tr = T[lang] || T['fr'];
     // Adaptive default: if the user never set a custom hour, lean on the
     // 14-day session-hour median (falls back to 18h when we don't have
@@ -1223,33 +1224,33 @@ async function setupNotifications(lang = 'fr') {
     var pauseEnabled = (await AsyncStorage.getItem('fluid_notif_pause_enabled')) !== 'false';
     var quoteEnabled = (await AsyncStorage.getItem('fluid_quote_enabled')) !== 'false';
     var quoteHour = parseInt(await AsyncStorage.getItem('fluid_quote_hour')) || 8;
-    try {
-      await Notifications.scheduleNotificationAsync({ content: { title: tr.notif_title, body: tr.notif_body, sound: true }, trigger: _trigDaily(savedHour, 0) });
-    } catch (e) { sentryCapture(e, { where: 'setupNotifications.dailyMain', hour: savedHour }); }
+    await safeNativeCall('notif.schedule.dailyMain', function() {
+      return Notifications.scheduleNotificationAsync({ content: { title: tr.notif_title, body: tr.notif_body, sound: true }, trigger: _trigDaily(savedHour, 0) });
+    }, null);
     // Phrase du jour — Sabrina : rotation quotidienne, re-schedulée à chaque ouverture
     if (quoteEnabled) {
       var quotes = SABRINA_QUOTES[lang] || SABRINA_QUOTES['fr'];
       if (quotes && quotes.length) {
         var d = new Date();
         var idx = (d.getDate() + d.getMonth() * 31) % quotes.length;
-        try {
-          await Notifications.scheduleNotificationAsync({
+        await safeNativeCall('notif.schedule.quote', function() {
+          return Notifications.scheduleNotificationAsync({
             content: { title: tr.notif_quote_title || 'Phrase du jour', body: quotes[idx], sound: false },
             trigger: _trigDaily(quoteHour, 0),
           });
-        } catch (e) { sentryCapture(e, { where: 'setupNotifications.quote', hour: quoteHour }); }
+        }, null);
       }
     }
     // Pause Active — Office : toutes les heures 9h-18h en semaine
     if (pauseEnabled) {
       for (var h = 9; h <= 17; h++) {
         for (var wd = 2; wd <= 6; wd++) {
-          try {
-            await Notifications.scheduleNotificationAsync({
+          await safeNativeCall('notif.schedule.pause', (function(wd_, h_) { return function() {
+            return Notifications.scheduleNotificationAsync({
               content: { title: tr.notif_pause_title || 'Pause Active', body: tr.notif_pause_body || 'C\'est le moment de bouger ! 5 min d\'étirements au bureau.', sound: true },
-              trigger: _trigWeekly(wd, h, 0),
+              trigger: _trigWeekly(wd_, h_, 0),
             });
-          } catch (e) { sentryCapture(e, { where: 'setupNotifications.pause', weekday: wd, hour: h }); }
+          }; })(wd, h), null);
         }
       }
     }
@@ -1261,19 +1262,21 @@ async function sendWelcomeNotification(prenom, lang = 'fr') {
     if (!Notifications || !Device || !Device.isDevice) return;
     const WELCOME_KEY = 'fluid_welcome_notif_sent';
     if (await AsyncStorage.getItem(WELCOME_KEY)) return;
-    const { status } = await Notifications.getPermissionsAsync();
-    var granted = status === 'granted';
+    const perm = await safeNativeCall('notif.getPermissionsAsync.welcome', function() { return Notifications.getPermissionsAsync(); }, null);
+    var granted = perm && perm.status === 'granted';
     if (!granted) {
-      const req = await Notifications.requestPermissionsAsync();
-      granted = req.status === 'granted';
+      const req = await safeNativeCall('notif.requestPermissionsAsync.welcome', function() { return Notifications.requestPermissionsAsync(); }, null);
+      granted = req && req.status === 'granted';
     }
     if (!granted) return;
     const tr = T[lang] || T['fr'];
     const body = typeof tr.notif_welcome_body === 'function' ? tr.notif_welcome_body(prenom) : tr.notif_welcome_body;
-    await Notifications.scheduleNotificationAsync({
-      content: { title: tr.notif_welcome_title, body: body, sound: true },
-      trigger: _trigTimeInterval(3, false),
-    });
+    await safeNativeCall('notif.schedule.welcome', function() {
+      return Notifications.scheduleNotificationAsync({
+        content: { title: tr.notif_welcome_title, body: body, sound: true },
+        trigger: _trigTimeInterval(3, false),
+      });
+    }, null);
     await AsyncStorage.setItem(WELCOME_KEY, '1');
   } catch(e) { sentryCapture(e, { where: 'sendWelcomeNotification' }); }
 }
@@ -1289,6 +1292,7 @@ const STREAK_DATE_KEY = 'fluid_streak_seance_last_date';
 // MAIN APP
 // ══════════════════════════════════
 function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChange }) {
+  diag('MainApp.render', 'enter');
   const tr = T[lang] || T['fr'];
   const [done, setDone] = useState({
     p1: Array(20).fill(false), p2: Array(20).fill(false), p3: Array(20).fill(false),
@@ -1331,7 +1335,18 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     return function() { cancelled = true; };
   }, []);
 
-  useEffect(function() { try { initHealthKit(); } catch (e) { if (__DEV__) console.warn('initHealthKit throw:', e); } }, []);
+  useEffect(function() {
+    // Defer HK init by ~400ms so it doesn't compete with the mount-time
+    // RC + notification burst (which themselves are deferred 800ms). HK is
+    // already proven stable post-Kingstinct migration but we keep it off
+    // the first paint to be safe.
+    diag('mainapp.initHealthKit.deferred', 'scheduled');
+    var hkTimer = setTimeout(function() {
+      diag('mainapp.initHealthKit.deferred', 'fired');
+      try { initHealthKit(); } catch (e) { if (__DEV__) console.warn('initHealthKit throw:', e); }
+    }, 400);
+    return function() { try { clearTimeout(hkTimer); } catch (e) {} };
+  }, []);
 
   const rcSupported = Platform.OS === 'ios';
   const rcDisabled = !Purchases || !rcSupported || (Device && Device.isDevice === false);
@@ -1349,49 +1364,36 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   }
 
   async function refreshCustomerInfo() {
-    try {
-      const info = await Purchases.getCustomerInfo();
-      const active = !!info?.entitlements?.active?.[RC_ENTITLEMENT_ID];
-      await setSubscriptionActive(active);
-      return { info, active };
-    } catch (e) {
-      if (__DEV__) devLog('IAP Error:', e);
-      devWarn('RevenueCat getCustomerInfo', e);
-      return { info: null, active: false };
-    }
+    const info = await safeNativeCall('rc.getCustomerInfo', function() { return Purchases.getCustomerInfo(); }, null);
+    const active = !!info?.entitlements?.active?.[RC_ENTITLEMENT_ID];
+    await setSubscriptionActive(active);
+    return { info: info || null, active: active };
   }
 
   async function purchaseSubscription(pkg) {
     if (rcDisabled) return;
-    try {
-      const { customerInfo } = await Purchases.purchasePackage(pkg);
-      const active = !!customerInfo?.entitlements?.active?.[RC_ENTITLEMENT_ID];
-      await setSubscriptionActive(active);
-      setPaywallVisible(false);
-      if (active) {
-        // Confettis méduses — fires after the paywall slide-out so the
-        // transition reads as a reward, not a flash on top of the modal.
-        setTimeout(function() {
-          setPurchaseConfettiActive(true);
-          setTimeout(function() { setPurchaseConfettiActive(false); }, 3000);
-        }, 350);
-      }
-    } catch (e) {
-      if (__DEV__) devLog('IAP Error:', e);
-      devWarn('RevenueCat purchasePackage', e);
+    const result = await safeNativeCall('rc.purchasePackage', function() { return Purchases.purchasePackage(pkg); }, null);
+    if (!result) return;
+    const customerInfo = result.customerInfo;
+    const active = !!customerInfo?.entitlements?.active?.[RC_ENTITLEMENT_ID];
+    await setSubscriptionActive(active);
+    setPaywallVisible(false);
+    if (active) {
+      // Confettis méduses — fires after the paywall slide-out so the
+      // transition reads as a reward, not a flash on top of the modal.
+      setTimeout(function() {
+        setPurchaseConfettiActive(true);
+        setTimeout(function() { setPurchaseConfettiActive(false); }, 3000);
+      }, 350);
     }
   }
 
   async function restoreSubscription() {
     if (rcDisabled) return;
-    try {
-      const info = await Purchases.restorePurchases();
-      const active = !!info?.entitlements?.active?.[RC_ENTITLEMENT_ID];
-      await setSubscriptionActive(active);
-    } catch (e) {
-      if (__DEV__) devLog('IAP Error:', e);
-      devWarn('RevenueCat restorePurchases', e);
-    }
+    const info = await safeNativeCall('rc.restorePurchases', function() { return Purchases.restorePurchases(); }, null);
+    if (!info) return;
+    const active = !!info?.entitlements?.active?.[RC_ENTITLEMENT_ID];
+    await setSubscriptionActive(active);
   }
 
   useEffect(() => {
@@ -1399,18 +1401,18 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       try {
         // Vérification abonnement : RevenueCat d'abord, cache AsyncStorage en fallback offline
         var subVerified = false;
-        try {
-          if (Purchases && !rcDisabled) {
-            var info = await Purchases.getCustomerInfo();
+        if (Purchases && !rcDisabled) {
+          var info = await safeNativeCall('rc.getCustomerInfo.loadData', function() { return Purchases.getCustomerInfo(); }, null);
+          if (info) {
             subVerified = !!(info?.entitlements?.active?.[RC_ENTITLEMENT_ID]);
-            await AsyncStorage.setItem(FLUID_SUB_KEY, subVerified ? 'true' : 'false');
+            try { await AsyncStorage.setItem(FLUID_SUB_KEY, subVerified ? 'true' : 'false'); } catch (e) {}
           } else {
-            // Offline fallback : cache local (non fiable, mais mieux que rien)
+            // RC threw or returned nothing → fall back to cache
             var cached = await AsyncStorage.getItem(FLUID_SUB_KEY);
             subVerified = cached === 'true';
           }
-        } catch(rcErr) {
-          // Erreur réseau : utiliser le cache
+        } else {
+          // Offline fallback : cache local (non fiable, mais mieux que rien)
           var cached = await AsyncStorage.getItem(FLUID_SUB_KEY);
           subVerified = cached === 'true';
         }
@@ -1443,11 +1445,21 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         else if (lastDate) { await AsyncStorage.setItem(STREAK_KEY, '0'); setStreak(0); }
       } catch (e) {}
     }
-    loadData();
-    setupNotifications(lang);
-    // Schedule the 24h post-onboarding nudge (no-op if already scheduled or
-    // permission denied).
-    schedulePostOnboardingNudge({ lang: lang });
+    // Defer native-heavy startup work by 800ms so the WelcomeIntro → MainApp
+    // transition (and its confetti) finishes before we hammer the RN
+    // TurboModule queue with RC + notification scheduling. This is a
+    // mitigation for the build #46 crash on iOS 26.4.2 where an NSException
+    // thrown during this very burst kills the converter.
+    diag('mainapp.mount.deferred', 'scheduled');
+    var deferTimer = setTimeout(function() {
+      diag('mainapp.mount.deferred', 'fired');
+      loadData();
+      setupNotifications(lang);
+      // Schedule the 24h post-onboarding nudge (no-op if already scheduled or
+      // permission denied).
+      schedulePostOnboardingNudge({ lang: lang });
+    }, 800);
+    return function() { try { clearTimeout(deferTimer); } catch (e) {} };
   }, []);
 
   // Streak protection — re-evaluated on every streak change, on cold start,
@@ -1463,34 +1475,36 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     if (rcDisabled) return;
     let mounted = true;
     let customerInfoListener = null;
+    let rcDeferTimer = null;
 
     async function initRevenueCat() {
-      try {
+      const configured = safeNativeCall('rc.configure', function() {
         Purchases.configure({ apiKey: RC_API_KEY_IOS });
-      } catch (e) {
-        if (__DEV__) devLog('IAP Error:', e);
-        devWarn('RevenueCat configure', e);
-        return;
-      }
+        return true;
+      }, false);
+      if (!configured) return;
 
-      try {
-        await refreshCustomerInfo();
-      } catch (e) {}
+      try { await refreshCustomerInfo(); } catch (e) {}
 
-      try {
-        customerInfoListener = async (info) => {
-          try {
-            const active = !!info?.entitlements?.active?.[RC_ENTITLEMENT_ID];
-            await setSubscriptionActive(active);
-          } catch (e) {}
-        };
+      customerInfoListener = async (info) => {
+        try {
+          const active = !!info?.entitlements?.active?.[RC_ENTITLEMENT_ID];
+          await setSubscriptionActive(active);
+        } catch (e) {}
+      };
+      safeNativeCall('rc.addCustomerInfoUpdateListener', function() {
         Purchases.addCustomerInfoUpdateListener(customerInfoListener);
-      } catch (e) {}
+        return true;
+      }, false);
 
       try {
         if (__DEV__) devLog('Loading products...', PRODUCT_IDS);
         setRcLoadingPrices(true);
-        const offerings = await Purchases.getOfferings();
+        const offerings = await safeNativeCall('rc.getOfferings', function() { return Purchases.getOfferings(); }, null);
+        if (!offerings) {
+          if (mounted) setRcLoadingPrices(false);
+          return;
+        }
         const current = offerings?.current;
         const packages = current?.availablePackages || [];
         const map = {};
@@ -1525,10 +1539,26 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       }
     }
 
-    initRevenueCat();
+    // Defer the RC init burst by ~1.2s so the WelcomeIntro → MainApp
+    // transition finishes first. The deferred-loadData hook above already
+    // shifts the early getCustomerInfo by 800ms; pushing the listener +
+    // offerings fetch slightly further keeps them off the same animation
+    // frame as the confetti tear-down.
+    diag('mainapp.initRevenueCat.deferred', 'scheduled');
+    rcDeferTimer = setTimeout(function() {
+      if (!mounted) return;
+      diag('mainapp.initRevenueCat.deferred', 'fired');
+      initRevenueCat();
+    }, 1200);
     return () => {
       mounted = false;
-      try { if (customerInfoListener) Purchases.removeCustomerInfoUpdateListener(customerInfoListener); } catch (e) {}
+      if (rcDeferTimer) { try { clearTimeout(rcDeferTimer); } catch (e) {} }
+      if (customerInfoListener) {
+        safeNativeCall('rc.removeCustomerInfoUpdateListener', function() {
+          Purchases.removeCustomerInfoUpdateListener(customerInfoListener);
+          return true;
+        }, false);
+      }
     };
   }, []);
 
@@ -1784,12 +1814,22 @@ function WelcomeIntroScreen({ onDone, lang }) {
   function handleSubmit() {
     if (submittingRef.current) return;
     submittingRef.current = true;
+    diag('welcomeIntro.handleSubmit', 'start');
     if (selectedIdxs.length === 0) {
+      diag('welcomeIntro.handleSubmit.noConfetti', 'done');
       onDone(selectedIdxs);
       return;
     }
+    diag('welcomeIntro.confetti', 'start');
     setConfettiActive(true);
-    setTimeout(function() { onDone(selectedIdxs); }, 2000);
+    // Bumped from 2000 → 2500ms so the confetti animation + RN cleanup
+    // finish on the main thread before MainApp mounts and the deferred
+    // native burst kicks in. Mitigation for the build #46 iOS 26.4.2
+    // crash in the TurboModule queue.
+    setTimeout(function() {
+      diag('welcomeIntro.onDone', 'fire');
+      onDone(selectedIdxs);
+    }, 2500);
   }
 
   return (
@@ -2193,8 +2233,10 @@ function App() {
   }, []);
 
   function dismissWelcomeIntro() {
+    diag('dismissWelcomeIntro', 'start');
     setWelcomeShown(true);
     AsyncStorage.setItem('fluid_welcome_intro_done', '1').catch(function(e) { devWarn('welcome flag persist', e); });
+    diag('dismissWelcomeIntro', 'done');
   }
 
   // HEALTHKIT_DISABLED est hoisté au scope module (cf. App.js ~ligne 142).
@@ -2422,10 +2464,10 @@ function App() {
 
   useEffect(() => {
     if (!Sentry || !SENTRY_DSN) return;
-    try {
+    safeNativeFire('sentry.setUser', function() {
       if (supaUser?.id) Sentry.setUser({ id: supaUser.id });
       else Sentry.setUser(null);
-    } catch (e) {}
+    });
   }, [supaUser]);
 
   async function handleOnboardingDone(p, l, t) {
@@ -2582,9 +2624,7 @@ function App() {
           }}
         >
           <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
-          {/* Aquatic bubbles — keep the splash alive while the app boots.
-              Use BULLES_ONBOARDING (12 bubbles, light set) — visible enough
-              to read as movement, not so dense it competes with the logo. */}
+          {/* Aquatic bubbles — keep the splash alive while the app boots. */}
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
             {BULLES_ONBOARDING.map(function(b, i) { return <Bulle key={'sp-' + i} {...b} />; })}
           </View>

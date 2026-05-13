@@ -24,15 +24,23 @@ import { useTheme } from '../../theme/ThemeProvider';
 let HapticsMod = null;
 try { HapticsMod = require('expo-haptics'); } catch (e) {}
 
+let _safeFire = null;
+try { _safeFire = require('../../utils/safeNativeCall').safeNativeFire; } catch (e) {}
+
 function fireHaptic(kind) {
   if (Platform.OS === 'web' || !HapticsMod) return;
-  try {
+  const tag = kind === 'success' ? 'haptic.notificationSuccess.button' : 'haptic.impactLight.button';
+  const fn = function() {
     if (kind === 'success') {
-      HapticsMod.notificationAsync(HapticsMod.NotificationFeedbackType.Success);
-    } else {
-      HapticsMod.impactAsync(HapticsMod.ImpactFeedbackStyle.Light);
+      return HapticsMod.notificationAsync(HapticsMod.NotificationFeedbackType.Success);
     }
-  } catch (e) {}
+    return HapticsMod.impactAsync(HapticsMod.ImpactFeedbackStyle.Light);
+  };
+  if (_safeFire) {
+    _safeFire(tag, fn);
+  } else {
+    try { fn(); } catch (e) {}
+  }
 }
 
 // Build the variant table from the active theme. Keeps the call sites

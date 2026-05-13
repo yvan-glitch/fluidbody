@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { T, PILIERS_BASE, SEANCES_FR, SEANCES_EN, FREE_SEANCE_INDEX, ZONE_TO_PILIER, FREE_MONTHLY_SELECTION } from './constants/data';
+import { safeNativeFire } from './utils/safeNativeCall';
 
 const FREE_MONTHLY_SET = new Set((FREE_MONTHLY_SELECTION || []).map(function(s) { return s.pilier + '_' + s.idx; }));
 import { VIDEO_RESUME_PREFIX } from './components/VideoPlayer';
@@ -10,12 +11,16 @@ try { HapticsMod = require('expo-haptics'); } catch(e) {}
 
 function hapticLight() {
   if (Platform.OS === 'web' || !HapticsMod) return;
-  try { void HapticsMod.impactAsync(HapticsMod.ImpactFeedbackStyle.Light); } catch (e) {}
+  safeNativeFire('haptic.impactLight', function() {
+    return HapticsMod.impactAsync(HapticsMod.ImpactFeedbackStyle.Light);
+  });
 }
 
 function hapticSuccess() {
   if (Platform.OS === 'web' || !HapticsMod) return;
-  try { void HapticsMod.notificationAsync(HapticsMod.NotificationFeedbackType.Success); } catch (e) {}
+  safeNativeFire('haptic.notificationSuccess', function() {
+    return HapticsMod.notificationAsync(HapticsMod.NotificationFeedbackType.Success);
+  });
 }
 
 function getSeances(lang) {
