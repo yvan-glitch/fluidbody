@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, ScrollView,
-  Dimensions, StyleSheet,
+  Dimensions, StyleSheet, Animated, Easing,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Circle, Ellipse } from 'react-native-svg';
+import Svg, { Path, Circle, Ellipse, Defs, LinearGradient as SvgLinearGradient, Stop, RadialGradient, G } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 import { T, ZONE_TO_PILIER, PILIER_IMAGES } from '../constants/data';
 import { Bulle, BULLES, LivingMedusa, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState } from '../components/Meduse';
@@ -106,6 +108,54 @@ var BODY_ZONES = [
   { key: 'p8', label: 'Office', path: 'M36 48L34 56L38 56L40 52L42 56L46 56L44 48Z', cx: 40, cy: 52 },
 ];
 
+// Elegant feminine silhouette, hand-tuned closed Bezier path.
+// viewBox 100x280 — keeps coordinates aligned with the existing zone ellipses.
+const SILHOUETTE_PATH = [
+  'M 50 6',
+  'C 62 6, 66 14, 65 24',
+  'C 64 30, 58 33, 56 35',
+  'C 62 36, 70 39, 76 48',
+  'C 82 56, 80 66, 76 76',
+  'C 73 90, 68 100, 62 112',
+  'C 60 116, 60 120, 62 124',
+  'C 68 128, 73 134, 73 146',
+  'C 72 170, 68 198, 66 222',
+  'C 64 242, 62 262, 62 276',
+  'L 55 278',
+  'C 53 270, 52 250, 52 222',
+  'C 51 200, 51 172, 50 148',
+  'L 50 146',
+  'C 49 172, 49 200, 48 222',
+  'C 48 250, 47 270, 45 278',
+  'L 38 276',
+  'C 38 262, 36 242, 34 222',
+  'C 32 198, 28 170, 27 146',
+  'C 27 134, 32 128, 38 124',
+  'C 40 120, 40 116, 38 112',
+  'C 32 100, 27 90, 24 76',
+  'C 20 66, 18 56, 24 48',
+  'C 30 39, 38 36, 44 35',
+  'C 42 33, 36 30, 35 24',
+  'C 34 14, 38 6, 50 6',
+  'Z',
+].join(' ');
+
+// Anchor points — body landmarks for measurement / "active zone" indicators.
+// Mapped onto the existing pilier zone keys so the pulse follows the same
+// "this zone has activity" semantic the rest of the screen uses.
+var BODY_ANCHORS = [
+  { cx: 50, cy: 28,  r: 2.6, zone: 'p1' }, // cou
+  { cx: 30, cy: 50,  r: 3.0, zone: 'p1' }, // épaule gauche
+  { cx: 70, cy: 50,  r: 3.0, zone: 'p1' }, // épaule droite
+  { cx: 50, cy: 76,  r: 2.6, zone: 'p2' }, // poitrine / torse
+  { cx: 50, cy: 102, r: 2.6, zone: 'p4' }, // taille (core)
+  { cx: 50, cy: 124, r: 2.6, zone: 'p3' }, // hanches
+  { cx: 41, cy: 168, r: 2.4, zone: 'p3' }, // cuisse gauche
+  { cx: 59, cy: 168, r: 2.4, zone: 'p3' }, // cuisse droite
+  { cx: 39, cy: 222, r: 2.4, zone: 'p6' }, // mollet gauche
+  { cx: 61, cy: 222, r: 2.4, zone: 'p6' }, // mollet droit
+];
+
 function BodyMapVisual({ done, lang }) {
   var piliers = getPiliers(lang);
   function zoneColor(key) {
@@ -119,6 +169,20 @@ function BodyMapVisual({ done, lang }) {
   }
   function zonePct(key) { return (Math.min((done[key] || []).filter(Boolean).length, 5) / 5 * 100).toFixed(0); }
   var tr = T[lang] || T['fr'];
+
+  // Shared pulse value (0→1→0) drives the glow halo on active anchor points.
+  // Single Animated.Value + native driver keeps the per-anchor cost flat.
+  var pulse = useRef(new Animated.Value(0)).current;
+  useEffect(function() {
+    var loop = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ]));
+    loop.start();
+    return function() { try { loop.stop(); pulse.removeAllListeners(); } catch (e) {} };
+  }, []);
+  var pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.85] });
+
   return (
     <View style={{ alignItems: 'center' }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
@@ -141,38 +205,93 @@ function BodyMapVisual({ done, lang }) {
             <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{(piliers.find(function(x){return x.key==='p8'})||{}).label} {zonePct('p8')}%</Text>
           </View>
         </View>
-        {/* Mannequin image + zones colorées */}
+        {/* Jellyfish-inspired SVG silhouette */}
         <View style={{ width: 110, height: 250, position: 'relative' }}>
-          <ExpoImage source={require('../../assets/mannequin.png')} contentFit="contain" cachePolicy="memory-disk" tintColor="#15A89C" style={{ width: 110, height: 250, opacity: 0.7 }} />
-          {/* Zones colorées superposées */}
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-        <Svg width={110} height={250} viewBox="0 0 100 280">
-          {/* Épaules p1 */}
-          <Ellipse cx="34" cy="46" rx="10" ry="6" fill={zoneColor('p1')} opacity={0.6} />
-          <Ellipse cx="66" cy="46" rx="10" ry="6" fill={zoneColor('p1')} opacity={0.6} />
-          {/* Torse p2 */}
-          <Ellipse cx="50" cy="68" rx="14" ry="16" fill={zoneColor('p2')} opacity={0.5} />
-          {/* Core p4 */}
-          <Ellipse cx="50" cy="95" rx="10" ry="14" fill={zoneColor('p4')} opacity={0.45} />
-          {/* Obliques p5 */}
-          <Ellipse cx="36" cy="82" rx="5" ry="12" fill={zoneColor('p5')} opacity={0.35} />
-          <Ellipse cx="64" cy="82" rx="5" ry="12" fill={zoneColor('p5')} opacity={0.35} />
-          {/* Bras p7 */}
-          <Ellipse cx="24" cy="72" rx="5" ry="14" fill={zoneColor('p7')} opacity={0.45} />
-          <Ellipse cx="76" cy="72" rx="5" ry="14" fill={zoneColor('p7')} opacity={0.45} />
-          {/* Avant-bras p8 */}
-          <Ellipse cx="22" cy="115" rx="4" ry="14" fill={zoneColor('p8')} opacity={0.35} />
-          <Ellipse cx="78" cy="115" rx="4" ry="14" fill={zoneColor('p8')} opacity={0.35} />
-          {/* Hanches p3 */}
-          <Ellipse cx="50" cy="118" rx="16" ry="10" fill={zoneColor('p3')} opacity={0.5} />
-          {/* Cuisses p3 */}
-          <Ellipse cx="40" cy="160" rx="7" ry="24" fill={zoneColor('p3')} opacity={0.4} />
-          <Ellipse cx="60" cy="160" rx="7" ry="24" fill={zoneColor('p3')} opacity={0.4} />
-          {/* Mollets p6 */}
-          <Ellipse cx="38" cy="215" rx="5" ry="18" fill={zoneColor('p6')} opacity={0.4} />
-          <Ellipse cx="62" cy="215" rx="5" ry="18" fill={zoneColor('p6')} opacity={0.4} />
-        </Svg>
-          </View>
+          <Svg width={110} height={250} viewBox="0 0 100 280">
+            <Defs>
+              {/* Body gradient — turquoise to deep teal, with a hint of bioluminescent green near the head */}
+              <SvgLinearGradient id="bodyFill" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="#AEEF4D" stopOpacity="0.30" />
+                <Stop offset="0.25" stopColor="#00DCEC" stopOpacity="0.32" />
+                <Stop offset="0.75" stopColor="#15A89C" stopOpacity="0.42" />
+                <Stop offset="1" stopColor="#003a55" stopOpacity="0.48" />
+              </SvgLinearGradient>
+              {/* Outline stroke gradient — light cyan top to teal bottom */}
+              <SvgLinearGradient id="bodyStroke" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="rgba(220,255,238,0.90)" />
+                <Stop offset="0.5" stopColor="rgba(0,220,240,0.75)" />
+                <Stop offset="1" stopColor="rgba(0,150,170,0.55)" />
+              </SvgLinearGradient>
+              {/* Glow halo behind the silhouette */}
+              <RadialGradient id="bodyHalo" cx="0.5" cy="0.5" rx="0.55" ry="0.55">
+                <Stop offset="0" stopColor="rgba(0,220,240,0.35)" />
+                <Stop offset="1" stopColor="rgba(0,220,240,0)" />
+              </RadialGradient>
+            </Defs>
+
+            {/* Bioluminescent halo blob behind body */}
+            <Ellipse cx="50" cy="148" rx="48" ry="120" fill="url(#bodyHalo)" />
+
+            {/* Body silhouette (filled + soft outline) */}
+            <Path
+              d={SILHOUETTE_PATH}
+              fill="url(#bodyFill)"
+              stroke="url(#bodyStroke)"
+              strokeWidth="0.9"
+              strokeLinejoin="round"
+            />
+
+            {/* Soft outer aura — duplicate path with thicker low-opacity stroke */}
+            <Path
+              d={SILHOUETTE_PATH}
+              fill="none"
+              stroke="rgba(0,220,240,0.20)"
+              strokeWidth="2.4"
+              strokeLinejoin="round"
+            />
+
+            {/* Zone highlights — softened, sit on top of the silhouette gradient */}
+            <Ellipse cx="30" cy="50" rx="9" ry="5" fill={zoneColor('p1')} opacity={0.55} />
+            <Ellipse cx="70" cy="50" rx="9" ry="5" fill={zoneColor('p1')} opacity={0.55} />
+            <Ellipse cx="50" cy="72" rx="12" ry="14" fill={zoneColor('p2')} opacity={0.45} />
+            <Ellipse cx="50" cy="100" rx="8" ry="12" fill={zoneColor('p4')} opacity={0.40} />
+            <Ellipse cx="36" cy="86" rx="4" ry="11" fill={zoneColor('p5')} opacity={0.35} />
+            <Ellipse cx="64" cy="86" rx="4" ry="11" fill={zoneColor('p5')} opacity={0.35} />
+            <Ellipse cx="26" cy="72" rx="4" ry="13" fill={zoneColor('p7')} opacity={0.40} />
+            <Ellipse cx="74" cy="72" rx="4" ry="13" fill={zoneColor('p7')} opacity={0.40} />
+            <Ellipse cx="50" cy="124" rx="14" ry="9" fill={zoneColor('p3')} opacity={0.50} />
+            <Ellipse cx="41" cy="168" rx="6" ry="22" fill={zoneColor('p3')} opacity={0.35} />
+            <Ellipse cx="59" cy="168" rx="6" ry="22" fill={zoneColor('p3')} opacity={0.35} />
+            <Ellipse cx="39" cy="222" rx="4" ry="16" fill={zoneColor('p6')} opacity={0.40} />
+            <Ellipse cx="61" cy="222" rx="4" ry="16" fill={zoneColor('p6')} opacity={0.40} />
+
+            {/* Anchor points — small luminous dots at body landmarks.
+                Active zones (any done count > 0) get a soft pulsing halo. */}
+            {BODY_ANCHORS.map(function(a, i) {
+              var isActive = ((done[a.zone] || []).filter(Boolean).length) > 0;
+              return (
+                <G key={'anc-' + i}>
+                  {isActive ? (
+                    <AnimatedCircle
+                      cx={a.cx}
+                      cy={a.cy}
+                      r={a.r + 2.8}
+                      fill="rgba(174,239,77,0.35)"
+                      opacity={pulseOpacity}
+                    />
+                  ) : null}
+                  <Circle
+                    cx={a.cx}
+                    cy={a.cy}
+                    r={a.r}
+                    fill={isActive ? '#AEEF4D' : 'rgba(220,240,255,0.55)'}
+                    stroke="rgba(255,255,255,0.85)"
+                    strokeWidth="0.4"
+                  />
+                </G>
+              );
+            })}
+          </Svg>
         </View>
         {/* Labels droite */}
         <View style={{ width: 90, paddingTop: 30, paddingLeft: 4, gap: 2 }}>

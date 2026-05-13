@@ -2474,6 +2474,12 @@ function App() {
   const splashTextOpacity = useRef(new Animated.Value(0)).current;
   const splashGlow = useRef(new Animated.Value(0.3)).current;
   const splashTagOpacity = useRef(new Animated.Value(0)).current;
+  // Splash → first screen cross-fade. Apple bezier (0.32, 0.72, 0, 1), 480ms,
+  // plus a subtle 8px horizontal slide so the splash feels like a page that
+  // turns rather than a hard cut.
+  const splashOverlayOpacity = useRef(new Animated.Value(1)).current;
+  const splashOverlayTx = useRef(new Animated.Value(0)).current;
+  const [splashOverlayMounted, setSplashOverlayMounted] = useState(true);
 
   useEffect(function() {
     if (loading) {
@@ -2494,82 +2500,113 @@ function App() {
     }
   }, [loading]);
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#000e18', alignItems: 'center', justifyContent: 'center' }}>
-        <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
-        {/* Glow effect behind medusa */}
-        <Animated.View style={{ position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(0,190,208,0.08)', opacity: splashGlow, transform: [{ scale: splashGlow.interpolate({ inputRange: [0.3, 0.8], outputRange: [1, 1.5] }) }] }} />
-        {/* Medusa */}
-        <Animated.View style={{ opacity: splashOpacity, transform: [{ scale: splashScale }], marginBottom: 24 }}>
-          <MeduseCornerIcon size={120} breathCycleMs={2500} />
-        </Animated.View>
-        {/* FLUIDBODY+ */}
-        <Animated.View style={{ opacity: splashTextOpacity, flexDirection: 'row', alignItems: 'baseline', marginBottom: 8 }}>
-          <Text style={{ fontSize: 32, fontWeight: '900', color: '#ffffff', letterSpacing: 1 }}>FLUIDBODY</Text>
-          <AnimatedPlus style={{ fontSize: 34, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
-        </Animated.View>
-        {/* Tagline */}
-        <Animated.View style={{ opacity: splashTagOpacity }}>
-          <Text style={{ color: '#AEEF4D', fontSize: 13, letterSpacing: 3, textTransform: 'uppercase' }}>Pilates & More</Text>
-        </Animated.View>
-      </View>
-    );
-  }
+  useEffect(function() {
+    if (loading) return undefined;
+    // Splash is done. The next screen is already rendered underneath; fade
+    // the splash overlay out with Apple's preferred easing curve so the
+    // transition reads as a continuous page passage, not a cut.
+    const appleEase = Easing.bezier(0.32, 0.72, 0, 1);
+    const anim = Animated.parallel([
+      Animated.timing(splashOverlayOpacity, { toValue: 0, duration: 480, easing: appleEase, useNativeDriver: true }),
+      Animated.timing(splashOverlayTx, { toValue: -8, duration: 480, easing: appleEase, useNativeDriver: true }),
+    ]);
+    anim.start(function() { setSplashOverlayMounted(false); });
+    return function() { try { anim.stop && anim.stop(); } catch (e) {} };
+  }, [loading]);
 
-  if (!introShown) {
-    if (showSignIn) {
-      return <SignInScreen
-        lang={lang}
-        supabase={supabase}
-        prefillEmail={signInPrefillEmail}
-        onSwitchToSignUp={() => setShowSignIn(false)}
-        onSuccess={() => { setShowSignIn(false); setIntroShown(true); }}
-        onSkip={() => {
-          setShowSignIn(false);
+  function renderActiveScreen() {
+    if (!introShown) {
+      if (showSignIn) {
+        return <SignInScreen
+          lang={lang}
+          supabase={supabase}
+          prefillEmail={signInPrefillEmail}
+          onSwitchToSignUp={() => setShowSignIn(false)}
+          onSuccess={() => { setShowSignIn(false); setIntroShown(true); }}
+          onSkip={() => {
+            setShowSignIn(false);
+            setIntroShown(true);
+            if (!onboardingDone && !supaUser) {
+              completeOnboarding('', lang, [], { skipCloudAuth: true });
+            }
+          }}
+        />;
+      }
+      return <OnboardingScreen
+        initialLang={lang}
+        onSwitchToSignIn={(em) => { setSignInPrefillEmail(em || ''); setShowSignIn(true); }}
+        onDone={(p, l, t, o) => {
           setIntroShown(true);
           if (!onboardingDone && !supaUser) {
-            completeOnboarding('', lang, [], { skipCloudAuth: true });
+            completeOnboarding(p, l, t, o);
           }
         }}
       />;
     }
-    return <OnboardingScreen
-      initialLang={lang}
-      onSwitchToSignIn={(em) => { setSignInPrefillEmail(em || ''); setShowSignIn(true); }}
-      onDone={(p, l, t, o) => {
-        setIntroShown(true);
-        if (!onboardingDone && !supaUser) {
-          completeOnboarding(p, l, t, o);
-        }
-      }}
-    />;
+    if (showAuth && !supaUser) {
+      return <AuthScreen onSkip={() => setShowAuth(false)} onSuccess={() => setShowAuth(false)} lang={lang} prenomHint={prenom} langForProfile={lang} tensionIdxsForProfile={tensionIdxs} />;
+    }
+    if (profileSetupShown === false) {
+      return <ProfileOnboardingScreen
+        lang={lang}
+        supaUser={supaUser}
+        onDone={handleProfileSetupSave}
+      />;
+    }
+    if (welcomeShown === false) {
+      return <WelcomeIntroScreen lang={lang} onDone={function(idxs) {
+        if (Array.isArray(idxs) && idxs.length > 0) handleTensionChange(idxs);
+        dismissWelcomeIntro();
+      }} />;
+    }
+    if (hkPromptShown === false) {
+      return <HealthKitConnectScreen lang={lang} onDone={function() { dismissHkPrompt(); }} />;
+    }
+    return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} />;
   }
 
-  if (showAuth && !supaUser) {
-    return <AuthScreen onSkip={() => setShowAuth(false)} onSuccess={() => setShowAuth(false)} lang={lang} prenomHint={prenom} langForProfile={lang} tensionIdxsForProfile={tensionIdxs} />;
-  }
-
-  if (profileSetupShown === false) {
-    return <ProfileOnboardingScreen
-      lang={lang}
-      supaUser={supaUser}
-      onDone={handleProfileSetupSave}
-    />;
-  }
-
-  if (welcomeShown === false) {
-    return <WelcomeIntroScreen lang={lang} onDone={function(idxs) {
-      if (Array.isArray(idxs) && idxs.length > 0) handleTensionChange(idxs);
-      dismissWelcomeIntro();
-    }} />;
-  }
-
-  if (hkPromptShown === false) {
-    return <HealthKitConnectScreen lang={lang} onDone={function() { dismissHkPrompt(); }} />;
-  }
-
-  return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} />;
+  return (
+    <View style={{ flex: 1 }}>
+      {!loading && renderActiveScreen()}
+      {splashOverlayMounted && (
+        <Animated.View
+          pointerEvents={loading ? 'auto' : 'none'}
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#000e18',
+            opacity: splashOverlayOpacity,
+            transform: [{ translateX: splashOverlayTx }],
+          }}
+        >
+          <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+          {/* Aquatic bubbles — keep the splash alive while the app boots.
+              Use BULLES_ONBOARDING (12 bubbles, light set) — visible enough
+              to read as movement, not so dense it competes with the logo. */}
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            {BULLES_ONBOARDING.map(function(b, i) { return <Bulle key={'sp-' + i} {...b} />; })}
+          </View>
+          {/* Glow effect behind medusa */}
+          <Animated.View style={{ position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(0,190,208,0.08)', opacity: splashGlow, transform: [{ scale: splashGlow.interpolate({ inputRange: [0.3, 0.8], outputRange: [1, 1.5] }) }] }} />
+          {/* Medusa */}
+          <Animated.View style={{ opacity: splashOpacity, transform: [{ scale: splashScale }], marginBottom: 24 }}>
+            <MeduseCornerIcon size={120} breathCycleMs={2500} />
+          </Animated.View>
+          {/* FLUIDBODY+ */}
+          <Animated.View style={{ opacity: splashTextOpacity, flexDirection: 'row', alignItems: 'baseline', marginBottom: 8 }}>
+            <Text style={{ fontSize: 32, fontWeight: '900', color: '#ffffff', letterSpacing: 1 }}>FLUIDBODY</Text>
+            <AnimatedPlus style={{ fontSize: 34, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
+          </Animated.View>
+          {/* Tagline */}
+          <Animated.View style={{ opacity: splashTagOpacity }}>
+            <Text style={{ color: '#AEEF4D', fontSize: 13, letterSpacing: 3, textTransform: 'uppercase' }}>Pilates & More</Text>
+          </Animated.View>
+        </Animated.View>
+      )}
+    </View>
+  );
 }
 
 function AppWithBoundary() {
