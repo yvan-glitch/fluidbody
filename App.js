@@ -69,7 +69,7 @@ try {
 } catch (e) {
   if (__DEV__) console.warn('@kingstinct/react-native-healthkit unavailable:', e);
 }
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Svg, { Path, Circle, Ellipse, Line, Rect, Defs, RadialGradient, Stop, G } from 'react-native-svg';
 import { Video, ResizeMode, Audio } from 'expo-av';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
@@ -93,6 +93,7 @@ import ThemedStatusBar from './src/theme/ThemedStatusBar';
 import Confetti from './src/components/Confetti';
 import LivingBackground from './src/components/LivingBackground';
 import CoachWelcomeOverlay, { isCoachWelcomeSeen } from './src/components/CoachWelcomeOverlay';
+import { AnniversaryOverlay } from './src/components/AnniversaryOverlay';
 import SignInScreen from './src/screens/SignIn';
 import HealthKitConnectScreen from './src/screens/HealthKitConnect';
 import MonCorps, { MetricTile } from './src/screens/MonCorps';
@@ -1318,6 +1319,48 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [rcLoadingPrices, setRcLoadingPrices] = useState(false);
   const [coachWelcomeVisible, setCoachWelcomeVisible] = useState(false);
   const [purchaseConfettiActive, setPurchaseConfettiActive] = useState(false);
+  const [showAnniv, setShowAnniv] = useState(false);
+  const annivTimerRef = useRef(null);
+
+  // Dédicace cachée pour le 14 mai (anniversaire Yvan + Sabrina, 1994).
+  // Vérifie la date locale au mount et à chaque retour de background, gate
+  // par `fluid_anniv_seen_YYYY` pour ne pas re-déclencher dans la journée.
+  const checkAnniversary = useCallback(async function() {
+    try {
+      const today = new Date();
+      const isMay14 = today.getMonth() === 4 && today.getDate() === 14;
+      if (!isMay14) return;
+      const year = today.getFullYear();
+      const flagKey = `fluid_anniv_seen_${year}`;
+      const seen = await AsyncStorage.getItem(flagKey);
+      if (seen) return;
+      if (annivTimerRef.current) clearTimeout(annivTimerRef.current);
+      annivTimerRef.current = setTimeout(function() { setShowAnniv(true); }, 1500);
+    } catch (e) {
+      if (__DEV__) console.warn('[anniv-check]', e);
+    }
+  }, []);
+
+  useEffect(function() {
+    checkAnniversary();
+    const sub = AppState.addEventListener('change', function(state) {
+      if (state === 'active') checkAnniversary();
+    });
+    return function() {
+      try { sub && sub.remove && sub.remove(); } catch (e) {}
+      if (annivTimerRef.current) clearTimeout(annivTimerRef.current);
+    };
+  }, [checkAnniversary]);
+
+  const handleDismissAnniv = useCallback(async function() {
+    setShowAnniv(false);
+    try {
+      const year = new Date().getFullYear();
+      await AsyncStorage.setItem(`fluid_anniv_seen_${year}`, 'true');
+    } catch (e) {}
+  }, []);
+
+  const handlePreviewAnniv = useCallback(function() { setShowAnniv(true); }, []);
 
   // First-launch coach welcome — once per install, opened ~700ms after MainApp
   // mounts so the user sees the tab bar settle first (less jarring than a hard
@@ -1708,7 +1751,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
             } catch (e) {
               Alert.alert('FluidBody+', e?.message || 'Erreur de déconnexion.');
             }
-          }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} />}</Tab.Screen>
+          }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onPreviewAnniversary={handlePreviewAnniv} />}</Tab.Screen>
         </Tab.Navigator>
       </NavigationContainer>
       <StretchTimerModal visible={showStretchTimer} onClose={function() { setShowStretchTimer(false); }} lang={lang} />
@@ -1757,6 +1800,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           <Confetti count={90} duration={2800} />
         </View>
       )}
+      {showAnniv && <AnniversaryOverlay onClose={handleDismissAnniv} />}
     </>
   );
 }

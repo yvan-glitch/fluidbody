@@ -35,7 +35,7 @@ function TimerIcon({ color, size }) {
   );
 }
 
-function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onEditProfile, profileRefreshKey }) {
+function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onEditProfile, profileRefreshKey, onPreviewAnniversary }) {
   var tr = T[lang] || T['fr'];
   var themeCtx = useTheme();
   var theme = themeCtx.theme;
@@ -82,6 +82,13 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         H.notificationAsync(H.NotificationFeedbackType.Success);
       } catch (e) {}
       openCoachMode();
+    }
+  }
+
+  function coachActionPreviewAnniv() {
+    setCoachModeVisible(false);
+    if (typeof onPreviewAnniversary === 'function') {
+      setTimeout(function() { onPreviewAnniversary(); }, 200);
     }
   }
 
@@ -932,6 +939,11 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 <TouchableOpacity onPress={coachActionResetCoachWelcome} activeOpacity={0.85} style={{ paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' }}>
                   <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }}>Réarmer Coach welcome overlay</Text>
                 </TouchableOpacity>
+                {typeof onPreviewAnniversary === 'function' && (
+                  <TouchableOpacity onPress={coachActionPreviewAnniv} activeOpacity={0.85} style={{ paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, backgroundColor: 'rgba(0,220,236,0.10)', borderWidth: 1, borderColor: 'rgba(0,220,236,0.35)' }}>
+                    <Text style={{ color: '#00DCEC', fontSize: 13, fontWeight: '700' }}>Aperçu dédicace 14 mai</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 18, textAlign: 'center', letterSpacing: 1 }}>
