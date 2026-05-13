@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, ScrollView,
-  Dimensions, StyleSheet,
+  Dimensions, useWindowDimensions, StyleSheet,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +13,7 @@ import { Bulle, BULLES, LivingMedusa, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMedu
 import AnimatedPlus from '../components/AnimatedPlus';
 import LivingBackground from '../components/LivingBackground';
 import { getPiliers, getSeances } from '../utils';
+import { tabletContentStyle, TABLET_BREAKPOINT } from '../utils/responsive';
 
 // Activité HK (anneaux Move/Exercise/Stand, détails journaliers,
 // tendances, streak rings-closed) → écran "Activité" dédié. Le présent
@@ -108,6 +109,12 @@ var BODY_ZONES = [
 
 function BodyMapVisual({ done, lang }) {
   var piliers = getPiliers(lang);
+  // Scale the mannequin up on iPad. viewBox stays 100×280, only the rendered
+  // canvas grows. ~1.5× keeps proportions to labels which scale their text
+  // weight naturally.
+  var winW = useWindowDimensions().width;
+  var manW = winW >= TABLET_BREAKPOINT ? 165 : 110;
+  var manH = winW >= TABLET_BREAKPOINT ? 375 : 250;
   function zoneColor(key) {
     var count = Math.min((done[key] || []).filter(Boolean).length, 5);
     var p = count / 5;
@@ -142,11 +149,11 @@ function BodyMapVisual({ done, lang }) {
           </View>
         </View>
         {/* Mannequin image + zones colorées */}
-        <View style={{ width: 110, height: 250, position: 'relative' }}>
-          <ExpoImage source={require('../../assets/mannequin.png')} contentFit="contain" cachePolicy="memory-disk" tintColor="#15A89C" style={{ width: 110, height: 250, opacity: 0.7 }} />
+        <View style={{ width: manW, height: manH, position: 'relative' }}>
+          <ExpoImage source={require('../../assets/mannequin.png')} contentFit="contain" cachePolicy="memory-disk" tintColor="#15A89C" style={{ width: manW, height: manH, opacity: 0.7 }} />
           {/* Zones colorées superposées */}
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-        <Svg width={110} height={250} viewBox="0 0 100 280">
+        <Svg width={manW} height={manH} viewBox="0 0 100 280">
           {/* Épaules p1 */}
           <Ellipse cx="34" cy="46" rx="10" ry="6" fill={zoneColor('p1')} opacity={0.6} />
           <Ellipse cx="66" cy="46" rx="10" ry="6" fill={zoneColor('p1')} opacity={0.6} />
@@ -294,6 +301,10 @@ function WeeklySummary({ lang }) {
 function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCreateAccount }) {
   var tr = T[lang] || T['fr'];
   var piliers = getPiliers(lang);
+  // Cap the scrollable content to a phone-feel column on iPad. Background
+  // gradient + bubbles still fill the screen, only the content centers.
+  var winW = useWindowDimensions().width;
+  var contentCap = tabletContentStyle(winW, 560);
   var [meduseName, setMeduseName] = useState('');
   var [showNameInput, setShowNameInput] = useState(false);
   var [nameInput, setNameInput] = useState('');
@@ -336,6 +347,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
         {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
       </View>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }} scrollEventThrottle={16} showsVerticalScrollIndicator={false}>
+       <View style={contentCap}>
         <View style={{ paddingTop: 62, paddingHorizontal: 20, marginBottom: 20 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View>
@@ -545,6 +557,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
             <Text style={{ fontSize: 16, color: 'rgba(174,239,77,0.4)' }}>›</Text>
           </TouchableOpacity>
         )}
+       </View>
       </ScrollView>
     </View>
   );
