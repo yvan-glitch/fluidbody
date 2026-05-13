@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Text, View, TouchableOpacity, Animated, Easing, Dimensions, StyleSheet, Alert, Platform, Linking } from 'react-native';
+import { Text, View, TouchableOpacity, Animated, Easing, Dimensions, useWindowDimensions, StyleSheet, Alert, Platform, Linking } from 'react-native';
 // expo-image au lieu de l'Image de react-native — RCTImageLoader +
 // CGImageSourceCreateThumbnailAtIndex throw NSException sur les PNG larges
 // avec profil couleur Display P3 (cf. apple-watch-hero.png, 882x806 P3) sous
@@ -13,6 +13,7 @@ import { T } from '../constants/data';
 import { Bulle, BULLES_ONBOARDING } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import LivingBackground from '../components/LivingBackground';
+import { tabletContentStyle, TABLET_BREAKPOINT } from '../utils/responsive';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -90,6 +91,10 @@ export default function HealthKitConnectScreen({ lang, onDone }) {
   const tr = T[lang] || T.fr;
   const [requesting, setRequesting] = useState(false);
   const [refused, setRefused] = useState(false);
+  // iPad: keep the Apple Watch hero from filling a 13" canvas (it has
+  // aspectRatio: 1 and would be ~880px wide). Cap the full vertical column.
+  const winW = useWindowDimensions().width;
+  const contentCap = tabletContentStyle(winW, 500);
 
   const watchScale = useRef(new Animated.Value(0.94)).current;
   const watchOpacity = useRef(new Animated.Value(0)).current;
@@ -180,14 +185,14 @@ export default function HealthKitConnectScreen({ lang, onDone }) {
       </View>
 
       {/* Top: Passer */}
-      <View style={{ paddingTop: 56, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 5 }}>
+      <View style={[{ paddingTop: 56, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 5 }, contentCap]}>
         <Text style={{ fontSize: 18, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 24 }}>+</AnimatedPlus></Text>
         <TouchableOpacity onPress={handleSkip} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} activeOpacity={0.7}>
           <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.85)', fontWeight: '500' }}>{tr.hk_skip || 'Passer'}</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 36, paddingTop: 20, zIndex: 5 }}>
+      <View style={[{ flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 36, paddingTop: 20, zIndex: 5 }, contentCap]}>
         {/* Apple Watch hero card */}
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', width: '100%' }}>
           <Animated.View style={{
