@@ -108,35 +108,63 @@ var BODY_ZONES = [
   { key: 'p8', label: 'Office', path: 'M36 48L34 56L38 56L40 52L42 56L46 56L44 48Z', cx: 40, cy: 52 },
 ];
 
-// Elegant feminine silhouette, hand-tuned closed Bezier path.
-// viewBox 100x280 — keeps coordinates aligned with the existing zone ellipses.
+// Hourglass feminine silhouette with clear anatomy: round head, defined neck,
+// shoulders, narrow waist, fuller hips, and TWO distinct legs separated at
+// the crotch. viewBox 100x280 — aligned with existing zone ellipse coordinates.
 const SILHOUETTE_PATH = [
-  'M 50 6',
-  'C 62 6, 66 14, 65 24',
-  'C 64 30, 58 33, 56 35',
-  'C 62 36, 70 39, 76 48',
-  'C 82 56, 80 66, 76 76',
-  'C 73 90, 68 100, 62 112',
-  'C 60 116, 60 120, 62 124',
-  'C 68 128, 73 134, 73 146',
-  'C 72 170, 68 198, 66 222',
-  'C 64 242, 62 262, 62 276',
-  'L 55 278',
-  'C 53 270, 52 250, 52 222',
-  'C 51 200, 51 172, 50 148',
-  'L 50 146',
-  'C 49 172, 49 200, 48 222',
-  'C 48 250, 47 270, 45 278',
-  'L 38 276',
-  'C 38 262, 36 242, 34 222',
-  'C 32 198, 28 170, 27 146',
-  'C 27 134, 32 128, 38 124',
-  'C 40 120, 40 116, 38 112',
-  'C 32 100, 27 90, 24 76',
-  'C 20 66, 18 56, 24 48',
-  'C 30 39, 38 36, 44 35',
-  'C 42 33, 36 30, 35 24',
-  'C 34 14, 38 6, 50 6',
+  // Head: top center, curves outward and down to neck
+  'M 50 4',
+  'C 65 4, 69 16, 68 25',
+  'C 67 31, 62 35, 58 37',
+  // Right neck taper into shoulder
+  'L 58 40',
+  'C 64 41, 71 44, 76 49',
+  // Outer right shoulder line down to torso
+  'L 78 60',
+  'L 75 80',
+  // Right torso narrowing into waist
+  'L 68 112',
+  // Hip flare (wider than waist for hourglass)
+  'L 72 132',
+  'L 78 144',
+  // Right thigh outer
+  'L 74 180',
+  // Right knee → calf → ankle
+  'L 68 232',
+  'L 62 278',
+  // Cross right foot bottom
+  'L 54 278',
+  // Up inner right leg (ankle → knee → thigh inner)
+  'L 54 240',
+  'L 53 168',
+  // Crotch peak (right side of V)
+  'L 50 150',
+  // Crotch peak (left side of V)
+  'L 49 150',
+  // Down inner left thigh → knee → ankle
+  'L 46 168',
+  'L 45 240',
+  'L 45 278',
+  // Cross left foot bottom (outer side)
+  'L 37 278',
+  // Up left leg outer (calf → knee → thigh)
+  'L 31 232',
+  'L 25 180',
+  // Left hip outer
+  'L 21 144',
+  'L 27 132',
+  // Left waist narrowing
+  'L 31 112',
+  // Left torso up to armpit
+  'L 24 80',
+  'L 21 60',
+  // Outer left shoulder curve up to neck
+  'C 22 49, 29 44, 35 41',
+  'L 41 40',
+  // Left neck taper into head
+  'L 41 37',
+  'C 37 35, 32 31, 31 25',
+  'C 30 16, 34 4, 50 4',
   'Z',
 ].join(' ');
 
