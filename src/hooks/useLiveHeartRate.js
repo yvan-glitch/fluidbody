@@ -1,14 +1,10 @@
 // Live heart-rate hook for in-session display.
 //
-// Why no HKWorkoutSession here:
-//   HKWorkoutSession is a watchOS-only API. From the iPhone side, the closest
-//   we can do (without a companion watchOS app) is poll HKHealthStore for the
-//   most recent HeartRate samples authored by the Apple Watch and bracket the
-//   session with a single HKWorkout record on stop().
+// Reads HR samples via HealthKit (Apple Santé). Data source can be any device
+// feeding HK — Apple Watch is the most common but iPhone-only setups, 3rd-party
+// chest straps, or sleep trackers also work as long as they post HR to HK.
 //
 // What we do:
-//   • One-shot Apple-Watch heuristic on mount (7-day HR window, source name
-//     contains "Apple Watch" — covers all watch models).
 //   • start() captures `startedAt`, starts a 4s polling loop on
 //     queryQuantitySamples for HeartRate over the last 30s.
 //   • stop() halts the loop and returns a session summary (durationMs,
@@ -16,10 +12,9 @@
 //     a workout via saveHealthKitWorkout.
 //   • Cleans up on unmount.
 //
-// Apple Watch privacy quirk: HR samples are authored asynchronously by the
-// watch and synced to iPhone with a delay of seconds to ~minutes depending
-// on watch state (locked / wrist down / dnd). The 30s lookback window is a
-// pragmatic balance between freshness and tolerating short sync gaps.
+// HK sync timing: HR samples can lag by seconds to ~minutes depending on the
+// authoring device's state (Watch locked / wrist down / dnd). The 30s lookback
+// window is a pragmatic balance between freshness and tolerating short sync gaps.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
@@ -37,7 +32,6 @@ const HR_ID = 'HKQuantityTypeIdentifierHeartRate';
 const POLL_INTERVAL_MS = 4000;
 const SAMPLE_LOOKBACK_MS = 30000;
 const STALE_THRESHOLD_MS = 15000;
-const APPLE_WATCH_PROBE_DAYS = 7;
 
 function sourceNameOf(sample) {
   try {
@@ -46,29 +40,6 @@ function sourceNameOf(sample) {
     }
   } catch (e) {}
   return null;
-}
-
-function isAppleWatchSource(sourceName) {
-  if (!sourceName) return false;
-  return /apple\s*watch/i.test(sourceName);
-}
-
-async function probeAppleWatchPresence() {
-  if (HEALTHKIT_DISABLED || !HK || Platform.OS !== 'ios') return false;
-  try {
-    const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - APPLE_WATCH_PROBE_DAYS * 24 * 3600 * 1000);
-    const samples = await HK.queryQuantitySamples(HR_ID, {
-      limit: 50,
-      ascending: false,
-      unit: 'count/min',
-      filter: { date: { startDate, endDate } },
-    });
-    if (!Array.isArray(samples)) return false;
-    return samples.some(function (s) { return isAppleWatchSource(sourceNameOf(s)); });
-  } catch (e) {
-    return false;
-  }
 }
 
 async function fetchRecentHr() {
@@ -83,11 +54,7 @@ async function fetchRecentHr() {
       filter: { date: { startDate, endDate } },
     });
     if (!Array.isArray(samples) || samples.length === 0) return null;
-    // Préférence : sample Apple Watch le plus récent. Sinon, le plus récent
-    // tout court (utile si la watch n'a pas encore re-sync mais qu'un autre
-    // device — sleep tracker tiers, par ex. — a posté).
-    const watch = samples.find(function (s) { return isAppleWatchSource(sourceNameOf(s)); });
-    const chosen = watch || samples[0];
+    const chosen = samples[0];
     const bpm = Math.round(Number(chosen.quantity) || 0);
     if (!bpm || bpm < 30 || bpm > 230) return null;
     const measuredAt = chosen.endDate instanceof Date
@@ -114,22 +81,12 @@ export default function useLiveHeartRate(opts) {
   const [bpm, setBpm] = useState(null);
   const [source, setSource] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
-  const [hasAppleWatch, setHasAppleWatch] = useState(null); // null = unknown
   const [isActive, setIsActive] = useState(false);
 
   // Running aggregates for the current session. Re-init on every start().
   const aggRef = useRef({ sum: 0, count: 0, max: 0, min: Infinity, startedAt: null, samples: [] });
   const pollHandleRef = useRef(null);
   const lastMeasuredAtRef = useRef(null);
-
-  // Probe Apple Watch presence on first mount.
-  useEffect(function () {
-    let cancelled = false;
-    probeAppleWatchPresence().then(function (present) {
-      if (!cancelled) setHasAppleWatch(!!present);
-    });
-    return function () { cancelled = true; };
-  }, []);
 
   const tick = useCallback(async function () {
     const s = await fetchRecentHr();
@@ -204,7 +161,6 @@ export default function useLiveHeartRate(opts) {
   return {
     bpm: bpm,
     isLive: isLive,
-    hasAppleWatch: hasAppleWatch,
     source: source,
     lastUpdate: lastUpdate,
     isActive: isActive,

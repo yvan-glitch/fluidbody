@@ -13,10 +13,9 @@
 //   • A persistent "Suivant" GlassButton sits above the safe area, disabled
 //     until the step's validation passes.
 //   • Chevron-left back button top-left, hidden on step 0.
-//   • Apple Watch detection card is rendered on Measures step when HK
-//     reports the watch is present + at least one of height/weight is
-//     known — we pre-fill the field with the HK value but the user can
-//     still type a different number.
+//   • On the Measures step we pre-fill height/weight/birthDate/gender from
+//     HealthKit (Apple Santé) when available — user can still type a
+//     different number.
 //   • Persistence is incremental: each step's validated answer is written
 //     through `syncProfilePatch` immediately so closing the app mid-flow
 //     never loses progress.
@@ -192,8 +191,6 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
   const [frequency, setFrequency] = useState(init.frequency || null);
   const [goals, setGoals] = useState(Array.isArray(init.goals) ? init.goals.slice(0, 2) : []);
   const [savingState, setSavingState] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
-  const [hkPrefilled, setHkPrefilled] = useState({ height: false, weight: false });
-  const [hkWatchDetected, setHkWatchDetected] = useState(false);
   const [showHeightInput, setShowHeightInput] = useState(false);
   const [showWeightInput, setShowWeightInput] = useState(false);
   const [tempInput, setTempInput] = useState('');
@@ -225,11 +222,6 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
     if (Platform.OS !== 'ios') return undefined;
     healthkit.ensureHealthKitInit().then(async function (res) {
       if (cancelled || !res || !res.ok) return;
-      // Heuristic: if any recent body sample is from Apple Watch, we treat
-      // it as "detected" for the UI card. Reading HR samples is the most
-      // reliable signal (same approach as useLiveHeartRate.probe). We avoid
-      // hitting that path here to keep this fast; instead we infer from
-      // the presence of any HK data.
       const [hCm, wKg, dob, sex] = await Promise.all([
         healthkit.readLatestHeightCm(),
         healthkit.readLatestWeightKg(),
@@ -239,11 +231,9 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
       if (cancelled) return;
       if (hCm && (!init.height_cm && !heightCm)) {
         setHeightCm(hCm);
-        setHkPrefilled(function (p) { return Object.assign({}, p, { height: true }); });
       }
       if (wKg && (!init.weight_kg && !weightKg)) {
         setWeightKg(Math.round(wKg));
-        setHkPrefilled(function (p) { return Object.assign({}, p, { weight: true }); });
       }
       if (dob && !birthDate && !init.birth_date) {
         const p = dob.split('-');
@@ -252,9 +242,6 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
       if (sex && !gender && !init.gender) {
         setGender(sex === 'other' ? 'nonbinary' : sex);
       }
-      // Watch detection — coarse: if any HK data exists, assume the user
-      // has a watch worth mentioning. This avoids the 7-day HR probe.
-      setHkWatchDetected(!!(hCm || wKg || dob));
     });
     return function () { cancelled = true; };
   }, []);
@@ -531,21 +518,6 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
 
             {step === 2 ? (
               <View>
-                {(hkWatchDetected) ? (
-                  <GlassCard padded padding={14} style={{ marginBottom: 18 }} substrateColor={glass.substrateAccent}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                        <Text style={{ fontSize: 18 }}>⌚️</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.accentText }}>{tr.onb_hk_detected || 'Apple Watch detected'}</Text>
-                        {(hkPrefilled.height || hkPrefilled.weight) ? (
-                          <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>{tr.onb_hk_prefilled || 'Values pulled from Apple Health.'}</Text>
-                        ) : null}
-                      </View>
-                    </View>
-                  </GlassCard>
-                ) : null}
                 <GlassCard padded padding={18} style={{ marginBottom: 14 }}>
                   <Slider
                     min={120}
