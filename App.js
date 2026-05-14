@@ -93,6 +93,7 @@ import ThemedStatusBar from './src/theme/ThemedStatusBar';
 import Confetti from './src/components/Confetti';
 import LivingBackground from './src/components/LivingBackground';
 import CoachWelcomeOverlay, { isCoachWelcomeSeen } from './src/components/CoachWelcomeOverlay';
+import AnniversaryOverlay, { shouldShowAnniversary } from './src/components/AnniversaryOverlay';
 import SignInScreen from './src/screens/SignIn';
 import HealthKitConnectScreen from './src/screens/HealthKitConnect';
 import MonCorps, { MetricTile } from './src/screens/MonCorps';
@@ -1332,6 +1333,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [rcLoadingPrices, setRcLoadingPrices] = useState(false);
   const [coachWelcomeVisible, setCoachWelcomeVisible] = useState(false);
   const [purchaseConfettiActive, setPurchaseConfettiActive] = useState(false);
+  const [annivVisible, setAnnivVisible] = useState(false);
 
   // First-launch coach welcome — once per install, opened ~700ms after MainApp
   // mounts so the user sees the tab bar settle first (less jarring than a hard
@@ -1343,6 +1345,22 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       setTimeout(function() { if (!cancelled) setCoachWelcomeVisible(true); }, 700);
     });
     return function() { cancelled = true; };
+  }, []);
+
+  // 14 May anniversary easter egg. Fires once per calendar year (gated by
+  // `fluid_anniv_seen_<year>` in AsyncStorage). Delayed ~1500ms so it lands
+  // after MainApp + tab bar settle, not on top of a still-mounting screen.
+  useEffect(function() {
+    let cancelled = false;
+    let timer = null;
+    shouldShowAnniversary().then(function(should) {
+      if (cancelled || !should) return;
+      timer = setTimeout(function() { if (!cancelled) setAnnivVisible(true); }, 1500);
+    });
+    return function() {
+      cancelled = true;
+      if (timer) { try { clearTimeout(timer); } catch (e) {} }
+    };
   }, []);
 
   useEffect(function() {
@@ -1791,6 +1809,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         lang={lang}
         prenom={prenom}
         onDone={function() { setCoachWelcomeVisible(false); }}
+      />
+      <AnniversaryOverlay
+        visible={annivVisible}
+        lang={lang}
+        prenom={prenom}
+        onDismiss={function() { setAnnivVisible(false); }}
       />
       {purchaseConfettiActive && (
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
