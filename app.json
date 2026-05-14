@@ -43,7 +43,7 @@
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#001a2e"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.ytissot.fluidbody"
