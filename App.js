@@ -2482,10 +2482,10 @@ function App() {
     }
 
     function finishLoading() {
-      // Splash minimum = 900 ms (suffisant pour la transition fade-in/scale).
-      // Auparavant fixé à 3000 ms : pénalité immédiate sur le cold start ressenti.
+      // Splash minimum = 3000 ms (UX delibere : mise en valeur de l'animation meduse).
+      // Trade-off assume : +2.1 sec sur cold start, mais identite brand renforcee.
       var elapsed = Date.now() - splashStart;
-      var remain = Math.max(0, 900 - elapsed);
+      var remain = Math.max(0, 3000 - elapsed);
       if (remain === 0) setLoading(false);
       else setTimeout(function() { setLoading(false); }, remain);
     }
