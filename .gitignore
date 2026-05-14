@@ -40,3 +40,14 @@ yarn-error.*
 /ios
 /android
 .env
+
+# Claude Code working files (local only)
+.claude/
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+
+# Supabase CLI local state
+supabase/.temp/
+
+# Local wallpaper experiments (not part of app assets)
+assets/fluidbody-wallpaper-*.jpg
