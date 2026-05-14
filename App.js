@@ -93,6 +93,8 @@ import ThemedStatusBar from './src/theme/ThemedStatusBar';
 import Confetti from './src/components/Confetti';
 import LivingBackground from './src/components/LivingBackground';
 import CoachWelcomeOverlay, { isCoachWelcomeSeen } from './src/components/CoachWelcomeOverlay';
+import AnniversaryOverlay, { shouldShowAnniversary } from './src/components/AnniversaryOverlay';
+import WelcomeAnimation, { isWelcomeAnimationShown } from './src/components/WelcomeAnimation';
 import SignInScreen from './src/screens/SignIn';
 import HealthKitConnectScreen from './src/screens/HealthKitConnect';
 import MonCorps, { MetricTile } from './src/screens/MonCorps';
@@ -1332,6 +1334,8 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [rcLoadingPrices, setRcLoadingPrices] = useState(false);
   const [coachWelcomeVisible, setCoachWelcomeVisible] = useState(false);
   const [purchaseConfettiActive, setPurchaseConfettiActive] = useState(false);
+  const [annivVisible, setAnnivVisible] = useState(false);
+  const [welcomeAnimVisible, setWelcomeAnimVisible] = useState(false);
 
   // First-launch coach welcome — once per install, opened ~700ms after MainApp
   // mounts so the user sees the tab bar settle first (less jarring than a hard
@@ -1343,6 +1347,35 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       setTimeout(function() { if (!cancelled) setCoachWelcomeVisible(true); }, 700);
     });
     return function() { cancelled = true; };
+  }, []);
+
+  // First-launch welcome animation. Plays exactly once per install — the
+  // WelcomeAnimation component owns its own 800ms hold + 600ms fade-in +
+  // 2.5s display + 600ms fade-out and marks the flag itself at fade-out
+  // start so a kill mid-display still counts as played.
+  useEffect(function() {
+    let cancelled = false;
+    isWelcomeAnimationShown().then(function(shown) {
+      if (cancelled || shown) return;
+      setWelcomeAnimVisible(true);
+    });
+    return function() { cancelled = true; };
+  }, []);
+
+  // 14 May anniversary easter egg. Fires once per calendar year (gated by
+  // `fluid_anniv_seen_<year>` in AsyncStorage). Delayed ~1500ms so it lands
+  // after MainApp + tab bar settle, not on top of a still-mounting screen.
+  useEffect(function() {
+    let cancelled = false;
+    let timer = null;
+    shouldShowAnniversary().then(function(should) {
+      if (cancelled || !should) return;
+      timer = setTimeout(function() { if (!cancelled) setAnnivVisible(true); }, 1500);
+    });
+    return function() {
+      cancelled = true;
+      if (timer) { try { clearTimeout(timer); } catch (e) {} }
+    };
   }, []);
 
   useEffect(function() {
@@ -1791,6 +1824,19 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         lang={lang}
         prenom={prenom}
         onDone={function() { setCoachWelcomeVisible(false); }}
+      />
+      <AnniversaryOverlay
+        visible={annivVisible}
+        lang={lang}
+        prenom={prenom}
+        onDismiss={function() { setAnnivVisible(false); }}
+      />
+      <WelcomeAnimation
+        visible={welcomeAnimVisible}
+        lang={lang}
+        prenom={prenom}
+        tr={tr}
+        onDone={function() { setWelcomeAnimVisible(false); }}
       />
       {purchaseConfettiActive && (
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
@@ -2557,10 +2603,16 @@ function App() {
     // Splash is done. The next screen is already rendered underneath; fade
     // the splash overlay out with Apple's preferred easing curve so the
     // transition reads as a continuous page passage, not a cut.
+    // 150ms hold lets the logo breathe a fraction of a second more before
+    // the fade starts; the 12px slide (up from 8px) makes the page-turn
+    // feel intentional without crossing into parallax.
     const appleEase = Easing.bezier(0.32, 0.72, 0, 1);
-    const anim = Animated.parallel([
-      Animated.timing(splashOverlayOpacity, { toValue: 0, duration: 480, easing: appleEase, useNativeDriver: true }),
-      Animated.timing(splashOverlayTx, { toValue: -8, duration: 480, easing: appleEase, useNativeDriver: true }),
+    const anim = Animated.sequence([
+      Animated.delay(150),
+      Animated.parallel([
+        Animated.timing(splashOverlayOpacity, { toValue: 0, duration: 600, easing: appleEase, useNativeDriver: true }),
+        Animated.timing(splashOverlayTx, { toValue: -12, duration: 600, easing: appleEase, useNativeDriver: true }),
+      ]),
     ]);
     anim.start(function() { setSplashOverlayMounted(false); });
     return function() { try { anim.stop && anim.stop(); } catch (e) {} };
