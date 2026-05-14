@@ -2481,6 +2481,18 @@ function App() {
       }
     }
 
+    // Helper : Promise.race avec timeout pour proteger les appels reseau.
+    // Si la promesse ne resout pas en `ms` millisecondes, on rejette avec une erreur.
+    function withTimeout(promise, ms, label) {
+      return Promise.race([
+        promise,
+        new Promise(function(_, reject) {
+          setTimeout(function() {
+            reject(new Error(label + ' timeout after ' + ms + 'ms'));
+          }, ms);
+        })
+      ]);
+    }
     function finishLoading() {
       // Splash minimum = 3000 ms (UX delibere : mise en valeur de l'animation meduse).
       // Trade-off assume : +2.1 sec sur cold start, mais identite brand renforcee.
@@ -2492,11 +2504,17 @@ function App() {
     async function checkSession() {
       try {
         if (!supabase) { finishLoading(); return; }
-        const { data: { session }, error: se } = await supabase.auth.getSession();
+        // Timeout 5s sur getSession : evite que le splash reste fige si Supabase ne repond pas.
+        const { data: { session }, error: se } = await withTimeout(
+          supabase.auth.getSession(),
+          5000,
+          'getSession'
+        );
         if (se) devWarn('getSession', se);
         if (session?.user) {
           setSupaUser(session.user);
-          await fetchAndMergeProfile(session.user);
+          // Timeout 5s sur fetchAndMergeProfile : meme protection.
+          await withTimeout(fetchAndMergeProfile(session.user), 5000, 'fetchProfile');
           setShowAuth(false);
           setOnboardingDone(true);
         }
@@ -2515,7 +2533,17 @@ function App() {
         } catch (e) { devWarn('Profil après connexion', e); }
       }
     });
-    return () => subscription?.unsubscribe();
+    // Safety net absolu : force la sortie du splash apres 8s maximum,
+    // peu importe ce qui se passe avec les appels async ci-dessus.
+    // Cette protection garantit que l'utilisateur ne reste JAMAIS coince
+    // sur le splash, meme si une exception non-attrapee survient.
+    const splashSafetyTimer = setTimeout(function() {
+      setLoading(false);
+    }, 8000);
+    return () => {
+      clearTimeout(splashSafetyTimer);
+      subscription?.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
