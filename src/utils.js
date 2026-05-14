@@ -28,7 +28,7 @@ function getSeances(lang) {
   return SEANCES_EN;
 }
 
-const PILIER_LABEL_IDX = { p1: 0, p2: 1, p3: 2, p4: 3, p5: 4, p6: 5, p7: 6, p8: 7 };
+const PILIER_LABEL_IDX = { p1: 0, p2: 1, p3: 2, p4: 3, p5: 4, p6: 5, p7: 6, p8: 7, p9: 8 };
 
 function getPiliers(lang) {
   const t = T[lang] || T["fr"];
