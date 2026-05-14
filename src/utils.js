@@ -50,7 +50,11 @@ function canAccessSeanceIndex(idx, isSubscriber, pilierKey) {
   return isSubscriber;
 }
 
-function isComingSoon() {
+function isComingSoon(pilierKey, idx) {
+  // p9 Ménopause : 15 séances structurées dans le code, contenu vidéo en
+  // attente de tournage avec Sabrina. Centralisé ici pour pouvoir relâcher
+  // par batch quand les vidéos arriveront.
+  if (pilierKey === 'p9') return true;
   return false;
 }
 
