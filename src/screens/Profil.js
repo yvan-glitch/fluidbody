@@ -195,16 +195,48 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   async function saveProfileEdit() {
     var dd = parseInt(editD, 10), mm = parseInt(editM, 10), yy = parseInt(editY, 10);
     var birth = null;
-    if (dd && mm && yy && yy >= 1900 && yy <= new Date().getFullYear() && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+    // Birth date validation: must be a real calendar date (Date roundtrip),
+    // not in the future, and the user must be at least 13 years old. Empty
+    // is allowed (clears the field).
+    var birthProvided = !!(editD || editM || editY);
+    if (birthProvided) {
+      var validShape = dd && mm && yy && yy >= 1900 && yy <= new Date().getFullYear() && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31;
+      if (!validShape) {
+        Alert.alert('FluidBody', tr.profile_birth_invalid || 'Date de naissance invalide');
+        return;
+      }
+      var probe = new Date(yy, mm - 1, dd);
+      if (probe.getFullYear() !== yy || probe.getMonth() !== mm - 1 || probe.getDate() !== dd) {
+        Alert.alert('FluidBody', tr.profile_birth_invalid || 'Date de naissance invalide');
+        return;
+      }
+      var today = new Date();
+      if (probe.getTime() > today.getTime()) {
+        Alert.alert('FluidBody', tr.profile_birth_future || 'La date de naissance ne peut pas être dans le futur');
+        return;
+      }
+      var minAdult = new Date(today.getFullYear() - 13, today.getMonth(), today.getDate());
+      if (probe.getTime() > minAdult.getTime()) {
+        Alert.alert('FluidBody', tr.profile_birth_under_age || 'Tu dois avoir au moins 13 ans');
+        return;
+      }
       birth = yy + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
     }
     var h = parseInt(editHeight, 10);
     var w = parseInt(editWeight, 10);
+    if (editHeight.trim() !== '' && (!isFinite(h) || h < 120 || h > 220)) {
+      Alert.alert('FluidBody', tr.profile_height_invalid || 'La taille doit être entre 120 et 220 cm');
+      return;
+    }
+    if (editWeight.trim() !== '' && (!isFinite(w) || w < 30 || w > 200)) {
+      Alert.alert('FluidBody', tr.profile_weight_invalid || 'Le poids doit être entre 30 et 200 kg');
+      return;
+    }
     var next = {
       gender: editGender || null,
       birth_date: birth,
-      height_cm: isFinite(h) && h > 0 ? h : null,
-      weight_kg: isFinite(w) && w > 0 ? w : null,
+      height_cm: isFinite(h) && h >= 120 && h <= 220 ? h : null,
+      weight_kg: isFinite(w) && w >= 30 && w <= 200 ? w : null,
     };
     setProfileData(next);
     setProfileEditMode(false);
