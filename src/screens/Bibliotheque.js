@@ -384,7 +384,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         {/* Header */}
         <View style={{ paddingTop: 62, paddingHorizontal: 20, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <Text style={{ fontSize: 28, fontWeight: '700', color: '#ffffff', letterSpacing: -0.3 }}>
-            {tr.tab_piliers === 'The 6 pillars' ? 'Library' : 'Bibliothèque'}
+            {lang === 'en' ? 'Library' : 'Bibliothèque'}
           </Text>
           <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 26 }}>+</AnimatedPlus></Text>
         </View>
@@ -400,7 +400,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                 fontSize: 15,
                 paddingVertical: 0,
               }}
-              placeholder={tr.tab_piliers === 'The 6 pillars' ? 'Search' : 'Rechercher'}
+              placeholder={lang === 'en' ? 'Search' : 'Rechercher'}
               placeholderTextColor="rgba(255,255,255,0.4)"
               value={search}
               onChangeText={setSearch}
@@ -419,7 +419,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
             paddingHorizontal: 20,
             marginBottom: 14,
           }}>
-            {tr.tab_piliers === 'The 6 pillars' ? 'Activity Types' : "Types d'activités"}
+            {lang === 'en' ? 'Activity Types' : "Types d'activités"}
           </Text>
           <ScrollView
             horizontal
