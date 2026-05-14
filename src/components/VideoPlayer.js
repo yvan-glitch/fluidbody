@@ -680,16 +680,16 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             <Text style={{ fontSize: 22, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'] }}>{Math.round(elapsedSec / 60 * 5)}<Text style={{ fontSize: 14, fontWeight: '800', color: '#FF3B30' }}> KCAL</Text></Text>
           </View>
         </View>
-        {/* HR pill (top-right). Only shows when (a) display flag on, (b) Apple
-            Watch detected, (c) at least one BPM sample has come through.
-            Pill stays mounted across stale (isLive=false) for visual continuity
-            but goes 50% opacity — see HeartRatePill. */}
-        {hrEnabled && hr.hasAppleWatch && hr.bpm != null && (
+        {/* HR pill (top-right). Shows when (a) display flag on, (b) at least
+            one BPM sample has come through HealthKit. Pill stays mounted
+            across stale (isLive=false) for visual continuity but goes 50%
+            opacity — see HeartRatePill. */}
+        {hrEnabled && hr.bpm != null && (
           <View pointerEvents="box-none" style={{ position: 'absolute', top: 50, right: 16, zIndex: 220 }}>
             <HeartRatePill bpm={hr.bpm} isLive={hr.isLive} birthDateIso={effectiveBirthDate} />
           </View>
         )}
-        <View pointerEvents="none" style={{ position: 'absolute', top: (hrEnabled && hr.hasAppleWatch && hr.bpm != null) ? 90 : 50, right: 16, zIndex: 210 }}>
+        <View pointerEvents="none" style={{ position: 'absolute', top: (hrEnabled && hr.bpm != null) ? 90 : 50, right: 16, zIndex: 210 }}>
           <View style={{ width: 44, height: 44 }}>
             <Svg width={44} height={44} viewBox="0 0 44 44">
               <Circle cx="22" cy="22" r="19" stroke="rgba(255,59,48,0.3)" strokeWidth={3} fill="none" />

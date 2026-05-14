@@ -210,7 +210,7 @@ function saveHealthKitWorkout(durationMinutes, extras) {
       : Math.round(durationMinutes * 5);
     // Quantities échantillonnées pendant le workout : energy burned. On
     // pourrait aussi pousser les HR samples ici mais ils sont déjà côté
-    // Apple Watch — éviter les doublons.
+    // HealthKit (authored par le device source) — éviter les doublons.
     var quantities = [{
       startDate: startDate,
       endDate: endDate,

@@ -14,7 +14,6 @@ import ViewShot from 'react-native-view-shot';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, FloatingMedusas, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
-import AppleWatchBadge from '../components/AppleWatchBadge';
 import healthkit from '../utils/healthkit';
 import { getPiliers } from '../utils';
 
@@ -570,7 +569,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1, paddingRight: 12 }}>
                 <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.show_hr_label || 'Afficher la fréquence cardiaque'}</Text>
-                <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 2 }}>{tr.show_hr_sub || 'Apple Watch requise · pill discret en haut à droite'}</Text>
+                <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 2 }}>{tr.show_hr_sub || 'Lit la fréquence via Apple Santé · pill discret en haut à droite'}</Text>
               </View>
               <TouchableOpacity onPress={function() {
                 var next = !showHrEnabled;
@@ -586,15 +585,17 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
 {Platform.OS === 'ios' && (
           <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
             <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.watch_section || 'Connexions'}</Text>
-            <View style={{ marginBottom: 12 }}>
-              <AppleWatchBadge colors={theme.colors} tr={tr} />
-            </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 12 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: hkAuthorized ? '#34c759' : 'rgba(255,255,255,0.35)', marginRight: 10 }} />
-                <Text style={{ fontSize: 14, color: theme.colors.textSecondary, flex: 1 }}>
-                  {hkAuthorized ? (tr.watch_healthkit_status_ok || 'Apple Santé autorisé') : (tr.watch_healthkit_status_off || 'Apple Santé non autorisé')}
-                </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', flex: 1, paddingRight: 12 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: hkAuthorized ? '#34c759' : 'rgba(255,255,255,0.35)', marginRight: 10, marginTop: 6 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>
+                    {hkAuthorized ? (tr.watch_healthkit_status_ok || 'Apple Santé autorisé') : (tr.watch_healthkit_status_off || 'Apple Santé non autorisé')}
+                  </Text>
+                  {hkAuthorized ? (
+                    <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 2 }}>{tr.watch_healthkit_status_hint || 'Lit les données de ton iPhone et Apple Watch via Apple Santé'}</Text>
+                  ) : null}
+                </View>
               </View>
               {!hkAuthorized ? (
                 <TouchableOpacity onPress={reconnectHealthKit} activeOpacity={0.7} hitSlop={10} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)' }}>
