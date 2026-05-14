@@ -24,7 +24,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, TextInput, Animated, Easing,
-  StyleSheet, Dimensions, Platform, KeyboardAvoidingView, Modal,
+  StyleSheet, Dimensions, Platform, KeyboardAvoidingView, Modal, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -296,8 +296,10 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
       patch.birth_date = birthDate.getFullYear() + '-' + String(birthDate.getMonth() + 1).padStart(2, '0') + '-' + String(birthDate.getDate()).padStart(2, '0');
     }
     if (s >= 2) {
-      if (heightCm) patch.height_cm = heightCm;
-      if (weightKg) patch.weight_kg = weightKg;
+      // Defensive bounds — slider + commitTextInput already enforce these,
+      // but cached values from older versions might be out of range.
+      if (heightCm && heightCm >= 120 && heightCm <= 220) patch.height_cm = heightCm;
+      if (weightKg && weightKg >= 30 && weightKg <= 200) patch.weight_kg = weightKg;
     }
     if (s >= 3) {
       if (practiceLevel) patch.practice_level = practiceLevel;
@@ -373,10 +375,28 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
   function commitTextInput() {
     const n = parseInt(tempInput, 10);
     if (showHeightInput) {
-      if (isFinite(n) && n >= 120 && n <= 220) setHeightCm(n);
+      if (isFinite(n) && n >= 120 && n <= 220) {
+        setHeightCm(n);
+        setShowHeightInput(false);
+        setTempInput('');
+        return;
+      }
+      if (tempInput.trim() !== '') {
+        Alert.alert('FluidBody', tr.profile_height_invalid || 'La taille doit être entre 120 et 220 cm');
+        return;
+      }
       setShowHeightInput(false);
     } else if (showWeightInput) {
-      if (isFinite(n) && n >= 30 && n <= 200) setWeightKg(n);
+      if (isFinite(n) && n >= 30 && n <= 200) {
+        setWeightKg(n);
+        setShowWeightInput(false);
+        setTempInput('');
+        return;
+      }
+      if (tempInput.trim() !== '') {
+        Alert.alert('FluidBody', tr.profile_weight_invalid || 'Le poids doit être entre 30 et 200 kg');
+        return;
+      }
       setShowWeightInput(false);
     }
     setTempInput('');

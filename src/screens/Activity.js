@@ -35,6 +35,7 @@ import LivingBackground from '../components/LivingBackground';
 import { FloatingMedusas, Bulle, BULLES, MeduseCornerIcon } from '../components/Meduse';
 import Confetti from '../components/Confetti';
 import ActivityRings, { MiniActivityRings, RING_COLORS } from '../components/ActivityRings';
+import AppleWatchBadge from '../components/AppleWatchBadge';
 import healthkit from '../utils/healthkit';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
 
@@ -309,8 +310,33 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
   }, [dateKey]);
 
   // ── HealthKit lifecycle ──
+  // Eager seed from the last-good AsyncStorage cache *before* HK init finishes,
+  // so the rings render with the previous value within the first frame instead
+  // of waiting for the auth handshake (which can take 4–8s on a cold boot).
+  // The fresh read still kicks in as soon as init resolves.
   useEffect(function () {
     let cancelled = false;
+    AsyncStorage.getItem('fluid_activity_last_good_' + todayKey()).then(function (raw) {
+      if (cancelled || !raw) return;
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.summary) setSummary(parsed.summary);
+        if (parsed && parsed.details) setDetails(parsed.details);
+        if (parsed && Array.isArray(parsed.workouts)) setWorkouts(parsed.workouts);
+      } catch (e) {}
+    }).catch(function () {});
+    return function () { cancelled = true; };
+  }, []);
+
+  useEffect(function () {
+    let cancelled = false;
+    // If healthkit.js was already initialised earlier (e.g. via MonCorps), skip
+    // the redundant requestAuthorization and let the loader run immediately.
+    if (healthkit.isHealthKitReady && healthkit.isHealthKitReady()) {
+      setHkChecked(true);
+      setHkAuthorized(true);
+      return function () { cancelled = true; };
+    }
     healthkit.ensureHealthKitInit().then(function (res) {
       if (cancelled) return;
       setHkChecked(true);
@@ -534,6 +560,9 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
               {(tr.activity_offline || 'Offline · updated at') + ' ' + offlineNotice}
             </Text>
           ) : null}
+          <View style={{ flexDirection: 'row', marginTop: 12, alignSelf: 'flex-start' }}>
+            <AppleWatchBadge colors={colors} tr={tr} compact />
+          </View>
         </View>
 
         {/* HK not authorised — empty state with CTA */}
