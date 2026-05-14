@@ -607,7 +607,7 @@ function Progresser({ done, lang, tensionIdxs }) {
         </View>
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
           {sortedPiliers.map((p, idx) => {
-            const count = Math.min(done[p.key].filter(v => v === true || v === 'true').length, 5);
+            const count = Math.min((done[p.key] || []).filter(v => v === true || v === 'true').length, 5);
             const IconComp = ICONS[p.key];
             const isRec = recommendedPiliers.includes(p.key);
             const pct2 = Math.round(count / 5 * 100);
