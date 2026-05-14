@@ -92,6 +92,7 @@ function liveMembersGuess() {
 function TestimonialsCard({ testimonials, theme, sectionTitle }) {
   const [idx, setIdx] = useState(0);
   const opac = useRef(new Animated.Value(1)).current;
+  const pendingSwap = useRef(null);
   useEffect(() => {
     if (!Array.isArray(testimonials) || testimonials.length < 2) return;
     const itv = setInterval(() => {
@@ -99,9 +100,22 @@ function TestimonialsCard({ testimonials, theme, sectionTitle }) {
         Animated.timing(opac, { toValue: 0, duration: 250, useNativeDriver: true }),
         Animated.timing(opac, { toValue: 1, duration: 350, useNativeDriver: true }),
       ]).start();
-      setTimeout(() => setIdx((i) => (i + 1) % testimonials.length), 280);
+      // Track the swap timer so we can cancel it on unmount — otherwise a
+      // rapid close of the paywall would still flip the testimonial after
+      // the component is gone.
+      if (pendingSwap.current) clearTimeout(pendingSwap.current);
+      pendingSwap.current = setTimeout(() => {
+        pendingSwap.current = null;
+        setIdx((i) => (i + 1) % testimonials.length);
+      }, 280);
     }, 4200);
-    return () => clearInterval(itv);
+    return () => {
+      clearInterval(itv);
+      if (pendingSwap.current) {
+        clearTimeout(pendingSwap.current);
+        pendingSwap.current = null;
+      }
+    };
   }, [testimonials]);
 
   if (!Array.isArray(testimonials) || testimonials.length === 0) return null;
