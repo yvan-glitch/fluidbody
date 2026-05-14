@@ -2581,10 +2581,16 @@ function App() {
     // Splash is done. The next screen is already rendered underneath; fade
     // the splash overlay out with Apple's preferred easing curve so the
     // transition reads as a continuous page passage, not a cut.
+    // 150ms hold lets the logo breathe a fraction of a second more before
+    // the fade starts; the 12px slide (up from 8px) makes the page-turn
+    // feel intentional without crossing into parallax.
     const appleEase = Easing.bezier(0.32, 0.72, 0, 1);
-    const anim = Animated.parallel([
-      Animated.timing(splashOverlayOpacity, { toValue: 0, duration: 480, easing: appleEase, useNativeDriver: true }),
-      Animated.timing(splashOverlayTx, { toValue: -8, duration: 480, easing: appleEase, useNativeDriver: true }),
+    const anim = Animated.sequence([
+      Animated.delay(150),
+      Animated.parallel([
+        Animated.timing(splashOverlayOpacity, { toValue: 0, duration: 600, easing: appleEase, useNativeDriver: true }),
+        Animated.timing(splashOverlayTx, { toValue: -12, duration: 600, easing: appleEase, useNativeDriver: true }),
+      ]),
     ]);
     anim.start(function() { setSplashOverlayMounted(false); });
     return function() { try { anim.stop && anim.stop(); } catch (e) {} };
