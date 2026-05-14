@@ -14,6 +14,8 @@ import ViewShot from 'react-native-view-shot';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, FloatingMedusas, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
+import AppleWatchBadge from '../components/AppleWatchBadge';
+import healthkit from '../utils/healthkit';
 import { getPiliers } from '../utils';
 
 const COACH_IMAGE = require('../../assets/coach.jpg');
@@ -54,6 +56,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var [quoteHour, setQuoteHour] = useState(8);
   var [showHrEnabled, setShowHrEnabled] = useState(true);
   var [storageUsed, setStorageUsed] = useState('0 B');
+  var [hkAuthorized, setHkAuthorized] = useState(false);
   var [profileData, setProfileData] = useState({ gender: null, birth_date: null, height_cm: null, weight_kg: null, practice_level: null, frequency: null, goals: [] });
   var [profileEditMode, setProfileEditMode] = useState(false);
   var [profileSaving, setProfileSaving] = useState(false);
@@ -134,7 +137,19 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
       var { getStorageUsed, formatBytes } = require('../components/DownloadManager');
       getStorageUsed().then(function(s) { setStorageUsed(formatBytes(s)); });
     } catch(e) {}
+    if (Platform.OS === 'ios') {
+      healthkit.ensureHealthKitInit().then(function(res) {
+        setHkAuthorized(!!(res && res.ok));
+      }).catch(function() {});
+    }
   }, []);
+
+  function reconnectHealthKit() {
+    if (Platform.OS !== 'ios') return;
+    healthkit.ensureHealthKitInit().then(function(res) {
+      setHkAuthorized(!!(res && res.ok));
+    }).catch(function() {});
+  }
 
   useEffect(function() {
     if (!supabase || !supaUser) {
@@ -536,7 +551,29 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </GlassCard></View>
         )}
 
-{/* Apparence — segmented Auto/Clair/Sombre. Lives high in the
+{Platform.OS === 'ios' && (
+          <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.watch_section || 'Connexions'}</Text>
+            <View style={{ marginBottom: 12 }}>
+              <AppleWatchBadge colors={theme.colors} tr={tr} />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 12 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: hkAuthorized ? '#34c759' : 'rgba(255,255,255,0.35)', marginRight: 10 }} />
+                <Text style={{ fontSize: 14, color: theme.colors.textSecondary, flex: 1 }}>
+                  {hkAuthorized ? (tr.watch_healthkit_status_ok || 'Apple Santé autorisé') : (tr.watch_healthkit_status_off || 'Apple Santé non autorisé')}
+                </Text>
+              </View>
+              {!hkAuthorized ? (
+                <TouchableOpacity onPress={reconnectHealthKit} activeOpacity={0.7} hitSlop={10} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#AEEF4D' }}>{tr.watch_reconnect || 'Reconnecter'}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </GlassCard></View>
+        )}
+
+        {/* Apparence — segmented Auto/Clair/Sombre. Lives high in the
             screen so it's easy to find. The active segment uses the brand
             accent substrate; theme switches happen instantly via context,
             the ThemeProvider's cross-fade handles the visual transition. */}

@@ -35,6 +35,7 @@ import LivingBackground from '../components/LivingBackground';
 import { FloatingMedusas, Bulle, BULLES, MeduseCornerIcon } from '../components/Meduse';
 import Confetti from '../components/Confetti';
 import ActivityRings, { MiniActivityRings, RING_COLORS } from '../components/ActivityRings';
+import AppleWatchBadge from '../components/AppleWatchBadge';
 import healthkit from '../utils/healthkit';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
 
@@ -534,6 +535,9 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
               {(tr.activity_offline || 'Offline · updated at') + ' ' + offlineNotice}
             </Text>
           ) : null}
+          <View style={{ flexDirection: 'row', marginTop: 12, alignSelf: 'flex-start' }}>
+            <AppleWatchBadge colors={colors} tr={tr} compact />
+          </View>
         </View>
 
         {/* HK not authorised — empty state with CTA */}
