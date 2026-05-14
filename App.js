@@ -1021,6 +1021,16 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
         setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || 'Erreur Supabase');
         setLoading(false); return;
       }
+      const applePrenom = credential.fullName?.givenName || '';
+      if (applePrenom) {
+        try { await supabase.auth.updateUser({ data: { prenom: applePrenom } }); } catch(_) {}
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            await supabase.from('profiles').upsert({ id: session.user.id, prenom: applePrenom, updated_at: new Date().toISOString() });
+          }
+        } catch(_) {}
+      }
       setLoading(false);
       finish();
     } catch (e) {
