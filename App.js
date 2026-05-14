@@ -94,6 +94,7 @@ import Confetti from './src/components/Confetti';
 import LivingBackground from './src/components/LivingBackground';
 import CoachWelcomeOverlay, { isCoachWelcomeSeen } from './src/components/CoachWelcomeOverlay';
 import AnniversaryOverlay, { shouldShowAnniversary } from './src/components/AnniversaryOverlay';
+import WelcomeAnimation, { isWelcomeAnimationShown } from './src/components/WelcomeAnimation';
 import SignInScreen from './src/screens/SignIn';
 import HealthKitConnectScreen from './src/screens/HealthKitConnect';
 import MonCorps, { MetricTile } from './src/screens/MonCorps';
@@ -1334,6 +1335,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [coachWelcomeVisible, setCoachWelcomeVisible] = useState(false);
   const [purchaseConfettiActive, setPurchaseConfettiActive] = useState(false);
   const [annivVisible, setAnnivVisible] = useState(false);
+  const [welcomeAnimVisible, setWelcomeAnimVisible] = useState(false);
 
   // First-launch coach welcome — once per install, opened ~700ms after MainApp
   // mounts so the user sees the tab bar settle first (less jarring than a hard
@@ -1343,6 +1345,19 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     isCoachWelcomeSeen().then(function(seen) {
       if (cancelled || seen) return;
       setTimeout(function() { if (!cancelled) setCoachWelcomeVisible(true); }, 700);
+    });
+    return function() { cancelled = true; };
+  }, []);
+
+  // First-launch welcome animation. Plays exactly once per install — the
+  // WelcomeAnimation component owns its own 800ms hold + 600ms fade-in +
+  // 2.5s display + 600ms fade-out and marks the flag itself at fade-out
+  // start so a kill mid-display still counts as played.
+  useEffect(function() {
+    let cancelled = false;
+    isWelcomeAnimationShown().then(function(shown) {
+      if (cancelled || shown) return;
+      setWelcomeAnimVisible(true);
     });
     return function() { cancelled = true; };
   }, []);
@@ -1815,6 +1830,13 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         lang={lang}
         prenom={prenom}
         onDismiss={function() { setAnnivVisible(false); }}
+      />
+      <WelcomeAnimation
+        visible={welcomeAnimVisible}
+        lang={lang}
+        prenom={prenom}
+        tr={tr}
+        onDone={function() { setWelcomeAnimVisible(false); }}
       />
       {purchaseConfettiActive && (
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
