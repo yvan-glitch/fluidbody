@@ -18,7 +18,7 @@ import LivingBackground from '../components/LivingBackground';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
-import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from '../utils';
+import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
 import { safeNativeCall, safeNativeFire, diag } from '../utils/safeNativeCall';
 
 let Notifications = null;
@@ -516,6 +516,9 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                         ) : null}
                         {resumeIndices.has(i) && !locked ? (
                           <Text style={{ fontSize: 9, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(174,239,77,0.15)', color: '#AEEF4D', fontWeight: '600' }}>{tr.reprise_badge}</Text>
+                        ) : null}
+                        {isComingSoon(pilier.key, i) ? (
+                          <Text style={{ fontSize: 9, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(210,140,190,0.20)', color: '#E1A8C8', fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>{tr.coming_soon_badge || 'Bientôt'}</Text>
                         ) : null}
                       </View>
                     </View>

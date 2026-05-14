@@ -3,6 +3,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { T, PILIER_IMAGES } from '../constants/data';
+import { isComingSoon } from '../utils';
 import { Bulle, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import LivingBackground from '../components/LivingBackground';
@@ -98,7 +99,11 @@ export default function TheorieDetailScreen({ pilier, items, lang, isSubscriber,
                     <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>{duree}</Text>
                   </View>
                 </View>
-                {isFree ? (
+                {isComingSoon(pilier.key, idx) ? (
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(210,140,190,0.18)', borderWidth: 1, borderColor: 'rgba(210,140,190,0.5)' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#E1A8C8', letterSpacing: 0.6, textTransform: 'uppercase' }}>{tr.coming_soon_badge || 'Bientôt'}</Text>
+                  </View>
+                ) : isFree ? (
                   <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: '#AEEF4D' }}>
                     <Text style={{ fontSize: 10, fontWeight: '800', color: '#AEEF4D', letterSpacing: 0.6, textTransform: 'uppercase' }}>{freeBadge}</Text>
                   </View>
