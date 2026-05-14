@@ -175,6 +175,10 @@ var BODY_ANCHORS = [
   { cx: 50, cy: 28,  r: 2.6, zone: 'p1' }, // cou
   { cx: 30, cy: 50,  r: 3.0, zone: 'p1' }, // épaule gauche
   { cx: 70, cy: 50,  r: 3.0, zone: 'p1' }, // épaule droite
+  { cx: 20, cy: 95,  r: 2.2, zone: 'p1' }, // biceps gauche
+  { cx: 80, cy: 95,  r: 2.2, zone: 'p1' }, // biceps droit
+  { cx: 20, cy: 128, r: 2.2, zone: 'p1' }, // avant-bras gauche
+  { cx: 80, cy: 128, r: 2.2, zone: 'p1' }, // avant-bras droit
   { cx: 50, cy: 76,  r: 2.6, zone: 'p2' }, // poitrine / torse
   { cx: 50, cy: 102, r: 2.6, zone: 'p4' }, // taille (core)
   { cx: 50, cy: 124, r: 2.6, zone: 'p3' }, // hanches
@@ -239,10 +243,9 @@ function BodyMapVisual({ done, lang }) {
             <Defs>
               {/* Body gradient — turquoise to deep teal, with a hint of bioluminescent green near the head */}
               <SvgLinearGradient id="bodyFill" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor="#AEEF4D" stopOpacity="0.30" />
-                <Stop offset="0.25" stopColor="#00DCEC" stopOpacity="0.32" />
-                <Stop offset="0.75" stopColor="#15A89C" stopOpacity="0.42" />
-                <Stop offset="1" stopColor="#003a55" stopOpacity="0.48" />
+                <Stop offset="0" stopColor="#0a2540" stopOpacity="0.30" />
+                <Stop offset="0.5" stopColor="#06203a" stopOpacity="0.42" />
+                <Stop offset="1" stopColor="#031430" stopOpacity="0.52" />
               </SvgLinearGradient>
               {/* Outline stroke gradient — light cyan top to teal bottom */}
               <SvgLinearGradient id="bodyStroke" x1="0" y1="0" x2="0" y2="1">
@@ -252,41 +255,44 @@ function BodyMapVisual({ done, lang }) {
               </SvgLinearGradient>
               {/* Glow halo behind the silhouette */}
               <RadialGradient id="bodyHalo" cx="0.5" cy="0.5" rx="0.55" ry="0.55">
-                <Stop offset="0" stopColor="rgba(0,220,240,0.35)" />
+                <Stop offset="0" stopColor="rgba(0,220,240,0.12)" />
                 <Stop offset="1" stopColor="rgba(0,220,240,0)" />
               </RadialGradient>
             </Defs>
-
-            {/* Bioluminescent halo blob behind body */}
-            <Ellipse cx="50" cy="148" rx="48" ry="120" fill="url(#bodyHalo)" />
 
             {/* Body silhouette (filled + soft outline) */}
             <Path
               d={SILHOUETTE_PATH}
               fill="url(#bodyFill)"
               stroke="url(#bodyStroke)"
-              strokeWidth="0.9"
+              strokeWidth="1.8"
               strokeLinejoin="round"
             />
 
-            {/* Soft outer aura — duplicate path with thicker low-opacity stroke */}
+            {/* Right arm — hangs naturally at body side, biceps to wrist */}
             <Path
-              d={SILHOUETTE_PATH}
-              fill="none"
-              stroke="rgba(0,220,240,0.20)"
-              strokeWidth="2.4"
+              d="M 78 60 Q 82 70 83 90 Q 84 120 82 140 L 78 142 Q 76 130 75 100 Q 74 75 76 62 Z"
+              fill="url(#bodyFill)"
+              stroke="url(#bodyStroke)"
+              strokeWidth="1.4"
               strokeLinejoin="round"
             />
 
-            {/* Zone highlights — softened, sit on top of the silhouette gradient */}
+            {/* Left arm — mirror of right arm across center axis x=50 */}
+            <Path
+              d="M 22 60 Q 18 70 17 90 Q 16 120 18 140 L 22 142 Q 24 130 25 100 Q 26 75 24 62 Z"
+              fill="url(#bodyFill)"
+              stroke="url(#bodyStroke)"
+              strokeWidth="1.4"
+              strokeLinejoin="round"
+            />
+
+            {/* Zone highlights — only piliers that map to a real anatomical zone.
+                p5 (Respiration) and p7 (Mat Pilates) are abstract — no body overlay. */}
             <Ellipse cx="30" cy="50" rx="9" ry="5" fill={zoneColor('p1')} opacity={0.55} />
             <Ellipse cx="70" cy="50" rx="9" ry="5" fill={zoneColor('p1')} opacity={0.55} />
             <Ellipse cx="50" cy="72" rx="12" ry="14" fill={zoneColor('p2')} opacity={0.45} />
             <Ellipse cx="50" cy="100" rx="8" ry="12" fill={zoneColor('p4')} opacity={0.40} />
-            <Ellipse cx="36" cy="86" rx="4" ry="11" fill={zoneColor('p5')} opacity={0.35} />
-            <Ellipse cx="64" cy="86" rx="4" ry="11" fill={zoneColor('p5')} opacity={0.35} />
-            <Ellipse cx="26" cy="72" rx="4" ry="13" fill={zoneColor('p7')} opacity={0.40} />
-            <Ellipse cx="74" cy="72" rx="4" ry="13" fill={zoneColor('p7')} opacity={0.40} />
             <Ellipse cx="50" cy="124" rx="14" ry="9" fill={zoneColor('p3')} opacity={0.50} />
             <Ellipse cx="41" cy="168" rx="6" ry="22" fill={zoneColor('p3')} opacity={0.35} />
             <Ellipse cx="59" cy="168" rx="6" ry="22" fill={zoneColor('p3')} opacity={0.35} />
@@ -654,7 +660,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20 }}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.par_pilier}</Text>
           {sortedPiliers.map(function(p, idx) {
-            var count = Math.min(done[p.key].filter(function(v) { return v === true || v === 'true'; }).length, 5);
+            var count = Math.min((done[p.key] || []).filter(function(v) { return v === true || v === 'true'; }).length, 5);
             var pct2 = Math.round(count / 5 * 100);
             var isRec = recommendedPiliers.includes(p.key);
             return (
