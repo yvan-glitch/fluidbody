@@ -78,7 +78,7 @@ export const T = {
     ob_auth_err_net: 'Erreur réseau.',
     ob_auth_no_cloud: 'Sauvegarde cloud indisponible sur cet environnement. Tes identifiants ne seront pas enregistrés sur un serveur.',
     ob_auth_continue_local: 'Continuer en local →',
-    piliers: ['Épaules', 'Dos', 'Mobilité', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates', 'Office'],
+    piliers: ['Épaules', 'Dos', 'Mobilité', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates', 'Office', 'Ménopause'],
     piliers_desc: [
       'Mobilise et soulage les épaules tendues',
       'Décompresse et renforce ta colonne',
@@ -88,6 +88,7 @@ export const T = {
       'Pleine conscience du mouvement',
       'Renforcement complet et harmonie',
       'Routines courtes au bureau',
+      'Pour traverser cette étape avec douceur et conscience corporelle.',
     ],
     bilan_intro: 'Dis-nous où tu ressens des tensions pour personnaliser ton programme',
     bilan_program_title: 'Votre programme personnalisé',
@@ -506,7 +507,7 @@ export const T = {
     ob_auth_err_net: 'Network error.',
     ob_auth_no_cloud: `Cloud backup isn't available in this build. Your credentials won't be saved to a server.`,
     ob_auth_continue_local: 'Continue locally →',
-    piliers: ['Shoulders', 'Back', 'Mobility', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates', 'Office'],
+    piliers: ['Shoulders', 'Back', 'Mobility', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates', 'Office', 'Menopause'],
     piliers_desc: [
       'Mobilize and release tense shoulders',
       'Decompress and strengthen your spine',
@@ -516,6 +517,7 @@ export const T = {
       'Mindful movement awareness',
       'Complete strengthening and harmony',
       'Short office routines',
+      'Move through this stage with care and body awareness.',
     ],
     bilan_intro: 'Tell us where you feel tension to personalize your program',
     bilan_program_title: 'Your personalized program',
@@ -876,6 +878,7 @@ export const SEANCES_FR = {
   p6: [['Qu\'est-ce que la proprioception', '12 min', 'Comprendre'], ['Le corps dans l\'espace', '15 min', 'Comprendre'], ['Conscience & douleur', '15 min', 'Comprendre'], ['Le scan corporel I', '12 min', 'Ressentir'], ['Sentir sans voir', '15 min', 'Ressentir'], ['Équilibre statique I', '15 min', 'Préparer'], ['Micro-mouvements', '18 min', 'Préparer'], ['Équilibre instable', '20 min', 'Préparer'], ['Le regard intérieur', '22 min', 'Préparer'], ['Mapping corporel', '25 min', 'Préparer'], ['Mouvement lent I', '20 min', 'Exécuter'], ['Coordination fine', '25 min', 'Exécuter'], ['Anticipation & réaction', '28 min', 'Exécuter'], ['Mouvement lent II', '30 min', 'Exécuter'], ['Fluidité consciente', '32 min', 'Exécuter'], ['Méditation en mouvement', '25 min', 'Évoluer'], ['Inversion consciente', '30 min', 'Évoluer'], ['Conscience des fascias', '35 min', 'Évoluer'], ['Intelligence corporelle', '38 min', 'Évoluer'], ['L\'être dans le corps', '45 min', 'Évoluer']],
   p7: [['Joseph Pilates & sa méthode', '12 min', 'Comprendre'], ['Les 6 principes du Mat', '15 min', 'Comprendre'], ['Le centre — powerhouse', '15 min', 'Comprendre'], ['Sentir le tapis sous soi', '12 min', 'Ressentir'], ['Connexion bassin-plancher', '15 min', 'Ressentir'], ['Le Hundred — initiation', '20 min', 'Préparer'], ['Roll-Up conscient', '22 min', 'Préparer'], ['Single Leg Circle', '20 min', 'Préparer'], ['Rolling Like a Ball', '18 min', 'Préparer'], ['Activation du centre', '22 min', 'Préparer'], ['La série des 5', '25 min', 'Exécuter'], ['Spine Stretch Forward', '28 min', 'Exécuter'], ['Open Leg Rocker', '30 min', 'Exécuter'], ['Swan & Child', '28 min', 'Exécuter'], ['Side Kick Series', '32 min', 'Exécuter'], ['Séquence Mat niveau 1', '35 min', 'Évoluer'], ['Séquence Mat niveau 2', '38 min', 'Évoluer'], ['Teaser guidé', '40 min', 'Évoluer'], ['Mat flow complet', '42 min', 'Évoluer'], ['Maîtrise du Mat', '45 min', 'Évoluer']],
   p8: [['Pourquoi le bureau fatigue', '5 min', 'Comprendre'], ['Nuque & écrans — le vrai danger', '5 min', 'Comprendre'], ['Assis toute la journée — conséquences', '6 min', 'Comprendre'], ['Ressentir ses tensions assises', '5 min', 'Ressentir'], ['Scan corporel sur chaise', '7 min', 'Ressentir'], ['Étirements nuque assis', '5 min', 'Préparer'], ['Poignets & avant-bras — clavier', '6 min', 'Préparer'], ['Épaules au bureau — relâcher', '7 min', 'Préparer'], ['Dos assis — décompression', '8 min', 'Préparer'], ['Hanches assises — libérer', '7 min', 'Préparer'], ['Respiration anti-stress au bureau', '5 min', 'Exécuter'], ['Rotation thoracique sur chaise', '6 min', 'Exécuter'], ['Micro-pause active — 3 min', '3 min', 'Exécuter'], ['Renforcement postural assis', '8 min', 'Exécuter'], ['Circuit bureau express', '10 min', 'Exécuter'], ['Pause active complète I', '8 min', 'Évoluer'], ['Pause active complète II', '10 min', 'Évoluer'], ['Anti-fatigue écran & nuque', '7 min', 'Évoluer'], ['Routine matin au bureau', '8 min', 'Évoluer'], ['Journée sans douleur — protocole', '10 min', 'Évoluer']],
+  p9: [],
 };
 
 export const SEANCES_EN = {
@@ -887,6 +890,7 @@ export const SEANCES_EN = {
   p6: [['What is proprioception', '12 min', 'Comprendre'], ['The body in space', '15 min', 'Comprendre'], ['Awareness & pain', '15 min', 'Comprendre'], ['Body scan I', '12 min', 'Ressentir'], ['Feeling without seeing', '15 min', 'Ressentir'], ['Static balance I', '15 min', 'Préparer'], ['Micro-movements', '18 min', 'Préparer'], ['Unstable balance', '20 min', 'Préparer'], ['The inner gaze', '22 min', 'Préparer'], ['Body mapping', '25 min', 'Préparer'], ['Slow movement I', '20 min', 'Exécuter'], ['Fine coordination', '25 min', 'Exécuter'], ['Anticipation & reaction', '28 min', 'Exécuter'], ['Slow movement II', '30 min', 'Exécuter'], ['Conscious fluidity', '32 min', 'Exécuter'], ['Movement meditation', '25 min', 'Évoluer'], ['Conscious inversion', '30 min', 'Évoluer'], ['Fascia awareness', '35 min', 'Évoluer'], ['Body intelligence', '38 min', 'Évoluer'], ['Being in the body', '45 min', 'Évoluer']],
   p7: [['Joseph Pilates & his method', '12 min', 'Comprendre'], ['The 6 Mat principles', '15 min', 'Comprendre'], ['The center — powerhouse', '15 min', 'Comprendre'], ['Feeling the mat beneath you', '12 min', 'Ressentir'], ['Pelvis-floor connection', '15 min', 'Ressentir'], ['The Hundred — initiation', '20 min', 'Préparer'], ['Conscious Roll-Up', '22 min', 'Préparer'], ['Single Leg Circle', '20 min', 'Préparer'], ['Rolling Like a Ball', '18 min', 'Préparer'], ['Center activation', '22 min', 'Préparer'], ['The series of 5', '25 min', 'Exécuter'], ['Spine Stretch Forward', '28 min', 'Exécuter'], ['Open Leg Rocker', '30 min', 'Exécuter'], ['Swan & Child', '28 min', 'Exécuter'], ['Side Kick Series', '32 min', 'Exécuter'], ['Mat sequence level 1', '35 min', 'Évoluer'], ['Mat sequence level 2', '38 min', 'Évoluer'], ['Guided Teaser', '40 min', 'Évoluer'], ['Full Mat flow', '42 min', 'Évoluer'], ['Mat mastery', '45 min', 'Évoluer']],
   p8: [['Why the office tires your body', '5 min', 'Comprendre'], ['Neck & screens — the real danger', '5 min', 'Comprendre'], ['Sitting all day — consequences', '6 min', 'Comprendre'], ['Feel your seated tensions', '5 min', 'Ressentir'], ['Body scan on a chair', '7 min', 'Ressentir'], ['Seated neck stretches', '5 min', 'Préparer'], ['Wrists & forearms — keyboard', '6 min', 'Préparer'], ['Shoulders at desk — release', '7 min', 'Préparer'], ['Seated back — decompress', '8 min', 'Préparer'], ['Seated hips — unlock', '7 min', 'Préparer'], ['Anti-stress desk breathing', '5 min', 'Exécuter'], ['Thoracic rotation on chair', '6 min', 'Exécuter'], ['Active micro-break — 3 min', '3 min', 'Exécuter'], ['Seated postural strengthening', '8 min', 'Exécuter'], ['Express desk circuit', '10 min', 'Exécuter'], ['Full active break I', '8 min', 'Évoluer'], ['Full active break II', '10 min', 'Évoluer'], ['Anti-fatigue screen & neck', '7 min', 'Évoluer'], ['Morning office routine', '8 min', 'Évoluer'], ['Pain-free workday — protocol', '10 min', 'Évoluer']],
+  p9: [],
 };
 
 export const PILIERS_BASE = [
@@ -899,6 +903,7 @@ export const PILIERS_BASE = [
   { key: 'p1', color: 'rgba(0,170,110,1)', bg: 'rgba(0,170,110,0.40)' },
   { key: 'p2', color: 'rgba(255,155,0,1)', bg: 'rgba(255,155,0,0.42)' },
   { key: 'p8', color: 'rgba(0,206,209,1)', bg: 'rgba(0,206,209,0.40)' },
+  { key: 'p9', color: 'rgba(210,140,190,1)', bg: 'rgba(210,140,190,0.42)' },
 ];
 
 export const SABRINA_QUOTES = {
@@ -979,5 +984,6 @@ export const PILIER_IMAGES = {
   p6: require("../../assets/piliers/golf.jpg"),
   p7: require("../../assets/piliers/mat_pilates.jpg"),
   p8: require("../../assets/piliers/office.jpg"),
+  p9: require("../../assets/piliers/posture.jpg"),
   sdj: require("../../assets/piliers/seance_du_jour.jpg"),
 };
