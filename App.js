@@ -312,7 +312,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
         <Animated.View pointerEvents="none" style={{ position: 'absolute', top: (BAR_H - pillH) / 2, left: 0, width: pillW, height: pillH, borderRadius: pillH / 2, backgroundColor: theme.glass.substrateAccent, borderWidth: 1, borderColor: theme.colors.accent, transform: [{ translateX: indicatorX }] }}>
           <LinearGradient colors={theme.glass.highlightColors} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', borderTopLeftRadius: pillH / 2, borderTopRightRadius: pillH / 2 }} pointerEvents="none" />
         </Animated.View>
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+        <View accessibilityRole="tablist" style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
         {state.routes.map(function(route, index) {
           var options = descriptors[route.key].options;
           var isFocused = state.index === index;
