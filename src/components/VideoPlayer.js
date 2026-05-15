@@ -15,7 +15,7 @@ import HeartRatePill from './HeartRatePill';
 import { GlassView, GlassButton, GLASS_RADII, GLASS_EASING, GLASS_DURATIONS } from './ui';
 import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import useLiveHeartRate from '../hooks/useLiveHeartRate';
-import { recordSessionHour } from '../utils/notifications';
+import { recordSessionHour, cancelPauseActiveNotifications } from '../utils/notifications';
 
 // ── Small utilities (local copies to avoid circular deps) ──
 // Haptics are fired by GlassButton (FAIT) via `haptic="success"`, so
@@ -954,6 +954,19 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                       completedRef.current = true;
                       if (pilier?.key != null && seanceIndex != null) clearVideoResume(pilier.key, seanceIndex);
                       saveExerciseTime(getElapsedMinutes());
+                      // Smart notifications — if the user watched ≥80% of a
+                      // real video, treat as an active break and suppress the
+                      // next 3h of "pause active" reminders. Theory sessions
+                      // (no real video) don't qualify.
+                      var lastSt = lastStatusRef.current;
+                      var shouldCancel =
+                        hasRealVideo
+                        && lastSt
+                        && lastSt.durationMillis > 0
+                        && (lastSt.positionMillis / lastSt.durationMillis) >= 0.8;
+                      if (shouldCancel) {
+                        cancelPauseActiveNotifications('next3h').catch(function() {});
+                      }
                       onComplete();
                     }}
                     textStyle={{

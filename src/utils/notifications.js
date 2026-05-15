@@ -203,3 +203,93 @@ export async function scheduleMilestoneReward({ milestoneNum, lang, prenom }) {
     return true;
   } catch (e) { return false; }
 }
+
+// ───────── Smart suppression — Pause Active ─────────
+//
+// The 45 pre-scheduled "pause active" weekly notifications (cf.
+// setupNotifications in App.js) are tagged with `content.data.type
+// === 'pause_active'`. This helper enumerates them and cancels those
+// matching the requested `scope`.
+//
+//   scope === 'today'  → cancel every remaining pause notif whose next
+//                        fire date is in the current calendar day
+//   scope === 'next3h' → cancel every pause notif whose next fire date
+//                        falls within the next 3 hours
+//
+// Returns the number of notifications actually cancelled (for logging).
+// Safe to call concurrently; failures degrade silently to 0.
+export async function cancelPauseActiveNotifications(scope) {
+  if (!Notifications) return 0;
+  try {
+    const scheduled = await safeNativeCall(
+      'notif.getAllScheduled.pauseSuppress',
+      function () { return Notifications.getAllScheduledNotificationsAsync(); },
+      null
+    );
+    if (!Array.isArray(scheduled) || scheduled.length === 0) return 0;
+
+    const now = new Date();
+    const todayY = now.getFullYear();
+    const todayM = now.getMonth();
+    const todayD = now.getDate();
+    const horizonMs = scope === 'next3h' ? 3 * 60 * 60 * 1000 : null;
+
+    const inScope = function (fireDate) {
+      if (!fireDate) return false;
+      if (scope === 'today') {
+        return (
+          fireDate.getFullYear() === todayY
+          && fireDate.getMonth() === todayM
+          && fireDate.getDate() === todayD
+          && fireDate.getTime() > now.getTime()
+        );
+      }
+      if (scope === 'next3h') {
+        const dt = fireDate.getTime() - now.getTime();
+        return dt > 0 && dt <= horizonMs;
+      }
+      return false;
+    };
+
+    let cancelled = 0;
+    for (let i = 0; i < scheduled.length; i++) {
+      const n = scheduled[i];
+      const data = (n && n.content && n.content.data) || {};
+      if (data.type !== 'pause_active') continue;
+      const fireDate = nextFireDateFor(n, now);
+      if (!inScope(fireDate)) continue;
+      const ok = await safeNativeCall(
+        'notif.cancel.pauseSuppress',
+        function () { return Notifications.cancelScheduledNotificationAsync(n.identifier); },
+        false
+      );
+      if (ok !== false) cancelled += 1;
+    }
+    return cancelled;
+  } catch (e) { return 0; }
+}
+
+// Compute the next fire date for a scheduled notification. Pauses use a
+// WEEKLY trigger (weekday 1-7 where 1=Sunday, hour, minute). We rebuild
+// the next occurrence from `now`. For non-weekly triggers (other notif
+// types) we return null — the caller filters them out via `data.type`.
+function nextFireDateFor(n, now) {
+  const trigger = n && n.trigger;
+  if (!trigger) return null;
+  // Weekly trigger from expo-notifications exposes weekday/hour/minute.
+  // expo-notifications uses 1=Sunday, 2=Monday, ..., 7=Saturday.
+  const weekday = trigger.weekday;
+  if (typeof weekday !== 'number') return null;
+  const hour = typeof trigger.hour === 'number' ? trigger.hour : 0;
+  const minute = typeof trigger.minute === 'number' ? trigger.minute : 0;
+  // Map: JS Date.getDay() is 0=Sunday..6=Saturday → +1 to match Expo's weekday.
+  const todayWeekdayExpo = now.getDay() + 1;
+  let deltaDays = weekday - todayWeekdayExpo;
+  const candidate = new Date(now);
+  candidate.setHours(hour, minute, 0, 0);
+  if (deltaDays < 0 || (deltaDays === 0 && candidate.getTime() <= now.getTime())) {
+    deltaDays += 7;
+  }
+  candidate.setDate(candidate.getDate() + deltaDays);
+  return candidate;
+}
