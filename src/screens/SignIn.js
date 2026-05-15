@@ -200,6 +200,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
             onChangeText={setEmail}
             onFocus={() => setEmailFocused(true)}
             onBlur={() => setEmailFocused(false)}
+            accessibilityLabel={tr.a11y_email_input || 'Adresse e-mail'}
             placeholder={tr.ob_email_ph}
             placeholderTextColor="rgba(255,255,255,0.4)"
             keyboardType="email-address"
@@ -213,6 +214,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
             onChangeText={setPassword}
             onFocus={() => setPasswordFocused(true)}
             onBlur={() => setPasswordFocused(false)}
+            accessibilityLabel={tr.a11y_password_input || 'Mot de passe'}
             placeholder={tr.ob_pass_ph}
             placeholderTextColor="rgba(255,255,255,0.4)"
             secureTextEntry

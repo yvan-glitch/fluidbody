@@ -229,6 +229,7 @@ function GoalEditorSheet({ visible, goals, onClose, onSave, tr, colors }) {
         <TextInput
           value={value}
           onChangeText={setter}
+          accessibilityLabel={label}
           keyboardType="number-pad"
           maxLength={4}
           style={{
