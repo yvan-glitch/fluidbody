@@ -1491,6 +1491,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   <TextInput
                     value={searchQuery}
                     onChangeText={setSearchQuery}
+                    accessibilityLabel={tr.a11y_search_seance || 'Rechercher une séance'}
                     placeholder={tr.search_placeholder || 'Chercher une séance...'}
                     placeholderTextColor="rgba(255,255,255,0.4)"
                     style={{ flex: 1, paddingVertical: 6, fontSize: 15, color: '#ffffff' }}

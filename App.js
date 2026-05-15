@@ -854,6 +854,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
           <TextInput
             value={email}
             onChangeText={setEmail}
+            accessibilityLabel={tr.a11y_email_input || 'Adresse e-mail'}
             placeholder={tr.ob_email_ph}
             placeholderTextColor="rgba(255,255,255,0.3)"
             keyboardType="email-address"
@@ -865,6 +866,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
           <TextInput
             value={password}
             onChangeText={setPassword}
+            accessibilityLabel={tr.a11y_password_input || 'Mot de passe'}
             placeholder={tr.ob_pass_ph}
             placeholderTextColor="rgba(255,255,255,0.3)"
             secureTextEntry
@@ -1132,6 +1134,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
             value={email} onChangeText={setEmail}
             onFocus={() => setEmailFocused(true)}
             onBlur={() => setEmailFocused(false)}
+            accessibilityLabel={tr.a11y_email_input || 'Adresse e-mail'}
             placeholder={tr.ob_email_ph}
             placeholderTextColor="rgba(255,255,255,0.4)"
             keyboardType="email-address" autoCapitalize="none" autoCorrect={false} editable={!loading}
@@ -1145,6 +1148,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
             value={password} onChangeText={setPassword}
             onFocus={() => setPasswordFocused(true)}
             onBlur={() => setPasswordFocused(false)}
+            accessibilityLabel={tr.a11y_password_input || 'Mot de passe'}
             placeholder={tr.ob_pass_ph}
             placeholderTextColor="rgba(255,255,255,0.4)"
             secureTextEntry autoCapitalize="none" autoCorrect={false} editable={!loading}
@@ -2161,6 +2165,7 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
         <TextInput
           value={firstName}
           onChangeText={setFirstName}
+          accessibilityLabel={tr.a11y_first_name_input || 'Prénom'}
           placeholder={tr.ob_placeholder || 'Ton prénom'}
           placeholderTextColor="rgba(229,255,0,0.4)"
           autoCapitalize="words"
@@ -2255,18 +2260,21 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
                     <TextInput
                       value={String(tempBirth.getDate()).padStart(2, '0')}
                       onChangeText={function(v) { var n = parseInt(v, 10); if (isFinite(n) && n >= 1 && n <= 31) { var nd = new Date(tempBirth); nd.setDate(n); setTempBirth(nd); } }}
+                      accessibilityLabel={tr.a11y_birth_day_input || 'Jour de naissance'}
                       placeholder="JJ" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={2}
                       style={{ flex: 1, height: 52, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 14, color: '#ffffff', fontSize: 18, textAlign: 'center', fontWeight: '600' }}
                     />
                     <TextInput
                       value={String(tempBirth.getMonth() + 1).padStart(2, '0')}
                       onChangeText={function(v) { var n = parseInt(v, 10); if (isFinite(n) && n >= 1 && n <= 12) { var nd = new Date(tempBirth); nd.setMonth(n - 1); setTempBirth(nd); } }}
+                      accessibilityLabel={tr.a11y_birth_month_input || 'Mois de naissance'}
                       placeholder="MM" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={2}
                       style={{ flex: 1, height: 52, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 14, color: '#ffffff', fontSize: 18, textAlign: 'center', fontWeight: '600' }}
                     />
                     <TextInput
                       value={String(tempBirth.getFullYear())}
                       onChangeText={function(v) { var n = parseInt(v, 10); if (isFinite(n) && n >= 1900 && n <= new Date().getFullYear()) { var nd = new Date(tempBirth); nd.setFullYear(n); setTempBirth(nd); } }}
+                      accessibilityLabel={tr.a11y_birth_year_input || 'Année de naissance'}
                       placeholder="AAAA" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={4}
                       style={{ flex: 1.4, height: 52, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 14, color: '#ffffff', fontSize: 18, textAlign: 'center', fontWeight: '600' }}
                     />
@@ -2277,6 +2285,7 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
                   <TextInput
                     value={tempValue}
                     onChangeText={setTempValue}
+                    accessibilityLabel={editing === 'height' ? (tr.a11y_height_cm_input || 'Taille en centimètres') : (tr.a11y_weight_kg_input || 'Poids en kilogrammes')}
                     placeholder={editing === 'height' ? '170' : '65'}
                     placeholderTextColor="rgba(255,255,255,0.3)"
                     keyboardType="number-pad"

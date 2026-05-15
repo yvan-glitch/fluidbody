@@ -469,6 +469,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
                   <TextInput
                     value={prenom}
                     onChangeText={setPrenom}
+                    accessibilityLabel={tr.a11y_first_name_input || 'Prénom'}
                     placeholder={tr.onb_prenom_ph || 'Your first name'}
                     placeholderTextColor={colors.textTertiary}
                     autoCapitalize="words"
@@ -721,6 +722,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
                 <TextInput
                   value={tempInput}
                   onChangeText={setTempInput}
+                  accessibilityLabel={showHeightInput ? (tr.a11y_height_cm_input || 'Taille en centimètres') : (tr.a11y_weight_kg_input || 'Poids en kilogrammes')}
                   keyboardType="number-pad"
                   maxLength={3}
                   autoFocus

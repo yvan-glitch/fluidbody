@@ -400,6 +400,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                 fontSize: 15,
                 paddingVertical: 0,
               }}
+              accessibilityLabel={tr.a11y_search_library || (lang === 'en' ? 'Search the library' : 'Rechercher dans la bibliothèque')}
               placeholder={lang === 'en' ? 'Search' : 'Rechercher'}
               placeholderTextColor="rgba(255,255,255,0.4)"
               value={search}
