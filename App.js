@@ -106,7 +106,9 @@ import {
   scheduleStreakProtectionToday,
   schedulePostOnboardingNudge,
   scheduleMilestoneReward,
+  cancelPauseActiveNotifications,
 } from './src/utils/notifications';
+import { isUserAlreadyActive } from './src/utils/activityCheck';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
 import { safeNativeCall, safeNativeFire, diag } from './src/utils/safeNativeCall';
 import { LogBox } from 'react-native';
@@ -1253,13 +1255,21 @@ async function setupNotifications(lang = 'fr') {
         }, null);
       }
     }
-    // Pause Active — Office : toutes les heures 9h-18h en semaine
+    // Pause Active — Office : toutes les heures 9h-18h en semaine.
+    // Tagged with `data.type = 'pause_active'` so the smart-notifications
+    // layer can identify them via getAllScheduledNotificationsAsync() and
+    // cancel selectively when HealthKit reports the user is already active.
     if (pauseEnabled) {
       for (var h = 9; h <= 17; h++) {
         for (var wd = 2; wd <= 6; wd++) {
           await safeNativeCall('notif.schedule.pause', (function(wd_, h_) { return function() {
             return Notifications.scheduleNotificationAsync({
-              content: { title: tr.notif_pause_title || 'Pause Active', body: tr.notif_pause_body || 'C\'est le moment de bouger ! 5 min d\'étirements au bureau.', sound: true },
+              content: {
+                title: tr.notif_pause_title || 'Pause Active',
+                body: tr.notif_pause_body || 'C\'est le moment de bouger ! 5 min d\'étirements au bureau.',
+                sound: true,
+                data: { type: 'pause_active', scheduledHour: h_, scheduledWeekday: wd_ },
+              },
               trigger: _trigWeekly(wd_, h_, 0),
             });
           }; })(wd, h), null);
@@ -1503,6 +1513,38 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       schedulePostOnboardingNudge({ lang: lang });
     }, 800);
     return function() { try { clearTimeout(deferTimer); } catch (e) {} };
+  }, []);
+
+  // Smart suppression — on app foreground, check HealthKit and cancel
+  // today's remaining "pause active" notifs if the user has already moved
+  // enough. Throttled to one HK probe every 30 min to keep the bridge cool.
+  useEffect(function() {
+    var THROTTLE_MS = 30 * 60 * 1000;
+    var THROTTLE_KEY = 'fluid_last_activity_check';
+    async function maybeSuppress(source) {
+      try {
+        var lastRaw = await AsyncStorage.getItem(THROTTLE_KEY);
+        var last = lastRaw ? parseInt(lastRaw, 10) : 0;
+        if (Number.isFinite(last) && Date.now() - last < THROTTLE_MS) return;
+        await AsyncStorage.setItem(THROTTLE_KEY, String(Date.now()));
+        var probe = await isUserAlreadyActive();
+        if (!probe || !probe.active) return;
+        var count = await cancelPauseActiveNotifications('today');
+        if (__DEV__) devLog('[SmartNotif] ' + source + ' — cancelled ' + count + ' pause notifs (reason: ' + probe.reason + ')', probe.values);
+      } catch (e) {
+        if (__DEV__) devWarn('[SmartNotif] maybeSuppress error', e);
+      }
+    }
+    // Run once on mount (covers cold-start case) — deferred so it doesn't
+    // pile on top of the existing 800ms setup burst.
+    var bootTimer = setTimeout(function() { maybeSuppress('boot'); }, 1600);
+    var sub = AppState.addEventListener('change', function(next) {
+      if (next === 'active') { maybeSuppress('foreground'); }
+    });
+    return function() {
+      try { clearTimeout(bootTimer); } catch (e) {}
+      try { sub && sub.remove && sub.remove(); } catch (e) {}
+    };
   }, []);
 
   // Streak protection — re-evaluated on every streak change, on cold start,
