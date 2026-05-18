@@ -8,7 +8,6 @@
 // d'App.js fait `IS_TV && !supaUser` → TVLoginScreen). Donc on n'a
 // pas besoin de gérer le cas anonyme.
 
-import { useState } from 'react';
 import {
   Alert,
   StyleSheet,
@@ -16,34 +15,42 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { T } from '../constants/data';
 import AnimatedPlus from '../components/AnimatedPlus';
-import { tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
+import { AquaticBackground, GlassCardTV } from '../components/tv';
 
 function Card({ label, value, focusPreferred, onPress, accent, danger }) {
-  const [focused, setFocused] = useState(false);
-  const focusStyle = focused ? { transform: [{ scale: 1.04 }], ...TV_FOCUS_RING } : null;
-  const border = danger
-    ? 'rgba(255,90,90,0.4)'
-    : (accent ? '#AEEF4D' : 'rgba(255,255,255,0.18)');
-  const bg = danger
-    ? 'rgba(255,50,50,0.10)'
-    : (accent ? 'rgba(174,239,77,0.10)' : 'rgba(255,255,255,0.06)');
+  const ringAccent = danger ? 'green' : (accent ? 'green' : 'cyan');
+  const variant = onPress ? 'elevated' : 'standard';
   return (
-    <TouchableOpacity
-      {...tvFocusProps(focusPreferred)}
+    <GlassCardTV
       onPress={onPress}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      activeOpacity={0.85}
-      disabled={!onPress}
-      style={[styles.card, { borderColor: border, backgroundColor: bg }, focusStyle]}
+      focusPreferred={focusPreferred}
+      accent={ringAccent}
+      variant={variant}
+      shape="card"
+      padding={0}
+      tiltOnFocus={false}
+      style={styles.card}
+      contentStyle={styles.cardContent}
+      accessibilityLabel={label + ' ' + value}
     >
-      <Text style={[styles.cardLabel, { color: accent ? '#AEEF4D' : 'rgba(255,255,255,0.6)' }]}>{label}</Text>
-      <Text style={[styles.cardValue, danger ? { color: '#FF7A7A' } : null]} numberOfLines={2}>{value}</Text>
-    </TouchableOpacity>
+      <Text
+        style={[
+          styles.cardLabel,
+          { color: danger ? 'rgba(255,170,170,0.85)' : (accent ? '#AEEF4D' : 'rgba(255,255,255,0.6)') },
+        ]}
+      >
+        {label}
+      </Text>
+      <Text
+        style={[styles.cardValue, danger ? { color: '#FF9090' } : null]}
+        numberOfLines={2}
+      >
+        {value}
+      </Text>
+    </GlassCardTV>
   );
 }
 
@@ -79,18 +86,13 @@ export default function ProfilTV({
 
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={['#000a1a', '#001a2e', '#003a55']}
-        locations={[0, 0.5, 1]}
-        style={StyleSheet.absoluteFill}
-      />
+      <AquaticBackground density="normal" contentOpacity={0.7} />
 
       <View style={styles.header}>
         <Text style={styles.brand}>FLUIDBODY<AnimatedPlus style={styles.brandPlus}>+</AnimatedPlus></Text>
         <Text style={styles.title}>{isFr ? 'Mon compte' : 'My account'}</Text>
         {onClose ? (
           <TouchableOpacity
-            {...tvFocusProps(false)}
             onPress={onClose}
             style={styles.backBtn}
             activeOpacity={0.85}
@@ -113,7 +115,7 @@ export default function ProfilTV({
         />
         <Card
           label={isFr ? 'Support' : 'Support'}
-          value={isFr ? 'yvan@espace-pilates.ch' : 'yvan@espace-pilates.ch'}
+          value="yvan@espace-pilates.ch"
         />
         <Card
           label={isFr ? 'Déconnexion' : 'Sign out'}
@@ -133,51 +135,55 @@ export default function ProfilTV({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000e18', paddingHorizontal: 80, paddingTop: 80, paddingBottom: 60 },
-  header: { marginBottom: 60, flexDirection: 'row', alignItems: 'baseline' },
-  brand: { fontSize: 28, fontWeight: '900', color: '#ffffff', letterSpacing: 2 },
-  brandPlus: { color: '#AEEF4D', fontWeight: '900', fontSize: 32, marginLeft: 8 },
-  title: { fontSize: 56, fontWeight: '300', color: '#ffffff', letterSpacing: -0.5, marginLeft: 36, flex: 1 },
+  root: { flex: 1, backgroundColor: '#000e18', paddingHorizontal: 100, paddingTop: 90, paddingBottom: 70 },
+  header: { marginBottom: 64, flexDirection: 'row', alignItems: 'baseline' },
+  brand: { fontSize: 30, fontWeight: '900', color: '#ffffff', letterSpacing: 3 },
+  brandPlus: { color: '#AEEF4D', fontWeight: '900', fontSize: 34, marginLeft: 8 },
+  title: { fontSize: 64, fontWeight: '200', color: '#ffffff', letterSpacing: -1, marginLeft: 40, flex: 1, lineHeight: 72 },
   backBtn: {
-    paddingHorizontal: 22, paddingVertical: 12,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 26,
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(8,24,40,0.55)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(174,239,77,0.4)',
   },
-  backBtnText: { fontSize: 18, color: '#AEEF4D', fontWeight: '600' },
+  backBtnText: { fontSize: 19, color: '#AEEF4D', fontWeight: '700', letterSpacing: 0.5 },
 
   cardsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 24,
+    gap: 28,
     marginBottom: 40,
   },
   card: {
     width: '47%',
-    paddingVertical: 32,
-    paddingHorizontal: 28,
-    borderRadius: 20,
-    borderWidth: 1.5,
+  },
+  cardContent: {
+    paddingVertical: 36,
+    paddingHorizontal: 32,
   },
   cardLabel: {
     fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 2,
+    fontWeight: '800',
+    letterSpacing: 3,
     textTransform: 'uppercase',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   cardValue: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '600',
     color: '#ffffff',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
+    lineHeight: 32,
   },
 
   footnote: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.45)',
+    fontSize: 17,
+    color: 'rgba(255,255,255,0.5)',
     textAlign: 'center',
     marginTop: 'auto',
     paddingHorizontal: 80,
-    lineHeight: 24,
+    lineHeight: 26,
   },
 });
