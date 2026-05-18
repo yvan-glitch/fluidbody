@@ -204,7 +204,7 @@ function CelebrationOverlay({ visible, onDone, pilier, lang, seance }) {
     try {
       if (!shareRef.current || typeof shareRef.current.capture !== 'function') {
         // Fallback: text-only share.
-        await Share.share({ message: (tr.share_card_message || 'S\u00E9ance termin\u00E9e avec FLUIDBODY+ \uD83E\uDEBC') + '\nhttps://apps.apple.com/app/fluidbody/id6746387875' });
+        await Share.share({ message: (tr.share_card_message || 'S\u00E9ance termin\u00E9e avec FLUIDBODY+ \uD83E\uDEBC') + '\nhttps://apps.apple.com/app/fluidbody/id6761364962' });
         return;
       }
       const uri = await shareRef.current.capture();
