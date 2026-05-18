@@ -142,7 +142,13 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "@sentry/react-native"
+      "@sentry/react-native",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Fluidbody utilise l'appareil photo uniquement pour scanner le QR code de pairage avec l'Apple TV. Aucune image n'est enregistrée. — Fluidbody uses the camera only to scan the Apple TV pairing QR code. No image is stored."
+        }
+      ]
     ]
   }
 }
