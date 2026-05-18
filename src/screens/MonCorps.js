@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, TextInput, Share } from 'react-native';
+import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, TextInput, Share, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -20,6 +20,7 @@ import VideoPlayer from '../components/VideoPlayer';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
 import { safeNativeCall, safeNativeFire, diag } from '../utils/safeNativeCall';
+import calendarUtil from '../utils/calendar';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
@@ -863,9 +864,75 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   function deleteSavedProgram(idx) {
     var prog = savedPrograms[idx];
     if (prog && prog.notifIds) cancelProgNotifications(prog.notifIds);
+    if (prog && prog.calendarProgramId) {
+      try { calendarUtil.unscheduleProgram(prog.calendarProgramId); } catch(e) {}
+    }
     var updated = savedPrograms.filter(function(_, i) { return i !== idx; });
     setSavedPrograms(updated);
     AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(updated));
+  }
+
+  async function handleScheduleProgramInCalendar(idx) {
+    if (Platform.OS !== 'ios') return;
+    var prog = savedPrograms[idx];
+    if (!prog) return;
+    try {
+      var prefs = await calendarUtil.getCalendarPrefs();
+      if (!prefs || !prefs.enabled) {
+        var granted = await calendarUtil.requestCalendarPermission();
+        if (!granted) {
+          Alert.alert('FluidBody', tr.calendar_permission_denied || "Permission refusée. Ouvre Réglages > Confidentialité > Calendriers pour autoriser Fluidbody.");
+          return;
+        }
+        await calendarUtil.setCalendarPrefs({ enabled: true });
+      }
+      var calendarProgramId = prog.calendarProgramId || ('prog_' + (prog.date || Date.now()) + '_' + idx);
+      var pilierLabelFor = function(k) {
+        var p = getPiliers(lang).find(function(x) { return x.key === k; });
+        return (p && p.label) || k;
+      };
+      var titleTemplate = function(pillarLabel) {
+        var tpl = tr.calendar_event_title_template;
+        if (typeof tpl === 'function') return tpl(pillarLabel);
+        return 'Fluidbody — ' + pillarLabel;
+      };
+      var res = await calendarUtil.scheduleProgram({
+        program: prog,
+        programId: calendarProgramId,
+        weeks: 4,
+        pillarLabelFor: pilierLabelFor,
+        titleTemplate: titleTemplate,
+      });
+      // Persist the calendarProgramId on the program so we can unschedule later.
+      if (!prog.calendarProgramId) {
+        prog.calendarProgramId = calendarProgramId;
+        var updated = savedPrograms.slice();
+        updated[idx] = Object.assign({}, prog);
+        setSavedPrograms(updated);
+        AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(updated));
+      }
+      hapticSuccess();
+      Alert.alert('FluidBody', (tr.calendar_added_count ? tr.calendar_added_count(res.count) : (res.count + ' séance(s) ajoutée(s) à ton agenda')));
+    } catch (e) {
+      sentryCaptureSafe(e, { where: 'handleScheduleProgramInCalendar' });
+      Alert.alert('FluidBody', tr.calendar_error || 'Impossible de planifier les séances. Réessaie plus tard.');
+    }
+  }
+
+  async function handleUnscheduleProgramInCalendar(idx) {
+    if (Platform.OS !== 'ios') return;
+    var prog = savedPrograms[idx];
+    if (!prog || !prog.calendarProgramId) return;
+    try {
+      var n = await calendarUtil.unscheduleProgram(prog.calendarProgramId);
+      var updated = savedPrograms.slice();
+      var copy = Object.assign({}, prog);
+      delete copy.calendarProgramId;
+      updated[idx] = copy;
+      setSavedPrograms(updated);
+      AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(updated));
+      Alert.alert('FluidBody', (tr.calendar_removed_count ? tr.calendar_removed_count(n) : (n + ' événement(s) retiré(s)')));
+    } catch (e) {}
   }
   var MC_TABS = ['pour_vous', 'explorer', 'programmes', /* 'live', */ 'recherche'];
   var mcTabLabels = { pour_vous: tr.tab_pour_vous, explorer: tr.tab_explorer, programmes: tr.tab_programmes, live: tr.live_title || 'Live', recherche: tr.tab_recherche };
@@ -1329,6 +1396,25 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                         <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.6)' }}>{prog.duree} / {tr.resume_seances ? 's\u00E9ance' : 'session'}</Text>
                         <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.6)' }}>{prog.jours}x / {tr.prog_jours_label ? tr.prog_jours_label.toLowerCase() : 'semaine'}</Text>
                       </View>
+                      {Platform.OS === 'ios' && (
+                        <TouchableOpacity
+                          onPress={function() {
+                            if (prog.calendarProgramId) handleUnscheduleProgramInCalendar(idx);
+                            else handleScheduleProgramInCalendar(idx);
+                          }}
+                          activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityLabel={prog.calendarProgramId ? (tr.calendar_unschedule_btn || 'Retirer de mon agenda') : (tr.calendar_schedule_btn || 'Planifier dans mon agenda')}
+                          style={{ marginTop: 12, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: prog.calendarProgramId ? 'rgba(255,255,255,0.06)' : 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: prog.calendarProgramId ? 'rgba(255,255,255,0.18)' : 'rgba(174,239,77,0.4)' }}
+                        >
+                          <Text style={{ fontSize: 13, color: prog.calendarProgramId ? 'rgba(255,255,255,0.85)' : '#AEEF4D', fontWeight: '700' }}>
+                            {prog.calendarProgramId
+                              ? (tr.calendar_unschedule_btn || 'Retirer de mon agenda')
+                              : (tr.calendar_schedule_btn || 'Planifier dans mon agenda')}
+                          </Text>
+                          <Text style={{ fontSize: 13, color: prog.calendarProgramId ? 'rgba(255,255,255,0.85)' : '#AEEF4D' }}>{'\u2192'}</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   );
                 })}
