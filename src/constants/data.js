@@ -482,6 +482,23 @@ export const T = {
     // Paywall bonus banner
     paywall_referral_bonus_title: 'Tu as un bonus en attente',
     paywall_referral_bonus_sub: (n) => `${n} mois gratuit${n > 1 ? 's' : ''} t'attend${n > 1 ? 'ent' : ''}. Active ton abonnement pour en profiter.`,
+    // ── Apple Calendar sync ──────────────────────────────────────────
+    calendar_section_title: 'Planification',
+    calendar_sync_toggle: 'Synchroniser avec mon agenda',
+    calendar_sync_sub: 'Crée des événements pour tes séances dans l’app Calendrier',
+    calendar_permission_request: 'Fluidbody peut planifier tes séances dans ton agenda.',
+    calendar_permission_denied: 'Permission refusée. Ouvre Réglages > Confidentialité > Calendriers pour autoriser Fluidbody.',
+    calendar_preferred_time: 'Heure préférée',
+    calendar_default_duration: 'Durée par défaut',
+    calendar_min_short: ' min',
+    calendar_target_calendar: 'Calendrier cible',
+    calendar_default_calendar: 'Par défaut',
+    calendar_schedule_btn: 'Planifier dans mon agenda',
+    calendar_unschedule_btn: 'Retirer de mon agenda',
+    calendar_event_title_template: (pillar) => `Fluidbody — ${pillar}`,
+    calendar_added_count: (n) => `${n} séance${n > 1 ? 's' : ''} ajoutée${n > 1 ? 's' : ''} à ton agenda.`,
+    calendar_removed_count: (n) => `${n} événement${n > 1 ? 's' : ''} retiré${n > 1 ? 's' : ''} de ton agenda.`,
+    calendar_error: 'Impossible de planifier les séances. Réessaie plus tard.',
   },
   en: {
     lang: 'en', flag: '🇬🇧', nom: 'English',
@@ -948,6 +965,23 @@ export const T = {
     // Paywall bonus banner
     paywall_referral_bonus_title: 'You have a bonus waiting',
     paywall_referral_bonus_sub: (n) => `${n} free month${n > 1 ? 's' : ''} ${n > 1 ? 'are' : 'is'} waiting for you. Activate your subscription to redeem.`,
+    // ── Apple Calendar sync ──────────────────────────────────────────
+    calendar_section_title: 'Scheduling',
+    calendar_sync_toggle: 'Sync with my calendar',
+    calendar_sync_sub: 'Adds events for your sessions to the Calendar app',
+    calendar_permission_request: 'Fluidbody can add your sessions to your calendar.',
+    calendar_permission_denied: 'Permission denied. Open Settings > Privacy > Calendars to authorise Fluidbody.',
+    calendar_preferred_time: 'Preferred time',
+    calendar_default_duration: 'Default duration',
+    calendar_min_short: ' min',
+    calendar_target_calendar: 'Target calendar',
+    calendar_default_calendar: 'Default',
+    calendar_schedule_btn: 'Add to my calendar',
+    calendar_unschedule_btn: 'Remove from my calendar',
+    calendar_event_title_template: (pillar) => `Fluidbody — ${pillar}`,
+    calendar_added_count: (n) => `${n} session${n > 1 ? 's' : ''} added to your calendar.`,
+    calendar_removed_count: (n) => `${n} event${n > 1 ? 's' : ''} removed from your calendar.`,
+    calendar_error: 'Couldn\'t schedule sessions. Try again later.',
   },
 };
 
