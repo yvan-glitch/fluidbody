@@ -585,7 +585,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
           const isFirstVisible = prevPracticalEtape === null;
           const header = sectionTitle ? (
             <View>
-              <Text style={{ fontSize: IS_TV ? 22 : 18, fontWeight: '800', color: '#AEEF4D', letterSpacing: 2.5, textTransform: 'uppercase', marginTop: isFirstVisible ? 10 : 22, marginBottom: 18, paddingHorizontal: 4 }}>{sectionTitle}</Text>
+              <Text style={{ fontSize: IS_TV ? 28 : 18, fontWeight: '800', color: '#AEEF4D', letterSpacing: IS_TV ? 4 : 2.5, textTransform: 'uppercase', marginTop: IS_TV ? (isFirstVisible ? 16 : 36) : (isFirstVisible ? 10 : 22), marginBottom: IS_TV ? 24 : 18, paddingHorizontal: 4 }}>{sectionTitle}</Text>
             </View>
           ) : null;
           return (
@@ -595,18 +595,31 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
               onPress={() => tryOpenSeance(i)}
               focusPreferred={i === 0}
               disabled={noVideo}
-              style={{ borderRadius: 16, overflow: 'hidden', marginBottom: IS_TV ? 18 : 12, height: IS_TV ? 160 : 110, opacity: noVideo ? 0.45 : (locked ? 0.4 : 1) }}
+              accent={isDone ? 'green' : 'cyan'}
+              style={{ borderRadius: IS_TV ? 20 : 16, overflow: 'hidden', marginBottom: IS_TV ? 22 : 12, height: IS_TV ? 200 : 110, opacity: noVideo ? 0.45 : (locked ? 0.4 : 1) }}
             >
               <View style={{ flex: 1 }}>
                 <Image source={PILIER_IMAGES[pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pil-bg-' + pilier.key} style={StyleSheet.absoluteFill} />
-                <LinearGradient colors={isDone ? ['rgba(0,30,22,0.75)', 'rgba(0,30,22,0.85)'] : locked ? ['rgba(0,14,24,0.75)', 'rgba(0,14,24,0.9)'] : ['rgba(0,14,24,0.55)', 'rgba(0,14,24,0.8)']} style={{ flex: 1, paddingHorizontal: IS_TV ? 24 : 16, paddingTop: IS_TV ? 14 : 8, paddingBottom: IS_TV ? 16 : 12 }}>
+                <LinearGradient
+                  colors={
+                    isDone
+                      ? ['rgba(0,30,22,0.65)', 'rgba(0,30,22,0.74)', 'rgba(0,30,22,0.80)', 'rgba(0,30,22,0.85)', 'rgba(0,30,22,0.90)', 'rgba(0,30,22,0.94)']
+                      : locked
+                        ? ['rgba(0,14,24,0.65)', 'rgba(0,14,24,0.75)', 'rgba(0,14,24,0.82)', 'rgba(0,14,24,0.86)', 'rgba(0,14,24,0.90)', 'rgba(0,14,24,0.94)']
+                        : ['rgba(0,14,24,0.42)', 'rgba(0,14,24,0.55)', 'rgba(0,14,24,0.65)', 'rgba(0,14,24,0.74)', 'rgba(0,14,24,0.82)', 'rgba(0,14,24,0.88)']
+                  }
+                  locations={[0, 0.22, 0.44, 0.66, 0.84, 1]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ flex: 1, paddingHorizontal: IS_TV ? 30 : 16, paddingTop: IS_TV ? 18 : 8, paddingBottom: IS_TV ? 20 : 12 }}
+                >
                   <Text style={{ fontSize: IS_TV ? 14 : 10, fontWeight: '900', color: '#ffffff', alignSelf: 'flex-end', marginBottom: 6 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, color: '#AEEF4D' }}>+</AnimatedPlus></Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <View style={{ width: IS_TV ? 56 : 40, height: IS_TV ? 56 : 40, borderRadius: IS_TV ? 28 : 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginRight: IS_TV ? 20 : 14 }}>
-                      <Text style={{ fontSize: IS_TV ? 26 : 18, color: isDone ? '#AEEF4D' : '#ffffff' }}>{isDone ? '\u2713' : '\u25B6'}</Text>
+                    <View style={{ width: IS_TV ? 72 : 40, height: IS_TV ? 72 : 40, borderRadius: IS_TV ? 36 : 20, backgroundColor: isDone ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.15)', borderWidth: IS_TV ? 1.5 : 0, borderColor: isDone ? 'rgba(174,239,77,0.55)' : 'transparent', alignItems: 'center', justifyContent: 'center', marginRight: IS_TV ? 22 : 14 }}>
+                      <Text style={{ fontSize: IS_TV ? 34 : 18, color: isDone ? '#AEEF4D' : '#ffffff' }}>{isDone ? '\u2713' : '\u25B6'}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: IS_TV ? 24 : 16, fontWeight: '600', color: '#ffffff', marginBottom: 6 }} numberOfLines={1}>{titre}</Text>
+                      <Text style={{ fontSize: IS_TV ? 30 : 16, fontWeight: IS_TV ? '500' : '600', color: '#ffffff', marginBottom: IS_TV ? 10 : 6, letterSpacing: IS_TV ? -0.3 : 0 }} numberOfLines={1}>{titre}</Text>
                       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                         <Text style={{ fontSize: IS_TV ? 13 : 10, paddingHorizontal: IS_TV ? 12 : 8, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(0,189,208,0.15)', color: '#00BDD0', letterSpacing: 0.5 }}>{tr.etapes[etape] || etape}</Text>
                         <Text style={{ fontSize: IS_TV ? 13 : 10, paddingHorizontal: IS_TV ? 12 : 8, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)', color: '#ffffff' }}>{duree}</Text>
@@ -621,7 +634,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                         ) : null}
                       </View>
                     </View>
-                    <Text style={{ fontSize: IS_TV ? 18 : 13, color: '#AEEF4D', fontWeight: '300' }}>{String(i + 1).padStart(2, '0')}</Text>
+                    <Text style={{ fontSize: IS_TV ? 32 : 13, color: '#AEEF4D', fontWeight: '200', letterSpacing: IS_TV ? -0.5 : 0, fontVariant: ['tabular-nums'] }}>{String(i + 1).padStart(2, '0')}</Text>
                   </View>
                 </LinearGradient>
               </View>
