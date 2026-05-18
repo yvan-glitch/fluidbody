@@ -160,17 +160,22 @@ function VideoSkipChevrons({ reverse, size = 22 }) {
 
 function VideoSkip10Icon({ reverse, onPress, bumpTimer }) {
   const a11y = reverse ? 'Revenir de 10 secondes' : 'Avancer de 10 secondes';
-  const SIZE = 52;
+  // Apple TV : skip buttons need to be readable from 2-3m, scale them up
+  // by ~70 % and bump label/stroke proportionally.
+  const SIZE = IS_TV ? 90 : 52;
+  const STROKE = IS_TV ? 1.2 : 1.5; // SVG is in a 24-unit viewBox, smaller stroke reads cleaner at scale
+  const LABEL = IS_TV ? 20 : 12;
   return (
     <Pressable
       accessibilityLabel={a11y}
       accessibilityRole="button"
       onPress={async () => { bumpTimer(); await onPress?.(); }}
       hitSlop={14}
+      {...tvFocusProps(false)}
       style={{ width: SIZE + 12, height: SIZE + 12, alignItems: 'center', justifyContent: 'center' }}
     >
       <GlassView
-        intensity={45}
+        intensity={IS_TV ? 60 : 45}
         tint="dark"
 
         forceDark
@@ -185,17 +190,17 @@ function VideoSkip10Icon({ reverse, onPress, bumpTimer }) {
         <Svg width={SIZE} height={SIZE} viewBox="0 0 24 24" fill="none" style={{ position: 'absolute' }}>
           {reverse ? (
             <>
-              <Path d="M12 5 A7 7 0 1 0 19 12" stroke="#fff" strokeWidth={1.5} strokeLinecap="round" fill="none" />
-              <Path d="M14.5 3 L12 5 L14.5 7.5" stroke="#fff" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              <Path d="M12 5 A7 7 0 1 0 19 12" stroke="#fff" strokeWidth={STROKE} strokeLinecap="round" fill="none" />
+              <Path d="M14.5 3 L12 5 L14.5 7.5" stroke="#fff" strokeWidth={STROKE} strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </>
           ) : (
             <>
-              <Path d="M12 5 A7 7 0 1 1 5 12" stroke="#fff" strokeWidth={1.5} strokeLinecap="round" fill="none" />
-              <Path d="M9.5 3 L12 5 L9.5 7.5" stroke="#fff" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              <Path d="M12 5 A7 7 0 1 1 5 12" stroke="#fff" strokeWidth={STROKE} strokeLinecap="round" fill="none" />
+              <Path d="M9.5 3 L12 5 L9.5 7.5" stroke="#fff" strokeWidth={STROKE} strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </>
           )}
         </Svg>
-        <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff', letterSpacing: -0.3, marginTop: 1 }}>10</Text>
+        <Text style={{ fontSize: LABEL, fontWeight: '800', color: '#fff', letterSpacing: -0.3, marginTop: IS_TV ? 4 : 1 }}>10</Text>
       </GlassView>
     </Pressable>
   );
@@ -814,7 +819,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
 
             {hasRealVideo && (
             <View pointerEvents="box-none" style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 28 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: IS_TV ? 48 : 28 }}>
                 <VideoSkip10Icon
                   reverse
                   bumpTimer={bumpTimer}
@@ -826,24 +831,25 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                 <Pressable
                   onPress={togglePlay}
                   hitSlop={12}
+                  {...tvFocusProps(true)}
                   accessibilityLabel={status.isPlaying ? 'Pause' : 'Lecture'}
                   accessibilityRole="button"
                 >
                   <Animated.View style={{ transform: [{ scale: playScale }] }}>
                     <GlassView
-                      intensity={55}
+                      intensity={IS_TV ? 70 : 55}
                       tint="dark"
 
                       forceDark
-                      borderRadius={36}
+                      borderRadius={IS_TV ? 60 : 36}
                       contentStyle={{
-                        width: 72,
-                        height: 72,
+                        width: IS_TV ? 120 : 72,
+                        height: IS_TV ? 120 : 72,
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      <VideoPlayPauseIcon playing={!!status.isPlaying} size={32} />
+                      <VideoPlayPauseIcon playing={!!status.isPlaying} size={IS_TV ? 54 : 32} />
                     </GlassView>
                   </Animated.View>
                 </Pressable>
@@ -908,21 +914,21 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
               )}
               {hasRealVideo && (
                 <GlassView
-                  intensity={50}
+                  intensity={IS_TV ? 65 : 50}
                   tint="dark"
 
                   forceDark
                   borderRadius={GLASS_RADII.button}
-                  style={{ marginBottom: 16 }}
+                  style={{ marginBottom: IS_TV ? 28 : 16 }}
                   contentStyle={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 10,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
+                    gap: IS_TV ? 18 : 10,
+                    paddingHorizontal: IS_TV ? 24 : 12,
+                    paddingVertical: IS_TV ? 14 : 6,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: '#ffffff', minWidth: 44, fontVariant: ['tabular-nums'] }}>{formatTimeCode(status.positionMillis)}</Text>
+                  <Text style={{ fontSize: IS_TV ? 18 : 11, fontWeight: '500', color: '#ffffff', minWidth: IS_TV ? 70 : 44, fontVariant: ['tabular-nums'], letterSpacing: IS_TV ? 0.5 : 0 }}>{formatTimeCode(status.positionMillis)}</Text>
                   <Pressable
                     accessibilityLabel="Barre de progression de la vidéo"
                     accessibilityRole="adjustable"
@@ -933,13 +939,13 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                       const ratio = Math.max(0, Math.min(1, e.nativeEvent.locationX / w));
                       await videoRef.current?.setPositionAsync(ratio * status.durationMillis);
                     }}
-                    style={{ flex: 1, height: 24, justifyContent: 'center' }}
+                    style={{ flex: 1, height: IS_TV ? 32 : 24, justifyContent: 'center' }}
                   >
-                    <View style={{ height: 3, borderRadius: 1.5, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden' }}>
+                    <View style={{ height: IS_TV ? 6 : 3, borderRadius: IS_TV ? 3 : 1.5, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden' }}>
                       <View style={{ width: (progress * 100) + '%', height: '100%', backgroundColor: '#ffffff' }} />
                     </View>
                   </Pressable>
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: '#ffffff', minWidth: 44, textAlign: 'right', fontVariant: ['tabular-nums'] }}>{formatRemaining(status.positionMillis, status.durationMillis)}</Text>
+                  <Text style={{ fontSize: IS_TV ? 18 : 11, fontWeight: '500', color: '#ffffff', minWidth: IS_TV ? 70 : 44, textAlign: 'right', fontVariant: ['tabular-nums'], letterSpacing: IS_TV ? 0.5 : 0 }}>{formatRemaining(status.positionMillis, status.durationMillis)}</Text>
                 </GlassView>
               )}
               {(progress >= 0.8 || !hasRealVideo || elapsedSec >= 60) && (
