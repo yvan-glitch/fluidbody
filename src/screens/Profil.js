@@ -16,6 +16,13 @@ import { Bulle, FloatingMedusas, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import healthkit from '../utils/healthkit';
 import { getPiliers } from '../utils';
+import { getMyReferralCode, getReferralStats } from '../utils/referrals';
+
+// Safe-require expo-clipboard pour le tap-to-copy. Si le module n'est
+// pas dispo (Expo Go ou ancien build), on retombe sur Share.share — qui
+// laisse à l'utilisateur le choix « Copier » dans la feuille système.
+let _Clipboard = null;
+try { _Clipboard = require('expo-clipboard'); } catch (e) {}
 
 const COACH_IMAGE = require('../../assets/coach.jpg');
 const DEV_IMAGE = require('../../assets/yvan.webp');
@@ -65,6 +72,13 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var [editY, setEditY] = useState('');
   var [editHeight, setEditHeight] = useState('');
   var [editWeight, setEditWeight] = useState('');
+  // Parrainage : code généré paresseusement la 1ère fois qu'on monte ce
+  // screen avec un user connecté. Les stats peuvent évoluer (un filleul
+  // qui paie pendant la session courante), donc on re-fetch sur
+  // profileRefreshKey (le même signal utilisé par le bloc « infos »).
+  var [referralCode, setReferralCode] = useState(null);
+  var [referralStats, setReferralStats] = useState({ referrals_count: 0, free_months_earned: 0, free_months_used: 0, free_months_available: 0 });
+  var [referralCopiedToast, setReferralCopiedToast] = useState(false);
   // Easter egg — 5 taps on the avatar pill within 3s, admin-only. Opens the
   // "Coach mode" debug panel.
   var [coachModeVisible, setCoachModeVisible] = useState(false);
@@ -176,6 +190,21 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
       } catch (e) {}
     }).catch(function(e) {
       if (__DEV__) console.log('[Profil] fetch threw:', e?.message || e);
+    });
+    return function() { cancelled = true; };
+  }, [supaUser && supaUser.id, profileRefreshKey]);
+
+  // Parrainage — fetch (et génère si besoin) le code + les stats du
+  // user. Dépend de profileRefreshKey pour que le retour depuis l'écran
+  // d'édition rafraîchisse les compteurs si un filleul vient de payer.
+  useEffect(function() {
+    if (!supabase || !supaUser) return;
+    var cancelled = false;
+    getMyReferralCode(supabase).then(function(code) {
+      if (!cancelled) setReferralCode(code || null);
+    });
+    getReferralStats(supabase, supaUser.id).then(function(stats) {
+      if (!cancelled && stats) setReferralStats(stats);
     });
     return function() { cancelled = true; };
   }, [supaUser && supaUser.id, profileRefreshKey]);
@@ -298,6 +327,35 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var pctVal = Math.round(totalDoneVal / 160 * 100);
   var piliers = getPiliers(lang);
   var bestPilier = piliers.reduce(function(best, p) { var c = (done[p.key] || []).filter(Boolean).length; return c > best.count ? { p: p, count: c } : best; }, { p: piliers[0], count: 0 });
+
+  async function copyReferralCode() {
+    if (!referralCode) return;
+    try { var H = require('expo-haptics'); H.selectionAsync(); } catch (e) {}
+    if (_Clipboard) {
+      try {
+        var fn = _Clipboard.setStringAsync || _Clipboard.setString;
+        if (fn) await fn(referralCode);
+        setReferralCopiedToast(true);
+        setTimeout(function() { setReferralCopiedToast(false); }, 1600);
+        return;
+      } catch (e) {}
+    }
+    // Fallback : ouvre la feuille de partage avec le seul code, l'user
+    // pourra le copier depuis là. Pas idéal mais 0 dépendance.
+    var msg = typeof tr.referral_share_message === 'function'
+      ? tr.referral_share_message(referralCode)
+      : referralCode;
+    Share.share({ message: msg }).catch(function() {});
+  }
+
+  function shareReferralCode() {
+    if (!referralCode) return;
+    try { var H = require('expo-haptics'); H.selectionAsync(); } catch (e) {}
+    var msg = typeof tr.referral_share_message === 'function'
+      ? tr.referral_share_message(referralCode)
+      : ('FluidBody+ · ' + referralCode);
+    Share.share({ message: msg }).catch(function() {});
+  }
 
   async function shareWithCard() {
     if (shareRef.current) {
@@ -432,6 +490,93 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* ── Mon parrainage ────────────────────────────────────────
+            Visible uniquement quand un user Supabase est connecté
+            (sinon pas de code à générer). Le bouton de partage et le
+            tap-to-copy ouvrent respectivement la share sheet et
+            clipboard. Les 3 chiffres en bas reflètent l'état serveur
+            (referrals_count, earned, available). */}
+        {supaUser && (
+          <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
+            <GlassCard intensity={60} padding={20} borderRadius={GLASS_RADII.card} substrateColor={theme.glass.substrateAccent}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>
+                {tr.referral_section_title || 'Mon parrainage'}
+              </Text>
+              <Text style={{ fontSize: 13, fontWeight: '400', color: theme.colors.textSecondary, lineHeight: 19, marginBottom: 16 }}>
+                {tr.referral_explainer || 'Chaque amie qui s\'abonne via ton code te fait gagner 1 mois gratuit — à elle aussi.'}
+              </Text>
+
+              {/* Code en gros, tap-to-copy */}
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={copyReferralCode}
+                disabled={!referralCode}
+                accessibilityLabel={tr.referral_code_label || 'Ton code de parrainage'}
+                accessibilityRole="button"
+                accessibilityHint={tr.referral_code_tap_to_copy || 'Appuie pour copier'}
+                style={{
+                  paddingVertical: 18,
+                  paddingHorizontal: 14,
+                  borderRadius: 14,
+                  backgroundColor: 'rgba(0,0,0,0.18)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(174,239,77,0.35)',
+                  alignItems: 'center',
+                  marginBottom: 14,
+                }}
+              >
+                <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 6 }}>
+                  {tr.referral_code_label || 'Ton code'}
+                </Text>
+                <Text selectable style={{ fontSize: 24, fontWeight: '800', color: '#AEEF4D', letterSpacing: 2, fontVariant: ['tabular-nums'] }}>
+                  {referralCode || '— — — —'}
+                </Text>
+                <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 8 }}>
+                  {referralCopiedToast
+                    ? (tr.referral_code_copied || 'Code copié !')
+                    : (tr.referral_code_tap_to_copy || 'Appuie pour copier')}
+                </Text>
+              </TouchableOpacity>
+
+              {/* CTA share */}
+              <TouchableOpacity
+                onPress={shareReferralCode}
+                disabled={!referralCode}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={tr.referral_share_btn || 'Partager mon code'}
+                style={{ height: 46, borderRadius: 23, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center', marginBottom: 16, opacity: referralCode ? 1 : 0.4 }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#000000' }}>{tr.referral_share_btn || 'Partager mon code'}</Text>
+              </TouchableOpacity>
+
+              {/* Stats — 3 chiffres glass mini-cards */}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: theme.colors.hairline, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 22, fontWeight: '800', color: theme.colors.text }}>{referralStats.referrals_count}</Text>
+                  <Text numberOfLines={2} style={{ fontSize: 10, color: theme.colors.textSecondary, textAlign: 'center', marginTop: 4, letterSpacing: 0.3 }}>
+                    {referralStats.referrals_count === 1
+                      ? (tr.referral_stat_friends_singular || 'amie parrainée')
+                      : (tr.referral_stat_friends || 'amies parrainées')}
+                  </Text>
+                </View>
+                <View style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: theme.colors.hairline, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 22, fontWeight: '800', color: '#AEEF4D' }}>{referralStats.free_months_earned}</Text>
+                  <Text numberOfLines={2} style={{ fontSize: 10, color: theme.colors.textSecondary, textAlign: 'center', marginTop: 4, letterSpacing: 0.3 }}>
+                    {tr.referral_stat_months_earned || 'mois gratuits gagnés'}
+                  </Text>
+                </View>
+                <View style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: 'rgba(174,239,77,0.10)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 22, fontWeight: '800', color: '#AEEF4D' }}>{referralStats.free_months_available}</Text>
+                  <Text numberOfLines={2} style={{ fontSize: 10, color: theme.colors.textSecondary, textAlign: 'center', marginTop: 4, letterSpacing: 0.3 }}>
+                    {tr.referral_stat_months_available || 'mois disponibles'}
+                  </Text>
+                </View>
+              </View>
+            </GlassCard>
+          </View>
+        )}
 
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={60} padding={20} borderRadius={GLASS_RADII.card} substrateColor={theme.glass.substrateAccent}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.coach_title || 'Votre Coach'}</Text>
