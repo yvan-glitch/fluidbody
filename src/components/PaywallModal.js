@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, Modal, Alert, Dimensions, Linking, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, ScrollView, Modal, Alert, Dimensions, Linking, StyleSheet, Animated, Easing, TouchableOpacity } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedPlus from './AnimatedPlus';
@@ -14,6 +14,7 @@ import {
   GLASS_RADII,
 } from './ui';
 import { useTheme } from '../theme/ThemeProvider';
+import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -198,7 +199,321 @@ function CompareTable({ features, theme, title, appLabel, studioLabel }) {
   );
 }
 
+// TVPaywallView — render alternative pour Apple TV.
+//
+// Layout horizontal 50/50 : hero + bénéfices à gauche, plans + CTA à
+// droite. Focusable, lisible à 3 m. Pas de testimonials carousel
+// auto-pause-incompatible — au lieu de ça, on affiche un témoignage à
+// la fois, swap toutes les 8 s. Bouton "J'ai déjà un abonnement"
+// renvoie au flow de pairing iPhone (onClose puis l'utilisateur va
+// dans son iPhone → Profil → Pairer Apple TV).
+function TVPaywallView({
+  onClose,
+  lang,
+  packagesByProductId,
+  loadingPrices,
+  disabled,
+  onBuyMonthly,
+  onBuyYearly,
+  onRestore,
+  freeMonthsAvailable,
+}) {
+  var tr = T[lang] || T['fr'];
+  var isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+  var monthlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.monthly];
+  var yearlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.yearly];
+  var monthlyPriceRaw = getRcPriceString(monthlyPkg) || 'CHF 12.90';
+  var yearlyPriceRaw = getRcPriceString(yearlyPkg) || 'CHF 99.00';
+
+  const [selected, setSelected] = useState('yearly');
+  const [focusedKey, setFocusedKey] = useState(null);
+
+  const testimonials = Array.isArray(tr.paywall_testimonials) ? tr.paywall_testimonials : [];
+  const [testimonialIdx, setTestimonialIdx] = useState(0);
+
+  useEffect(() => {
+    if (testimonials.length < 2) return;
+    const itv = setInterval(() => {
+      setTestimonialIdx(function(i) { return (i + 1) % testimonials.length; });
+    }, 8000);
+    return () => clearInterval(itv);
+  }, [testimonials.length]);
+
+  const benefits = isFr ? [
+    'Toutes les séances vidéo en HD',
+    'Téléchargements hors-ligne',
+    'Programmes personnalisés selon ton corps',
+    'Sans engagement, résiliable à tout moment',
+  ] : [
+    'All video sessions in HD',
+    'Offline downloads',
+    'Personalised programs for your body',
+    'Cancel anytime, no commitment',
+  ];
+
+  const annualLabel = isFr ? 'Annuel' : 'Annual';
+  const annualSub = isFr ? '12 mois pour le prix de 8' : '12 months for the price of 8';
+  const monthlyLabel = isFr ? 'Mensuel' : 'Monthly';
+  const ctaLabel = isFr ? "S'abonner" : 'Subscribe';
+  const pairLabel = isFr ? "J'ai déjà un abonnement" : 'I already have a subscription';
+  const heroTitle = isFr ? 'Le Pilates conscient,\nau quotidien' : 'Conscious Pilates,\nevery day';
+
+  function onCta() {
+    if (loadingPrices) return;
+    if (selected === 'yearly' && yearlyPkg) { onBuyYearly && onBuyYearly(yearlyPkg); return; }
+    if (selected === 'monthly' && monthlyPkg) { onBuyMonthly && onBuyMonthly(monthlyPkg); return; }
+    Alert.alert('FluidBody+', isFr ? 'Abonnement disponible bientôt sur Apple TV.' : 'Subscription coming soon on Apple TV.');
+  }
+
+  function planCard(key, label, sub, priceText, fullPeriod) {
+    const active = selected === key;
+    const focused = focusedKey === 'plan-' + key;
+    return (
+      <TouchableOpacity
+        key={key}
+        {...tvFocusProps(key === 'yearly')}
+        activeOpacity={0.9}
+        onPress={function() { setSelected(key); }}
+        onFocus={function() { setFocusedKey('plan-' + key); }}
+        onBlur={function() { setFocusedKey(null); }}
+        style={[
+          {
+            marginBottom: 18,
+            paddingVertical: 22,
+            paddingHorizontal: 24,
+            borderRadius: 20,
+            borderWidth: 2,
+            borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.18)',
+            backgroundColor: active ? 'rgba(174,239,77,0.12)' : 'rgba(255,255,255,0.04)',
+          },
+          focused ? { transform: [{ scale: 1.03 }], ...TV_FOCUS_RING } : null,
+        ]}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{
+            width: 24, height: 24, borderRadius: 12,
+            borderWidth: 2, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.4)',
+            alignItems: 'center', justifyContent: 'center',
+            marginRight: 16,
+          }}>
+            {active ? <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#AEEF4D' }} /> : null}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 22, fontWeight: '700', color: '#ffffff', letterSpacing: -0.2 }}>{label}</Text>
+            {sub ? <Text style={{ fontSize: 14, color: '#AEEF4D', marginTop: 4 }}>{sub}</Text> : null}
+          </View>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff' }}>{priceText}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  const ctaFocused = focusedKey === 'cta';
+  const pairFocused = focusedKey === 'pair';
+  const restoreFocused = focusedKey === 'restore';
+  const closeFocused = focusedKey === 'close';
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
+      <LinearGradient
+        colors={['#000a1a', '#001a2e', '#003a55']}
+        locations={[0, 0.5, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Close button : top-right, focusable mais discret. Sur Apple
+          TV le bouton Menu de la Siri Remote ferme aussi, mais on
+          garde un fallback visuel. */}
+      <TouchableOpacity
+        {...tvFocusProps(false)}
+        onPress={onClose}
+        onFocus={function() { setFocusedKey('close'); }}
+        onBlur={function() { setFocusedKey(null); }}
+        style={{
+          position: 'absolute', top: 40, right: 40, zIndex: 10,
+          paddingHorizontal: 22, paddingVertical: 12,
+          backgroundColor: 'rgba(255,255,255,0.10)',
+          borderRadius: 14,
+          ...(closeFocused ? TV_FOCUS_RING : {}),
+        }}
+      >
+        <Text style={{ fontSize: 18, color: '#ffffff', fontWeight: '600' }}>{isFr ? 'Fermer' : 'Close'}</Text>
+      </TouchableOpacity>
+
+      <View style={{ flex: 1, flexDirection: 'row', paddingHorizontal: 80, paddingTop: 90, paddingBottom: 60 }}>
+
+        {/* Colonne gauche : hero + bénéfices + témoignage */}
+        <View style={{ flex: 1, paddingRight: 60, justifyContent: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 24 }}>
+            <Text style={{ fontSize: 22, fontWeight: '900', color: '#AEEF4D', letterSpacing: 4 }}>FLUIDBODY</Text>
+            <AnimatedPlus style={{ fontSize: 22, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
+          </View>
+          <Text style={{ fontSize: 56, fontWeight: '800', color: '#ffffff', lineHeight: 66, letterSpacing: -0.5, marginBottom: 36 }}>{heroTitle}</Text>
+
+          {Number.isFinite(freeMonthsAvailable) && freeMonthsAvailable > 0 ? (
+            <View style={{
+              marginBottom: 30, paddingVertical: 16, paddingHorizontal: 20,
+              borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.14)',
+              borderWidth: 1, borderColor: 'rgba(174,239,77,0.45)',
+              flexDirection: 'row', alignItems: 'center',
+            }}>
+              <Text style={{ fontSize: 28, marginRight: 14 }}>🎁</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#AEEF4D', marginBottom: 4 }}>
+                  {tr.paywall_referral_bonus_title || (isFr ? 'Tu as un bonus en attente' : 'You have a bonus waiting')}
+                </Text>
+                <Text style={{ fontSize: 15, fontWeight: '500', color: '#ffffff' }}>
+                  {typeof tr.paywall_referral_bonus_sub === 'function'
+                    ? tr.paywall_referral_bonus_sub(freeMonthsAvailable)
+                    : (freeMonthsAvailable + ' ' + (isFr ? 'mois gratuit(s) t\'attendent.' : 'free month(s) waiting for you.'))}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
+          {/* Bénéfices */}
+          <View style={{ marginBottom: 36 }}>
+            {benefits.map(function(b, i) {
+              return (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                  <View style={{
+                    width: 32, height: 32, borderRadius: 16,
+                    backgroundColor: 'rgba(174,239,77,0.18)',
+                    borderWidth: 1, borderColor: 'rgba(174,239,77,0.45)',
+                    alignItems: 'center', justifyContent: 'center',
+                    marginRight: 16,
+                  }}>
+                    <Text style={{ color: '#AEEF4D', fontWeight: '800', fontSize: 16 }}>✓</Text>
+                  </View>
+                  <Text style={{ flex: 1, fontSize: 18, color: '#ffffff', fontWeight: '500', letterSpacing: -0.1 }}>{b}</Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Témoignage statique (swap toutes les 8 s, pas de carousel
+              auto qu'on doit pouvoir pauser) */}
+          {testimonials[testimonialIdx] ? (
+            <View style={{
+              paddingVertical: 18, paddingHorizontal: 22,
+              borderRadius: 16,
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+            }}>
+              <Text style={{ fontSize: 16, fontStyle: 'italic', color: '#ffffff', lineHeight: 24, marginBottom: 8 }}>
+                « {testimonials[testimonialIdx].text} »
+              </Text>
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', letterSpacing: 0.3 }}>
+                — {testimonials[testimonialIdx].name}{testimonials[testimonialIdx].age ? ', ' + testimonials[testimonialIdx].age : ''}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Colonne droite : plans + CTA + pair + restore */}
+        <View style={{ flex: 1, paddingLeft: 60, justifyContent: 'center' }}>
+          {planCard('yearly', annualLabel, annualSub, yearlyPriceRaw, isFr ? '/an' : '/yr')}
+          {planCard('monthly', monthlyLabel, null, monthlyPriceRaw, isFr ? '/mois' : '/mo')}
+
+          {/* CTA principal */}
+          <TouchableOpacity
+            {...tvFocusProps(false)}
+            onPress={onCta}
+            disabled={disabled || loadingPrices}
+            onFocus={function() { setFocusedKey('cta'); }}
+            onBlur={function() { setFocusedKey(null); }}
+            activeOpacity={0.85}
+            style={[
+              {
+                marginTop: 16,
+                paddingVertical: 22,
+                borderRadius: 18,
+                backgroundColor: '#AEEF4D',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: (disabled || loadingPrices) ? 0.5 : 1,
+              },
+              ctaFocused ? { transform: [{ scale: 1.04 }], ...TV_FOCUS_RING } : null,
+            ]}
+          >
+            <Text style={{ fontSize: 22, fontWeight: '900', color: '#001a2e', letterSpacing: 0.3 }}>{ctaLabel}</Text>
+          </TouchableOpacity>
+
+          {/* Pair existing iPhone subscription */}
+          <TouchableOpacity
+            {...tvFocusProps(false)}
+            onPress={onClose}
+            onFocus={function() { setFocusedKey('pair'); }}
+            onBlur={function() { setFocusedKey(null); }}
+            activeOpacity={0.85}
+            style={[
+              {
+                marginTop: 16,
+                paddingVertical: 16,
+                borderRadius: 18,
+                borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)',
+                alignItems: 'center',
+              },
+              pairFocused ? { transform: [{ scale: 1.03 }], ...TV_FOCUS_RING, borderColor: '#AEEF4D' } : null,
+            ]}
+          >
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>{pairLabel}</Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 4 }}>
+              {isFr ? 'Pair ta TV depuis l\'app iPhone' : 'Pair your TV from the iPhone app'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Restore */}
+          <TouchableOpacity
+            {...tvFocusProps(false)}
+            onPress={onRestore}
+            disabled={disabled}
+            onFocus={function() { setFocusedKey('restore'); }}
+            onBlur={function() { setFocusedKey(null); }}
+            activeOpacity={0.7}
+            style={[
+              { marginTop: 22, paddingVertical: 12, alignItems: 'center', borderRadius: 14 },
+              restoreFocused ? TV_FOCUS_RING : null,
+            ]}
+          >
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>{tr.paywall_restore || (isFr ? 'Restaurer mes achats' : 'Restore purchases')}</Text>
+          </TouchableOpacity>
+
+          {/* Légales — petite footer */}
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 26, lineHeight: 17 }}>
+            {tr.paywall_legal || (isFr
+              ? "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période."
+              : 'Subscription auto-renews unless cancelled at least 24h before the end of the period.')}
+          </Text>
+        </View>
+
+      </View>
+    </View>
+  );
+}
+
 export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore, freeMonthsAvailable }) {
+  // Apple TV : on bascule sur un render dédié, layout horizontal,
+  // focus engine et CTA accent. Le reste du fichier (iPhone/iPad) reste
+  // strictement identique.
+  if (IS_TV) {
+    return (
+      <Modal visible={!!visible} animationType="fade" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
+        <TVPaywallView
+          onClose={onClose}
+          lang={lang}
+          packagesByProductId={packagesByProductId}
+          loadingPrices={loadingPrices}
+          disabled={disabled}
+          onBuyMonthly={onBuyMonthly}
+          onBuyYearly={onBuyYearly}
+          onRestore={onRestore}
+          freeMonthsAvailable={freeMonthsAvailable}
+        />
+      </Modal>
+    );
+  }
+
   var tr = T[lang] || T['fr'];
   var theme = useTheme().theme;
   var isLight = theme.mode === 'light';
