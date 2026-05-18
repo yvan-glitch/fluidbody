@@ -5,4 +5,5 @@
 export { default as AquaticBackground } from './AquaticBackground';
 export { default as MeduseTV } from './MeduseTV';
 export { default as GlassCardTV } from './GlassCardTV';
+export { default as FocusableCardTV } from './FocusableCardTV';
 export { default as SeanceCompleteTV } from './SeanceCompleteTV';
