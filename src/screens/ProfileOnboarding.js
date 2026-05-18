@@ -36,6 +36,8 @@ import LivingBackground from '../components/LivingBackground';
 import { Bulle, BULLES_ONBOARDING, MeduseCornerIcon } from '../components/Meduse';
 import healthkit from '../utils/healthkit';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
+import supabase from '../lib/supabase';
+import { claimReferralCode, readPendingReferralCode, clearPendingReferralCode, normalizeReferralCode } from '../utils/referrals';
 
 let DateTimePicker = null;
 try { DateTimePicker = require('@react-native-community/datetimepicker').default; } catch (e) {}
@@ -49,7 +51,12 @@ function _hapticSelection() {
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
-const TOTAL_STEPS = 5;
+// Onboarding initial = 6 steps (identité, naissance, mesures, pratique,
+// objectifs, parrainage). En mode édition depuis Profil (initialData
+// fourni), on saute le step parrainage : il n'a de sens qu'à la 1ère
+// utilisation. Cf. `step === 5` dans le JSX et la garde dans `next()`.
+const TOTAL_STEPS_INITIAL = 6;
+const TOTAL_STEPS_EDIT = 5;
 
 const GOAL_KEYS = ['tone', 'flex', 'posture', 'recovery', 'serenity'];
 
@@ -171,6 +178,8 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
   const insets = useSafeAreaInsets();
 
   const init = initialData || {};
+  // Mode édition (re-entrée depuis Profil) → on saute le step parrainage.
+  const TOTAL_STEPS = initialData ? TOTAL_STEPS_EDIT : TOTAL_STEPS_INITIAL;
 
   // ── State ──
   const [step, setStep] = useState(0);
@@ -194,6 +203,29 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
   const [showHeightInput, setShowHeightInput] = useState(false);
   const [showWeightInput, setShowWeightInput] = useState(false);
   const [tempInput, setTempInput] = useState('');
+  // ── Parrainage (step 5, optionnel) ──
+  // `referralInput` est l'input texte (raw, non normalisé pour ne pas
+  // forcer le user à voir tout en majuscules pendant qu'il tape). Le
+  // status ('idle' | 'validating' | 'ok' | 'err:<reason>') pilote le
+  // feedback visuel sous l'input.
+  const [referralInput, setReferralInput] = useState('');
+  const [referralStatus, setReferralStatus] = useState('idle');
+  const [referralPrefilled, setReferralPrefilled] = useState(false);
+
+  // Si un code a été capturé via deep link avant que l'utilisateur
+  // arrive ici, on le prefill. On consomme ce flag avec
+  // clearPendingReferralCode dans `next()` quand le step est franchi
+  // (validé ou skippé), pour éviter une 2e résurrection plus tard.
+  useEffect(function () {
+    let cancelled = false;
+    readPendingReferralCode().then(function (code) {
+      if (!cancelled && code && !referralInput) {
+        setReferralInput(code);
+        setReferralPrefilled(true);
+      }
+    });
+    return function () { cancelled = true; };
+  }, []);
 
   // Restore cached values if no `initialData` given (resume-where-left-off).
   useEffect(function () {
@@ -270,6 +302,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
     if (step === 2) return true; // measurements optional
     if (step === 3) return !!practiceLevel && !!frequency;
     if (step === 4) return goals.length >= 1 && goals.length <= 2;
+    if (step === 5) return true; // referral optional — always allow finish
     return false;
   }
 
@@ -313,6 +346,29 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
     }
   }
 
+  async function maybeClaimReferralOnFinish() {
+    // Cas où l'utilisateur a tapé / laissé un code à l'écran step 5.
+    // Si pas de supabase / pas de user, on garde le code en pending pour
+    // qu'il soit claim au prochain mount (post-auth). Sinon, on tente le
+    // claim et on consomme le pending dans tous les cas (succès ou erreur
+    // non-recoverable, pour éviter un loop).
+    const code = normalizeReferralCode(referralInput || '');
+    if (!code || code.length < 4) {
+      await clearPendingReferralCode();
+      return;
+    }
+    if (!supaUser || !supabase) {
+      // Pas encore loggué — on garde le code pour la prochaine fois.
+      // (Ce mount ne devrait normalement pas être atteint sans supaUser
+      // dans le flow standard, mais on protège.)
+      return;
+    }
+    try {
+      await claimReferralCode(supabase, code);
+    } catch (e) {}
+    await clearPendingReferralCode();
+  }
+
   async function next() {
     if (!canAdvance()) return;
     // Persist the step's current data, then move forward.
@@ -321,7 +377,8 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
       animateStepTo(step + 1);
       return;
     }
-    // Final step → mark complete + bubble up.
+    // Final step (referral) → claim if applicable, then bubble up.
+    await maybeClaimReferralOnFinish();
     const finalPatch = Object.assign({}, snapshotPatchForStep(TOTAL_STEPS - 1), {
       onboarding_completed: true,
       onboarding_completed_at: new Date().toISOString(),
@@ -339,6 +396,34 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
     if (typeof onDone === 'function') {
       onDone(finalPatch);
     }
+  }
+
+  async function validateReferralInline() {
+    const code = normalizeReferralCode(referralInput || '');
+    if (!code || code.length < 4) {
+      setReferralStatus('err:invalid');
+      return;
+    }
+    if (!supaUser || !supabase) {
+      // Pas de session : on simule un OK (le claim aura lieu au finish
+      // ou plus tard via le pending mecanisme). Comme ça l'utilisateur
+      // n'est pas bloqué dans l'onboarding sans compte.
+      setReferralStatus('ok');
+      return;
+    }
+    setReferralStatus('validating');
+    const res = await claimReferralCode(supabase, code);
+    if (res && res.ok) {
+      setReferralStatus('ok');
+      return;
+    }
+    // Map l'erreur backend vers une clé i18n.
+    const err = res && res.error;
+    if (err === 'code_not_found') setReferralStatus('err:not_found');
+    else if (err === 'self_referral') setReferralStatus('err:self');
+    else if (err === 'already_claimed') setReferralStatus('err:already');
+    else if (err === 'invalid_code') setReferralStatus('err:invalid');
+    else setReferralStatus('err:generic');
   }
 
   function back() {
@@ -410,6 +495,10 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
     {
       title: tr.onb_goals_title || 'Your goals',
       sub: tr.onb_goals_sub || '',
+    },
+    {
+      title: tr.onb_referral_title || 'Do you have a referral code?',
+      sub: tr.onb_referral_sub || '',
     },
   ];
 
@@ -639,6 +728,99 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
                     );
                   })}
                 </View>
+              </View>
+            ) : null}
+
+            {step === 5 ? (
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.accentText, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>
+                  {tr.onb_referral_validate || 'Apply code'}
+                </Text>
+                <GlassView
+                  intensity={50}
+                  borderRadius={GLASS_RADII.button}
+                  substrateColor={theme.glass.substrate}
+                  contentStyle={{ paddingHorizontal: 16, height: 56, justifyContent: 'center' }}
+                  style={{ marginBottom: 12 }}
+                >
+                  <TextInput
+                    value={referralInput}
+                    onChangeText={function (txt) {
+                      setReferralInput(txt);
+                      if (referralStatus !== 'idle') setReferralStatus('idle');
+                    }}
+                    placeholder={tr.onb_referral_placeholder || 'E.g. SOPHIE-A1B2'}
+                    placeholderTextColor={colors.textTertiary}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    accessibilityLabel={tr.onb_referral_validate || 'Referral code'}
+                    style={{ fontSize: 18, fontWeight: '600', color: colors.text, paddingVertical: 0, letterSpacing: 1.2, textAlign: 'center' }}
+                    maxLength={20}
+                  />
+                </GlassView>
+
+                {/* Feedback */}
+                <View style={{ minHeight: 22, marginBottom: 14 }}>
+                  {referralStatus === 'ok' ? (
+                    <Text style={{ fontSize: 13, color: colors.accentText, textAlign: 'center', fontWeight: '600' }}>
+                      {tr.onb_referral_ok || 'Code applied! 🎁'}
+                    </Text>
+                  ) : null}
+                  {referralStatus === 'validating' ? (
+                    <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>…</Text>
+                  ) : null}
+                  {referralStatus === 'err:not_found' ? (
+                    <Text style={{ fontSize: 13, color: 'rgba(255,120,120,0.95)', textAlign: 'center' }}>{tr.onb_referral_err_not_found || 'Code not found.'}</Text>
+                  ) : null}
+                  {referralStatus === 'err:self' ? (
+                    <Text style={{ fontSize: 13, color: 'rgba(255,180,90,0.95)', textAlign: 'center' }}>{tr.onb_referral_err_self || 'You can\'t use your own code.'}</Text>
+                  ) : null}
+                  {referralStatus === 'err:already' ? (
+                    <Text style={{ fontSize: 13, color: 'rgba(255,180,90,0.95)', textAlign: 'center' }}>{tr.onb_referral_err_already || 'Already used.'}</Text>
+                  ) : null}
+                  {referralStatus === 'err:invalid' ? (
+                    <Text style={{ fontSize: 13, color: 'rgba(255,120,120,0.95)', textAlign: 'center' }}>{tr.onb_referral_err_invalid || 'Invalid code.'}</Text>
+                  ) : null}
+                  {referralStatus === 'err:generic' ? (
+                    <Text style={{ fontSize: 13, color: 'rgba(255,120,120,0.95)', textAlign: 'center' }}>{tr.onb_referral_err_generic || 'Try again.'}</Text>
+                  ) : null}
+                  {referralPrefilled && referralStatus === 'idle' ? (
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center', fontStyle: 'italic' }}>
+                      {tr.onb_referral_sub || ''}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {/* Validate inline (optional — user can also tap Finish below) */}
+                <Pressable
+                  onPress={validateReferralInline}
+                  disabled={!referralInput || referralInput.trim().length < 4 || referralStatus === 'ok'}
+                  style={{ opacity: !referralInput || referralInput.trim().length < 4 || referralStatus === 'ok' ? 0.5 : 1, paddingVertical: 12, borderRadius: 12, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.35)', alignItems: 'center', marginBottom: 10 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr.onb_referral_validate || 'Apply code'}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#AEEF4D' }}>
+                    {tr.onb_referral_validate || 'Apply code'}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={async function () {
+                    // Skip = on finit l'onboarding sans code. On purge le
+                    // pending pour pas qu'un code soit appliqué silencieusement
+                    // après que l'utilisateur l'ait refusé.
+                    setReferralInput('');
+                    await clearPendingReferralCode();
+                    await next();
+                  }}
+                  style={{ paddingVertical: 10, alignItems: 'center' }}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr.onb_referral_skip || 'Skip'}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textSecondary, textDecorationLine: 'underline' }}>
+                    {tr.onb_referral_skip || 'Skip'}
+                  </Text>
+                </Pressable>
               </View>
             ) : null}
           </Animated.View>
