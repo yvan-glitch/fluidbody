@@ -1,7 +1,7 @@
 # Roadmap — Apple TV : état d'avancement
 
-> Mis à jour le **2026-05-18** sur la branche `feat/apple-tv-foundation`
-> (Phase 1 commits poussés depuis `claude/flamboyant-franklin-ee2a5f`).
+> Mis à jour le **2026-05-18** sur la branche
+> `claude/flamboyant-franklin-ee2a5f` (Phase 2 livrée).
 > Mettre à jour ce fichier à chaque PR / phase. Reste source de vérité de
 > "où on en est".
 
@@ -14,6 +14,26 @@ profiles TV ajoutés, helper `platformTV.js` posé.
 **Phase 1 — Swap deps + plugin conditionnel + premiers écrans** : ✅
 **Terminée côté code**. Reste à faire un premier prebuild + dev client TV
 sur device physique (étape manuelle, voir bloc « Tests manuels » ci-dessous).
+
+**Phase 2 — Login QR + écrans TV bout-en-bout** : ✅ **Terminée côté
+code, attente runtime check sur device**. Ajouts (cf. section
+"Phase 2 — Ce qui a changé" en bas) :
+
+- DB : table `tv_pairings` + RLS strict + `purge_expired_tv_pairings()`.
+- Edge function `tv-pair` (init / redeem / poll), anti-rejeu via
+  `tv_secret` + nulled tokens au premier poll réussi.
+- Deps : `react-native-qrcode-svg` + `expo-camera` (camera strippée
+  du build TV).
+- TV : `TVLoginScreen`, `ProfilTV` simplifié, `PilierPanel` layout
+  horizontal, `PaywallModal` layout horizontal + CTA focusable.
+- iPhone : card "Pairer une Apple TV" dans Profil, écran scanner +
+  fallback saisie manuelle.
+- Root nav : `IS_TV && !supaUser` → TVLoginScreen ; logué → MonCorps
+  fullscreen + bouton "Mon compte" corner-pinned. Pas de tab bar TV.
+- Doc protocole : `docs/roadmap/apple-tv-pairing-protocol.md`.
+
+**Phase 3 — Polish, optimisations, submission App Store** : 🟠 **À
+faire**. Voir section "Ce qui reste".
 
 Ce qui a changé en Phase 1 (vs phase 0) :
 
@@ -45,7 +65,8 @@ Validation :
   retirés, `@react-native-tvos/config-tv` injecté.
 - Parse Babel OK sur les 3 fichiers JS modifiés.
 
-**Phases 2-4** : non commencées.
+**Phase 3 — Polish, optimisations, submission App Store** : non
+commencée. Voir P2 ci-dessous.
 
 ## Ce qui est fait sur cette branche
 
@@ -58,7 +79,7 @@ Validation :
 | `eas.json` | +3 profils `*-tv` (extends + `EXPO_TV=1`) | aucun (additif, n'altère pas `development` / `preview` / `production`) |
 | `src/utils/platformTV.js` | nouveau helper `IS_TV` + capabilities | aucun (renvoie `false` sur RN core, importé nulle part encore) |
 
-**Modifs Phase 1 (cette session)** :
+**Modifs Phase 1 (session précédente)** :
 
 | Fichier | Type | Impact prod iOS |
 |---|---|---|
@@ -69,6 +90,26 @@ Validation :
 | `src/screens/MonCorps.js` | sizing conditionné `IS_TV`, `{...tvFocusProps()}` sur 3 cards | nul — `IS_TV === false` sur iOS, donc spread `{}` |
 | `src/screens/Bibliotheque.js` | grille 4 cols sur TV, focus sur cards | nul (idem) |
 | `src/components/VideoPlayer.js` | `ScreenOrientation` no-op TV, BPM forcée OFF TV, X+retry focus | nul (idem) |
+
+**Modifs Phase 2 (cette session)** :
+
+| Fichier | Type | Impact prod iOS |
+|---|---|---|
+| `supabase/migrations/20260518000000_tv_pairings.sql` | nouveau, table + RLS strict + purge helper | aucun — table additive, RLS denies tout par défaut |
+| `supabase/functions/tv-pair/{index.ts,deno.json}` | nouvelle edge function 3 actions (init/redeem/poll) | aucun — endpoint additif, isolé |
+| `package.json` | +`react-native-qrcode-svg` (pur JS) + `expo-camera` | nul iPhone (camera plugin ajouté, NSCameraUsageDescription présent). nul TV : `expo-camera` strippé via `PLUGINS_INCOMPATIBLE_WITH_TVOS` |
+| `app.json` | +entry plugin `expo-camera` avec permission string FR/EN | nul (permission demandée seulement si on ouvre PairAppleTV) |
+| `app.config.js` | `expo-camera` ajouté à la liste excluded TV | nul iPhone, nul TV (filtré au prebuild) |
+| `src/utils/tvPair.js` | nouveau, helper client init/poll/redeem + parsePairingPayload | nul (utilisé seulement par TVLoginScreen et PairAppleTV, deux fichiers nouveaux) |
+| `src/screens/TVLoginScreen.js` | nouveau, QR + polling, focus-aware retry | nul iPhone — jamais rendered (gate `IS_TV`) |
+| `src/screens/PairAppleTV.js` | nouveau, scanner QR iPhone + fallback saisie manuelle | nul tant que pas ouvert depuis Profil ; expo-camera require dynamique |
+| `src/screens/ProfilTV.js` | nouveau, profil simplifié 4 cards focusables | nul iPhone (jamais importé sur iPhone, sauf via App.js gate TV) |
+| `src/screens/Profil.js` | +card "Pairer une Apple TV" + Modal lazy require PairAppleTV | additif iPhone — visible seulement si supaUser != null |
+| `src/screens/MonCorps.js` | PilierPanel layout horizontal sur TV, FocusableCard glow + scale, sizing étendu | nul iPhone (toutes les `IS_TV ?` falsy) |
+| `src/components/PaywallModal.js` | TVPaywallView dédié en début de fichier (gate `if (IS_TV)`), iPhone render strictement inchangé | nul iPhone |
+| `src/constants/data.js` | +`tv_pair_btn` + `tv_pair_sub` FR/EN | nul (strings additionnelles) |
+| `App.js` | TVMainView wrapper, root nav `IS_TV && !supaUser` → TVLoginScreen, gate Tab.Navigator pour TV | nul iPhone (toutes les branches `IS_TV` sont skip) |
+| `docs/roadmap/apple-tv-pairing-protocol.md` | nouveau doc protocole avec diagramme | aucun |
 
 ## Ce qui reste à faire — par ordre de priorité
 
@@ -95,55 +136,69 @@ Validation :
    direct, jusqu'à avoir l'écran Metro packager qui tourne sur l'Apple TV
    physique ou simulator — **0.5-2 j**
 
-### 🟠 P1 — Phase 2 (après que P0 marche)
+### 🟠 P1 — Phase 2 (livrée côté code, validation runtime à faire)
 
-5. Mocker / exclure les modules incompatibles tvOS du Podfile TV (cf.
-   `apple-tv-setup.md` étape 8). HealthKit, expo-apple-authentication,
-   datetimepicker, notifications. — **0.5-1 j**
-6. Écran login TV — UX QR code (l'iPhone scanne, push le token Supabase
-   via deep link, l'Apple TV poll un endpoint). Reuse magic link Supabase
-   en fallback. — **2-3 j**
-7. Refonte écran Bibliothèque pour TV — grille focusable avec
-   `TVFocusGuideView`, `tvParallaxProperties` sur les cards, gestion du
-   focus initial. Créer `Bibliotheque.tv.js`. — **2 j**
-8. VideoPlayer tvOS — adapter pour AVPlayer fullscreen, contrôles Siri
-   Remote (swipe horizontal = seek, touch central = pause, menu = back),
-   overlays plus gros (vu à 2-3 m). Créer `VideoPlayer.tv.js`. — **3-4 j**
-9. Home screen TV (`MonCorps.tv.js`) — simplifié pour TV : juste les
-   piliers en grille focusable, pas de body map interactive. — **1-2 j**
+Phase 2 code-side complète. Les items 5-9 ci-dessous sont historiques :
 
-### 🟡 P2 — Phase 3 (paywall + polish)
+5. ~~Mocker / exclure les modules incompatibles tvOS~~ — fait via
+   `app.config.js` + `PLUGINS_INCOMPATIBLE_WITH_TVOS`.
+6. ~~Écran login TV (QR code + polling)~~ — fait. Voir
+   `apple-tv-pairing-protocol.md`.
+7. ~~Bibliothèque TV~~ — fait phase 1.
+8. ~~VideoPlayer tvOS~~ — fait phase 1 (X / retry focus, BPM off,
+   orientation no-op). Affiner contrôles Siri Remote (seek swipe,
+   long-press menu, etc.) à faire phase 3 si retour utilisateur.
+9. ~~Home screen TV (MonCorps)~~ — phase 1 (focus pilier cards). Le
+   layout body-map d'origine est conservé pour cohérence visuelle.
 
-10. Valider que `react-native-purchases` marche sur tvOS dev client. Si
-    crash `Invariant Violation: NativeEventEmitter`, basculer Plan B :
-    bridge Swift minimal vers RevenueCat iOS SDK (qui supporte tvOS
-    nativement). — **0.5 j validation + 2 j si fallback**
-11. Écran paywall TV plein écran (custom, focusable). — **2-3 j**
-12. Activity / Profil TV — masquer sections HealthKit, afficher anneaux
-    calculés serveur-side (Supabase). — **2 j**
+### 🟡 P2 — Phase 3 (paywall full RC + polish + submit)
+
+Phase 3 = polish runtime + validation Apple TV physique + submit
+TestFlight.
+
+10. **Validation runtime** sur Apple TV physique ou simulator :
+    `EXPO_TV=1 npx expo prebuild --clean && cd ios && pod install &&
+    open *.xcworkspace`, sélectionner cible tvOS, build & run. — **0.5 j**
+11. Valider que `react-native-purchases` se charge sans crash sur tvOS
+    dev client. Si crash `NativeEventEmitter`, basculer Plan B : REST
+    fallback (`react-native-purchases` REST mode via `Purchases.configure({useStoreKit2IfAvailable})`).
+    À ce stade le paywall TV affiche les prix hard-codés en attendant.
+    — **0.5 j validation + 2 j si fallback**
+12. Tests pairing end-to-end :
+    - Init côté TV → QR affiché lisible 1.20 m
+    - Scan iPhone → redeem OK, retour TV en < 5 s
+    - Manuel : tape le code à la main → fonctionne
+    - Expiry : laisse 6 min sans rien faire → bouton Retry focusable
+    - Re-login depuis ProfilTV.signOut → re-affiche TVLoginScreen
+    — **0.5 j**
 13. Adapter copies / traductions pour TV (texte plus court, focus sur
-    actions Siri Remote). — **1 j**
+    actions Siri Remote). — **0.5-1 j**
+14. Optimisations runtime tvOS : profiler le bundle TV (taille,
+    modules chargés), tester en ralenti CPU, vérifier que les
+    animations Bulle/FloatingMedusas ne saturent pas le GPU sur Apple
+    TV HD (modèle bas de gamme à 2 GB RAM). — **0.5-1 j**
 
-### 🟢 P3 — Phase 4 (submission)
+### 🟢 P4 — Submission
 
-14. Tester sur Apple TV physique avec sandbox Apple ID — flow complet
-    install → login → souscription → lecture séance → fin. — **1 j**
-15. Capturer screenshots App Store Connect tvOS (1920×1080 ou 3840×2160,
+15. Tester sur Apple TV physique avec sandbox Apple ID — flow complet
+    install → QR pair → lecture séance → fin. — **1 j**
+16. Capturer screenshots App Store Connect tvOS (1920×1080 ou 3840×2160,
     5 max) + hero video 30 s. — **1-2 j**
-16. Compléter le record App Store Connect tvOS (descriptions, métadonnées,
-    privacy labels — peuvent être copiées d'iOS). — **0.5 j**
-17. Soumettre `eas build --profile production-tv` + `eas submit`. — **0.5 j**
-18. Review Apple (typiquement 24-72 h pour tvOS). — **passif**
+17. Compléter le record App Store Connect tvOS (descriptions, métadonnées,
+    privacy labels — copier d'iOS, ajouter mention "ne collecte rien sur
+    Apple TV"). — **0.5 j**
+18. Soumettre `eas build --profile production-tv` + `eas submit`. — **0.5 j**
+19. Review Apple (typiquement 24-72 h pour tvOS). — **passif**
 
 ## ETA pour avoir une première version Apple TV testable
 
-| Milestone | Cumul effort dev | ETA si plein temps | ETA réaliste (Yvan, 4 h/j max) |
-|---|---|---|---|
-| Phase 1 — écran Metro tourne sur Apple TV | 0.5-2 j | 1-3 j | 1 sem |
-| Phase 2 — login + 1 séance jouable end-to-end | +6-8 j | 1.5-2 sem | 4 sem |
-| Phase 3 — paywall + UX polish, soumissionable | +5-7 j | 1-1.5 sem | 3 sem |
-| Phase 4 — TestFlight tvOS interne | +3-5 j | 1 sem | 1.5 sem |
-| **TOTAL** | **~15-20 j** | **5-6 sem plein temps** | **~3-4 mois** au rythme cours-le-jour |
+| Milestone | Cumul effort dev | Statut |
+|---|---|---|
+| Phase 1 — écran Metro tourne sur Apple TV | 0.5-2 j | ✅ code-side, runtime à valider |
+| Phase 2 — login + 1 séance jouable end-to-end | +6-8 j | ✅ **code-side livré cette session** |
+| Phase 3 — paywall full RC + polish, soumissionable | +5-7 j | 🟠 à faire |
+| Phase 4 — TestFlight tvOS interne | +3-5 j | 🟢 à faire |
+| **TOTAL restant** | **~8-12 j** | runtime + Plan B RC + submit |
 
 ## Risques actifs
 
@@ -178,6 +233,64 @@ Validation :
   que d'inscrire le plugin TV directement dans app.json. Raison : zéro
   risque de fuite de config TV vers les builds iOS prod (la fonction
   early-returns sans la moindre transformation quand `EXPO_TV !== '1'`).
+- 2026-05-18 — Phase 2 : choix QR pairing (vs magic link e-mail).
+  Raison : la Siri Remote rend la saisie e-mail très pénible. Le pairing
+  délègue tout au flow iPhone déjà familier. Fallback saisie manuelle
+  12 chars conservé pour les cas où le scanner caméra ne marche pas.
+- 2026-05-18 — Phase 2 : choix tokens éphémères (consumed_at + nulled)
+  plutôt que JWT signé envoyé par la TV. Raison : si quelqu'un capture
+  le poll response (TLS compromis hypothétique), il a la session
+  complète ; avec consumption une seule fois, un replay attack échoue.
+- 2026-05-18 — Phase 2 : choix `expo-camera` strippé du build TV (pas
+  juste gated en JS). Raison : éviter de linker un binaire natif iOS
+  inutile sur tvOS, et plus propre pour les audits Apple.
+
+## Tests manuels Phase 2 (à faire après prebuild TV)
+
+Côté iPhone (build iOS standard, non-régression) :
+
+1. `unset EXPO_TV && npx expo start --clear` → app boote normalement.
+2. Ouvrir Profil → vérifier la nouvelle card "Pairer une Apple TV"
+   présente sous "Mon compte" (seulement si logué). Pas de crash.
+3. Tap dessus → PairAppleTV s'ouvre. Si caméra autorisée : viseur
+   visible. Sinon : message "Caméra requise" + lien saisie manuelle.
+4. Mode saisie manuelle : tape un code random → "Code non reconnu".
+   Tape "ABCD2EFG3JKL" (12 chars) → tente le redeem → erreur
+   "Code introuvable" (normal, pas de nonce côté DB).
+
+Côté Apple TV (prebuild + dev client) :
+
+5. Premier launch → `TVLoginScreen` avec QR + code 12 chars sous le QR.
+6. Sur l'iPhone Profil → Pairer → scanner le QR (ou taper le code).
+   Vérifier qu'en < 5 s la TV bascule sur `MonCorps`.
+7. Sur la TV : Siri Remote flèches → focus se déplace sur les pilier
+   cards avec glow border + scale. Tap → ouvre `PilierPanel` en layout
+   horizontal (hero gauche / séances droite).
+8. Tap sur une séance → `VideoPlayer` plein écran. Bouton Menu de la
+   Siri Remote → ferme la vidéo (RN tvOS natif `onRequestClose`).
+9. Retour MonCorps. Focus sur le bouton "👤 Mon compte" en haut à
+   droite → tap → `ProfilTV` avec 4 cards focusables. Tap déconnexion →
+   Alert → confirme → retour `TVLoginScreen` (le `setSession`
+   `signOut` casse l'auth → root nav réagit).
+10. Cas d'erreur : laisse le QR affiché > 6 min sans rien faire → la
+    TV affiche "Code expiré" + bouton Réessayer focusable.
+
+Edge function (depuis n'importe où) :
+
+```bash
+# Smoke test — init
+curl -X POST \
+  -H "content-type: application/json" \
+  -H "apikey: $SUPABASE_ANON_KEY" \
+  -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+  https://$SUPABASE_REF.supabase.co/functions/v1/tv-pair \
+  -d '{"action":"init"}'
+# → { ok:true, nonce:"...", tv_secret:"...", expires_at:"..." }
+
+# Poll avec mauvais tv_secret → not-found (volontairement opaque)
+curl -X POST ... -d '{"action":"poll","nonce":"<NONCE>","tv_secret":"WRONG"}'
+# → 404 { error:"not-found" }
+```
 
 ## À mettre à jour à chaque PR sur la feature
 
