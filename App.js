@@ -98,6 +98,9 @@ import WelcomeAnimation, { isWelcomeAnimationShown } from './src/components/Welc
 import SignInScreen from './src/screens/SignIn';
 import HealthKitConnectScreen from './src/screens/HealthKitConnect';
 import MonCorps, { MetricTile } from './src/screens/MonCorps';
+import TVLoginScreen from './src/screens/TVLoginScreen';
+import ProfilTV from './src/screens/ProfilTV';
+import { IS_TV } from './src/utils/platformTV';
 import ActivityScreen from './src/screens/Activity';
 import ProfileOnboardingScreen from './src/screens/ProfileOnboarding';
 import { flushPendingProfileSync, syncProfilePatch, refreshFromRemote } from './src/utils/profileSync';
@@ -1316,6 +1319,71 @@ const STREAK_KEY = 'fluid_streak_seance_count';
 const STREAK_DATE_KEY = 'fluid_streak_seance_last_date';
 
 // ══════════════════════════════════
+// TVMainView — Apple TV : MonCorps fullscreen + corner profile button.
+// Aucune tab bar (la Siri Remote n'a pas de geste équivalent). Le
+// bouton Menu de la Siri Remote ferme automatiquement le Modal
+// VideoPlayer / Modal PilierPanel ouverts (RN tvOS gère `onRequestClose`
+// nativement).
+// ══════════════════════════════════
+function TVMainView({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, isAdmin, openPaywall, saveHealthKitWorkout, supaUser, onLogout }) {
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileBtnFocused, setProfileBtnFocused] = useState(false);
+  return (
+    <View style={{ flex: 1 }}>
+      <MonCorps
+        prenom={prenom}
+        done={done}
+        toggleDone={toggleDone}
+        lang={lang}
+        tensionIdxs={tensionIdxs}
+        onTensionChange={onTensionChange}
+        streak={streak}
+        isSubscriber={isSubscriber}
+        onActivateSubscription={openPaywall}
+        saveHealthKitWorkout={saveHealthKitWorkout}
+      />
+      {/* Bouton Profil discret en haut à droite. Focusable Siri Remote
+          — par défaut, le focus initial est sur la première card de
+          MonCorps (cf. tvFocusProps preferred=true là-bas) ; on doit
+          flèche-droite-haut pour atteindre celui-ci. */}
+      <TouchableOpacity
+        hasTVPreferredFocus={false}
+        onPress={function() { setProfileOpen(true); }}
+        onFocus={function() { setProfileBtnFocused(true); }}
+        onBlur={function() { setProfileBtnFocused(false); }}
+        activeOpacity={0.85}
+        style={{
+          position: 'absolute',
+          top: 56, right: 80,
+          paddingHorizontal: 22, paddingVertical: 12,
+          borderRadius: 14,
+          backgroundColor: profileBtnFocused ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.08)',
+          borderWidth: 2,
+          borderColor: profileBtnFocused ? '#AEEF4D' : 'rgba(255,255,255,0.15)',
+          zIndex: 50,
+        }}
+      >
+        <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '600', letterSpacing: 0.3 }}>👤 {(T[lang] || T.fr).mon_compte || 'Mon compte'}</Text>
+      </TouchableOpacity>
+
+      <Modal visible={profileOpen} animationType="fade" presentationStyle="fullScreen" onRequestClose={function() { setProfileOpen(false); }}>
+        <ProfilTV
+          lang={lang}
+          supaUser={supaUser}
+          isSubscriber={isSubscriber}
+          isAdmin={isAdmin}
+          onClose={function() { setProfileOpen(false); }}
+          onLogout={async function() {
+            setProfileOpen(false);
+            await onLogout();
+          }}
+        />
+      </Modal>
+    </View>
+  );
+}
+
+// ══════════════════════════════════
 // MAIN APP
 // ══════════════════════════════════
 function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChange }) {
@@ -1849,23 +1917,44 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           <AuthScreen onSkip={function() { setShowAuthScreen(false); }} onSuccess={function() { setShowAuthScreen(false); }} lang={lang} prenomHint={prenom} langForProfile={lang} tensionIdxsForProfile={tensionIdxs} />
         </Modal>
       )}
-      <NavigationContainer>
-          <Tab.Navigator tabBar={function(props) { return <CustomTabBar {...props} />; }} screenOptions={{ headerShown: false }}>
-          <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} onTensionChange={onTensionChange} streak={streak} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} saveHealthKitWorkout={saveHealthKitWorkout} />}</Tab.Screen>
-          <Tab.Screen name={tr.activity_tab || 'Activité'} options={{ tabBarIcon: (props) => <TabIconActivity {...props} /> }}>{() => <ActivityScreen lang={lang} supabase={supabase} supaUser={supaUser} done={done} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={function() { setShowAuthScreen(true); }} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
-          <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={async () => {
+      {IS_TV ? (
+        <TVMainView
+          prenom={prenom}
+          done={done}
+          toggleDone={toggleDone}
+          lang={lang}
+          tensionIdxs={tensionIdxs}
+          onTensionChange={onTensionChange}
+          streak={streak}
+          isSubscriber={effectiveIsSubscriber}
+          isAdmin={isAdmin}
+          openPaywall={openPaywall}
+          saveHealthKitWorkout={saveHealthKitWorkout}
+          supaUser={supaUser}
+          onLogout={async () => {
             if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
-            try {
-              const { error } = await supabase.auth.signOut();
-              if (error) { Alert.alert('FluidBody+', error.message || 'Erreur de déconnexion.'); return; }
-            } catch (e) {
-              Alert.alert('FluidBody+', e?.message || 'Erreur de déconnexion.');
-            }
-          }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} />}</Tab.Screen>
-        </Tab.Navigator>
-      </NavigationContainer>
+            try { await supabase.auth.signOut(); } catch (e) {}
+          }}
+        />
+      ) : (
+        <NavigationContainer>
+            <Tab.Navigator tabBar={function(props) { return <CustomTabBar {...props} />; }} screenOptions={{ headerShown: false }}>
+            <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} onTensionChange={onTensionChange} streak={streak} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} saveHealthKitWorkout={saveHealthKitWorkout} />}</Tab.Screen>
+            <Tab.Screen name={tr.activity_tab || 'Activité'} options={{ tabBarIcon: (props) => <TabIconActivity {...props} /> }}>{() => <ActivityScreen lang={lang} supabase={supabase} supaUser={supaUser} done={done} />}</Tab.Screen>
+            <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={function() { setShowAuthScreen(true); }} />}</Tab.Screen>
+            <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
+            <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={async () => {
+              if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
+              try {
+                const { error } = await supabase.auth.signOut();
+                if (error) { Alert.alert('FluidBody+', error.message || 'Erreur de déconnexion.'); return; }
+              } catch (e) {
+                Alert.alert('FluidBody+', e?.message || 'Erreur de déconnexion.');
+              }
+            }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} />}</Tab.Screen>
+          </Tab.Navigator>
+        </NavigationContainer>
+      )}
       <StretchTimerModal visible={showStretchTimer} onClose={function() { setShowStretchTimer(false); }} lang={lang} />
       <Modal visible={editingProfile} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setEditingProfile(false); }}>
         <ProfileOnboardingScreen
@@ -2762,6 +2851,19 @@ function App() {
   }, [loading]);
 
   function renderActiveScreen() {
+    // Apple TV : flow simplifié — pas d'onboarding (HealthKit /
+    // notifications / profile setup tous incompatibles tvOS), pas
+    // d'OnboardingScreen avec entrée e-mail/clavier (clavier Siri
+    // Remote pénible). On affiche TVLoginScreen tant que pas loggué,
+    // puis MainApp dès qu'on a un supaUser. Le bouton Menu de la Siri
+    // Remote ferme la séance en cours (déjà géré par les Modals).
+    if (IS_TV) {
+      if (!supaUser) {
+        return <TVLoginScreen lang={lang} />;
+      }
+      return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} />;
+    }
+
     if (!introShown) {
       if (showSignIn) {
         return <SignInScreen
