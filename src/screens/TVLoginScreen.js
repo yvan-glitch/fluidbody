@@ -21,10 +21,10 @@ import {
   View,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
 import { initPairing, pollPairing } from '../utils/tvPair';
+import { AquaticBackground, MeduseTV } from '../components/tv';
 import supabase from '../lib/supabase';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -138,29 +138,42 @@ export default function TVLoginScreen({ lang, onSignedIn }) {
 
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={['#000a1a', '#001a2e', '#003a55', '#006d85']}
-        locations={[0, 0.3, 0.7, 1]}
-        style={StyleSheet.absoluteFill}
-      />
+      {IS_TV ? (
+        <AquaticBackground density="low" contentOpacity={0.7} />
+      ) : (
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000e18' }]} />
+      )}
 
-      {/* Titre + branding */}
-      <View style={styles.header}>
-        <Text style={styles.brand}>
-          FLUIDBODY<Text style={styles.brandPlus}>+</Text>
-        </Text>
-        <Text style={styles.title}>
-          {isFr ? 'Connecte ton Apple TV' : 'Sign in to your Apple TV'}
-        </Text>
-        <Text style={styles.subtitle}>
-          {isFr
-            ? 'Ouvre l\'app FluidBody+ sur ton iPhone,\nva dans Profil → Pairer une Apple TV,\net scanne le QR ci-dessous.'
-            : 'Open the FluidBody+ app on your iPhone,\ngo to Profile → Pair an Apple TV,\nthen scan the QR below.'}
-        </Text>
-      </View>
+      {/* Layout TV : split horizontal — hero méduse à gauche, contenu à droite.
+          Sur iPhone : layout vertical historique conservé. */}
+      <View style={IS_TV ? styles.tvLayout : null}>
+        {IS_TV ? (
+          <View style={styles.tvHero}>
+            <MeduseTV size={260} tint="rgba(0,220,255,1)" haloTint="rgba(174,239,77,1)" haloScale={1.8} breathCycleMs={3200} />
+            <Text style={styles.tvHeroTagline}>
+              {isFr ? 'Le pilates qui coule.' : 'Pilates that flows.'}
+            </Text>
+          </View>
+        ) : null}
 
-      {/* Carte QR */}
-      <View style={[styles.qrCard, IS_TV ? { padding: 32 } : { padding: 20 }]}>
+        <View style={IS_TV ? styles.tvContent : { alignItems: 'center' }}>
+          {/* Titre + branding */}
+          <View style={styles.header}>
+            <Text style={styles.brand}>
+              FLUIDBODY<Text style={styles.brandPlus}>+</Text>
+            </Text>
+            <Text style={styles.title}>
+              {isFr ? 'Connecte ton Apple TV' : 'Sign in to your Apple TV'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {isFr
+                ? 'Ouvre l\'app FluidBody+ sur ton iPhone,\nva dans Profil → Pairer une Apple TV,\net scanne le QR ci-dessous.'
+                : 'Open the FluidBody+ app on your iPhone,\ngo to Profile → Pair an Apple TV,\nthen scan the QR below.'}
+            </Text>
+          </View>
+
+          {/* Carte QR */}
+          <View style={[styles.qrCard, IS_TV ? { padding: 32 } : { padding: 20 }]}>
         {status === 'loading' && (
           <View style={{ width: qrSize, height: qrSize, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator size="large" color="#AEEF4D" />
@@ -220,6 +233,8 @@ export default function TVLoginScreen({ lang, onSignedIn }) {
             </TouchableOpacity>
           </View>
         )}
+          </View>
+        </View>
       </View>
 
       {/* Pied de page : aide */}
@@ -238,47 +253,80 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#000e18',
+    alignItems: IS_TV ? 'stretch' : 'center',
+    justifyContent: IS_TV ? 'flex-start' : 'center',
+    padding: IS_TV ? 0 : 24,
+  },
+  // Apple TV : split horizontal hero (méduse + tagline) | contenu (QR + texte)
+  tvLayout: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 120,
+    paddingVertical: 60,
+  },
+  tvHero: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: IS_TV ? 80 : 24,
+  },
+  tvHeroTagline: {
+    marginTop: 28,
+    fontSize: 26,
+    fontWeight: '300',
+    color: 'rgba(255,255,255,0.85)',
+    letterSpacing: -0.3,
+    textAlign: 'center',
+    maxWidth: 440,
+    lineHeight: 34,
+  },
+  tvContent: {
+    flex: 1.2,
+    alignItems: 'center',
+    paddingLeft: 60,
   },
   header: {
     alignItems: 'center',
-    marginBottom: IS_TV ? 48 : 24,
+    marginBottom: IS_TV ? 36 : 24,
   },
   brand: {
-    fontSize: IS_TV ? 36 : 22,
+    fontSize: IS_TV ? 32 : 22,
     fontWeight: '900',
     color: '#FFFFFF',
-    letterSpacing: 2,
-    marginBottom: IS_TV ? 18 : 10,
+    letterSpacing: 3,
+    marginBottom: IS_TV ? 14 : 10,
   },
   brandPlus: {
     color: '#AEEF4D',
     fontWeight: '900',
   },
   title: {
-    fontSize: IS_TV ? 48 : 26,
-    fontWeight: '300',
+    fontSize: IS_TV ? 52 : 26,
+    fontWeight: '200',
     color: '#FFFFFF',
-    letterSpacing: -0.3,
+    letterSpacing: -0.8,
     marginBottom: 16,
     textAlign: 'center',
+    lineHeight: IS_TV ? 60 : undefined,
   },
   subtitle: {
-    fontSize: IS_TV ? 22 : 15,
+    fontSize: IS_TV ? 20 : 15,
     color: 'rgba(255,255,255,0.78)',
     textAlign: 'center',
-    lineHeight: IS_TV ? 32 : 22,
-    maxWidth: IS_TV ? 880 : 480,
+    lineHeight: IS_TV ? 30 : 22,
+    maxWidth: IS_TV ? 640 : 480,
   },
   qrCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: IS_TV ? 'rgba(8,24,40,0.55)' : 'rgba(255,255,255,0.06)',
     borderRadius: IS_TV ? 32 : 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderWidth: IS_TV ? 1.5 : 1,
+    borderColor: IS_TV ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: IS_TV ? 0.4 : 0.15,
+    shadowRadius: IS_TV ? 30 : 12,
+    shadowOffset: { width: 0, height: IS_TV ? 14 : 6 },
   },
   qrFrame: {
     backgroundColor: '#FFFFFF',
