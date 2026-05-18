@@ -12,6 +12,7 @@ import LivingBackground from '../components/LivingBackground';
 import TheorieDetailScreen from './TheorieDetailScreen';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import { getPiliers, getSeances } from '../utils';
+import { IS_TV, tvFocusProps } from '../utils/platformTV';
 
 const PROGRAM_IMAGES = {
   f1: require('../../assets/programs/reveil-matinal.jpg'),
@@ -361,9 +362,15 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
     </>
   );
 
-  const cardGap = 12;
-  const gridPadding = 20;
-  const cardWidth = (SCREEN_WIDTH - gridPadding * 2 - cardGap) / 2;
+  const cardGap = IS_TV ? 24 : 12;
+  const gridPadding = IS_TV ? 60 : 20;
+  // Sur Apple TV (1920×1080+), une grille 2-cols fait des cards énormes.
+  // 4 colonnes donne une density confortable lisible à 2-3 m.
+  const tvCols = 4;
+  const cardWidth = IS_TV
+    ? (SCREEN_WIDTH - gridPadding * 2 - cardGap * (tvCols - 1)) / tvCols
+    : (SCREEN_WIDTH - gridPadding * 2 - cardGap) / 2;
+  const cardHeight = IS_TV ? 240 : 170;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
@@ -432,7 +439,8 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                 key={a.key}
                 onPress={() => setOpenArticle(a)}
                 activeOpacity={0.8}
-                style={{ width: 140 }}
+                {...tvFocusProps()}
+                style={{ width: IS_TV ? 220 : 140 }}
               >
                 <View style={{
                   width: 140,
@@ -492,9 +500,10 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                 key={i}
                 onPress={() => setOpenFiche(f)}
                 activeOpacity={0.85}
+                {...tvFocusProps(i === 0)}
                 style={{
                   width: cardWidth,
-                  height: 170,
+                  height: cardHeight,
                   borderRadius: 14,
                   overflow: 'hidden',
                 }}
@@ -564,9 +573,10 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                 key={pilier.key}
                 onPress={() => setOpenTheoryPilier({ pilier, items })}
                 activeOpacity={0.85}
+                {...tvFocusProps()}
                 style={{
                   width: cardWidth,
-                  height: 170,
+                  height: cardHeight,
                   borderRadius: 14,
                   overflow: 'hidden',
                 }}
