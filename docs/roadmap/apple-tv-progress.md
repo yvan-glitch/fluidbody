@@ -1,20 +1,49 @@
 # Roadmap — Apple TV : état d'avancement
 
-> Mis à jour le **2026-05-18** sur la branche `feat/apple-tv-foundation`.
+> Mis à jour le **2026-05-18** sur la branche `feat/apple-tv-foundation`
+> (Phase 1 commits poussés depuis `claude/flamboyant-franklin-ee2a5f`).
 > Mettre à jour ce fichier à chaque PR / phase. Reste source de vérité de
 > "où on en est".
 
 ## État résumé
 
-**Phase 0 — Fondations** : ✅ **Terminée** (cette branche).
-Décision technique actée (`react-native-tvos` + plugin `config-tv`), 4 docs
-roadmap rédigés, EAS profiles TV ajoutés, helper `platformTV.js` posé. Le
-code reste 100 % compatible iOS — aucune dépendance changée, aucun
-prebuild lancé.
+**Phase 0 — Fondations** : ✅ **Terminée**. Décision technique actée
+(`react-native-tvos` + plugin `config-tv`), 4 docs roadmap rédigés, EAS
+profiles TV ajoutés, helper `platformTV.js` posé.
 
-**Phase 1 — Premier dev client tvOS qui démarre** : ⏳ **En attente**.
-Bloqué sur 4 actions manuelles de Yvan (voir `apple-tv-setup.md`,
-étapes 1-9). ETA si Yvan a 1 jour bloqué : 3-5 j cumulés.
+**Phase 1 — Swap deps + plugin conditionnel + premiers écrans** : ✅
+**Terminée côté code**. Reste à faire un premier prebuild + dev client TV
+sur device physique (étape manuelle, voir bloc « Tests manuels » ci-dessous).
+
+Ce qui a changé en Phase 1 (vs phase 0) :
+
+- `package.json` : `react-native@0.81.5` → `npm:react-native-tvos@0.81.5-2`
+  (fork drop-in, n'altère pas le build iOS). `@react-native-tvos/config-tv@^0.1.6`
+  en devDependency.
+- `app.config.js` (nouveau) : wrappe `app.json`. Quand `EXPO_TV` n'est pas
+  set, retourne la config inchangée → iOS prod 100 % préservé. Quand
+  `EXPO_TV=1`, strip HealthKit / AppleAuth / datetimepicker / notifications
+  et injecte le plugin `config-tv`.
+- `src/utils/platformTV.js` : ajout de `tvFocusProps(preferred)` (renvoie
+  `{}` hors TV) et constante `TV_FOCUS_RING`.
+- 3 écrans adaptés au focus engine tvOS :
+  - `src/screens/MonCorps.js` — cards pilier 320 px sur TV (vs `SW * 0.45`),
+    cards "gratuit du mois" 380×440 px, `hasTVPreferredFocus` sur la
+    première card, séances individuelles à 140 px de haut.
+  - `src/screens/Bibliotheque.js` — grille passe de 2 cols à 4 cols sur TV,
+    `cardHeight` 240 px, focus sur articles + fiches + théorie.
+  - `src/components/VideoPlayer.js` — `ScreenOrientation` no-op sur TV,
+    pill BPM forcée OFF (pas de HealthKit sur tvOS), bouton X agrandi à
+    56 px sur TV avec focus préféré, bouton retry idem.
+
+Validation :
+- `npm install` clean (seulement warning peer `react-native-purchases`
+  qui demande RN ≥ 0.73 — OK puisque le fork est sur 0.81.5).
+- `expo-doctor` : 17/17 en mode iOS standard ET en mode `EXPO_TV=1`.
+- `expo config --type public` : iOS → plugins identiques à l'app.json
+  d'origine. TV → HealthKit + AppleAuth + datetimepicker + notifications
+  retirés, `@react-native-tvos/config-tv` injecté.
+- Parse Babel OK sur les 3 fichiers JS modifiés.
 
 **Phases 2-4** : non commencées.
 
@@ -29,31 +58,42 @@ Bloqué sur 4 actions manuelles de Yvan (voir `apple-tv-setup.md`,
 | `eas.json` | +3 profils `*-tv` (extends + `EXPO_TV=1`) | aucun (additif, n'altère pas `development` / `preview` / `production`) |
 | `src/utils/platformTV.js` | nouveau helper `IS_TV` + capabilities | aucun (renvoie `false` sur RN core, importé nulle part encore) |
 
-**Pas touché** (volontairement, pour ne pas casser le build iOS #57+) :
+**Modifs Phase 1 (cette session)** :
 
-- `package.json` / `package-lock.json` — le swap `react-native` →
-  `react-native-tvos` et l'ajout de `@react-native-tvos/config-tv` doivent
-  être faits par Yvan localement (cf. `apple-tv-setup.md` étape 6),
-  parce que EAS Build utilise `npm ci` et exige que les deux fichiers
-  soient en sync. Faire ça dans un worktree autonome sans `npm install`
-  qui passe → risque de produire un lockfile bancal.
-- `app.json` — l'ajout du plugin `@react-native-tvos/config-tv` doit se
-  faire en même temps que l'install npm de ce plugin, sinon `expo config`
-  / `expo prebuild` échouent. Yvan le fait localement.
-- `App.js` et écrans — aucun gating `Platform.isTV` ajouté pour l'instant.
-  Inutile tant qu'il n'y a pas de build TV.
+| Fichier | Type | Impact prod iOS |
+|---|---|---|
+| `package.json` | swap `react-native` → `react-native-tvos@0.81.5-2`, ajout `@react-native-tvos/config-tv@^0.1.6` | nul — fork drop-in à parité avec RN 0.81.5, `npm:` alias propre, EAS `npm ci` OK |
+| `package-lock.json` | régénéré par `npm install` | nul (lockfile en sync) |
+| `app.config.js` | nouveau, wrap `app.json` conditionnellement | nul quand `EXPO_TV` unset → returns config inchangée |
+| `src/utils/platformTV.js` | +helper `tvFocusProps()` + const `TV_FOCUS_RING` | nul (`tvFocusProps()` retourne `{}` hors TV, et `IS_TV === false` sur iPhone/iPad) |
+| `src/screens/MonCorps.js` | sizing conditionné `IS_TV`, `{...tvFocusProps()}` sur 3 cards | nul — `IS_TV === false` sur iOS, donc spread `{}` |
+| `src/screens/Bibliotheque.js` | grille 4 cols sur TV, focus sur cards | nul (idem) |
+| `src/components/VideoPlayer.js` | `ScreenOrientation` no-op TV, BPM forcée OFF TV, X+retry focus | nul (idem) |
 
 ## Ce qui reste à faire — par ordre de priorité
 
 ### 🔴 P0 — Bloque tout le reste (Yvan, à faire en premier)
 
-1. Lire `apple-tv-strategy.md` (décision + matrice modules) — **30 min**
-2. Lire `apple-tv-setup.md` (étapes manuelles) — **15 min**
-3. Pre-launch poll Instagram "vous avez une Apple TV ?" — voir
+> **Phase 1 code-side DONE** — le swap deps + plugin + écrans est en place
+> sur la branche. Ce qui reste P0 :
+
+1. **Tests manuels** (~10 min cumulés) :
+   - `unset EXPO_TV && npx expo start` → app iOS doit lancer comme avant
+     (non-régression). Si crash ou écran rouge → revert le swap RN.
+   - `EXPO_TV=1 npx expo start` → app devrait essayer de lancer en mode
+     TV. Probable erreur Metro car aucun simulator/device TV pairé encore,
+     mais le bundling doit passer.
+2. ~~Lire `apple-tv-strategy.md`~~ (fait)
+3. ~~Lire `apple-tv-setup.md`~~ (fait)
+4. Pre-launch poll Instagram "vous avez une Apple TV ?" — voir
    `apple-tv-business-case.md`. Sans signal marché, ne pas investir
    les 6 sem. — **1 j de patience**
-4. **Si GO** : exécuter étapes 1-9 du setup, jusqu'à avoir l'écran Metro
-   packager qui tourne sur l'Apple TV physique ou simulator — **0.5-2 j**
+5. Setup Apple Developer Portal (étapes 1-5 du setup doc : provisioning,
+   App ID, App Store Connect record, RevenueCat tvOS) — **~1 h cumulée**
+6. **Si GO** : `EXPO_TV=1 npx expo prebuild --clean` puis premier build
+   tvOS via `eas build --profile development-tv --platform ios` ou Xcode
+   direct, jusqu'à avoir l'écran Metro packager qui tourne sur l'Apple TV
+   physique ou simulator — **0.5-2 j**
 
 ### 🟠 P1 — Phase 2 (après que P0 marche)
 
@@ -134,6 +174,10 @@ Bloqué sur 4 actions manuelles de Yvan (voir `apple-tv-setup.md`,
   wellness premium.
 - 2026-05-18 — Pas de Continuity / Handoff iPhone↔TV pour MVP. Reportée
   à v2 si succès du MVP TV.
+- 2026-05-18 — Phase 1 : choix Option B (app.config.js conditionnel) plutôt
+  que d'inscrire le plugin TV directement dans app.json. Raison : zéro
+  risque de fuite de config TV vers les builds iOS prod (la fonction
+  early-returns sans la moindre transformation quand `EXPO_TV !== '1'`).
 
 ## À mettre à jour à chaque PR sur la feature
 
