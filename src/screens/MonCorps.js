@@ -21,6 +21,7 @@ import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
 import { safeNativeCall, safeNativeFire, diag } from '../utils/safeNativeCall';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
+import { SeanceCompleteTV } from '../components/tv';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
@@ -645,7 +646,25 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
         <View style={{ height: 100 }} />
       </ScrollView>
       </View>
-      <CelebrationOverlay visible={showCelebration} onDone={() => setShowCelebration(false)} pilier={pilier} lang={lang} seance={celebratedSeance} />
+      {/* Apple TV : on bascule sur SeanceCompleteTV (overlay plein écran
+          avec confetti méduses + AquaticBackground en fond). Le
+          CelebrationOverlay iPhone reste pour mobile. */}
+      {IS_TV ? (
+        showCelebration && (
+          <View pointerEvents="auto" style={[StyleSheet.absoluteFillObject, { zIndex: 200 }]}>
+            <SeanceCompleteTV
+              isFr={(lang || 'fr').toLowerCase().indexOf('fr') === 0}
+              durationLabel={celebratedSeance ? celebratedSeance[1] : null}
+              seanceTitle={celebratedSeance ? celebratedSeance[0] : null}
+              pilierLabel={pilier.label}
+              onContinue={() => setShowCelebration(false)}
+              onClose={() => { setShowCelebration(false); onClose && onClose(); }}
+            />
+          </View>
+        )
+      ) : (
+        <CelebrationOverlay visible={showCelebration} onDone={() => setShowCelebration(false)} pilier={pilier} lang={lang} seance={celebratedSeance} />
+      )}
     </View>
   );
 }
