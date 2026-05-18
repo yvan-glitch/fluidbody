@@ -20,7 +20,7 @@ import VideoPlayer from '../components/VideoPlayer';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
 import { safeNativeCall, safeNativeFire, diag } from '../utils/safeNativeCall';
-import { IS_TV, tvFocusProps } from '../utils/platformTV';
+import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
@@ -326,6 +326,28 @@ function CelebrationOverlay({ visible, onDone, pilier, lang, seance }) {
   );
 }
 
+// Pressable wrapper qui réagit au focus engine tvOS — glow border +
+// scale 1.05 quand la card a le focus. Sur iPhone, comportement
+// identique au TouchableOpacity standard.
+function FocusableCard({ children, focusPreferred, style, ...rest }) {
+  const [focused, setFocused] = useState(false);
+  const focusStyle = IS_TV && focused
+    ? { ...TV_FOCUS_RING, transform: [{ scale: 1.04 }] }
+    : null;
+  return (
+    <TouchableOpacity
+      activeOpacity={0.88}
+      {...tvFocusProps(focusPreferred)}
+      onFocus={IS_TV ? () => setFocused(true) : undefined}
+      onBlur={IS_TV ? () => setFocused(false) : undefined}
+      style={[style, focusStyle]}
+      {...rest}
+    >
+      {children}
+    </TouchableOpacity>
+  );
+}
+
 function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isSubscriber, onActivateSubscription, sdjIndex, saveHealthKitWorkout, initialSeanceIdx }) {
   const tr = T[lang] || T['fr'];
   const seances = getSeances(lang)[pilier.key] || [];
@@ -456,27 +478,48 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
           </Animated.View>
         );
       })}
-      <View style={{ paddingTop: 54, paddingHorizontal: 22, paddingBottom: 10 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 10 }}>
-          <Text style={{ fontSize: 22, fontWeight: '900', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</AnimatedPlus></Text>
+      {/* Layout : sur iPhone \u2192 header empil\u00E9 + ScrollView pleine largeur.
+          Sur Apple TV \u2192 header en colonne gauche (~38% largeur) avec
+          pilier en hero, ScrollView en colonne droite (~62%). */}
+      <View style={{ flex: 1, flexDirection: IS_TV ? 'row' : 'column' }}>
+      <View style={{
+        paddingTop: IS_TV ? 90 : 54,
+        paddingHorizontal: IS_TV ? 60 : 22,
+        paddingBottom: 10,
+        width: IS_TV ? '38%' : undefined,
+        justifyContent: IS_TV ? 'flex-start' : undefined,
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: IS_TV ? 'flex-start' : 'flex-end', marginBottom: IS_TV ? 24 : 10 }}>
+          <Text style={{ fontSize: IS_TV ? 28 : 22, fontWeight: '900', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: IS_TV ? 34 : 28 }}>+</AnimatedPlus></Text>
         </View>
-        <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }} style={{ marginBottom: 12 }}>
-          <Text style={{ fontSize: 24, fontWeight: '700', color: '#AEEF4D' }}>{tr.retour}</Text>
-        </TouchableOpacity>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <Text style={{ fontSize: IS_IPAD ? 38 : 34, fontWeight: '200', color: '#ffffff', letterSpacing: -0.3 }}>{pilier.label}</Text>
+        <FocusableCard
+          onPress={onClose}
+          focusPreferred={false}
+          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+          style={{
+            marginBottom: IS_TV ? 28 : 12,
+            alignSelf: 'flex-start',
+            paddingHorizontal: IS_TV ? 18 : 0,
+            paddingVertical: IS_TV ? 10 : 0,
+            borderRadius: IS_TV ? 14 : 0,
+          }}
+        >
+          <Text style={{ fontSize: IS_TV ? 28 : 24, fontWeight: '700', color: '#AEEF4D' }}>{tr.retour}</Text>
+        </FocusableCard>
+        <View style={{ flexDirection: IS_TV ? 'column' : 'row', alignItems: IS_TV ? 'flex-start' : 'center', gap: 10, flexWrap: 'wrap' }}>
+          <Text style={{ fontSize: IS_TV ? 64 : (IS_IPAD ? 38 : 34), fontWeight: '200', color: '#ffffff', letterSpacing: -0.3, lineHeight: IS_TV ? 72 : undefined }}>{pilier.label}</Text>
           {isRecommended && (
-            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(0,215,255,0.2)', borderWidth: 1, borderColor: 'rgba(0,215,255,0.7)' }}>
-              <Text style={{ fontSize: 9, color: 'rgba(0,220,255,0.9)', letterSpacing: 1 }}>{'\u2605'} {tr.recommande_pour_toi}</Text>
+            <View style={{ paddingHorizontal: IS_TV ? 14 : 10, paddingVertical: IS_TV ? 6 : 4, borderRadius: IS_TV ? 14 : 10, backgroundColor: 'rgba(0,215,255,0.2)', borderWidth: 1, borderColor: 'rgba(0,215,255,0.7)' }}>
+              <Text style={{ fontSize: IS_TV ? 13 : 9, color: 'rgba(0,220,255,0.9)', letterSpacing: 1 }}>{'\u2605'} {tr.recommande_pour_toi}</Text>
             </View>
           )}
         </View>
-        <Text style={{ fontSize: 10, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.seances_available || '5 S\u00C9ANCES \u00B7 PLUS \u00C0 VENIR'}</Text>
-        <View style={{ height: 3, backgroundColor: 'rgba(0,200,240,0.1)', borderRadius: 2, marginTop: 10, overflow: 'hidden', flexDirection: 'row' }}>
-          <View style={{ height: 3, flex: doneCount / 5, backgroundColor: pilier.color, borderRadius: 2 }} />
+        <Text style={{ fontSize: IS_TV ? 14 : 10, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginTop: IS_TV ? 16 : 4 }}>{tr.seances_available || '5 S\u00C9ANCES \u00B7 PLUS \u00C0 VENIR'}</Text>
+        <View style={{ height: IS_TV ? 5 : 3, backgroundColor: 'rgba(0,200,240,0.1)', borderRadius: 2, marginTop: IS_TV ? 18 : 10, overflow: 'hidden', flexDirection: 'row' }}>
+          <View style={{ height: IS_TV ? 5 : 3, flex: doneCount / 5, backgroundColor: pilier.color, borderRadius: 2 }} />
         </View>
       </View>
-      <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1, paddingHorizontal: IS_TV ? 40 : 16 }} contentContainerStyle={{ paddingTop: IS_TV ? 90 : 0, paddingRight: IS_TV ? 40 : 0 }} showsVerticalScrollIndicator={false}>
         {seances.map(([titre, duree, etape, url], i) => {
           if (etape === 'Comprendre' || etape === 'Ressentir') return null;
           const isDone = done[i] === true || done[i] === 'true';
@@ -492,47 +535,53 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
           const isFirstVisible = prevPracticalEtape === null;
           const header = sectionTitle ? (
             <View>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: '#AEEF4D', letterSpacing: 2.5, textTransform: 'uppercase', marginTop: isFirstVisible ? 10 : 22, marginBottom: 18, paddingHorizontal: 4 }}>{sectionTitle}</Text>
+              <Text style={{ fontSize: IS_TV ? 22 : 18, fontWeight: '800', color: '#AEEF4D', letterSpacing: 2.5, textTransform: 'uppercase', marginTop: isFirstVisible ? 10 : 22, marginBottom: 18, paddingHorizontal: 4 }}>{sectionTitle}</Text>
             </View>
           ) : null;
           return (
             <Fragment key={i}>
               {header}
-            <TouchableOpacity onPress={() => tryOpenSeance(i)} disabled={noVideo} activeOpacity={0.88} {...tvFocusProps(i === 0)} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 12, height: IS_TV ? 140 : 110, opacity: noVideo ? 0.45 : (locked ? 0.4 : 1) }}>
+            <FocusableCard
+              onPress={() => tryOpenSeance(i)}
+              focusPreferred={i === 0}
+              disabled={noVideo}
+              style={{ borderRadius: 16, overflow: 'hidden', marginBottom: IS_TV ? 18 : 12, height: IS_TV ? 160 : 110, opacity: noVideo ? 0.45 : (locked ? 0.4 : 1) }}
+            >
               <View style={{ flex: 1 }}>
                 <Image source={PILIER_IMAGES[pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pil-bg-' + pilier.key} style={StyleSheet.absoluteFill} />
-                <LinearGradient colors={isDone ? ['rgba(0,30,22,0.75)', 'rgba(0,30,22,0.85)'] : locked ? ['rgba(0,14,24,0.75)', 'rgba(0,14,24,0.9)'] : ['rgba(0,14,24,0.55)', 'rgba(0,14,24,0.8)']} style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '900', color: '#ffffff', alignSelf: 'flex-end', marginBottom: 6 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, color: '#AEEF4D' }}>+</AnimatedPlus></Text>
+                <LinearGradient colors={isDone ? ['rgba(0,30,22,0.75)', 'rgba(0,30,22,0.85)'] : locked ? ['rgba(0,14,24,0.75)', 'rgba(0,14,24,0.9)'] : ['rgba(0,14,24,0.55)', 'rgba(0,14,24,0.8)']} style={{ flex: 1, paddingHorizontal: IS_TV ? 24 : 16, paddingTop: IS_TV ? 14 : 8, paddingBottom: IS_TV ? 16 : 12 }}>
+                  <Text style={{ fontSize: IS_TV ? 14 : 10, fontWeight: '900', color: '#ffffff', alignSelf: 'flex-end', marginBottom: 6 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, color: '#AEEF4D' }}>+</AnimatedPlus></Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-                      <Text style={{ fontSize: 18, color: isDone ? '#AEEF4D' : '#ffffff' }}>{isDone ? '\u2713' : '\u25B6'}</Text>
+                    <View style={{ width: IS_TV ? 56 : 40, height: IS_TV ? 56 : 40, borderRadius: IS_TV ? 28 : 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginRight: IS_TV ? 20 : 14 }}>
+                      <Text style={{ fontSize: IS_TV ? 26 : 18, color: isDone ? '#AEEF4D' : '#ffffff' }}>{isDone ? '\u2713' : '\u25B6'}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff', marginBottom: 6 }} numberOfLines={1}>{titre}</Text>
+                      <Text style={{ fontSize: IS_TV ? 24 : 16, fontWeight: '600', color: '#ffffff', marginBottom: 6 }} numberOfLines={1}>{titre}</Text>
                       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <Text style={{ fontSize: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,189,208,0.15)', color: '#00BDD0', letterSpacing: 0.5 }}>{tr.etapes[etape] || etape}</Text>
-                        <Text style={{ fontSize: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)', color: '#ffffff' }}>{duree}</Text>
+                        <Text style={{ fontSize: IS_TV ? 13 : 10, paddingHorizontal: IS_TV ? 12 : 8, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(0,189,208,0.15)', color: '#00BDD0', letterSpacing: 0.5 }}>{tr.etapes[etape] || etape}</Text>
+                        <Text style={{ fontSize: IS_TV ? 13 : 10, paddingHorizontal: IS_TV ? 12 : 8, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)', color: '#ffffff' }}>{duree}</Text>
                         {i === 0 && !isSubscriber ? (
-                          <Text style={{ fontSize: 9, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,189,208,0.2)', color: '#00BDD0', fontWeight: '700', letterSpacing: 0.5 }}>{tr.gratuit_badge || 'GRATUIT'}</Text>
+                          <Text style={{ fontSize: IS_TV ? 12 : 9, paddingHorizontal: IS_TV ? 11 : 7, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(0,189,208,0.2)', color: '#00BDD0', fontWeight: '700', letterSpacing: 0.5 }}>{tr.gratuit_badge || 'GRATUIT'}</Text>
                         ) : null}
                         {resumeIndices.has(i) && !locked ? (
-                          <Text style={{ fontSize: 9, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(174,239,77,0.15)', color: '#AEEF4D', fontWeight: '600' }}>{tr.reprise_badge}</Text>
+                          <Text style={{ fontSize: IS_TV ? 12 : 9, paddingHorizontal: IS_TV ? 11 : 7, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(174,239,77,0.15)', color: '#AEEF4D', fontWeight: '600' }}>{tr.reprise_badge}</Text>
                         ) : null}
                         {isComingSoon(pilier.key, i) ? (
-                          <Text style={{ fontSize: 9, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(210,140,190,0.20)', color: '#E1A8C8', fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>{tr.coming_soon_badge || 'Bientôt'}</Text>
+                          <Text style={{ fontSize: IS_TV ? 12 : 9, paddingHorizontal: IS_TV ? 11 : 7, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(210,140,190,0.20)', color: '#E1A8C8', fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>{tr.coming_soon_badge || 'Bientôt'}</Text>
                         ) : null}
                       </View>
                     </View>
-                    <Text style={{ fontSize: 13, color: '#AEEF4D', fontWeight: '300' }}>{String(i + 1).padStart(2, '0')}</Text>
+                    <Text style={{ fontSize: IS_TV ? 18 : 13, color: '#AEEF4D', fontWeight: '300' }}>{String(i + 1).padStart(2, '0')}</Text>
                   </View>
                 </LinearGradient>
               </View>
-            </TouchableOpacity>
+            </FocusableCard>
             </Fragment>
           );
         })}
         <View style={{ height: 100 }} />
       </ScrollView>
+      </View>
       <CelebrationOverlay visible={showCelebration} onDone={() => setShowCelebration(false)} pilier={pilier} lang={lang} seance={celebratedSeance} />
     </View>
   );
