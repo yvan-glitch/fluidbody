@@ -16,6 +16,7 @@ import { GlassView, GlassButton, GLASS_RADII, GLASS_EASING, GLASS_DURATIONS } fr
 import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import useLiveHeartRate from '../hooks/useLiveHeartRate';
 import { recordSessionHour, cancelPauseActiveNotifications } from '../utils/notifications';
+import { IS_TV, tvFocusProps } from '../utils/platformTV';
 
 // ── Small utilities (local copies to avoid circular deps) ──
 // Haptics are fired by GlassButton (FAIT) via `haptic="success"`, so
@@ -243,7 +244,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     });
     return function() { cancelled = true; };
   }, []);
-  const hrEnabled = (showHeartRate != null) ? showHeartRate : showHrPref;
+  // tvOS n'a pas HealthKit → la pill BPM ne peut pas s'allumer. On force OFF.
+  const hrEnabled = !IS_TV && ((showHeartRate != null) ? showHeartRate : showHrPref);
   const hr = useLiveHeartRate({ enabled: hrEnabled });
   const effectiveBirthDate = userBirthDate || birthDatePref;
   const videoRef = useRef(null);
@@ -398,11 +400,13 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         playThroughEarpieceAndroid: false,
       });
     })();
-    ScreenOrientation.unlockAsync();
+    // tvOS n'a pas de notion d'orientation ; ScreenOrientation lèverait
+    // une UnavailabilityError au runtime, donc on saute.
+    if (!IS_TV) ScreenOrientation.unlockAsync();
     const sub = Dimensions.addEventListener('change', ({ window }) => setDims(window));
     return () => {
       void deactivateKeepAwake().catch(() => {});
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      if (!IS_TV) ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
       if (controlsTimer.current) clearTimeout(controlsTimer.current);
       sub?.remove();
     };
@@ -751,6 +755,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
           </Text>
           <TouchableOpacity
             onPress={retryVideoLoad}
+            {...tvFocusProps(true)}
             style={{ paddingVertical: 14, paddingHorizontal: 28, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(0,235,255,0.55)', backgroundColor: 'rgba(0,100,140,0.35)' }}
             accessibilityRole="button"
             accessibilityLabel={tr.video_retry}
@@ -771,8 +776,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             {/* Top-left : X + PiP/fullscreen — capsule Liquid Glass */}
             <View pointerEvents="box-none" style={{ position: 'absolute', top: 50, left: 16 }}>
               <LiquidGlassCapsule tint="light" paddingH={10} paddingV={6} gap={12}>
-                <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={10} style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 16, color: '#FFFFFF', fontWeight: '500' }}>{'✕'}</Text>
+                <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={10} {...tvFocusProps(true)} style={{ width: IS_TV ? 56 : 28, height: IS_TV ? 56 : 28, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: IS_TV ? 28 : 16, color: '#FFFFFF', fontWeight: '500' }}>{'✕'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => { bumpTimer(); }} hitSlop={10} style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}>
                   <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
