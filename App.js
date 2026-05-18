@@ -110,6 +110,7 @@ import {
 } from './src/utils/notifications';
 import { isUserAlreadyActive } from './src/utils/activityCheck';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
+import { creditReferralOnPaid, getReferralStats, parseReferralCodeFromUrl, savePendingReferralCode } from './src/utils/referrals';
 import { safeNativeCall, safeNativeFire, diag } from './src/utils/safeNativeCall';
 import { LogBox } from 'react-native';
 
@@ -1350,6 +1351,21 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [purchaseConfettiActive, setPurchaseConfettiActive] = useState(false);
   const [annivVisible, setAnnivVisible] = useState(false);
   const [welcomeAnimVisible, setWelcomeAnimVisible] = useState(false);
+  // Parrainage — mois gratuits en attente pour afficher le bandeau dans
+  // le paywall. Source de vérité : Supabase. Refresh quand le paywall
+  // s'ouvre + après un achat (cf. purchaseSubscription).
+  const [freeMonthsAvailable, setFreeMonthsAvailable] = useState(0);
+
+  async function refreshFreeMonthsAvailable() {
+    if (!supabase || !supaUser) {
+      setFreeMonthsAvailable(0);
+      return;
+    }
+    try {
+      const stats = await getReferralStats(supabase, supaUser.id);
+      setFreeMonthsAvailable(stats?.free_months_available || 0);
+    } catch (e) {}
+  }
 
   // First-launch coach welcome — once per install, opened ~700ms after MainApp
   // mounts so the user sees the tab bar settle first (less jarring than a hard
@@ -1410,6 +1426,10 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
 
   function openPaywall() {
     setPaywallVisible(true);
+    // Refresh "à l'ouverture" plutôt que de mounter un listener continu :
+    // l'utilisateur n'ouvre le paywall qu'en pressant un CTA, donc on a
+    // un point d'entrée clair où re-fetcher.
+    refreshFreeMonthsAvailable();
   }
 
   async function setSubscriptionActive(active) {
@@ -1442,6 +1462,21 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         setPurchaseConfettiActive(true);
         setTimeout(function() { setPurchaseConfettiActive(false); }, 3000);
       }, 350);
+      // Parrainage — déclenche le credit côté Supabase. La RPC est
+      // idempotente (no-op si déjà créditée), donc safe à rappeler à
+      // chaque achat. On ignore le résultat (best-effort) — l'utilisateur
+      // ne doit pas attendre.
+      // TODO : remplacer par un webhook RC côté edge function pour
+      // robustifier (transaction_id idempotency + détection renouvellement).
+      try {
+        if (supabase && supaUser) {
+          creditReferralOnPaid(supabase).then(function(res) {
+            if (__DEV__) devLog('referral credit result:', res);
+            // Rafraîchit les stats locales — le badge sur Profil bouge.
+            refreshFreeMonthsAvailable();
+          }).catch(function() {});
+        }
+      } catch (e) {}
     }
   }
 
@@ -1747,6 +1782,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         onRestore={() => restoreSubscription()}
         onTryFree={() => { setPaywallVisible(false); setFreeDetailVisible(true); }}
         coachImage={COACH_IMAGE}
+        freeMonthsAvailable={freeMonthsAvailable}
       />
       <SeanceDetailModal
         visible={freeDetailVisible}
@@ -2604,6 +2640,34 @@ function App() {
       else Sentry.setUser(null);
     });
   }, [supaUser]);
+
+  // ── Deep linking : fluidbody://invite?code=XYZ ─────────────────────
+  // Cas 1 (app lancée par tap sur lien) : getInitialURL au mount.
+  // Cas 2 (app déjà ouverte) : addEventListener('url').
+  // Dans les 2 cas, on extrait le code et on le stocke en pending. Le
+  // ProfileOnboarding le consommera au prochain mount (prefill). Si
+  // l'utilisateur est *déjà* dans l'app sans avoir fait l'onboarding,
+  // un re-mount ne se produit pas — c'est volontaire pour MVP (l'user
+  // doit relancer ou refaire l'onboarding pour appliquer le code).
+  useEffect(function() {
+    function handleUrl(url) {
+      if (!url) return;
+      var code = parseReferralCodeFromUrl(url);
+      if (!code) return;
+      if (__DEV__) devLog('referral deep link, code captured:', code);
+      savePendingReferralCode(code);
+    }
+    try {
+      RNLinking.getInitialURL().then(handleUrl).catch(function() {});
+    } catch (e) {}
+    var sub = null;
+    try {
+      sub = RNLinking.addEventListener('url', function(evt) { handleUrl(evt?.url); });
+    } catch (e) {}
+    return function() {
+      try { if (sub && sub.remove) sub.remove(); } catch (e) {}
+    };
+  }, []);
 
   async function handleOnboardingDone(p, l, t) {
     setPrenom(p); setLang(l); setTensionIdxs(t); setOnboardingDone(true);
