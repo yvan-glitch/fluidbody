@@ -15,6 +15,7 @@ import {
 } from './ui';
 import { useTheme } from '../theme/ThemeProvider';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
+import { AquaticBackground, GlassCardTV } from './tv';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -267,44 +268,36 @@ function TVPaywallView({
 
   function planCard(key, label, sub, priceText, fullPeriod) {
     const active = selected === key;
-    const focused = focusedKey === 'plan-' + key;
     return (
-      <TouchableOpacity
+      <GlassCardTV
         key={key}
-        {...tvFocusProps(key === 'yearly')}
-        activeOpacity={0.9}
         onPress={function() { setSelected(key); }}
-        onFocus={function() { setFocusedKey('plan-' + key); }}
-        onBlur={function() { setFocusedKey(null); }}
-        style={[
-          {
-            marginBottom: 18,
-            paddingVertical: 22,
-            paddingHorizontal: 24,
-            borderRadius: 20,
-            borderWidth: 2,
-            borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.18)',
-            backgroundColor: active ? 'rgba(174,239,77,0.12)' : 'rgba(255,255,255,0.04)',
-          },
-          focused ? { transform: [{ scale: 1.03 }], ...TV_FOCUS_RING } : null,
-        ]}
+        focusPreferred={key === 'yearly'}
+        accent={active ? 'green' : 'cyan'}
+        variant={active ? 'elevated' : 'standard'}
+        shape="card"
+        padding={0}
+        tiltOnFocus={false}
+        style={{ marginBottom: 20 }}
+        contentStyle={{ paddingVertical: 24, paddingHorizontal: 26 }}
+        accessibilityLabel={label + ' ' + priceText}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <View style={{
-            width: 24, height: 24, borderRadius: 12,
-            borderWidth: 2, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.4)',
+            width: 26, height: 26, borderRadius: 13,
+            borderWidth: 2.5, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.45)',
             alignItems: 'center', justifyContent: 'center',
-            marginRight: 16,
+            marginRight: 18,
           }}>
-            {active ? <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#AEEF4D' }} /> : null}
+            {active ? <View style={{ width: 13, height: 13, borderRadius: 7, backgroundColor: '#AEEF4D' }} /> : null}
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: '#ffffff', letterSpacing: -0.2 }}>{label}</Text>
-            {sub ? <Text style={{ fontSize: 14, color: '#AEEF4D', marginTop: 4 }}>{sub}</Text> : null}
+            <Text style={{ fontSize: 24, fontWeight: '600', color: '#ffffff', letterSpacing: -0.3 }}>{label}</Text>
+            {sub ? <Text style={{ fontSize: 15, color: '#AEEF4D', marginTop: 5, fontWeight: '500' }}>{sub}</Text> : null}
           </View>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff' }}>{priceText}</Text>
+          <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.5 }}>{priceText}</Text>
         </View>
-      </TouchableOpacity>
+      </GlassCardTV>
     );
   }
 
@@ -315,11 +308,7 @@ function TVPaywallView({
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
-      <LinearGradient
-        colors={['#000a1a', '#001a2e', '#003a55']}
-        locations={[0, 0.5, 1]}
-        style={StyleSheet.absoluteFill}
-      />
+      <AquaticBackground density="low" contentOpacity={0.5} />
 
       {/* Close button : top-right, focusable mais discret. Sur Apple
           TV le bouton Menu de la Siri Remote ferme aussi, mais on
@@ -332,7 +321,9 @@ function TVPaywallView({
         style={{
           position: 'absolute', top: 40, right: 40, zIndex: 10,
           paddingHorizontal: 22, paddingVertical: 12,
-          backgroundColor: 'rgba(255,255,255,0.10)',
+          backgroundColor: 'rgba(8,24,40,0.6)',
+          borderWidth: 1.5,
+          borderColor: 'rgba(255,255,255,0.25)',
           borderRadius: 14,
           ...(closeFocused ? TV_FOCUS_RING : {}),
         }}
@@ -340,15 +331,15 @@ function TVPaywallView({
         <Text style={{ fontSize: 18, color: '#ffffff', fontWeight: '600' }}>{isFr ? 'Fermer' : 'Close'}</Text>
       </TouchableOpacity>
 
-      <View style={{ flex: 1, flexDirection: 'row', paddingHorizontal: 80, paddingTop: 90, paddingBottom: 60 }}>
+      <View style={{ flex: 1, flexDirection: 'row', paddingHorizontal: 100, paddingTop: 100, paddingBottom: 60 }}>
 
         {/* Colonne gauche : hero + bénéfices + témoignage */}
-        <View style={{ flex: 1, paddingRight: 60, justifyContent: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 24 }}>
-            <Text style={{ fontSize: 22, fontWeight: '900', color: '#AEEF4D', letterSpacing: 4 }}>FLUIDBODY</Text>
-            <AnimatedPlus style={{ fontSize: 22, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
+        <View style={{ flex: 1, paddingRight: 70, justifyContent: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 28 }}>
+            <Text style={{ fontSize: 24, fontWeight: '900', color: '#AEEF4D', letterSpacing: 5 }}>FLUIDBODY</Text>
+            <AnimatedPlus style={{ fontSize: 24, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
           </View>
-          <Text style={{ fontSize: 56, fontWeight: '800', color: '#ffffff', lineHeight: 66, letterSpacing: -0.5, marginBottom: 36 }}>{heroTitle}</Text>
+          <Text style={{ fontSize: 64, fontWeight: '200', color: '#ffffff', lineHeight: 74, letterSpacing: -1.2, marginBottom: 40 }}>{heroTitle}</Text>
 
           {Number.isFinite(freeMonthsAvailable) && freeMonthsAvailable > 0 ? (
             <View style={{
@@ -415,53 +406,51 @@ function TVPaywallView({
           {planCard('yearly', annualLabel, annualSub, yearlyPriceRaw, isFr ? '/an' : '/yr')}
           {planCard('monthly', monthlyLabel, null, monthlyPriceRaw, isFr ? '/mois' : '/mo')}
 
-          {/* CTA principal */}
+          {/* CTA principal — bouton vert plein avec ring focus accent. */}
           <TouchableOpacity
             {...tvFocusProps(false)}
             onPress={onCta}
             disabled={disabled || loadingPrices}
             onFocus={function() { setFocusedKey('cta'); }}
             onBlur={function() { setFocusedKey(null); }}
-            activeOpacity={0.85}
+            activeOpacity={0.88}
             style={[
               {
-                marginTop: 16,
-                paddingVertical: 22,
-                borderRadius: 18,
+                marginTop: 22,
+                paddingVertical: 26,
+                borderRadius: 22,
                 backgroundColor: '#AEEF4D',
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: (disabled || loadingPrices) ? 0.5 : 1,
+                shadowColor: '#AEEF4D',
+                shadowOpacity: ctaFocused ? 0.6 : 0.3,
+                shadowRadius: ctaFocused ? 24 : 16,
+                shadowOffset: { width: 0, height: 10 },
               },
-              ctaFocused ? { transform: [{ scale: 1.04 }], ...TV_FOCUS_RING } : null,
+              ctaFocused ? { transform: [{ scale: 1.05 }] } : null,
             ]}
           >
-            <Text style={{ fontSize: 22, fontWeight: '900', color: '#001a2e', letterSpacing: 0.3 }}>{ctaLabel}</Text>
+            <Text style={{ fontSize: 24, fontWeight: '900', color: '#001a2e', letterSpacing: 0.6 }}>{ctaLabel}</Text>
           </TouchableOpacity>
 
-          {/* Pair existing iPhone subscription */}
-          <TouchableOpacity
-            {...tvFocusProps(false)}
+          {/* Pair existing iPhone subscription — glass card subtle */}
+          <GlassCardTV
             onPress={onClose}
-            onFocus={function() { setFocusedKey('pair'); }}
-            onBlur={function() { setFocusedKey(null); }}
-            activeOpacity={0.85}
-            style={[
-              {
-                marginTop: 16,
-                paddingVertical: 16,
-                borderRadius: 18,
-                borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)',
-                alignItems: 'center',
-              },
-              pairFocused ? { transform: [{ scale: 1.03 }], ...TV_FOCUS_RING, borderColor: '#AEEF4D' } : null,
-            ]}
+            accent="cyan"
+            variant="subtle"
+            shape="card"
+            padding={0}
+            tiltOnFocus={false}
+            style={{ marginTop: 18 }}
+            contentStyle={{ paddingVertical: 18, alignItems: 'center' }}
+            accessibilityLabel={pairLabel}
           >
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#ffffff' }}>{pairLabel}</Text>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 4 }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: '#ffffff', letterSpacing: 0.2 }}>{pairLabel}</Text>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.62)', marginTop: 5 }}>
               {isFr ? 'Pair ta TV depuis l\'app iPhone' : 'Pair your TV from the iPhone app'}
             </Text>
-          </TouchableOpacity>
+          </GlassCardTV>
 
           {/* Restore */}
           <TouchableOpacity
@@ -472,11 +461,11 @@ function TVPaywallView({
             onBlur={function() { setFocusedKey(null); }}
             activeOpacity={0.7}
             style={[
-              { marginTop: 22, paddingVertical: 12, alignItems: 'center', borderRadius: 14 },
+              { marginTop: 22, paddingVertical: 14, alignItems: 'center', borderRadius: 14 },
               restoreFocused ? TV_FOCUS_RING : null,
             ]}
           >
-            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>{tr.paywall_restore || (isFr ? 'Restaurer mes achats' : 'Restore purchases')}</Text>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.72)', fontWeight: '500', letterSpacing: 0.4 }}>{tr.paywall_restore || (isFr ? 'Restaurer mes achats' : 'Restore purchases')}</Text>
           </TouchableOpacity>
 
           {/* Légales — petite footer */}
