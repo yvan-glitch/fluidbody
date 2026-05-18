@@ -198,7 +198,7 @@ function CompareTable({ features, theme, title, appLabel, studioLabel }) {
   );
 }
 
-export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore }) {
+export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore, freeMonthsAvailable }) {
   var tr = T[lang] || T['fr'];
   var theme = useTheme().theme;
   var isLight = theme.mode === 'light';
@@ -358,6 +358,37 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               padding={20}
               elevated
             >
+              {/* Bandeau bonus parrainage — uniquement si l'utilisateur a
+                  des mois gratuits en attente (filleule qui a un parrain,
+                  ou parrain dont une amie vient de s'abonner). Visuel
+                  délibérément voyant (accent vert) pour pousser le CTA.
+                  TODO post-MVP : déduire X mois sur la facture via une
+                  promotional offer RC, plutôt que de juste l'afficher. */}
+              {Number.isFinite(freeMonthsAvailable) && freeMonthsAvailable > 0 ? (
+                <View style={{
+                  marginBottom: 14,
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  borderRadius: 14,
+                  backgroundColor: 'rgba(174,239,77,0.14)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(174,239,77,0.45)',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}>
+                  <Text style={{ fontSize: 22, marginRight: 10 }}>🎁</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.accentText, letterSpacing: -0.1, marginBottom: 2 }}>
+                      {tr.paywall_referral_bonus_title || 'Tu as un bonus en attente'}
+                    </Text>
+                    <Text style={{ fontSize: 12, fontWeight: '500', color: theme.colors.text, lineHeight: 17 }}>
+                      {typeof tr.paywall_referral_bonus_sub === 'function'
+                        ? tr.paywall_referral_bonus_sub(freeMonthsAvailable)
+                        : `${freeMonthsAvailable} ${isFr ? 'mois gratuit(s) t\'attendent.' : 'free month(s) waiting for you.'}`}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
               {/* Bénéfices */}
               <View style={{ marginBottom: 18 }}>
                 {benefits.map((b, i) => (
