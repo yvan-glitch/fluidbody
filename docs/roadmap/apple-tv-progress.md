@@ -32,7 +32,63 @@ code, attente runtime check sur device**. Ajouts (cf. section
   fullscreen + bouton "Mon compte" corner-pinned. Pas de tab bar TV.
 - Doc protocole : `docs/roadmap/apple-tv-pairing-protocol.md`.
 
-**Phase 3 — Polish, optimisations, submission App Store** : 🟠 **À
+**Phase 2.5 — Polish visuel Apple-grade** : ✅ **Terminée côté code,
+attente runtime check sur simulator**. Ajouts :
+
+- 5 nouveaux composants sous `src/components/tv/` :
+  - `AquaticBackground` — fond plein écran TV (gradient 6-stops
+    anti-banding + Rayons + 5 méduses dérivantes + 10 bulles).
+    Modes `density: 'normal' | 'low'` et `paused` pour les Modals.
+  - `MeduseTV` — hero méduse XL 200-300 px avec halo bioluminescent
+    composé de 3 cercles concentriques (évite les shadow* moches).
+  - `GlassCardTV` — Liquid Glass card XL avec BlurView intensity 78,
+    bevel 1.5 px, shadowRadius 30, focus animations premium (scale
+    1.06 cubic-out 220 ms + ring cyan/vert fade-in 200 ms + parallax
+    tilt 3° rotateX/rotateY).
+  - `FocusableCardTV` — version simplifiée focusable pour les screens
+    qui ont leur propre fond (Bibliotheque, MonCorps explorer).
+  - `SeanceCompleteTV` — overlay plein écran de fin de séance avec
+    24 méduses confetti dérivantes (4-6 s durée, opacity fade,
+    tints variés vert/cyan/blanc) + titre éditorial 96 px weight 200
+    + 2 CTAs focusables.
+- Polish appliqué à 6 écrans TV :
+  - `TVLoginScreen` : split horizontal hero+QR + AquaticBackground
+    + MeduseTV 260 px hero. Title 52 px weight 200 letter-spacing -0.8.
+  - `ProfilTV` : AquaticBackground + 4 GlassCardTV pour le statut /
+    email / support / déconnexion. Title 64 px weight 200.
+  - `PaywallModal` (TVPaywallView) : AquaticBackground low + plans
+    en GlassCardTV + CTA "S'abonner" gain shadow halo cyan. Hero
+    title 56 → 64 px weight 200.
+  - `MonCorps` explorer : FocusableCard upgradé (Animated.timing
+    scale 1.06 + ring bioluminescent fade-in + shadow halo). Pilier
+    cards : title 36 px weight 300, free cards : title 26 px weight
+    500. Gradient 6-stops anti-banding.
+  - `PilierPanel` séance cards : height 160 → 200, radius 16 → 20,
+    title 30 px weight 500, séance index 32 px weight 200, play
+    icon disk 56 → 72. Section headers 28 px letter-spacing 4.
+  - `Bibliotheque` : header "Bibliothèque" 64 px weight 200. Toutes
+    les cards (activités, fiches, théorie) en FocusableCardTV.
+    Gradient 6-stops anti-banding via helper `mixGradient()`.
+  - `VideoPlayer` : play/pause Glass 72 → 120 px (icon 32 → 54),
+    skip ±10 buttons 52 → 90 px, progress bar height 3 → 6 px,
+    time labels 11 → 18 px tabular-nums.
+- `SeanceCompleteTV` wiré dans `PilierPanel` à la place du
+  `CelebrationOverlay` (qui reste pour iPhone).
+
+Perf — Apple TV HD A8 :
+- ≤ 5 méduses simultanées dans `AquaticBackground`, ≤ 10 bulles.
+- 24 méduses confetti dans `SeanceCompleteTV` mais sur écran éphémère
+  (4-6 s) — pas un loop persistant.
+- Toutes les Animated.timing utilisent `useNativeDriver: true`
+  (sauf le parallax tilt rotateX/Y qui n'est pas supporté par le
+  native driver — limité à la card focusée, donc pas de jank).
+- `AquaticBackground` accepte `paused` pour stopper les loops
+  quand un Modal le couvre (PilierPanel l'utilise pour SeanceCompleteTV).
+
+iPhone untouched — chaque ajout TV est gated par `IS_TV` ou utilise
+un composant qui early-return en `TouchableOpacity` standard sur iPhone.
+
+**Phase 3 — Optimisations + submission App Store** : 🟠 **À
 faire**. Voir section "Ce qui reste".
 
 Ce qui a changé en Phase 1 (vs phase 0) :
