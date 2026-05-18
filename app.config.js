@@ -21,6 +21,12 @@ const PLUGINS_INCOMPATIBLE_WITH_TVOS = [
   'expo-apple-authentication',
   '@react-native-community/datetimepicker',
   'expo-notifications',
+  // expo-camera n'existe pas sur tvOS (pas de capteur). Strippé du build
+  // TV pour éviter un linker error / crash. Le code JS qui l'importe est
+  // gated derrière `IS_TV` (cf. PairAppleTV.js), donc rien à mocker côté
+  // bundle — l'import statique sera juste remplacé par un dynamic
+  // require inside un `if (!IS_TV)` block (cf. src/screens/PairAppleTV.js).
+  'expo-camera',
 ]
 
 module.exports = ({ config }) => {
