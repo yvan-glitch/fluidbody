@@ -326,25 +326,75 @@ function CelebrationOverlay({ visible, onDone, pilier, lang, seance }) {
   );
 }
 
-// Pressable wrapper qui réagit au focus engine tvOS — glow border +
-// scale 1.05 quand la card a le focus. Sur iPhone, comportement
-// identique au TouchableOpacity standard.
-function FocusableCard({ children, focusPreferred, style, ...rest }) {
+// Pressable wrapper qui réagit au focus engine tvOS — premium :
+//   - scale 1 → 1.06 animé (220 ms, easing.out.cubic, native driver)
+//   - anneau bioluminescent cyan qui fade-in 0 → 1 (200 ms)
+//   - drop shadow plus dense au focus pour faire "lever" la card
+// Sur iPhone, comportement identique au TouchableOpacity standard
+// (les Animated.timing ne tournent que sur tvOS où setFocused est branché).
+function FocusableCard({ children, focusPreferred, style, accent, ...rest }) {
   const [focused, setFocused] = useState(false);
-  const focusStyle = IS_TV && focused
-    ? { ...TV_FOCUS_RING, transform: [{ scale: 1.04 }] }
-    : null;
+  const scale = useRef(new Animated.Value(1)).current;
+  const ring = useRef(new Animated.Value(0)).current;
+  const ringColor = accent === 'green' ? '#AEEF4D' : '#00DCEC';
+
+  useEffect(() => {
+    if (!IS_TV) return;
+    Animated.parallel([
+      Animated.timing(scale, {
+        toValue: focused ? 1.06 : 1,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(ring, {
+        toValue: focused ? 1 : 0,
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [focused]);
+
+  if (!IS_TV) {
+    return (
+      <TouchableOpacity activeOpacity={0.88} style={style} {...rest}>
+        {children}
+      </TouchableOpacity>
+    );
+  }
+
   return (
-    <TouchableOpacity
-      activeOpacity={0.88}
-      {...tvFocusProps(focusPreferred)}
-      onFocus={IS_TV ? () => setFocused(true) : undefined}
-      onBlur={IS_TV ? () => setFocused(false) : undefined}
-      style={[style, focusStyle]}
-      {...rest}
-    >
-      {children}
-    </TouchableOpacity>
+    <Animated.View style={[style, { transform: [{ scale }] }]}>
+      <TouchableOpacity
+        activeOpacity={0.92}
+        {...tvFocusProps(focusPreferred)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{ flex: 1 }}
+        {...rest}
+      >
+        {children}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -3,
+            left: -3,
+            right: -3,
+            bottom: -3,
+            borderRadius: 18,
+            borderWidth: 3,
+            borderColor: ringColor,
+            opacity: ring,
+            shadowColor: ringColor,
+            shadowOpacity: 0.8,
+            shadowRadius: 14,
+            shadowOffset: { width: 0, height: 0 },
+          }}
+        />
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -1411,35 +1461,35 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
                     {freeItems.map(function(it, i) {
                       return (
-                        <TouchableOpacity
+                        <FocusableCard
                           key={"free-" + it.pilier.key + "-" + it.idx}
-                          activeOpacity={0.9}
                           onPress={function() { setOpenInitialIdx(it.idx); setOpenPilier(it.pilier); }}
-                          {...tvFocusProps(i === 0)}
+                          focusPreferred={i === 0}
+                          accent="green"
                           style={{ width: freeCardW, height: freeCardH, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)' }}
                         >
                           <View style={{ flex: 1 }}>
                             <Image source={PILIER_IMAGES[it.pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-it-' + it.pilier.key} style={StyleSheet.absoluteFill} />
-                            <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']} locations={[0, 0.5, 1]} style={{ flex: 1, padding: 16, justifyContent: 'space-between' }}>
+                            <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.18)', 'rgba(0,0,0,0.38)', 'rgba(0,0,0,0.60)', 'rgba(0,0,0,0.80)', 'rgba(0,0,0,0.92)']} locations={[0, 0.3, 0.5, 0.7, 0.85, 1]} style={{ flex: 1, padding: IS_TV ? 22 : 16, justifyContent: 'space-between' }}>
                               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <View style={{ backgroundColor: '#AEEF4D', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 }}>
-                                  <Text style={{ fontSize: 9, fontWeight: '900', color: '#000', letterSpacing: 1.2 }}>{tr.gratuit_badge || 'GRATUIT'}</Text>
+                                <View style={{ backgroundColor: '#AEEF4D', borderRadius: IS_TV ? 10 : 8, paddingHorizontal: IS_TV ? 12 : 9, paddingVertical: IS_TV ? 6 : 4 }}>
+                                  <Text style={{ fontSize: IS_TV ? 12 : 9, fontWeight: '900', color: '#000', letterSpacing: 1.5 }}>{tr.gratuit_badge || 'GRATUIT'}</Text>
                                 </View>
-                                <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.85)' }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, color: '#AEEF4D' }}>+</AnimatedPlus></Text>
+                                <Text style={{ fontSize: IS_TV ? 14 : 11, fontWeight: '700', color: 'rgba(255,255,255,0.85)', letterSpacing: IS_TV ? 1.5 : 0 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, color: '#AEEF4D' }}>+</AnimatedPlus></Text>
                               </View>
                               <View>
-                                <Text style={{ fontSize: 10, color: '#AEEF4D', letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 6 }}>{(tr.etapes && tr.etapes[it.etape]) || it.etape} · {it.pilier.label}</Text>
-                                <Text style={{ fontSize: 19, fontWeight: '800', color: '#ffffff', lineHeight: 23, marginBottom: 8 }} numberOfLines={2}>{it.titre}</Text>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Text style={{ fontSize: 13, color: '#000' }}>{'▶'}</Text>
+                                <Text style={{ fontSize: IS_TV ? 13 : 10, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8, fontWeight: '700' }}>{(tr.etapes && tr.etapes[it.etape]) || it.etape} · {it.pilier.label}</Text>
+                                <Text style={{ fontSize: IS_TV ? 26 : 19, fontWeight: IS_TV ? '600' : '800', color: '#ffffff', lineHeight: IS_TV ? 30 : 23, marginBottom: 12, letterSpacing: IS_TV ? -0.3 : 0 }} numberOfLines={2}>{it.titre}</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                  <View style={{ width: IS_TV ? 42 : 32, height: IS_TV ? 42 : 32, borderRadius: IS_TV ? 21 : 16, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Text style={{ fontSize: IS_TV ? 17 : 13, color: '#000' }}>{'▶'}</Text>
                                   </View>
-                                  <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)' }}>{it.duree}</Text>
+                                  <Text style={{ fontSize: IS_TV ? 15 : 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)', letterSpacing: IS_TV ? 0.5 : 0 }}>{it.duree}</Text>
                                 </View>
                               </View>
                             </LinearGradient>
                           </View>
-                        </TouchableOpacity>
+                        </FocusableCard>
                       );
                     })}
                   </ScrollView>
@@ -1452,24 +1502,25 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 // première pilier card prend le focus initial.
                 var preferred = pi === 0 && freeItems.length === 0;
                 return (
-                  <TouchableOpacity
+                  <FocusableCard
                     key={"exp-" + p.key}
-                    activeOpacity={0.88}
                     onPress={function() {
                       if (!isSubscriber) { onActivateSubscription && onActivateSubscription(); return; }
                       setOpenPilier(p);
                     }}
-                    {...tvFocusProps(preferred)}
-                    style={{ marginBottom: 16, borderRadius: 16, overflow: "hidden", height: cardH }}
+                    focusPreferred={preferred}
+                    accent="cyan"
+                    style={{ marginBottom: IS_TV ? 22 : 16, borderRadius: 18, overflow: "hidden", height: cardH }}
                   >
                     <View style={{ flex: 1 }}>
                       <Image source={PILIER_IMAGES[p.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pcardbig-' + p.key} style={[StyleSheet.absoluteFill, p.key === 'p8' ? { top: -20, transform: [{ scale: 1.15 }] } : { transform: [{ scale: 1.15 }] }]} />
-                      <LinearGradient colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.7)"]} style={{ flex: 1, justifyContent: "flex-end", padding: 16 }}>
-                        <Text style={{ fontSize: 24, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{p.label}</Text>
-                        <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{(ps.length || 20) + ' ' + tr.m_seances}</Text>
+                      {/* Gradient with 6 stops to avoid banding on 1080p+ TVs */}
+                      <LinearGradient colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.05)", "rgba(0,0,0,0.18)", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.65)", "rgba(0,0,0,0.85)"]} locations={[0, 0.32, 0.5, 0.68, 0.85, 1]} style={{ flex: 1, justifyContent: "flex-end", padding: IS_TV ? 28 : 16 }}>
+                        <Text style={{ fontSize: IS_TV ? 36 : 24, fontWeight: IS_TV ? "300" : "800", color: "#ffffff", marginBottom: 6, letterSpacing: IS_TV ? -0.6 : 0 }}>{p.label}</Text>
+                        <Text style={{ fontSize: IS_TV ? 16 : 12, color: "rgba(255,255,255,0.65)", letterSpacing: IS_TV ? 1.5 : 0 }}>{(ps.length || 20) + ' ' + tr.m_seances}</Text>
                       </LinearGradient>
                     </View>
-                  </TouchableOpacity>
+                  </FocusableCard>
                 );
               })}
             </View>
