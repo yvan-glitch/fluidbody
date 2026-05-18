@@ -20,6 +20,7 @@ import VideoPlayer from '../components/VideoPlayer';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
 import { safeNativeCall, safeNativeFire, diag } from '../utils/safeNativeCall';
+import { IS_TV, tvFocusProps } from '../utils/platformTV';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
@@ -497,7 +498,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
           return (
             <Fragment key={i}>
               {header}
-            <TouchableOpacity onPress={() => tryOpenSeance(i)} disabled={noVideo} activeOpacity={0.88} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 12, height: 110, opacity: noVideo ? 0.45 : (locked ? 0.4 : 1) }}>
+            <TouchableOpacity onPress={() => tryOpenSeance(i)} disabled={noVideo} activeOpacity={0.88} {...tvFocusProps(i === 0)} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 12, height: IS_TV ? 140 : 110, opacity: noVideo ? 0.45 : (locked ? 0.4 : 1) }}>
               <View style={{ flex: 1 }}>
                 <Image source={PILIER_IMAGES[pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pil-bg-' + pilier.key} style={StyleSheet.absoluteFill} />
                 <LinearGradient colors={isDone ? ['rgba(0,30,22,0.75)', 'rgba(0,30,22,0.85)'] : locked ? ['rgba(0,14,24,0.75)', 'rgba(0,14,24,0.9)'] : ['rgba(0,14,24,0.55)', 'rgba(0,14,24,0.8)']} style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
@@ -1338,9 +1339,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         )}
         {mcTab === 'explorer' && (function() {
           var seancesData = getSeances(lang);
-          var cardH = Math.floor(SW * 0.45);
-          var freeCardW = Math.round(SW * 0.62);
-          var freeCardH = Math.round(freeCardW * 1.15);
+          // Sur Apple TV (1920×1080 ou plus), une card occupant 45 % de la
+          // largeur écran est trop grande et perd le confort de scan visuel
+          // à 2-3 m. On bascule à des dims pensées pour le focus engine.
+          var cardH = IS_TV ? 320 : Math.floor(SW * 0.45);
+          var freeCardW = IS_TV ? 380 : Math.round(SW * 0.62);
+          var freeCardH = IS_TV ? 440 : Math.round(freeCardW * 1.15);
           var freeItems = (FREE_MONTHLY_SELECTION || []).map(function(item) {
             var p = piliers.find(function(x) { return x.key === item.pilier; });
             var seance = (seancesData[item.pilier] || [])[item.idx];
@@ -1362,6 +1366,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                           key={"free-" + it.pilier.key + "-" + it.idx}
                           activeOpacity={0.9}
                           onPress={function() { setOpenInitialIdx(it.idx); setOpenPilier(it.pilier); }}
+                          {...tvFocusProps(i === 0)}
                           style={{ width: freeCardW, height: freeCardH, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)' }}
                         >
                           <View style={{ flex: 1 }}>
@@ -1391,9 +1396,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   </ScrollView>
                 </View>
               )}
-              {piliers.map(function(p) {
+              {piliers.map(function(p, pi) {
                 var ps = seancesData[p.key] || [];
                 var doneCount = done[p.key] ? done[p.key].filter(Boolean).length : 0;
+                // Sur TV : si pas de bandeau "gratuit du mois" au-dessus, la
+                // première pilier card prend le focus initial.
+                var preferred = pi === 0 && freeItems.length === 0;
                 return (
                   <TouchableOpacity
                     key={"exp-" + p.key}
@@ -1402,6 +1410,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                       if (!isSubscriber) { onActivateSubscription && onActivateSubscription(); return; }
                       setOpenPilier(p);
                     }}
+                    {...tvFocusProps(preferred)}
                     style={{ marginBottom: 16, borderRadius: 16, overflow: "hidden", height: cardH }}
                   >
                     <View style={{ flex: 1 }}>

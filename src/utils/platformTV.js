@@ -33,3 +33,34 @@ export function tvLog (...args) {
   if (!IS_TV) return
   if (__DEV__) console.log('[TV]', ...args)
 }
+
+// Props à étaler sur <TouchableOpacity> / <Pressable> pour rendre l'élément
+// focusable par la Siri Remote. Sur iPhone/iPad, on retourne un objet vide
+// (zéro overhead). `preferred` met `hasTVPreferredFocus` pour le premier
+// élément interactif d'un écran, donnant le focus initial.
+export function tvFocusProps (preferred = false) {
+  if (!IS_TV) return {}
+  return {
+    hasTVPreferredFocus: preferred,
+    tvParallaxProperties: {
+      enabled: true,
+      magnification: 1.06,
+      pressMagnification: 1.0,
+    },
+    // RN tvOS appelle ces handlers quand le focus engine entre/quitte
+    // l'élément. Pour réagir visuellement, le composant utilise un state
+    // local `focused` + style conditionnel (border + scale).
+    // Voir MonCorps / Bibliotheque pour le pattern.
+  }
+}
+
+// Style additionnel à merger sur la card focusée. Bordure jaune Fluidbody
+// + ombre lumineuse, lisible à 2-3 m.
+export const TV_FOCUS_RING = {
+  borderWidth: 4,
+  borderColor: '#E5FF00',
+  shadowColor: '#E5FF00',
+  shadowOpacity: 0.9,
+  shadowRadius: 14,
+  shadowOffset: { width: 0, height: 0 },
+}
