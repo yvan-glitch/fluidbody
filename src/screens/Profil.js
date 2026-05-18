@@ -43,6 +43,11 @@ function TimerIcon({ color, size }) {
   );
 }
 
+// Lazy-loaded sur iPhone uniquement (référencé via require dans
+// openPairAppleTV pour éviter de charger expo-camera tant que l'utilisateur
+// ne demande pas explicitement le pairage).
+let _PairAppleTV = null;
+
 function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onEditProfile, profileRefreshKey }) {
   var tr = T[lang] || T['fr'];
   var themeCtx = useTheme();
@@ -56,6 +61,14 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var shareRef = useRef(null);
   var [showCoachBio, setShowCoachBio] = useState(false);
   var [showDevBio, setShowDevBio] = useState(false);
+  var [showPairTv, setShowPairTv] = useState(false);
+  function openPairAppleTV() {
+    if (!_PairAppleTV) {
+      try { _PairAppleTV = require('./PairAppleTV').default; }
+      catch (e) { Alert.alert('FluidBody+', 'Pairage indisponible.'); return; }
+    }
+    setShowPairTv(true);
+  }
   var [notifHour, setNotifHour] = useState(9);
   var [pauseEnabled, setPauseEnabled] = useState(true);
   var [quoteEnabled, setQuoteEnabled] = useState(true);
@@ -852,6 +865,34 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </GlassCard>
         </View>
 
+        {/* Apple TV pairing — visible uniquement si loggué (sinon
+            le redeem côté edge function échouera). Section discrète :
+            une ligne avec icône + label + chevron. */}
+        {supaUser && (
+          <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
+            <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+              <TouchableOpacity
+                onPress={openPairAppleTV}
+                accessibilityRole="button"
+                accessibilityLabel={tr.tv_pair_btn || 'Pairer une Apple TV'}
+                activeOpacity={0.7}
+                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }}
+              >
+                <Text style={{ fontSize: 24, marginRight: 12 }}>📺</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.text, letterSpacing: -0.1 }}>
+                    {tr.tv_pair_btn || 'Pairer une Apple TV'}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>
+                    {tr.tv_pair_sub || 'Scanne le QR code affiché sur ta TV'}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 18, color: theme.colors.textTertiary || theme.colors.textSecondary }}>›</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          </View>
+        )}
+
         {supaUser && (
           <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -1156,6 +1197,23 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </View>
         </View>
       </Modal>
+
+      {/* Modal de pairage Apple TV — lazy require, ne tape pas
+          expo-camera tant que l'utilisateur n'a pas demandé. */}
+      {showPairTv && _PairAppleTV ? (
+        <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={function() { setShowPairTv(false); }}>
+          {(function() {
+            var Comp = _PairAppleTV;
+            return (
+              <Comp
+                lang={lang}
+                supaUser={supaUser}
+                onClose={function() { setShowPairTv(false); }}
+              />
+            );
+          })()}
+        </Modal>
+      ) : null}
     </View>
   );
 }
