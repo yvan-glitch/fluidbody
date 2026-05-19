@@ -643,6 +643,47 @@ export const T = {
     delete_account_error_title: 'Suppression impossible',
     delete_account_error_message: 'Une erreur est survenue. Si le problème persiste, contacte support@fluidbody.app.',
     delete_account_mismatch: 'Le mot tapé ne correspond pas. Réessaie.',
+
+    // Onboarding tutorial (TutorialScreen, first launch after onboarding).
+    tutorial_welcome_title: function(name) { return name ? ('Bienvenue ' + name) : 'Bienvenue'; },
+    tutorial_welcome_desc: "FluidBody, c'est ton studio Pilates de poche. On va te montrer comment t'y retrouver en 5 étapes.",
+    tutorial_piliers_title: 'Tes 6 piliers du corps',
+    tutorial_piliers_desc: "Cou, dos, hanches, abdos, mobilité, équilibre. Touche une zone du mannequin pour démarrer une séance ciblée.",
+    tutorial_rings_title: 'Tes anneaux d\'activité',
+    tutorial_rings_desc: "Synchronisés avec Apple Santé — ton mouvement, ton exercice et ton temps debout dans la journée.",
+    tutorial_library_title: 'Ta bibliothèque',
+    tutorial_library_desc: "Plus de 100 séances classées par durée, intensité et thème. La barre de recherche trouve même ce que tu ne savais pas chercher.",
+    tutorial_coach_title: 'Sabrina te guide',
+    tutorial_coach_desc: "Chaque pilier ouvre sur ses pages « Comprendre » — le pourquoi du mouvement avant le comment.",
+    tutorial_next: 'Suivant',
+    tutorial_skip: 'Passer',
+    tutorial_done: 'Commencer',
+
+    // Ambient sound — Profil section + (future) in-player sheet.
+    ambient_section_label: 'Ambiance audio par défaut',
+    ambient_section_sub: 'Fond sonore superposé à la voix de Sabrina pendant la séance',
+    ambient_sheet_title: 'Ambiance pendant la séance',
+    ambient_label_silence: 'Silence',
+    ambient_label_ocean: 'Océan',
+    ambient_label_medusae: 'Méduses',
+    ambient_label_forest: 'Forêt',
+    ambient_volume_label: 'Volume',
+
+    // Empty states polish.
+    biblio_empty_state_title: 'Aucune correspondance',
+    biblio_favorites_empty_title: 'Aucun favori pour l\'instant',
+    resume_empty_title: 'Aucune séance complétée',
+    resume_empty_sub: 'Démarre ta première séance pour voir ton bilan apparaître.',
+
+    // ErrorRetry (defaults are baked into the component; these override
+    // when callers pass a `title`/`description` prop).
+    error_offline_title: 'Hors-ligne',
+    error_offline_desc: 'On reprend dès que la connexion revient.',
+    error_video_title: 'Lecture impossible',
+    error_video_desc: 'Cette séance ne peut pas être lue maintenant.',
+    error_auth_title: 'Connecte-toi pour continuer',
+    error_auth_desc: 'Ta session a expiré — reconnecte-toi pour retrouver ta progression.',
+    error_retry: 'Réessayer',
   },
   en: {
     lang: 'en', flag: '🇬🇧', nom: 'English',
@@ -1270,6 +1311,46 @@ export const T = {
     delete_account_error_title: 'Deletion failed',
     delete_account_error_message: 'Something went wrong. If the problem persists, contact support@fluidbody.app.',
     delete_account_mismatch: 'The word you typed doesn\'t match. Please try again.',
+
+    // Onboarding tutorial (TutorialScreen, first launch after onboarding).
+    tutorial_welcome_title: function(name) { return name ? ('Welcome, ' + name) : 'Welcome'; },
+    tutorial_welcome_desc: "FluidBody is your pocket Pilates studio. Five quick steps and you'll know your way around.",
+    tutorial_piliers_title: 'Your 6 body pillars',
+    tutorial_piliers_desc: "Neck, back, hips, core, mobility, balance. Tap a zone on the body map to start a targeted session.",
+    tutorial_rings_title: 'Your activity rings',
+    tutorial_rings_desc: "Synced with Apple Health — move, exercise and stand goals tracked throughout your day.",
+    tutorial_library_title: 'Your library',
+    tutorial_library_desc: "Over 100 sessions sorted by duration, intensity and theme. Search even finds what you didn't know you were looking for.",
+    tutorial_coach_title: 'Sabrina guides you',
+    tutorial_coach_desc: "Every pillar opens onto its “Understand” pages — the why before the how.",
+    tutorial_next: 'Next',
+    tutorial_skip: 'Skip',
+    tutorial_done: "Let's start",
+
+    // Ambient sound — Profil section + (future) in-player sheet.
+    ambient_section_label: 'Default ambient sound',
+    ambient_section_sub: 'Background atmosphere layered under Sabrina\'s voice during a session',
+    ambient_sheet_title: 'Ambient sound during the session',
+    ambient_label_silence: 'Silence',
+    ambient_label_ocean: 'Ocean',
+    ambient_label_medusae: 'Jellyfish',
+    ambient_label_forest: 'Forest',
+    ambient_volume_label: 'Volume',
+
+    // Empty states polish.
+    biblio_empty_state_title: 'No match',
+    biblio_favorites_empty_title: 'No favorite yet',
+    resume_empty_title: 'No session yet',
+    resume_empty_sub: 'Start your first session to see your dashboard come alive.',
+
+    // ErrorRetry overrides.
+    error_offline_title: 'Offline',
+    error_offline_desc: "We'll pick up as soon as the connection is back.",
+    error_video_title: 'Playback unavailable',
+    error_video_desc: "This session can't be played right now.",
+    error_auth_title: 'Sign in to continue',
+    error_auth_desc: 'Your session expired — sign in to recover your progress.',
+    error_retry: 'Retry',
   },
 };
 
