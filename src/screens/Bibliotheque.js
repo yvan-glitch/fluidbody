@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, ScrollView, TextInput, Dimensions, Modal } from 'react-native';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { Text, StyleSheet, View, TouchableOpacity, ScrollView, TextInput, Dimensions, Modal, Animated, RefreshControl } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Ellipse, Line, Rect } from 'react-native-svg';
@@ -11,7 +11,54 @@ import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import LivingBackground from '../components/LivingBackground';
 import TheorieDetailScreen from './TheorieDetailScreen';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
-import { getPiliers, getSeances } from '../utils';
+import { getPiliers, getSeances, hapticLight } from '../utils';
+import supabase from '../lib/supabase';
+import { getFavorites, toggleFavorite } from '../utils/favorites';
+
+// Accent / parsing helpers — used by the séance search & filters below.
+// `normalizeStr` is case + diacritic insensitive so "epaule" matches "Épaule".
+function normalizeStr(s) {
+  if (typeof s !== 'string') return '';
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+// Best-effort parse of a séance duration string ("12 min", "2 min 10 s",
+// "1'59''"). Returns an integer minute count — good enough for bucketing
+// into the filter chips. Sub-minute remainders >= 30s round up.
+function parseDurationMin(str) {
+  if (typeof str !== 'string') return 0;
+  const mm = str.match(/(\d+)\s*min/i);
+  if (mm) {
+    const minutes = parseInt(mm[1], 10) || 0;
+    const sm = str.match(/(\d+)\s*s\b/i);
+    const seconds = sm ? (parseInt(sm[1], 10) || 0) : 0;
+    return minutes + (seconds >= 30 ? 1 : 0);
+  }
+  const apo = str.match(/(\d+)\s*['′]\s*(\d+)?/);
+  if (apo) {
+    const minutes = parseInt(apo[1], 10) || 0;
+    const seconds = apo[2] ? (parseInt(apo[2], 10) || 0) : 0;
+    return minutes + (seconds >= 30 ? 1 : 0);
+  }
+  return 0;
+}
+
+function durationBucket(minutes) {
+  if (minutes < 5) return 'u5';
+  if (minutes <= 15) return '5to15';
+  if (minutes <= 30) return '15to30';
+  return 'o30';
+}
+
+// Stable pseudo-popularity ranking placeholder. Real popularity would
+// come from aggregate completion counts; until that lands we just want
+// a deterministic shuffle that's different from the natural pilier
+// order, so the "Popular" sort visibly does something.
+function pseudoPopularity(id) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
 
 const PROGRAM_IMAGES = {
   f1: require('../../assets/programs/reveil-matinal.jpg'),
@@ -277,6 +324,111 @@ function MicIcon() {
   );
 }
 
+function CloseIcon({ size = 14, color = 'rgba(255,255,255,0.7)' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Line x1={5} y1={5} x2={19} y2={19} stroke={color} strokeWidth={2} strokeLinecap="round" />
+      <Line x1={19} y1={5} x2={5} y2={19} stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function CheckIcon({ size = 12, color = '#AEEF4D' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M5 12l5 5L20 7" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+// Heart icon. Outline when `filled` is false (favori absent), red fill
+// when true. Stays a flat SVG — animation lives on the wrapper.
+function HeartIcon({ size = 18, filled = false }) {
+  const fill = filled ? '#FF4D6D' : 'transparent';
+  const stroke = filled ? '#FF4D6D' : 'rgba(255,255,255,0.92)';
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 21s-7-4.35-9.5-9.5C0.7 8 3 4 6.5 4c2 0 3.5 1 5.5 3 2-2 3.5-3 5.5-3 3.5 0 5.8 4 4 7.5C19 16.65 12 21 12 21z"
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={1.6}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+// FavoriteHeart — pulsing wrapper around HeartIcon, used in the top-right
+// corner of every séance card. Spring up on toggle so the user gets a
+// tactile cue beyond the colour change. Tap area extended via hitSlop.
+function FavoriteHeart({ active, onPress, accessibilityLabel }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.spring(scale, { toValue: 1.35, friction: 4, tension: 220, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, friction: 4, tension: 180, useNativeDriver: true }),
+    ]).start();
+    if (typeof onPress === 'function') onPress();
+  };
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      activeOpacity={0.7}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ selected: !!active }}
+      style={{
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: 'rgba(0,10,26,0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <HeartIcon size={16} filled={active} />
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
+// FilterChip — small Liquid-Glass-ish pill used in the filter scrollers.
+// Active state = subtle green border + light highlight + check icon.
+function FilterChip({ label, active, onPress }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!active }}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: active ? 'rgba(174,239,77,0.85)' : 'rgba(255,255,255,0.18)',
+        backgroundColor: active ? 'rgba(174,239,77,0.14)' : 'rgba(255,255,255,0.06)',
+      }}
+    >
+      {active ? <CheckIcon size={11} /> : null}
+      <Text style={{
+        fontSize: 13,
+        fontWeight: active ? '600' : '500',
+        color: active ? '#AEEF4D' : 'rgba(255,255,255,0.85)',
+        letterSpacing: 0.1,
+      }} numberOfLines={1}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 // Pilier label map for compact card display
 const PILIER_LABELS = {
   fr: { p1: 'Epaules', p2: 'Dos', p3: 'Mobilité', p4: 'Posture', p5: 'ELDOA', p6: 'Golf', p7: 'Mat Pilates' },
@@ -290,18 +442,152 @@ const PILIER_LABELS = {
   ko: { p1: '어깨', p2: '등', p3: '유연성', p4: '자세', p5: 'ELDOA', p6: '골프', p7: '매트 필라테스' },
 };
 
+// SeanceCard — compact tile used in the search/filter results grid and
+// the "Mes favoris" row. Background = pilier image with gradient overlay,
+// favori heart top-right, métadonnées en bas.
+function SeanceCard({ entry, width, height = 170, lang, labels, onPress, favorite, onToggleFavorite, favoriteLabel }) {
+  const { pilier } = entry;
+  return (
+    <View style={{ width, height, borderRadius: 14, overflow: 'hidden' }}>
+      <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={{ flex: 1 }}>
+        <Image
+          source={PILIER_IMAGES[pilier.key]}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
+          recyclingKey={'bib-result-' + entry.id}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={['rgba(0,0,0,0)', 'rgba(0,18,38,0.92)']}
+          locations={[0.25, 1]}
+          style={{ flex: 1, justifyContent: 'flex-end', padding: 12 }}
+        >
+          <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 3 }} numberOfLines={1}>
+            {(labels && labels[pilier.key]) || pilier.label}
+            {entry.etape ? ` · ${entry.etape}` : ''}
+          </Text>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: '#ffffff', lineHeight: 19 }} numberOfLines={2}>
+            {entry.titre}
+          </Text>
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 3 }} numberOfLines={1}>
+            {entry.duration}
+          </Text>
+        </LinearGradient>
+      </TouchableOpacity>
+      {typeof onToggleFavorite === 'function' ? (
+        <View style={{ position: 'absolute', top: 8, right: 8 }}>
+          <FavoriteHeart
+            active={!!favorite}
+            onPress={onToggleFavorite}
+            accessibilityLabel={favoriteLabel}
+          />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function Biblio({ lang, isSubscriber, onActivateSubscription }) {
   const tr = T[lang] || T['fr'];
   const [openArticle, setOpenArticle] = useState(null);
   const [openFiche, setOpenFiche] = useState(null);
   const [openTheoryPilier, setOpenTheoryPilier] = useState(null);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeTheory, setActiveTheory] = useState(null);
+  const [activeSession, setActiveSession] = useState(null);
+  // Filter state — Sets keep toggles tiny and idempotent.
+  const [filterPiliers, setFilterPiliers] = useState(() => new Set());
+  const [filterDurations, setFilterDurations] = useState(() => new Set());
+  const [filterTypes, setFilterTypes] = useState(() => new Set());
+  // sortMode cycles: 'recent' → 'popular' → 'duration_asc' → 'favorites_first'.
+  const [sortMode, setSortMode] = useState('recent');
+  const [favorites, setFavorites] = useState([]);
+  const [userId, setUserId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const articles = ARTICLES[lang] || ARTICLES.fr;
   const fiches = FICHES[lang] || FICHES.fr;
   const labels = PILIER_LABELS[lang] || PILIER_LABELS.fr;
   const piliers = getPiliers(lang);
   const seancesByPilier = getSeances(lang);
+
+  // Debounce: 300ms before search ripples down to filtering / re-renders.
+  // Avoids running the full-text scan on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Initial favorites load. Cache-first via AsyncStorage (instant), with
+  // background Supabase resync overwriting cache when it succeeds. Also
+  // refreshes when the auth user changes (sign-in / sign-out).
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      let uid = null;
+      try {
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          uid = data?.session?.user?.id || null;
+        }
+      } catch (e) {}
+      if (!mounted) return;
+      setUserId(uid);
+      const list = await getFavorites(supabase, uid);
+      if (mounted) setFavorites(list || []);
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const handleToggleFavorite = useCallback(async (sessionId) => {
+    if (!sessionId) return;
+    hapticLight();
+    // Optimistic local toggle so the heart animates instantly even on a
+    // slow / offline network. The util writes cache, then best-effort
+    // pushes to Supabase.
+    setFavorites((prev) => {
+      const has = prev.indexOf(sessionId) !== -1;
+      return has ? prev.filter((id) => id !== sessionId) : [sessionId, ...prev];
+    });
+    try {
+      const next = await toggleFavorite(supabase, userId, sessionId);
+      if (Array.isArray(next)) setFavorites(next);
+    } catch (e) {}
+  }, [userId]);
+
+  const onPullRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const list = await getFavorites(supabase, userId);
+      if (Array.isArray(list)) setFavorites(list);
+    } catch (e) {}
+    setRefreshing(false);
+  }, [userId]);
+
+  // Flat list of every séance across every pilier. Built once per lang.
+  // The id matches the convention used by video_assets / DownloadManager
+  // so it doubles as a favorite key.
+  const allSessions = useMemo(() => {
+    const out = [];
+    piliers.forEach((p) => {
+      const arr = seancesByPilier[p.key] || [];
+      arr.forEach((s, idx) => {
+        out.push({
+          id: `${p.key}_${idx}`,
+          pilier: p,
+          seance: s,
+          idx,
+          titre: s[0],
+          duration: s[1],
+          durationMin: parseDurationMin(s[1]),
+          etape: s[2],
+          hasVideo: s[3] === true,
+        });
+      });
+    });
+    return out;
+  }, [lang]);
 
   const theoryByPilier = useMemo(() => {
     const out = [];
@@ -322,10 +608,109 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
   const theorySub = isFr ? 'Comprendre et ressentir, par pilier' : 'Understand and feel, by pillar';
 
   const filteredArticles = useMemo(() => {
-    if (!search.trim()) return articles;
-    const q = search.trim().toLowerCase();
-    return articles.filter(a => a.titre.toLowerCase().includes(q));
-  }, [search, articles]);
+    if (!debouncedSearch.trim()) return articles;
+    const q = normalizeStr(debouncedSearch);
+    return articles.filter(a => normalizeStr(a.titre).includes(q));
+  }, [debouncedSearch, articles]);
+
+  // Filter the full séance catalogue by the debounced query + active
+  // chip filters. Search covers title, étape and pilier label so a user
+  // typing "dos" or "comprendre" both surface the right results.
+  // Sort is applied last on a copy so the source memo stays stable.
+  const filteredSessions = useMemo(() => {
+    const q = normalizeStr(debouncedSearch.trim());
+    let list = allSessions;
+    if (q) {
+      list = list.filter((s) => {
+        const pilierLabel = (labels && labels[s.pilier.key]) || s.pilier.label || '';
+        return (
+          normalizeStr(s.titre).includes(q) ||
+          normalizeStr(s.etape).includes(q) ||
+          normalizeStr(pilierLabel).includes(q)
+        );
+      });
+    }
+    if (filterPiliers.size > 0) {
+      list = list.filter((s) => filterPiliers.has(s.pilier.key));
+    }
+    if (filterDurations.size > 0) {
+      list = list.filter((s) => filterDurations.has(durationBucket(s.durationMin)));
+    }
+    if (filterTypes.size > 0) {
+      list = list.filter((s) => filterTypes.has(s.etape));
+    }
+    if (sortMode === 'duration_asc') {
+      list = [...list].sort((a, b) => a.durationMin - b.durationMin);
+    } else if (sortMode === 'popular') {
+      // Placeholder ranking: stable pseudo-popularity from the id hash.
+      // Will be replaced when we have real completion counts.
+      list = [...list].sort((a, b) => pseudoPopularity(b.id) - pseudoPopularity(a.id));
+    } else if (sortMode === 'favorites_first') {
+      const favSet = new Set(favorites);
+      list = [...list].sort((a, b) => {
+        const af = favSet.has(a.id) ? 0 : 1;
+        const bf = favSet.has(b.id) ? 0 : 1;
+        return af - bf;
+      });
+    }
+    return list;
+  }, [allSessions, debouncedSearch, labels, filterPiliers, filterDurations, filterTypes, sortMode, favorites]);
+
+  // Resolve favorite IDs → full session entries, preserving favorite order.
+  // Useful both for the top "Mes favoris" row and as a lookup for the
+  // heart state of each card.
+  const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
+  const favoriteSessions = useMemo(() => {
+    const byId = {};
+    allSessions.forEach((s) => { byId[s.id] = s; });
+    return favorites.map((id) => byId[id]).filter(Boolean);
+  }, [favorites, allSessions]);
+
+  const filtersActive = filterPiliers.size + filterDurations.size + filterTypes.size > 0 || sortMode !== 'recent';
+  const searchActive = debouncedSearch.trim().length > 0;
+  const showResults = searchActive || filtersActive;
+
+  // Filter chip rows (rebuilt on lang/pilier change, very cheap).
+  const piliersForFilter = piliers;
+  const durationOptions = [
+    { key: 'u5', label: tr.biblio_dur_under5 || '< 5 min' },
+    { key: '5to15', label: tr.biblio_dur_5to15 || '5–15 min' },
+    { key: '15to30', label: tr.biblio_dur_15to30 || '15–30 min' },
+    { key: 'o30', label: tr.biblio_dur_over30 || '> 30 min' },
+  ];
+  const typeOptions = useMemo(() => {
+    const seen = new Set();
+    allSessions.forEach((s) => { if (s.etape) seen.add(s.etape); });
+    return Array.from(seen);
+  }, [allSessions]);
+  const sortOptions = [
+    { key: 'recent', label: tr.biblio_sort_recent || (lang === 'en' ? 'Recent first' : 'Récents d\'abord') },
+    { key: 'popular', label: tr.biblio_sort_popular || (lang === 'en' ? 'Popular' : 'Populaires') },
+    { key: 'duration_asc', label: tr.biblio_sort_duration_asc || (lang === 'en' ? 'Shortest first' : 'Durée croissante') },
+    { key: 'favorites_first', label: tr.biblio_sort_favorites_first || (lang === 'en' ? 'Favorites first' : 'Mes favoris d\'abord') },
+  ];
+
+  const toggleSetMember = (setter) => (key) => setter((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const togglePilier = toggleSetMember(setFilterPiliers);
+  const toggleDuration = toggleSetMember(setFilterDurations);
+  const toggleType = toggleSetMember(setFilterTypes);
+
+  const clearAllFilters = () => {
+    setFilterPiliers(new Set());
+    setFilterDurations(new Set());
+    setFilterTypes(new Set());
+    setSortMode('recent');
+  };
+
+  const playSession = (entry) => {
+    const sid = buildSessionId(entry.pilier.key, entry.idx);
+    if (sid) prefetchSignedVideoUrl(sid, 'mp4');
+    setActiveSession({ pilier: entry.pilier, seance: entry.seance, idx: entry.idx });
+  };
 
   if (openArticle) return <ArticleDetail article={openArticle} onClose={() => setOpenArticle(null)} lang={lang} />;
   if (openFiche) return <FicheDetail fiche={openFiche} onClose={() => setOpenFiche(null)} lang={lang} />;
@@ -380,6 +765,14 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         style={{ flex: 1, zIndex: 2 }}
         contentContainerStyle={{ paddingBottom: 50 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onPullRefresh}
+            tintColor="#AEEF4D"
+            colors={["#AEEF4D"]}
+          />
+        }
       >
         {/* Header */}
         <View style={{ paddingTop: 62, paddingHorizontal: 20, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -390,7 +783,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         </View>
 
         {/* Search bar — Liquid Glass capsule */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
+        <View style={{ paddingHorizontal: 20, marginBottom: showResults ? 12 : 28 }}>
           <LiquidGlassCapsule tint="light" radius={16} paddingH={14} paddingV={10} gap={8}>
             <SearchIcon />
             <TextInput
@@ -401,16 +794,166 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                 paddingVertical: 0,
               }}
               accessibilityLabel={tr.a11y_search_library || (lang === 'en' ? 'Search the library' : 'Rechercher dans la bibliothèque')}
-              placeholder={lang === 'en' ? 'Search' : 'Rechercher'}
+              placeholder={tr.biblio_search_placeholder || (lang === 'en' ? 'Search a session...' : 'Rechercher une séance...')}
               placeholderTextColor="rgba(255,255,255,0.4)"
               value={search}
               onChangeText={setSearch}
               returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="none"
             />
-            <MicIcon />
+            {search.length > 0 ? (
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel={lang === 'en' ? 'Clear search' : 'Effacer la recherche'}>
+                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+                  <CloseIcon size={11} color="rgba(255,255,255,0.85)" />
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <MicIcon />
+            )}
           </LiquidGlassCapsule>
+          {showResults ? (
+            <Text style={{ marginTop: 10, marginLeft: 4, fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+              {typeof tr.biblio_search_results_count === 'function'
+                ? tr.biblio_search_results_count(filteredSessions.length)
+                : `${filteredSessions.length}`}
+            </Text>
+          ) : null}
         </View>
 
+        {/* Filter chip rows — horizontal scroll per category. Stays subtle:
+            two short rows + a sort cycle, no panel-of-cockpit vibe. */}
+        <View style={{ marginBottom: showResults ? 16 : 22 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
+            <FilterChip
+              label={`${tr.biblio_filter_sort || 'Trier'} · ${(sortOptions.find((o) => o.key === sortMode) || sortOptions[0]).label}`}
+              active={sortMode !== 'recent'}
+              onPress={() => {
+                const i = sortOptions.findIndex((o) => o.key === sortMode);
+                const next = sortOptions[(i + 1) % sortOptions.length];
+                setSortMode(next.key);
+              }}
+            />
+            {piliersForFilter.map((p) => (
+              <FilterChip
+                key={'pf-' + p.key}
+                label={(labels && labels[p.key]) || p.label}
+                active={filterPiliers.has(p.key)}
+                onPress={() => togglePilier(p.key)}
+              />
+            ))}
+          </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8, marginTop: 8 }}>
+            {durationOptions.map((d) => (
+              <FilterChip
+                key={'df-' + d.key}
+                label={d.label}
+                active={filterDurations.has(d.key)}
+                onPress={() => toggleDuration(d.key)}
+              />
+            ))}
+            {typeOptions.map((t) => (
+              <FilterChip
+                key={'tf-' + t}
+                label={t}
+                active={filterTypes.has(t)}
+                onPress={() => toggleType(t)}
+              />
+            ))}
+            {filtersActive ? (
+              <TouchableOpacity
+                onPress={clearAllFilters}
+                accessibilityRole="button"
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.18)',
+                }}
+              >
+                <CloseIcon size={11} color="rgba(255,255,255,0.85)" />
+                <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.85)' }}>
+                  {tr.biblio_clear_filters || (lang === 'en' ? 'Clear filters' : 'Effacer les filtres')}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </ScrollView>
+        </View>
+
+        {/* Mes favoris — horizontal scroller. Shown when the user has at
+            least one favorite AND the active surface isn't already a
+            filtered results grid (we don't want to duplicate UI when the
+            user is hunting). */}
+        {favoriteSessions.length > 0 && !showResults ? (
+          <View style={{ marginBottom: 28 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 12 }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: '#ffffff' }}>
+                {tr.biblio_favorites_header || (lang === 'en' ? '❤️ My favorites' : '❤️ Mes favoris')}
+              </Text>
+              {favoriteSessions.length > 6 ? (
+                <TouchableOpacity onPress={() => setSortMode('favorites_first')} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                  <Text style={{ fontSize: 13, color: '#AEEF4D', fontWeight: '500' }}>
+                    {tr.biblio_favorites_see_all || (lang === 'en' ? 'See all' : 'Voir tout')}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+              {favoriteSessions.slice(0, 6).map((entry) => (
+                <SeanceCard
+                  key={'fav-' + entry.id}
+                  entry={entry}
+                  width={170}
+                  height={150}
+                  lang={lang}
+                  labels={labels}
+                  onPress={() => playSession(entry)}
+                  favorite
+                  onToggleFavorite={() => handleToggleFavorite(entry.id)}
+                  favoriteLabel={tr.a11y_favorite_toggle}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        {showResults ? (
+          /* Results grid — replaces the standard sections when a search is active */
+          filteredSessions.length === 0 ? (
+            <View style={{ paddingHorizontal: 20, paddingTop: 24, alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 22 }}>
+                {tr.biblio_empty_state_search || (lang === 'en' ? 'No session found. Refine your search.' : 'Aucune séance trouvée. Modifie ta recherche.')}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
+              <Text style={{ fontSize: 20, fontWeight: '600', color: '#ffffff', marginBottom: 14 }}>
+                {tr.biblio_results_title || (lang === 'en' ? 'Results' : 'Résultats')}
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: cardGap }}>
+                {filteredSessions.map((entry) => (
+                  <View key={entry.id} style={{ width: cardWidth, marginBottom: cardGap }}>
+                    <SeanceCard
+                      entry={entry}
+                      width={cardWidth}
+                      lang={lang}
+                      labels={labels}
+                      onPress={() => playSession(entry)}
+                      favorite={favoriteSet.has(entry.id)}
+                      onToggleFavorite={() => handleToggleFavorite(entry.id)}
+                      favoriteLabel={tr.a11y_favorite_toggle}
+                    />
+                  </View>
+                ))}
+              </View>
+            </View>
+          )
+        ) : (
+          <>
         {/* Types d'activités section */}
         <View style={{ marginBottom: 32 }}>
           <Text style={{
@@ -620,6 +1163,17 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
             ))}
           </View>
         </View>
+
+        {/* Discreet onboarding hint when the favorites collection is empty. */}
+        {favoriteSessions.length === 0 ? (
+          <View style={{ paddingHorizontal: 20, marginTop: 28 }}>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontStyle: 'italic' }}>
+              {tr.biblio_favorites_empty_hint || (lang === 'en' ? 'Tap the ♡ on a session to save it.' : 'Tap sur le ♡ d\'une séance pour la sauvegarder.')}
+            </Text>
+          </View>
+        ) : null}
+          </>
+        )}
       </ScrollView>
 
       {activeTheory && (
@@ -633,6 +1187,23 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
             isDemo={false}
             onClose={() => setActiveTheory(null)}
             onComplete={() => setActiveTheory(null)}
+          />
+        </Modal>
+      )}
+
+      {activeSession && (
+        <Modal visible animationType="fade" presentationStyle="fullScreen" statusBarTranslucent supportedOrientations={['portrait', 'landscape-left', 'landscape-right']} onRequestClose={() => setActiveSession(null)}>
+          <VideoPlayer
+            key={activeSession.pilier.key + '-' + activeSession.idx + '-result'}
+            seance={activeSession.seance}
+            pilier={activeSession.pilier}
+            lang={lang}
+            seanceIndex={activeSession.idx}
+            isDemo={false}
+            isSubscriber={isSubscriber}
+            onActivateSubscription={onActivateSubscription}
+            onClose={() => setActiveSession(null)}
+            onComplete={() => setActiveSession(null)}
           />
         </Modal>
       )}
