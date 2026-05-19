@@ -368,6 +368,29 @@ export default function PilierEducation({ visible, pilier, lang, onClose, onOpen
             <HeroIllustration pilierKey={pilier.key} color={accentSolid} />
           </Animated.View>
 
+          {/* Per-pilier medical disclaimer — currently only set for p9
+              (Ménopause) where the content can intersect with active
+              medical follow-up. Rendered prominently right under the
+              hero so it can't be missed. */}
+          {content.medical_disclaimer ? (
+            <View style={{
+              marginBottom: 18,
+              paddingVertical: 12,
+              paddingHorizontal: 14,
+              borderRadius: 14,
+              backgroundColor: isLight ? 'rgba(255,180,60,0.12)' : 'rgba(255,200,80,0.14)',
+              borderWidth: 1,
+              borderColor: isLight ? 'rgba(255,180,60,0.45)' : 'rgba(255,200,80,0.4)',
+            }}>
+              <Text
+                accessibilityRole="alert"
+                style={{ fontSize: 13, lineHeight: 19, color: isLight ? '#8A5A00' : 'rgba(255,220,140,0.95)', fontWeight: '500' }}
+              >
+                {content.medical_disclaimer}
+              </Text>
+            </View>
+          ) : null}
+
           {/* Section 1 — Anatomie */}
           <Section title={tr.pilier_education_section_anatomy || 'Anatomy'} accent={accentSolid} fadeStyle={{ opacity: sectionFades[1].opacity, transform: [{ translateY: sectionFades[1].translateY }] }}>
             <GlassView intensity={70} borderRadius={GLASS_RADII.cardLg} contentStyle={{ padding: 20 }}>
@@ -519,6 +542,16 @@ export default function PilierEducation({ visible, pilier, lang, onClose, onOpen
               </GlassButton>
             </View>
           </Section>
+
+          {/* Generic educational footer — kept short on every pilier so
+              users understand the content is informational, not medical. */}
+          <View style={{ marginTop: 20, paddingHorizontal: 4 }}>
+            <Text
+              style={{ fontSize: 11, lineHeight: 16, color: c.textTertiary, textAlign: 'center', fontStyle: 'italic' }}
+            >
+              {tr.pilier_education_medical_footer || 'Ces informations sont éducatives et ne remplacent pas un avis médical.'}
+            </Text>
+          </View>
         </ScrollView>
       </View>
     </Modal>
