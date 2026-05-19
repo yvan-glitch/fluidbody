@@ -1319,7 +1319,7 @@ const STREAK_DATE_KEY = 'fluid_streak_seance_last_date';
 // ══════════════════════════════════
 // MAIN APP
 // ══════════════════════════════════
-function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChange }) {
+function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChange, onAccountDeleted }) {
   diag('MainApp.render', 'enter');
   const tr = T[lang] || T['fr'];
   const [done, setDone] = useState({
@@ -1865,7 +1865,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
             } catch (e) {
               Alert.alert('FluidBody+', e?.message || 'Erreur de déconnexion.');
             }
-          }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} />}</Tab.Screen>
+          }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
         </Tab.Navigator>
       </NavigationContainer>
       <StretchTimerModal visible={showStretchTimer} onClose={function() { setShowStretchTimer(false); }} lang={lang} />
@@ -2699,6 +2699,25 @@ function App() {
     else setShowAuth(false);
   }
 
+  // Called from ProfilScreen after delete_my_account + signOut +
+  // clearLocalUserData all succeeded. Storage is already wiped (except
+  // fluid_lang / fluid_theme_mode kept by clearLocalUserData), so all
+  // we need to do here is reset React state back to the first-launch
+  // shape — that re-triggers OnboardingScreen on the next render.
+  function handleAccountDeleted() {
+    setOnboardingDone(false);
+    setIntroShown(false);
+    setPrenom('');
+    setTensionIdxs([]);
+    setWelcomeShown(null);
+    setProfileSetupShown(null);
+    setHkPromptShown(null);
+    setShowAuth(false);
+    setShowSignIn(false);
+    setSignInPrefillEmail('');
+    setSupaUser(null);
+  }
+
   async function handleTensionChange(next) {
     const arr = Array.isArray(next) ? next : [];
     setTensionIdxs(arr);
@@ -2814,7 +2833,7 @@ function App() {
     if (hkPromptShown === false) {
       return <HealthKitConnectScreen lang={lang} onDone={function() { dismissHkPrompt(); }} />;
     }
-    return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} />;
+    return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} onAccountDeleted={handleAccountDeleted} />;
   }
 
   return (
