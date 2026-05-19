@@ -22,7 +22,10 @@ import { Platform } from 'react-native';
 // Flip to `false` once the crash is identified to silence the breadcrumbs.
 // Kept hard-coded (not env-driven) so it ships in the TestFlight build
 // without needing a rebuild dance.
-export const DIAGNOSTIC_NATIVE_CALLS = true;
+// 2026-05-19: crash root-caused (legacy react-native-health), Nitro HK ships
+// stable in build #61. Turning off so App Store production builds don't spew
+// `[FLDB-DIAG]` to the device console.
+export const DIAGNOSTIC_NATIVE_CALLS = false;
 
 let _Sentry = null;
 try { _Sentry = require('@sentry/react-native'); } catch (e) {}

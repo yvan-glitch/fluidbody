@@ -35,13 +35,9 @@ function getPiliers(lang) {
   return PILIERS_BASE.map((p) => ({ ...p, label: t.piliers[PILIER_LABEL_IDX[p.key]] }));
 }
 
-// TEMP: séances déverrouillées pour test vidéo — à retirer avant prod
-const TEMP_UNLOCKED = new Set(['p2_0', 'p2_1']);
-
 function canAccessSeanceIndex(idx, isSubscriber, pilierKey) {
   if (pilierKey && FREE_MONTHLY_SET.has(pilierKey + '_' + idx)) return true;
   if (idx === 0) return true; // séance 1 gratuite pour tous
-  if (pilierKey && TEMP_UNLOCKED.has(pilierKey + '_' + idx)) return true;
   // Théorie (Comprendre + Ressentir) toujours gratuite — vit dans la Biblio
   if (pilierKey) {
     const s = (SEANCES_FR[pilierKey] || [])[idx];
