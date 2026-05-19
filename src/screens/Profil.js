@@ -17,6 +17,7 @@ import AnimatedPlus from '../components/AnimatedPlus';
 import healthkit from '../utils/healthkit';
 import { getPiliers } from '../utils';
 import { getMyReferralCode, getReferralStats } from '../utils/referrals';
+import calendarUtil from '../utils/calendar';
 
 // Safe-require expo-clipboard pour le tap-to-copy. Si le module n'est
 // pas dispo (Expo Go ou ancien build), on retombe sur Share.share — qui
@@ -75,6 +76,14 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var [showHrEnabled, setShowHrEnabled] = useState(true);
   var [storageUsed, setStorageUsed] = useState('0 B');
   var [hkAuthorized, setHkAuthorized] = useState(false);
+  // Apple Calendar — auto-schedule sessions in iOS Calendar.
+  var [calSyncEnabled, setCalSyncEnabled] = useState(false);
+  var [calPreferredHour, setCalPreferredHour] = useState(18);
+  var [calDuration, setCalDuration] = useState(20);
+  var [calCalendarId, setCalCalendarId] = useState(null);
+  var [calCalendars, setCalCalendars] = useState([]);
+  var [calBusy, setCalBusy] = useState(false);
+  var [calPickerOpen, setCalPickerOpen] = useState(false);
   var [profileData, setProfileData] = useState({ gender: null, birth_date: null, height_cm: null, weight_kg: null, practice_level: null, frequency: null, goals: [] });
   var [profileEditMode, setProfileEditMode] = useState(false);
   var [profileSaving, setProfileSaving] = useState(false);
@@ -167,7 +176,65 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         setHkAuthorized(!!(res && res.ok));
       }).catch(function() {});
     }
+    // Calendar prefs — restore last-known sync state.
+    calendarUtil.getCalendarPrefs().then(function(prefs) {
+      if (!prefs) return;
+      setCalSyncEnabled(!!prefs.enabled);
+      setCalPreferredHour(typeof prefs.preferredHour === 'number' ? prefs.preferredHour : 18);
+      setCalDuration(typeof prefs.defaultDurationMin === 'number' ? prefs.defaultDurationMin : 20);
+      setCalCalendarId(prefs.calendarId || null);
+    }).catch(function(){});
+    if (Platform.OS === 'ios' && calendarUtil.isCalendarAvailable()) {
+      calendarUtil.getCalendarPermissionStatus().then(function(s) {
+        if (s === 'granted') {
+          calendarUtil.listWritableCalendars().then(function(list) { setCalCalendars(list || []); }).catch(function(){});
+        }
+      }).catch(function(){});
+    }
   }, []);
+
+  async function handleCalendarToggle() {
+    if (calBusy) return;
+    if (calSyncEnabled) {
+      // Turning off: remove future events + persist.
+      setCalBusy(true);
+      try {
+        await calendarUtil.unscheduleAllFluidbody();
+        await calendarUtil.setCalendarPrefs({ enabled: false });
+        setCalSyncEnabled(false);
+      } catch (e) {}
+      setCalBusy(false);
+      return;
+    }
+    setCalBusy(true);
+    try {
+      const granted = await calendarUtil.requestCalendarPermission();
+      if (!granted) {
+        Alert.alert('FluidBody', tr.calendar_permission_denied || "Permission refusée. Ouvre Réglages > Confidentialité > Calendriers pour autoriser Fluidbody.");
+        setCalBusy(false);
+        return;
+      }
+      const list = await calendarUtil.listWritableCalendars();
+      setCalCalendars(list || []);
+      const defaultId = calCalendarId || await calendarUtil.getDefaultCalendarId();
+      setCalCalendarId(defaultId || null);
+      await calendarUtil.setCalendarPrefs({
+        enabled: true,
+        preferredHour: calPreferredHour,
+        defaultDurationMin: calDuration,
+        calendarId: defaultId || null,
+      });
+      setCalSyncEnabled(true);
+    } catch (e) {}
+    setCalBusy(false);
+  }
+
+  async function updateCalendarPref(patch) {
+    if (patch && typeof patch.preferredHour === 'number') setCalPreferredHour(patch.preferredHour);
+    if (patch && typeof patch.defaultDurationMin === 'number') setCalDuration(patch.defaultDurationMin);
+    if (patch && 'calendarId' in patch) setCalCalendarId(patch.calendarId);
+    try { await calendarUtil.setCalendarPrefs(patch); } catch (e) {}
+  }
 
   function reconnectHealthKit() {
     if (Platform.OS !== 'ios') return;
@@ -779,6 +846,118 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 </TouchableOpacity>
               ) : null}
             </View>
+          </GlassCard></View>
+        )}
+
+        {Platform.OS === 'ios' && (
+          <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.calendar_section_title || 'Planification'}</Text>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: calSyncEnabled ? 16 : 0 }}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.calendar_sync_toggle || 'Synchroniser avec mon agenda'}</Text>
+                <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 2 }}>{tr.calendar_sync_sub || 'Crée des événements pour tes séances dans l’app Calendrier'}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleCalendarToggle}
+                disabled={calBusy}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: calSyncEnabled, disabled: calBusy }}
+                accessibilityLabel={tr.calendar_sync_toggle || 'Synchroniser avec mon agenda'}
+                style={{ width: 50, height: 28, borderRadius: 14, backgroundColor: calSyncEnabled ? '#AEEF4D' : 'rgba(255,255,255,0.15)', justifyContent: 'center', paddingHorizontal: 2, opacity: calBusy ? 0.5 : 1 }}
+              >
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#ffffff', alignSelf: calSyncEnabled ? 'flex-end' : 'flex-start' }} />
+              </TouchableOpacity>
+            </View>
+
+            {calSyncEnabled && (
+              <View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.calendar_preferred_time || 'Heure préférée'}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <TouchableOpacity onPress={function() {
+                      var h = Math.max(5, calPreferredHour - 1);
+                      updateCalendarPref({ preferredHour: h });
+                    }} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 18, color: '#AEEF4D', fontWeight: '700' }}>{'−'}</Text>
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text, minWidth: 50, textAlign: 'center' }}>{calPreferredHour}h00</Text>
+                    <TouchableOpacity onPress={function() {
+                      var h = Math.min(22, calPreferredHour + 1);
+                      updateCalendarPref({ preferredHour: h });
+                    }} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 18, color: '#AEEF4D', fontWeight: '700' }}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 10 }}>{tr.calendar_default_duration || 'Durée par défaut'}</Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {[15, 20, 30, 45].map(function(d) {
+                      var active = calDuration === d;
+                      return (
+                        <TouchableOpacity
+                          key={'cal-dur-' + d}
+                          onPress={function() { updateCalendarPref({ defaultDurationMin: d }); }}
+                          activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: active }}
+                          style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', backgroundColor: active ? 'rgba(174,239,77,0.22)' : 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: active ? 'rgba(174,239,77,0.55)' : 'rgba(255,255,255,0.10)' }}
+                        >
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: active ? '#AEEF4D' : theme.colors.text }}>{d}{tr.calendar_min_short || ' min'}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {calCalendars && calCalendars.length > 0 && (
+                  <View style={{ marginBottom: 4 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 14, color: theme.colors.textSecondary, flex: 1, paddingRight: 12 }}>{tr.calendar_target_calendar || 'Calendrier cible'}</Text>
+                      <TouchableOpacity
+                        onPress={function() { setCalPickerOpen(function(v) { return !v; }); }}
+                        activeOpacity={0.75}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(174,239,77,0.10)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.30)' }}
+                      >
+                        <Text style={{ fontSize: 13, color: '#AEEF4D', fontWeight: '700' }} numberOfLines={1}>
+                          {(function() {
+                            var c = calCalendars.find(function(x) { return x.id === calCalendarId; });
+                            return (c && c.title) || (tr.calendar_default_calendar || 'Par défaut');
+                          })()}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: '#AEEF4D' }}>{calPickerOpen ? '▲' : '▼'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {calPickerOpen && (
+                      <View style={{ marginTop: 10, gap: 6 }}>
+                        {calCalendars.map(function(c) {
+                          var active = c.id === calCalendarId;
+                          return (
+                            <TouchableOpacity
+                              key={c.id}
+                              onPress={function() { updateCalendarPref({ calendarId: c.id }); setCalPickerOpen(false); }}
+                              activeOpacity={0.8}
+                              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: active ? 'rgba(174,239,77,0.14)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: active ? 'rgba(174,239,77,0.40)' : 'rgba(255,255,255,0.08)' }}
+                            >
+                              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 }}>
+                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.color || '#AEEF4D' }} />
+                                <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.text, flex: 1 }} numberOfLines={1}>{c.title}</Text>
+                                {c.source ? (
+                                  <Text style={{ fontSize: 11, color: theme.colors.textTertiary }} numberOfLines={1}>{c.source}</Text>
+                                ) : null}
+                              </View>
+                              {active ? <Text style={{ fontSize: 14, color: '#AEEF4D', marginLeft: 8 }}>✓</Text> : null}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
           </GlassCard></View>
         )}
 
