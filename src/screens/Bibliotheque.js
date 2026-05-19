@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Text, StyleSheet, View, TouchableOpacity, ScrollView, TextInput, Dimensions, Modal } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,6 +12,34 @@ import LivingBackground from '../components/LivingBackground';
 import TheorieDetailScreen from './TheorieDetailScreen';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import { getPiliers, getSeances } from '../utils';
+
+// Accent / parsing helpers — used by the séance search & filters below.
+// `normalizeStr` is case + diacritic insensitive so "epaule" matches "Épaule".
+function normalizeStr(s) {
+  if (typeof s !== 'string') return '';
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+// Best-effort parse of a séance duration string ("12 min", "2 min 10 s",
+// "1'59''"). Returns an integer minute count — good enough for bucketing
+// into the filter chips. Sub-minute remainders >= 30s round up.
+function parseDurationMin(str) {
+  if (typeof str !== 'string') return 0;
+  const mm = str.match(/(\d+)\s*min/i);
+  if (mm) {
+    const minutes = parseInt(mm[1], 10) || 0;
+    const sm = str.match(/(\d+)\s*s\b/i);
+    const seconds = sm ? (parseInt(sm[1], 10) || 0) : 0;
+    return minutes + (seconds >= 30 ? 1 : 0);
+  }
+  const apo = str.match(/(\d+)\s*['′]\s*(\d+)?/);
+  if (apo) {
+    const minutes = parseInt(apo[1], 10) || 0;
+    const seconds = apo[2] ? (parseInt(apo[2], 10) || 0) : 0;
+    return minutes + (seconds >= 30 ? 1 : 0);
+  }
+  return 0;
+}
 
 const PROGRAM_IMAGES = {
   f1: require('../../assets/programs/reveil-matinal.jpg'),
@@ -277,6 +305,15 @@ function MicIcon() {
   );
 }
 
+function CloseIcon({ size = 14, color = 'rgba(255,255,255,0.7)' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Line x1={5} y1={5} x2={19} y2={19} stroke={color} strokeWidth={2} strokeLinecap="round" />
+      <Line x1={19} y1={5} x2={5} y2={19} stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 // Pilier label map for compact card display
 const PILIER_LABELS = {
   fr: { p1: 'Epaules', p2: 'Dos', p3: 'Mobilité', p4: 'Posture', p5: 'ELDOA', p6: 'Golf', p7: 'Mat Pilates' },
@@ -290,18 +327,88 @@ const PILIER_LABELS = {
   ko: { p1: '어깨', p2: '등', p3: '유연성', p4: '자세', p5: 'ELDOA', p6: '골프', p7: '매트 필라테스' },
 };
 
+// SeanceCard — compact tile used in the search/filter results grid and
+// the "Mes favoris" row. Background = pilier image with gradient overlay.
+function SeanceCard({ entry, width, height = 170, lang, labels, onPress }) {
+  const { pilier, seance } = entry;
+  const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={{ width, height, borderRadius: 14, overflow: 'hidden' }}>
+      <View style={{ flex: 1 }}>
+        <Image
+          source={PILIER_IMAGES[pilier.key]}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
+          recyclingKey={'bib-result-' + entry.id}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={['rgba(0,0,0,0)', 'rgba(0,18,38,0.92)']}
+          locations={[0.25, 1]}
+          style={{ flex: 1, justifyContent: 'flex-end', padding: 12 }}
+        >
+          <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 3 }} numberOfLines={1}>
+            {(labels && labels[pilier.key]) || pilier.label}
+            {entry.etape ? ` · ${entry.etape}` : ''}
+          </Text>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: '#ffffff', lineHeight: 19 }} numberOfLines={2}>
+            {entry.titre}
+          </Text>
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 3 }} numberOfLines={1}>
+            {entry.duration}{!isFr && /min/.test(entry.duration) ? '' : ''}
+          </Text>
+        </LinearGradient>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 function Biblio({ lang, isSubscriber, onActivateSubscription }) {
   const tr = T[lang] || T['fr'];
   const [openArticle, setOpenArticle] = useState(null);
   const [openFiche, setOpenFiche] = useState(null);
   const [openTheoryPilier, setOpenTheoryPilier] = useState(null);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeTheory, setActiveTheory] = useState(null);
+  const [activeSession, setActiveSession] = useState(null);
   const articles = ARTICLES[lang] || ARTICLES.fr;
   const fiches = FICHES[lang] || FICHES.fr;
   const labels = PILIER_LABELS[lang] || PILIER_LABELS.fr;
   const piliers = getPiliers(lang);
   const seancesByPilier = getSeances(lang);
+
+  // Debounce: 300ms before search ripples down to filtering / re-renders.
+  // Avoids running the full-text scan on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Flat list of every séance across every pilier. Built once per lang.
+  // The id matches the convention used by video_assets / DownloadManager
+  // so it doubles as a favorite key.
+  const allSessions = useMemo(() => {
+    const out = [];
+    piliers.forEach((p) => {
+      const arr = seancesByPilier[p.key] || [];
+      arr.forEach((s, idx) => {
+        out.push({
+          id: `${p.key}_${idx}`,
+          pilier: p,
+          seance: s,
+          idx,
+          titre: s[0],
+          duration: s[1],
+          durationMin: parseDurationMin(s[1]),
+          etape: s[2],
+          hasVideo: s[3] === true,
+        });
+      });
+    });
+    return out;
+  }, [lang]);
 
   const theoryByPilier = useMemo(() => {
     const out = [];
@@ -322,10 +429,35 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
   const theorySub = isFr ? 'Comprendre et ressentir, par pilier' : 'Understand and feel, by pillar';
 
   const filteredArticles = useMemo(() => {
-    if (!search.trim()) return articles;
-    const q = search.trim().toLowerCase();
-    return articles.filter(a => a.titre.toLowerCase().includes(q));
-  }, [search, articles]);
+    if (!debouncedSearch.trim()) return articles;
+    const q = normalizeStr(debouncedSearch);
+    return articles.filter(a => normalizeStr(a.titre).includes(q));
+  }, [debouncedSearch, articles]);
+
+  // Filter the full séance catalogue by the debounced query. Searches
+  // across title, étape and pilier label so a user typing "dos" or
+  // "comprendre" both surface the right results.
+  const filteredSessions = useMemo(() => {
+    const q = normalizeStr(debouncedSearch.trim());
+    if (!q) return [];
+    return allSessions.filter((s) => {
+      const pilierLabel = (labels && labels[s.pilier.key]) || s.pilier.label || '';
+      return (
+        normalizeStr(s.titre).includes(q) ||
+        normalizeStr(s.etape).includes(q) ||
+        normalizeStr(pilierLabel).includes(q)
+      );
+    });
+  }, [allSessions, debouncedSearch, labels]);
+
+  const searchActive = debouncedSearch.trim().length > 0;
+  const showResults = searchActive;
+
+  const playSession = (entry) => {
+    const sid = buildSessionId(entry.pilier.key, entry.idx);
+    if (sid) prefetchSignedVideoUrl(sid, 'mp4');
+    setActiveSession({ pilier: entry.pilier, seance: entry.seance, idx: entry.idx });
+  };
 
   if (openArticle) return <ArticleDetail article={openArticle} onClose={() => setOpenArticle(null)} lang={lang} />;
   if (openFiche) return <FicheDetail fiche={openFiche} onClose={() => setOpenFiche(null)} lang={lang} />;
@@ -390,7 +522,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         </View>
 
         {/* Search bar — Liquid Glass capsule */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
+        <View style={{ paddingHorizontal: 20, marginBottom: showResults ? 12 : 28 }}>
           <LiquidGlassCapsule tint="light" radius={16} paddingH={14} paddingV={10} gap={8}>
             <SearchIcon />
             <TextInput
@@ -401,16 +533,63 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                 paddingVertical: 0,
               }}
               accessibilityLabel={tr.a11y_search_library || (lang === 'en' ? 'Search the library' : 'Rechercher dans la bibliothèque')}
-              placeholder={lang === 'en' ? 'Search' : 'Rechercher'}
+              placeholder={tr.biblio_search_placeholder || (lang === 'en' ? 'Search a session...' : 'Rechercher une séance...')}
               placeholderTextColor="rgba(255,255,255,0.4)"
               value={search}
               onChangeText={setSearch}
               returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="none"
             />
-            <MicIcon />
+            {search.length > 0 ? (
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel={lang === 'en' ? 'Clear search' : 'Effacer la recherche'}>
+                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+                  <CloseIcon size={11} color="rgba(255,255,255,0.85)" />
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <MicIcon />
+            )}
           </LiquidGlassCapsule>
+          {showResults ? (
+            <Text style={{ marginTop: 10, marginLeft: 4, fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+              {typeof tr.biblio_search_results_count === 'function'
+                ? tr.biblio_search_results_count(filteredSessions.length)
+                : `${filteredSessions.length}`}
+            </Text>
+          ) : null}
         </View>
 
+        {showResults ? (
+          /* Results grid — replaces the standard sections when a search is active */
+          filteredSessions.length === 0 ? (
+            <View style={{ paddingHorizontal: 20, paddingTop: 24, alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 22 }}>
+                {tr.biblio_empty_state_search || (lang === 'en' ? 'No session found. Refine your search.' : 'Aucune séance trouvée. Modifie ta recherche.')}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
+              <Text style={{ fontSize: 20, fontWeight: '600', color: '#ffffff', marginBottom: 14 }}>
+                {tr.biblio_results_title || (lang === 'en' ? 'Results' : 'Résultats')}
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: cardGap }}>
+                {filteredSessions.map((entry) => (
+                  <View key={entry.id} style={{ width: cardWidth, marginBottom: cardGap }}>
+                    <SeanceCard
+                      entry={entry}
+                      width={cardWidth}
+                      lang={lang}
+                      labels={labels}
+                      onPress={() => playSession(entry)}
+                    />
+                  </View>
+                ))}
+              </View>
+            </View>
+          )
+        ) : (
+          <>
         {/* Types d'activités section */}
         <View style={{ marginBottom: 32 }}>
           <Text style={{
@@ -620,6 +799,8 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
             ))}
           </View>
         </View>
+          </>
+        )}
       </ScrollView>
 
       {activeTheory && (
@@ -633,6 +814,23 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
             isDemo={false}
             onClose={() => setActiveTheory(null)}
             onComplete={() => setActiveTheory(null)}
+          />
+        </Modal>
+      )}
+
+      {activeSession && (
+        <Modal visible animationType="fade" presentationStyle="fullScreen" statusBarTranslucent supportedOrientations={['portrait', 'landscape-left', 'landscape-right']} onRequestClose={() => setActiveSession(null)}>
+          <VideoPlayer
+            key={activeSession.pilier.key + '-' + activeSession.idx + '-result'}
+            seance={activeSession.seance}
+            pilier={activeSession.pilier}
+            lang={lang}
+            seanceIndex={activeSession.idx}
+            isDemo={false}
+            isSubscriber={isSubscriber}
+            onActivateSubscription={onActivateSubscription}
+            onClose={() => setActiveSession(null)}
+            onComplete={() => setActiveSession(null)}
           />
         </Modal>
       )}
