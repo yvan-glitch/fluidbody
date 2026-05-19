@@ -332,6 +332,7 @@ export const PILIER_CONTENT = {
     // ────────────────────────────────────────────────────────────────────
     p9: {
       hero_subtitle: "Traverser ce passage avec conscience",
+      medical_disclaimer: "⚠️ Ce contenu est informatif et ne remplace pas un avis médical. Si tu rencontres des symptômes inhabituels ou des douleurs persistantes, consulte ton médecin ou un professionnel de santé. Le Pilates est un complément à un suivi médical adapté, pas un substitut.",
       anatomy: [
         "La ménopause n'est pas une maladie. C'est un passage biologique majeur — l'arrêt progressif de la production d'œstrogènes et de progestérone. Pour le corps, c'est un séisme silencieux : densité osseuse qui s'effrite, masse musculaire qui décline, métabolisme qui ralentit, peau qui change.",
         "L'œstrogène protégeait l'os, le muscle, le cœur, le cerveau. Sa diminution accélère le vieillissement de plusieurs systèmes en même temps. L'ostéoporose menace, la sarcopénie (perte de muscle) s'accélère, le plancher pelvien s'affaiblit.",
@@ -652,6 +653,7 @@ export const PILIER_CONTENT = {
 
     p9: {
       hero_subtitle: "Crossing this passage with awareness",
+      medical_disclaimer: "⚠️ This content is informational and does not replace medical advice. If you experience unusual symptoms or persistent pain, consult your doctor or a healthcare professional. Pilates complements a tailored medical follow-up — it is not a substitute.",
       anatomy: [
         "Menopause isn't a disease. It's a major biological passage — the progressive halt of estrogen and progesterone production. For the body, it's a silent earthquake: bone density eroding, muscle mass declining, metabolism slowing, skin changing.",
         "Estrogen used to protect bone, muscle, heart, brain. Its decrease accelerates aging across multiple systems at once. Osteoporosis threatens, sarcopenia (muscle loss) accelerates, the pelvic floor weakens.",

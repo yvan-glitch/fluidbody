@@ -84,6 +84,7 @@ export const T = {
     ob_auth_privacy_link: 'Politique de confidentialité',
     ob_auth_terms_required: 'Tu dois accepter les CGU pour créer un compte.',
     paywall_terms_link: 'Conditions d\'utilisation',
+    pilier_education_medical_footer: 'Ces informations sont éducatives et ne remplacent pas un avis médical.',
     piliers: ['Épaules', 'Dos', 'Mobilité', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates', 'Office', 'Ménopause'],
     piliers_desc: [
       'Mobilise et soulage les épaules tendues',
@@ -691,6 +692,7 @@ export const T = {
     ob_auth_privacy_link: 'Privacy Policy',
     ob_auth_terms_required: 'You must accept the Terms of Service to create an account.',
     paywall_terms_link: 'Terms of Service',
+    pilier_education_medical_footer: 'This information is educational and does not replace medical advice.',
     piliers: ['Shoulders', 'Back', 'Mobility', 'Posture', 'Eldoa', 'Golf', 'Mat Pilates', 'Office', 'Menopause'],
     piliers_desc: [
       'Mobilize and release tense shoulders',
