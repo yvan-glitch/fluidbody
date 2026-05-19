@@ -16,6 +16,11 @@ import { GlassView, GlassButton, GLASS_RADII, GLASS_EASING, GLASS_DURATIONS } fr
 import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import useLiveHeartRate from '../hooks/useLiveHeartRate';
 import { recordSessionHour, cancelPauseActiveNotifications } from '../utils/notifications';
+import {
+  startSessionActivity,
+  updateSessionActivity,
+  endSessionActivity,
+} from '../utils/liveActivity';
 
 // ── Small utilities (local copies to avoid circular deps) ──
 // Haptics are fired by GlassButton (FAIT) via `haptic="success"`, so
@@ -23,6 +28,20 @@ import { recordSessionHour, cancelPauseActiveNotifications } from '../utils/noti
 
 function devWarn(...args) {
   if (__DEV__) console.warn('[FluidBody]', ...args);
+}
+
+// rgba(R,G,B,A) → #RRGGBB. Used to feed the iOS Live Activity Swift side
+// which expects hex. Falls back to the méduse lime if the input doesn't
+// parse — never throws into the render path.
+function rgbaToHex(rgba) {
+  if (!rgba || typeof rgba !== 'string') return '#AEEF4D';
+  const m = rgba.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (!m) return '#AEEF4D';
+  const toHex = (n) => {
+    const v = Math.max(0, Math.min(255, parseInt(n, 10)));
+    return v.toString(16).padStart(2, '0');
+  };
+  return `#${toHex(m[1])}${toHex(m[2])}${toHex(m[3])}`.toUpperCase();
 }
 
 /** Truthy flag at `seance[3]` indicates a protected Bunny video is available
@@ -561,6 +580,60 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
       if (hrStartedRef.current) {
         try { hr.stop(); } catch (e) {}
       }
+    };
+  }, []);
+
+  // ── Live Activity (iOS 16.2+ only, no-op everywhere else) ──
+  // Same "first-play" trigger as HR : we don't want to pop a lock-screen
+  // card just because a user opened a preview and bailed.
+  const liveActivityStartedRef = useRef(false);
+  const liveActivityLastPushRef = useRef(0);
+  const totalSec = (parseInt(duree, 10) || 0) * 60;
+  const pillarColorHex = rgbaToHex(pilier?.color);
+  const pillarLabel = (pilier?.key || '').toUpperCase();
+
+  useEffect(function() {
+    if (liveActivityStartedRef.current) return;
+    if (!status?.isPlaying) return;
+    liveActivityStartedRef.current = true;
+    startSessionActivity({
+      sessionTitle: titre,
+      pillarName: pillarLabel,
+      pillarColorHex: pillarColorHex,
+      totalDurationSec: totalSec,
+      elapsedSec: elapsedRef.current,
+      progress: totalSec > 0 ? elapsedRef.current / totalSec : 0,
+      bpm: (hr && typeof hr.bpm === 'number') ? hr.bpm : undefined,
+    });
+  }, [status?.isPlaying]);
+
+  // Throttle widget updates to ~5s. iOS coalesces anyway and the widget
+  // ticks its own timer via Text(timerInterval:) — these pushes are only
+  // there to sync progress + BPM.
+  useEffect(function() {
+    if (!liveActivityStartedRef.current) return;
+    const now = Date.now();
+    if (now - liveActivityLastPushRef.current < 5000) return;
+    liveActivityLastPushRef.current = now;
+    updateSessionActivity({
+      elapsedSec: elapsedSec,
+      totalSec: totalSec,
+      progress: totalSec > 0 ? elapsedSec / totalSec : 0,
+      bpm: (hr && typeof hr.bpm === 'number') ? hr.bpm : undefined,
+    });
+  }, [elapsedSec, hr?.bpm, totalSec]);
+
+  // End on unmount whichever path we took (close, completion, swipe-down).
+  // Idempotent : native side no-ops if no activity is running.
+  useEffect(function() {
+    return function() {
+      if (!liveActivityStartedRef.current) return;
+      endSessionActivity({
+        finalTime: elapsedRef.current,
+        totalSec: totalSec,
+        bpm: (hr && typeof hr.bpm === 'number') ? hr.bpm : undefined,
+      });
+      liveActivityStartedRef.current = false;
     };
   }, []);
 
