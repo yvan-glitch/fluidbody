@@ -482,6 +482,22 @@ export const T = {
     // Paywall bonus banner
     paywall_referral_bonus_title: 'Tu as un bonus en attente',
     paywall_referral_bonus_sub: (n) => `${n} mois gratuit${n > 1 ? 's' : ''} t'attend${n > 1 ? 'ent' : ''}. Active ton abonnement pour en profiter.`,
+    // Pilier Education screen
+    pilier_education_title: 'Comprendre',
+    pilier_education_open: 'Comprendre ce pilier',
+    pilier_education_close: 'Fermer',
+    pilier_education_section_anatomy: 'Anatomie',
+    pilier_education_section_why: 'Pourquoi c\'est important au quotidien',
+    pilier_education_section_approach: "L'approche Sabrina",
+    pilier_education_section_movements: 'Mes 5 mouvements clés',
+    pilier_education_section_programs: 'Programmes recommandés',
+    pilier_education_movement_open: 'Ouvrir la séance →',
+    pilier_education_movement_soon: 'Bientôt en vidéo',
+    pilier_education_program_cta_prefix: 'Démarrer un programme',
+    pilier_education_program_weeks: (n) => `${n} sem.`,
+    pilier_education_program_freq: (n) => `${n}×/sem.`,
+    pilier_education_sabrina_label: 'Sabrina',
+    pilier_education_open_a11y: 'Comprendre',
   },
   en: {
     lang: 'en', flag: '🇬🇧', nom: 'English',
@@ -948,6 +964,22 @@ export const T = {
     // Paywall bonus banner
     paywall_referral_bonus_title: 'You have a bonus waiting',
     paywall_referral_bonus_sub: (n) => `${n} free month${n > 1 ? 's' : ''} ${n > 1 ? 'are' : 'is'} waiting for you. Activate your subscription to redeem.`,
+    // Pilier Education screen
+    pilier_education_title: 'Understand',
+    pilier_education_open: 'Understand this pillar',
+    pilier_education_close: 'Close',
+    pilier_education_section_anatomy: 'Anatomy',
+    pilier_education_section_why: 'Why it matters every day',
+    pilier_education_section_approach: "Sabrina's approach",
+    pilier_education_section_movements: 'My 5 key movements',
+    pilier_education_section_programs: 'Recommended programs',
+    pilier_education_movement_open: 'Open session →',
+    pilier_education_movement_soon: 'Video coming soon',
+    pilier_education_program_cta_prefix: 'Start a program',
+    pilier_education_program_weeks: (n) => `${n} wk`,
+    pilier_education_program_freq: (n) => `${n}×/wk`,
+    pilier_education_sabrina_label: 'Sabrina',
+    pilier_education_open_a11y: 'Understand',
   },
 };
 

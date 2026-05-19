@@ -17,6 +17,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import LivingBackground from '../components/LivingBackground';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
+import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
 import { safeNativeCall, safeNativeFire, diag } from '../utils/safeNativeCall';
@@ -832,6 +833,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   var navigation = useNavigation();
   var [openPilier, setOpenPilier] = useState(null);
   var [openInitialIdx, setOpenInitialIdx] = useState(null);
+  var [openEducationPilier, setOpenEducationPilier] = useState(null);
   var [mcTab, setMcTab] = useState('pour_vous');
   var [bilanEditMode, setBilanEditMode] = useState(!Array.isArray(tensionIdxs) || tensionIdxs.length === 0);
   var [showCreateProg, setShowCreateProg] = useState(false);
@@ -1134,23 +1136,34 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     var descIdx = PILIER_LABEL_IDX[p.key];
                     var desc = (tr.piliers_desc && tr.piliers_desc[descIdx]) || '';
                     return (
-                      <TouchableOpacity
-                        key={'rec-' + p.key}
-                        onPress={function() { setOpenPilier(p); }}
-                        activeOpacity={0.9}
-                        style={{ marginBottom: 10, height: 92, borderRadius: 16, overflow: 'hidden' }}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Image source={PILIER_IMAGES[p.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pcard-' + p.key} style={StyleSheet.absoluteFill} />
-                          <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(0,14,24,0.85)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 14, justifyContent: 'center' }}>
-                            <Text style={{ fontSize: 17, fontWeight: '800', color: '#ffffff', marginBottom: 4 }}>{p.label}</Text>
-                            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 16 }} numberOfLines={2}>{desc}</Text>
-                          </LinearGradient>
-                          <View style={{ position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' }}>
-                            <Text style={{ fontSize: 22, color: '#AEEF4D', fontWeight: '300' }}>{'›'}</Text>
+                      <View key={'rec-' + p.key} style={{ marginBottom: 10, position: 'relative' }}>
+                        <TouchableOpacity
+                          onPress={function() { setOpenPilier(p); }}
+                          activeOpacity={0.9}
+                          style={{ height: 92, borderRadius: 16, overflow: 'hidden' }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Image source={PILIER_IMAGES[p.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pcard-' + p.key} style={StyleSheet.absoluteFill} />
+                            <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(0,14,24,0.85)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 14, justifyContent: 'center' }}>
+                              <Text style={{ fontSize: 17, fontWeight: '800', color: '#ffffff', marginBottom: 4 }}>{p.label}</Text>
+                              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 16, paddingRight: 28 }} numberOfLines={2}>{desc}</Text>
+                            </LinearGradient>
+                            <View style={{ position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' }}>
+                              <Text style={{ fontSize: 22, color: '#AEEF4D', fontWeight: '300' }}>{'›'}</Text>
+                            </View>
                           </View>
-                        </View>
-                      </TouchableOpacity>
+                        </TouchableOpacity>
+                        {/* Info "i" badge — opens the long-form Comprendre screen. */}
+                        <TouchableOpacity
+                          onPress={function() { setOpenEducationPilier(p); }}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                          accessibilityRole="button"
+                          accessibilityLabel={(tr.pilier_education_open_a11y || 'Comprendre') + ' — ' + p.label}
+                          style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}
+                        >
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: '#ffffff', fontStyle: 'italic', letterSpacing: 0 }}>i</Text>
+                        </TouchableOpacity>
+                      </View>
                     );
                   })}
                 </View>
@@ -1551,6 +1564,19 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       {openPilier && (
         <PilierPanel pilier={openPilier} done={done[openPilier.key] || Array(20).fill(false)} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); setOpenInitialIdx(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} saveHealthKitWorkout={saveHealthKitWorkout} initialSeanceIdx={openInitialIdx} />
       )}
+      <PilierEducation
+        visible={!!openEducationPilier}
+        pilier={openEducationPilier}
+        lang={lang}
+        onClose={function() { setOpenEducationPilier(null); }}
+        onOpenSeance={function(pilierKey, idx) {
+          var target = piliers.find(function(x) { return x.key === pilierKey; });
+          if (!target) return;
+          setOpenInitialIdx(typeof idx === 'number' ? idx : null);
+          setOpenPilier(target);
+        }}
+      />
+
       <CreateProgramScreen visible={showCreateProg} onClose={function() { setShowCreateProg(false); }} lang={lang} onSaved={loadSavedPrograms} />
       {(function() {
         // Defensive guard around the BreathingCheckIn modal — non-critical
