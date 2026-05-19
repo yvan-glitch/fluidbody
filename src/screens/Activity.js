@@ -36,6 +36,7 @@ import { FloatingMedusas, Bulle, BULLES, MeduseCornerIcon } from '../components/
 import Confetti from '../components/Confetti';
 import ActivityRings, { MiniActivityRings, RING_COLORS } from '../components/ActivityRings';
 import healthkit from '../utils/healthkit';
+import EmptyState from '../components/EmptyState';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
 
 const { width: SW } = Dimensions.get('window');
@@ -573,27 +574,17 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
         {/* HK not authorised — empty state with CTA */}
         {hkChecked && !hkAuthorized ? (
           <View style={{ paddingHorizontal: 22, marginBottom: 24 }}>
-            <GlassCard padding={20}>
-              <View style={{ alignItems: 'center', marginBottom: 12 }}>
-                <MeduseCornerIcon size={64} tint={colors.accentText} breathCycleMs={3000} />
-              </View>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 8 }}>
-                {tr.activity_no_hk || 'Connect Apple Health'}
-              </Text>
-              <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 19, marginBottom: 16 }}>
-                {tr.activity_no_hk_sub || 'Allow FluidBody to read your activity to see your rings.'}
-              </Text>
-              <GlassButton
-                variant="accent"
-                onPress={function () {
-                  healthkit.ensureHealthKitInit().then(function (res) {
-                    setHkAuthorized(!!(res && res.ok));
-                  });
-                }}
-              >
-                {tr.activity_connect_hk || 'Connect Apple Health'}
-              </GlassButton>
-            </GlassCard>
+            <EmptyState
+              icon={<MeduseCornerIcon size={64} tint={colors.accentText} breathCycleMs={3000} />}
+              title={tr.activity_no_hk || 'Connect Apple Health'}
+              description={tr.activity_no_hk_sub || 'Allow FluidBody to read your activity to see your rings.'}
+              ctaLabel={tr.activity_connect_hk || 'Connect Apple Health'}
+              onCtaPress={function () {
+                healthkit.ensureHealthKitInit().then(function (res) {
+                  setHkAuthorized(!!(res && res.ok));
+                });
+              }}
+            />
           </View>
         ) : null}
 

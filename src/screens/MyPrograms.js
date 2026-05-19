@@ -29,6 +29,7 @@ import { Bulle, BULLES_ONBOARDING } from '../components/Meduse';
 import { getPiliers, getSeances } from '../utils';
 import { listPrograms, getProgramStats, deleteProgram, startProgram } from '../utils/programs';
 import ProgramBuilder from './ProgramBuilder';
+import EmptyState from '../components/EmptyState';
 
 let _HapticsMod = null;
 try { _HapticsMod = require('expo-haptics'); } catch (e) {}
@@ -230,17 +231,13 @@ export default function MyPrograms({ lang, supabase, supaUser, onClose, onOpenPr
         {loading ? (
           <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 40 }}>{tr.program_loading || 'Loading…'}</Text>
         ) : items.length === 0 ? (
-          <GlassCard padded padding={22}>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 8 }}>
-              {tr.program_empty_title || 'No program yet'}
-            </Text>
-            <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 19, marginBottom: 18 }}>
-              {tr.program_empty_sub || 'Build your first personalised plan — pick your goals and we’ll lay out the sessions.'}
-            </Text>
-            <GlassButton variant="accent" size="md" onPress={function () { _hapticSelection(); setShowBuilder(true); }}>
-              {tr.program_create_btn || 'Create a program'}
-            </GlassButton>
-          </GlassCard>
+          <EmptyState
+            align="left"
+            title={tr.program_empty_title || 'No program yet'}
+            description={tr.program_empty_sub || 'Build your first personalised plan — pick your goals and we’ll lay out the sessions.'}
+            ctaLabel={tr.program_create_btn || 'Create a program'}
+            onCtaPress={function () { _hapticSelection(); setShowBuilder(true); }}
+          />
         ) : (
           <View>
             {items.map(function (p) {

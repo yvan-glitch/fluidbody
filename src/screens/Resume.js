@@ -15,6 +15,7 @@ import { Bulle, BULLES, LivingMedusa, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMedu
 import AnimatedPlus from '../components/AnimatedPlus';
 import LivingBackground from '../components/LivingBackground';
 import { getPiliers, getSeances } from '../utils';
+import EmptyState from '../components/EmptyState';
 
 // Activité HK (anneaux Move/Exercise/Stand, détails journaliers,
 // tendances, streak rings-closed) → écran "Activité" dédié. Le présent
@@ -663,7 +664,14 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 16 }}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.resume_seances || 'Séances FluidBody'}</Text>
           {recentSeances.length === 0 && (
-            <Text style={{ fontSize: 14, color: 'rgba(174,239,77,0.4)', fontStyle: 'italic' }}>{tr.resume_no_seance || 'Aucune séance complétée'}</Text>
+            <View style={{ marginTop: 4, marginBottom: 4 }}>
+              <EmptyState
+                compact
+                align="left"
+                title={tr.resume_empty_title || (lang === 'en' ? 'No session yet' : 'Aucune séance complétée')}
+                description={tr.resume_empty_sub || (lang === 'en' ? 'Start your first session to see your dashboard come alive.' : 'Démarre ta première séance pour voir ton bilan apparaître.')}
+              />
+            </View>
           )}
           {recentSeances.map(function(s, i) {
             return (

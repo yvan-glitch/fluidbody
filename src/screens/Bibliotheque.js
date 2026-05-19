@@ -14,6 +14,7 @@ import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import { getPiliers, getSeances, hapticLight } from '../utils';
 import supabase from '../lib/supabase';
 import { getFavorites, toggleFavorite } from '../utils/favorites';
+import EmptyState from '../components/EmptyState';
 
 // Accent / parsing helpers — used by the séance search & filters below.
 // `normalizeStr` is case + diacritic insensitive so "epaule" matches "Épaule".
@@ -924,10 +925,11 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         {showResults ? (
           /* Results grid — replaces the standard sections when a search is active */
           filteredSessions.length === 0 ? (
-            <View style={{ paddingHorizontal: 20, paddingTop: 24, alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 22 }}>
-                {tr.biblio_empty_state_search || (lang === 'en' ? 'No session found. Refine your search.' : 'Aucune séance trouvée. Modifie ta recherche.')}
-              </Text>
+            <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
+              <EmptyState
+                title={tr.biblio_empty_state_title || (lang === 'en' ? 'No match' : 'Aucune correspondance')}
+                description={tr.biblio_empty_state_search || (lang === 'en' ? 'No session found. Refine your search or filters.' : 'Aucune séance correspondante. Modifie tes filtres.')}
+              />
             </View>
           ) : (
             <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
@@ -1167,9 +1169,11 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         {/* Discreet onboarding hint when the favorites collection is empty. */}
         {favoriteSessions.length === 0 ? (
           <View style={{ paddingHorizontal: 20, marginTop: 28 }}>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontStyle: 'italic' }}>
-              {tr.biblio_favorites_empty_hint || (lang === 'en' ? 'Tap the ♡ on a session to save it.' : 'Tap sur le ♡ d\'une séance pour la sauvegarder.')}
-            </Text>
+            <EmptyState
+              compact
+              title={tr.biblio_favorites_empty_title || (lang === 'en' ? 'No favorite yet' : 'Aucun favori')}
+              description={tr.biblio_favorites_empty_hint || (lang === 'en' ? 'Tap the ♡ on a session to save it.' : 'Tap sur le ♡ d\'une séance pour la sauvegarder.')}
+            />
           </View>
         ) : null}
           </>
