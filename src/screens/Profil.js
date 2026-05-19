@@ -689,8 +689,8 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 </View>
                 <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(255,255,255,0.8)', lineHeight: 22 }}>{tr.coach_full_bio || ''}</Text>
               </ScrollView>
-              <TouchableOpacity onPress={function() { setShowCoachBio(false); }} style={{ marginTop: 18, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.15)', alignItems: 'center' }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>Fermer</Text>
+              <TouchableOpacity onPress={function() { setShowCoachBio(false); }} accessibilityRole="button" accessibilityLabel={tr.coach_modal_close || 'Fermer'} style={{ marginTop: 18, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.15)', alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>{tr.coach_modal_close || 'Fermer'}</Text>
               </TouchableOpacity>
               </BlurView>
             </View>
@@ -1236,8 +1236,8 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 </View>
                 <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(255,255,255,0.8)', lineHeight: 22 }}>{tr.dev_full_bio || ''}</Text>
               </ScrollView>
-              <TouchableOpacity onPress={function() { setShowDevBio(false); }} style={{ marginTop: 18, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.15)', alignItems: 'center' }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>Fermer</Text>
+              <TouchableOpacity onPress={function() { setShowDevBio(false); }} accessibilityRole="button" accessibilityLabel={tr.profile_edit_close || 'Fermer'} style={{ marginTop: 18, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.15)', alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>{tr.profile_edit_close || 'Fermer'}</Text>
               </TouchableOpacity>
               </BlurView>
             </View>
@@ -1285,6 +1285,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             <GlassButton
               onPress={onLogout}
               textColor="#AEEF4D"
+              accessibilityLabel={tr.profil_signout || 'Se déconnecter'}
               leftIcon={
                 <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
                   <Path d="M9 3H6a2 2 0 00-2 2v14a2 2 0 002 2h3" stroke="#AEEF4D" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
@@ -1293,7 +1294,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 </Svg>
               }
             >
-              Se déconnecter
+              {tr.profil_signout || 'Se déconnecter'}
             </GlassButton>
           </View>
         )}

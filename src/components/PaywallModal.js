@@ -57,7 +57,7 @@ function BulletCheck() {
 
 // Animated count-up — feels alive, low cost. Lerps over 1.6s with an
 // out-easing so the last digits slow gracefully.
-function AnimatedCount({ to, style }) {
+function AnimatedCount({ to, style, locale }) {
   const animRef = useRef(new Animated.Value(0)).current;
   const [val, setVal] = useState(0);
   useEffect(() => {
@@ -73,7 +73,7 @@ function AnimatedCount({ to, style }) {
     }).start();
     return () => animRef.removeListener(listenerId);
   }, [to]);
-  return <Text style={style}>{val.toLocaleString('fr-FR')}</Text>;
+  return <Text style={style}>{val.toLocaleString(locale || 'fr-FR')}</Text>;
 }
 
 // Live-ish active members counter. We don't have a backend signal yet so we
@@ -320,7 +320,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
             />
             <GlassPressable
               onPress={onClose}
-              accessibilityLabel="Fermer le paywall"
+              accessibilityLabel={tr.a11y_close_paywall || 'Fermer le paywall'}
               accessibilityRole="button"
               style={{ position: 'absolute', top: 56, right: 20 }}
             >
@@ -342,7 +342,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               <Text style={{ fontSize: 32, fontWeight: '800', color: '#ffffff', lineHeight: 36, letterSpacing: -0.4 }}>{heroTitle}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#AEEF4D' }} />
-                <AnimatedCount to={liveMembers} style={{ fontSize: 14, fontWeight: '800', color: '#ffffff' }} />
+                <AnimatedCount to={liveMembers} locale={isFr ? 'fr-FR' : 'en-US'} style={{ fontSize: 14, fontWeight: '800', color: '#ffffff' }} />
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.78)', fontWeight: '500' }}>
                   {tr.paywall_members_label || 'membres pratiquent en ce moment'}
                 </Text>

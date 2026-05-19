@@ -803,7 +803,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
               autoCapitalize="none"
             />
             {search.length > 0 ? (
-              <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel={lang === 'en' ? 'Clear search' : 'Effacer la recherche'}>
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel={tr.a11y_clear_search || 'Effacer la recherche'}>
                 <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
                   <CloseIcon size={11} color="rgba(255,255,255,0.85)" />
                 </View>
