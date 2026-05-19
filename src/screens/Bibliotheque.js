@@ -41,6 +41,23 @@ function parseDurationMin(str) {
   return 0;
 }
 
+function durationBucket(minutes) {
+  if (minutes < 5) return 'u5';
+  if (minutes <= 15) return '5to15';
+  if (minutes <= 30) return '15to30';
+  return 'o30';
+}
+
+// Stable pseudo-popularity ranking placeholder. Real popularity would
+// come from aggregate completion counts; until that lands we just want
+// a deterministic shuffle that's different from the natural pilier
+// order, so the "Popular" sort visibly does something.
+function pseudoPopularity(id) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
 const PROGRAM_IMAGES = {
   f1: require('../../assets/programs/reveil-matinal.jpg'),
   f2: require('../../assets/programs/mal-de-dos.jpg'),
@@ -314,6 +331,48 @@ function CloseIcon({ size = 14, color = 'rgba(255,255,255,0.7)' }) {
   );
 }
 
+function CheckIcon({ size = 12, color = '#AEEF4D' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M5 12l5 5L20 7" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+// FilterChip — small Liquid-Glass-ish pill used in the filter scrollers.
+// Active state = subtle green border + light highlight + check icon.
+function FilterChip({ label, active, onPress }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!active }}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: active ? 'rgba(174,239,77,0.85)' : 'rgba(255,255,255,0.18)',
+        backgroundColor: active ? 'rgba(174,239,77,0.14)' : 'rgba(255,255,255,0.06)',
+      }}
+    >
+      {active ? <CheckIcon size={11} /> : null}
+      <Text style={{
+        fontSize: 13,
+        fontWeight: active ? '600' : '500',
+        color: active ? '#AEEF4D' : 'rgba(255,255,255,0.85)',
+        letterSpacing: 0.1,
+      }} numberOfLines={1}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 // Pilier label map for compact card display
 const PILIER_LABELS = {
   fr: { p1: 'Epaules', p2: 'Dos', p3: 'Mobilité', p4: 'Posture', p5: 'ELDOA', p6: 'Golf', p7: 'Mat Pilates' },
@@ -373,6 +432,12 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeTheory, setActiveTheory] = useState(null);
   const [activeSession, setActiveSession] = useState(null);
+  // Filter state — Sets keep toggles tiny and idempotent.
+  const [filterPiliers, setFilterPiliers] = useState(() => new Set());
+  const [filterDurations, setFilterDurations] = useState(() => new Set());
+  const [filterTypes, setFilterTypes] = useState(() => new Set());
+  // sortMode cycles: 'recent' → 'popular' → 'duration_asc' → 'favorites_first'.
+  const [sortMode, setSortMode] = useState('recent');
   const articles = ARTICLES[lang] || ARTICLES.fr;
   const fiches = FICHES[lang] || FICHES.fr;
   const labels = PILIER_LABELS[lang] || PILIER_LABELS.fr;
@@ -434,24 +499,81 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
     return articles.filter(a => normalizeStr(a.titre).includes(q));
   }, [debouncedSearch, articles]);
 
-  // Filter the full séance catalogue by the debounced query. Searches
-  // across title, étape and pilier label so a user typing "dos" or
-  // "comprendre" both surface the right results.
+  // Filter the full séance catalogue by the debounced query + active
+  // chip filters. Search covers title, étape and pilier label so a user
+  // typing "dos" or "comprendre" both surface the right results.
+  // Sort is applied last on a copy so the source memo stays stable.
   const filteredSessions = useMemo(() => {
     const q = normalizeStr(debouncedSearch.trim());
-    if (!q) return [];
-    return allSessions.filter((s) => {
-      const pilierLabel = (labels && labels[s.pilier.key]) || s.pilier.label || '';
-      return (
-        normalizeStr(s.titre).includes(q) ||
-        normalizeStr(s.etape).includes(q) ||
-        normalizeStr(pilierLabel).includes(q)
-      );
-    });
-  }, [allSessions, debouncedSearch, labels]);
+    let list = allSessions;
+    if (q) {
+      list = list.filter((s) => {
+        const pilierLabel = (labels && labels[s.pilier.key]) || s.pilier.label || '';
+        return (
+          normalizeStr(s.titre).includes(q) ||
+          normalizeStr(s.etape).includes(q) ||
+          normalizeStr(pilierLabel).includes(q)
+        );
+      });
+    }
+    if (filterPiliers.size > 0) {
+      list = list.filter((s) => filterPiliers.has(s.pilier.key));
+    }
+    if (filterDurations.size > 0) {
+      list = list.filter((s) => filterDurations.has(durationBucket(s.durationMin)));
+    }
+    if (filterTypes.size > 0) {
+      list = list.filter((s) => filterTypes.has(s.etape));
+    }
+    if (sortMode === 'duration_asc') {
+      list = [...list].sort((a, b) => a.durationMin - b.durationMin);
+    } else if (sortMode === 'popular') {
+      // Placeholder ranking: stable pseudo-popularity from the id hash.
+      // Will be replaced when we have real completion counts.
+      list = [...list].sort((a, b) => pseudoPopularity(b.id) - pseudoPopularity(a.id));
+    }
+    return list;
+  }, [allSessions, debouncedSearch, labels, filterPiliers, filterDurations, filterTypes, sortMode]);
 
+  const filtersActive = filterPiliers.size + filterDurations.size + filterTypes.size > 0 || sortMode !== 'recent';
   const searchActive = debouncedSearch.trim().length > 0;
-  const showResults = searchActive;
+  const showResults = searchActive || filtersActive;
+
+  // Filter chip rows (rebuilt on lang/pilier change, very cheap).
+  const piliersForFilter = piliers;
+  const durationOptions = [
+    { key: 'u5', label: tr.biblio_dur_under5 || '< 5 min' },
+    { key: '5to15', label: tr.biblio_dur_5to15 || '5–15 min' },
+    { key: '15to30', label: tr.biblio_dur_15to30 || '15–30 min' },
+    { key: 'o30', label: tr.biblio_dur_over30 || '> 30 min' },
+  ];
+  const typeOptions = useMemo(() => {
+    const seen = new Set();
+    allSessions.forEach((s) => { if (s.etape) seen.add(s.etape); });
+    return Array.from(seen);
+  }, [allSessions]);
+  const sortOptions = [
+    { key: 'recent', label: tr.biblio_sort_recent || (lang === 'en' ? 'Recent first' : 'Récents d\'abord') },
+    { key: 'popular', label: tr.biblio_sort_popular || (lang === 'en' ? 'Popular' : 'Populaires') },
+    { key: 'duration_asc', label: tr.biblio_sort_duration_asc || (lang === 'en' ? 'Shortest first' : 'Durée croissante') },
+    { key: 'favorites_first', label: tr.biblio_sort_favorites_first || (lang === 'en' ? 'Favorites first' : 'Mes favoris d\'abord') },
+  ];
+
+  const toggleSetMember = (setter) => (key) => setter((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const togglePilier = toggleSetMember(setFilterPiliers);
+  const toggleDuration = toggleSetMember(setFilterDurations);
+  const toggleType = toggleSetMember(setFilterTypes);
+
+  const clearAllFilters = () => {
+    setFilterPiliers(new Set());
+    setFilterDurations(new Set());
+    setFilterTypes(new Set());
+    setSortMode('recent');
+  };
 
   const playSession = (entry) => {
     const sid = buildSessionId(entry.pilier.key, entry.idx);
@@ -558,6 +680,69 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                 : `${filteredSessions.length}`}
             </Text>
           ) : null}
+        </View>
+
+        {/* Filter chip rows — horizontal scroll per category. Stays subtle:
+            two short rows + a sort cycle, no panel-of-cockpit vibe. */}
+        <View style={{ marginBottom: showResults ? 16 : 22 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
+            <FilterChip
+              label={`${tr.biblio_filter_sort || 'Trier'} · ${(sortOptions.find((o) => o.key === sortMode) || sortOptions[0]).label}`}
+              active={sortMode !== 'recent'}
+              onPress={() => {
+                const i = sortOptions.findIndex((o) => o.key === sortMode);
+                const next = sortOptions[(i + 1) % sortOptions.length];
+                setSortMode(next.key);
+              }}
+            />
+            {piliersForFilter.map((p) => (
+              <FilterChip
+                key={'pf-' + p.key}
+                label={(labels && labels[p.key]) || p.label}
+                active={filterPiliers.has(p.key)}
+                onPress={() => togglePilier(p.key)}
+              />
+            ))}
+          </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8, marginTop: 8 }}>
+            {durationOptions.map((d) => (
+              <FilterChip
+                key={'df-' + d.key}
+                label={d.label}
+                active={filterDurations.has(d.key)}
+                onPress={() => toggleDuration(d.key)}
+              />
+            ))}
+            {typeOptions.map((t) => (
+              <FilterChip
+                key={'tf-' + t}
+                label={t}
+                active={filterTypes.has(t)}
+                onPress={() => toggleType(t)}
+              />
+            ))}
+            {filtersActive ? (
+              <TouchableOpacity
+                onPress={clearAllFilters}
+                accessibilityRole="button"
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.18)',
+                }}
+              >
+                <CloseIcon size={11} color="rgba(255,255,255,0.85)" />
+                <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.85)' }}>
+                  {tr.biblio_clear_filters || (lang === 'en' ? 'Clear filters' : 'Effacer les filtres')}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </ScrollView>
         </View>
 
         {showResults ? (
