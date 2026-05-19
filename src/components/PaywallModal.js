@@ -6,6 +6,7 @@ import AnimatedPlus from './AnimatedPlus';
 import LivingBackground from './LivingBackground';
 import { Bulle, FloatingMedusas, BULLES_ONBOARDING } from './Meduse';
 import { T, PILIER_IMAGES } from '../constants/data';
+import { LEGAL, getTermsUrl } from '../constants/legal';
 import {
   GlassView,
   GlassButton,
@@ -494,14 +495,27 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               <Text style={{ fontSize: 11, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 17 }}>
                 {tr.paywall_legal || "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période. Le paiement est débité via votre compte Apple. Gérez ou annulez dans Réglages > Apple ID > Abonnements."}
               </Text>
-              <GlassPressable
-                onPress={function() { Linking.openURL('https://yvan-glitch.github.io/fluidbody-privacy/'); }}
-                accessibilityRole="link"
-                accessibilityLabel={tr.paywall_privacy_link || 'Politique de confidentialité'}
-                style={{ marginTop: 10, alignSelf: 'center' }}
-              >
-                <Text style={{ fontSize: 12, color: theme.colors.accentText, textAlign: 'center', textDecorationLine: 'underline', fontWeight: '600' }}>{tr.paywall_privacy_link || 'Politique de confidentialité'}</Text>
-              </GlassPressable>
+              <View style={{ marginTop: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                <GlassPressable
+                  onPress={function() { Linking.openURL(getTermsUrl(lang) || LEGAL.termsUrl); }}
+                  accessibilityRole="link"
+                  accessibilityLabel={tr.paywall_terms_link || (isFr ? "Conditions d'utilisation" : 'Terms of Service')}
+                >
+                  <Text style={{ fontSize: 12, color: theme.colors.accentText, textAlign: 'center', textDecorationLine: 'underline', fontWeight: '600' }}>
+                    {tr.paywall_terms_link || (isFr ? "Conditions d'utilisation" : 'Terms of Service')}
+                  </Text>
+                </GlassPressable>
+                <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>·</Text>
+                <GlassPressable
+                  onPress={function() { Linking.openURL(LEGAL.privacyUrl); }}
+                  accessibilityRole="link"
+                  accessibilityLabel={tr.paywall_privacy_link || (isFr ? 'Politique de confidentialité' : 'Privacy Policy')}
+                >
+                  <Text style={{ fontSize: 12, color: theme.colors.accentText, textAlign: 'center', textDecorationLine: 'underline', fontWeight: '600' }}>
+                    {tr.paywall_privacy_link || (isFr ? 'Politique de confidentialité' : 'Privacy Policy')}
+                  </Text>
+                </GlassPressable>
+              </View>
             </GlassCard>
           </View>
 
