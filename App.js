@@ -78,6 +78,7 @@ import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ViewShot from 'react-native-view-shot';
 import { U_JELLY, U_WAVE, FREE_SEANCE_INDEX, ZONE_TO_PILIER, T, SEANCES_FR, SEANCES_EN, PILIERS_BASE, PILIER_IMAGES, SABRINA_QUOTES } from './src/constants/data';
+import { LEGAL, getTermsUrl, TERMS_ACCEPTED_STORAGE_KEY } from './src/constants/legal';
 import { Linking as RNLinking } from 'react-native';
 import { Bulle, Rayon, Meduse, MeduseCornerIcon, VideoPlaceholderMeduse, BULLES, BULLES_MONCORPS, BULLES_ONBOARDING, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState, LivingMedusa, FloatingMedusas, MeduseRain, PluieBulles } from './src/components/Meduse';
 import VideoPlayer, { VIDEO_RESUME_PREFIX } from './src/components/VideoPlayer';
@@ -696,6 +697,17 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // ToS acceptance — pre-checked if the user already accepted on this
+  // device. We hydrate from AsyncStorage so users who accepted before an
+  // app update don't need to re-tick.
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(TERMS_ACCEPTED_STORAGE_KEY)
+      .then(v => { if (!cancelled && v) setTermsAccepted(true); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const validPass = password.length >= 6;
   const canSubmit = validEmail && validPass && !loading;
@@ -728,6 +740,10 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
     const em = email.trim().toLowerCase();
     if (!validEmail) { setError(tr.ob_auth_err_email); return; }
     if (!validPass) { setError(tr.ob_auth_err_short); return; }
+    if (mode === 'up' && !termsAccepted) {
+      setError(tr.ob_auth_terms_required || 'Tu dois accepter les CGU pour créer un compte.');
+      return;
+    }
     setLoading(true); setError('');
     try {
       if (mode === 'up') {
@@ -738,6 +754,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
         });
         if (err) { setError(err.message); setLoading(false); return; }
         if (!data.session) { setError(tr.ob_auth_confirm); setLoading(false); return; }
+        AsyncStorage.setItem(TERMS_ACCEPTED_STORAGE_KEY, String(LEGAL.termsVersion || '1.0')).catch(() => {});
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email: em, password });
         if (err) { setError(err.message); setLoading(false); return; }
@@ -757,6 +774,10 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
     if (!AppleAuth) { Alert.alert('Apple Sign In', 'Module expo-apple-authentication non chargé. Vérifie le plugin dans app.json.'); return; }
     if (!appleAvailable) {
       Alert.alert('FluidBody+', tr.auth_apple_unavailable || 'Sign in with Apple est disponible sur iOS uniquement.');
+      return;
+    }
+    if (!termsAccepted) {
+      setError(tr.ob_auth_terms_required || 'Tu dois accepter les CGU pour créer un compte.');
       return;
     }
     setLoading(true); setError('');
@@ -781,6 +802,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
         setLoading(false); return;
       }
       const applePrenom = credential.fullName?.givenName || '';
+      AsyncStorage.setItem(TERMS_ACCEPTED_STORAGE_KEY, String(LEGAL.termsVersion || '1.0')).catch(() => {});
       setLoading(false);
       onSuccess && onSuccess();
       postAuthProfileSync(applePrenom).catch(function(e) { devWarn('postAuthProfileSync apple (background)', e); });
@@ -890,9 +912,45 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
             {loading ? '…' : (tr.ob_auth_submit_in || 'Se connecter')}
           </GlassButton>
 
+          <Pressable
+            onPress={() => setTermsAccepted(v => !v)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: termsAccepted }}
+            accessibilityLabel={(tr.ob_auth_terms_prefix || '') + (tr.ob_auth_terms_link || '')}
+            style={{ flexDirection: 'row', alignItems: 'flex-start', marginVertical: 14, paddingHorizontal: 4 }}
+          >
+            <View style={{
+              width: 20, height: 20, borderRadius: 6,
+              borderWidth: 1.5,
+              borderColor: termsAccepted ? '#AEEF4D' : 'rgba(255,255,255,0.35)',
+              backgroundColor: termsAccepted ? 'rgba(174,239,77,0.18)' : 'transparent',
+              alignItems: 'center', justifyContent: 'center',
+              marginRight: 10, marginTop: 1,
+            }}>
+              {termsAccepted ? <Text style={{ color: '#AEEF4D', fontSize: 13, fontWeight: '900', marginTop: -2 }}>✓</Text> : null}
+            </View>
+            <Text style={{ flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.78)', lineHeight: 17 }}>
+              {tr.ob_auth_terms_prefix || "En créant un compte, j'accepte les "}
+              <Text
+                style={{ color: '#AEEF4D', textDecorationLine: 'underline', fontWeight: '600' }}
+                onPress={() => RNLinking.openURL(getTermsUrl(lang) || LEGAL.termsUrl)}
+              >
+                {tr.ob_auth_terms_link || "Conditions d'utilisation"}
+              </Text>
+              {tr.ob_auth_terms_and || ' et la '}
+              <Text
+                style={{ color: '#AEEF4D', textDecorationLine: 'underline', fontWeight: '600' }}
+                onPress={() => RNLinking.openURL(LEGAL.privacyUrl)}
+              >
+                {tr.ob_auth_privacy_link || 'Politique de confidentialité'}
+              </Text>
+              .
+            </Text>
+          </Pressable>
+
           <GlassButton
             onPress={() => handleEmailAuth('up')}
-            disabled={!canSubmit}
+            disabled={!canSubmit || !termsAccepted}
             textColor="#AEEF4D"
             textStyle={{ fontSize: 15, fontWeight: '600' }}
           >

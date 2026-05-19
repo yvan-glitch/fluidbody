@@ -55,11 +55,19 @@ function dayKeyFromDate(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
-function formatDateLabel(d, tr, isToday, isYesterday) {
+function localeFromLang(lang) {
+  const l = (lang || 'fr').toLowerCase();
+  if (l.indexOf('fr') === 0) return 'fr-FR';
+  if (l.indexOf('es') === 0) return 'es-ES';
+  if (l.indexOf('it') === 0) return 'it-IT';
+  return 'en-US';
+}
+
+function formatDateLabel(d, tr, isToday, isYesterday, lang) {
   if (isToday) return tr.activity_today || 'Today';
   if (isYesterday) return tr.activity_yesterday || 'Yesterday';
   const day = d.getDate();
-  const month = d.toLocaleString(undefined, { month: 'short' });
+  const month = d.toLocaleString(localeFromLang(lang), { month: 'short' });
   return day + ' ' + month;
 }
 
@@ -513,7 +521,7 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
     };
   }, [history]);
 
-  const dateLabel = formatDateLabel(selectedDate, tr, isToday, isYesterday);
+  const dateLabel = formatDateLabel(selectedDate, tr, isToday, isYesterday, lang);
 
   // ── Render ──
   return (
@@ -626,7 +634,7 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
           </Text>
           <GlassCard padding={6}>
             <View style={{ paddingHorizontal: 10 }}>
-              <MetricRow icon="steps" label={tr.activity_steps || 'Steps'} value={details.steps.toLocaleString()} color={colors.text} />
+              <MetricRow icon="steps" label={tr.activity_steps || 'Steps'} value={details.steps.toLocaleString(localeFromLang(lang))} color={colors.text} />
               <View style={{ height: 1, backgroundColor: colors.hairline }} />
               <MetricRow icon="distance" label={tr.activity_distance || 'Distance'} value={details.distanceKm.toFixed(2) + ' km'} color={colors.text} />
               <View style={{ height: 1, backgroundColor: colors.hairline }} />
