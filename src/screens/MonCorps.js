@@ -21,6 +21,9 @@ import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
 import { safeNativeCall, safeNativeFire, diag } from '../utils/safeNativeCall';
+import { getActiveProgram, getProgramStats } from '../utils/programs';
+import MyPrograms from './MyPrograms';
+import ProgramBuilder from './ProgramBuilder';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
@@ -827,7 +830,7 @@ function ZoneIcon({ idx, color, size }) {
   }
 }
 
-function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout }) {
+function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout, supabase, supaUser }) {
   var tr = T[lang] || T["fr"];
   var theme = useTheme().theme;
   var navigation = useNavigation();
@@ -842,8 +845,25 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   var [searchEtape, setSearchEtape] = useState(null);
   var [showBreathing, setShowBreathing] = useState(false);
   var [breathDoneToday, setBreathDoneToday] = useState(false);
+  // Algorithmic programs: active row pulled from Supabase + screens
+  // (MyPrograms list / ProgramBuilder flow). Both render inline rather
+  // than as Modals so the existing tab bar stays hidden — same pattern
+  // as the existing CreateProgramScreen modal swap, just full-screen.
+  var [activeProgram, setActiveProgram] = useState(null);
+  var [showMyPrograms, setShowMyPrograms] = useState(false);
+  var [showProgramBuilder, setShowProgramBuilder] = useState(false);
+  var [programRefreshTick, setProgramRefreshTick] = useState(0);
 
   useEffect(function() { diag('MonCorps.mount', 'start'); loadSavedPrograms(); diag('MonCorps.mount', 'done'); }, []);
+
+  useEffect(function() {
+    var cancelled = false;
+    if (!supabase || !supaUser) { setActiveProgram(null); return; }
+    getActiveProgram(supabase, supaUser.id).then(function(p) {
+      if (!cancelled) setActiveProgram(p || null);
+    });
+    return function() { cancelled = true; };
+  }, [supabase, supaUser && supaUser.id, programRefreshTick]);
 
   // Re-check whether the breath ring is already closed for today, every time
   // the modal closes (so the pill flips to "done" without a manual refresh).
@@ -881,6 +901,31 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
     var bRec = effectiveRecommended.includes(b.key) ? 0 : 1;
     return aRec - bRec;
   });
+
+  // Inline full-screen swap for the algorithmic programs flow. ProgramBuilder
+  // is rendered standalone (no MyPrograms wrap) when the user enters it from
+  // the "Create" CTA on the MonCorps card — keeps that flow short.
+  if (showProgramBuilder) {
+    return (
+      <ProgramBuilder
+        lang={lang}
+        supabase={supabase}
+        supaUser={supaUser}
+        onClose={function() { setShowProgramBuilder(false); setProgramRefreshTick(function(n) { return n + 1; }); }}
+        onCreated={function() { setProgramRefreshTick(function(n) { return n + 1; }); }}
+      />
+    );
+  }
+  if (showMyPrograms) {
+    return (
+      <MyPrograms
+        lang={lang}
+        supabase={supabase}
+        supaUser={supaUser}
+        onClose={function() { setShowMyPrograms(false); setProgramRefreshTick(function(n) { return n + 1; }); }}
+      />
+    );
+  }
 
   return (
     <View style={localStyles.screen}>
@@ -987,6 +1032,48 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         contentContainerStyle={{ paddingTop: 190, paddingBottom: 110, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Active algorithmic program banner. Visible across all MonCorps
+            tabs so the user always sees their journey. Tap → MyPrograms. */}
+        {activeProgram && (function() {
+          try {
+            var stats = getProgramStats(activeProgram);
+            var nextS = stats.nextSession;
+            var nextPil = nextS && piliers.find(function(p) { return p.key === nextS.pilier_key; });
+            var nextLabel = nextPil ? nextPil.label : (nextS ? nextS.pilier_key : '');
+            var nextEtape = nextS && ((tr.etapes && tr.etapes[nextS.etape]) || nextS.etape);
+            var wkLabel = (tr.program_week_label || 'Semaine') + ' ' + stats.currentWeek + '/' + activeProgram.duration_weeks;
+            return (
+              <TouchableOpacity
+                onPress={function() { hapticLight(); setShowMyPrograms(true); }}
+                activeOpacity={0.9}
+                style={{ marginBottom: 14, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(174,239,77,0.5)', backgroundColor: 'rgba(174,239,77,0.10)' }}
+              >
+                <View style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(174,239,77,0.18)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.55)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: '#AEEF4D' }}>{stats.percent}%</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#AEEF4D', letterSpacing: 0.6 }}>
+                      {(tr.program_active_tag || 'PROGRAMME ACTIF') + ' · ' + wkLabel}
+                    </Text>
+                    <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginTop: 2 }}>
+                      {activeProgram.name || (tr.program_default_name || 'Programme')}
+                    </Text>
+                    {nextS ? (
+                      <Text numberOfLines={1} style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>
+                        {(tr.program_next_label || 'Prochaine séance') + ' : ' + nextLabel + (nextEtape ? ' · ' + nextEtape : '')}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Text style={{ fontSize: 20, color: '#AEEF4D', fontWeight: '300' }}>{'›'}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          } catch (e) {
+            if (__DEV__) console.warn('[active-program-banner] render throw:', e);
+            return null;
+          }
+        })()}
         {mcTab === 'explorer' && sdj && (
           <TouchableOpacity onPress={function() { if (onTryFreeSession) onTryFreeSession(); }} activeOpacity={0.9} style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#AEEF4D' }}>
             <View style={{ height: 110 }}>
@@ -1312,6 +1399,40 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 </TouchableOpacity>
               </LinearGradient>
             </View>
+
+            {/* Algorithmic programs entry — only when Supabase is reachable.
+                Without supabase/supaUser the new feature has no backing store
+                and we hide it rather than showing a dead card. */}
+            {supabase && supaUser ? (
+              <View style={{ marginTop: 24 }}>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', marginBottom: 6 }}>{tr.program_section_title || 'Programmes intelligents'}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '400', color: 'rgba(255,255,255,0.45)', lineHeight: 18, marginBottom: 14 }}>{tr.program_section_sub || 'Plans personnalisés sur 2 à 12 semaines, générés à partir de tes objectifs.'}</Text>
+                <View style={{ borderRadius: 16, overflow: 'hidden', height: 230, borderWidth: 1, borderColor: '#AEEF4D' }}>
+                  <LinearGradient colors={["#0a1f1a", "#0f3a30", "#1ea585"]} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: 'space-between' }}>
+                    <View>
+                      <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff', marginBottom: 4 }}>{tr.program_smart_card || 'Programme intelligent'}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '400', color: 'rgba(255,255,255,0.7)', lineHeight: 18 }}>{tr.program_smart_card_sub || 'Tonifier, posture, souplesse, sérénité — choisis ton cap et on construit le parcours.'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity
+                        onPress={function() { hapticLight(); setShowProgramBuilder(true); }}
+                        activeOpacity={0.85}
+                        style={{ flex: 1, height: 38, borderRadius: 19, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#000' }}>{tr.program_create_btn || 'Créer'}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={function() { hapticLight(); setShowMyPrograms(true); }}
+                        activeOpacity={0.85}
+                        style={{ flex: 1, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff' }}>{tr.program_mine_btn || 'Mes programmes'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </LinearGradient>
+                </View>
+              </View>
+            ) : null}
 
             {savedPrograms.length > 0 && (
               <View style={{ marginTop: 24 }}>
