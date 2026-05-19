@@ -518,20 +518,35 @@ function AnimatedFaceIcon({ size = 50, breathCycleMs = 3000, expression = 0, tin
   var breathAnim = useRef(new Animated.Value(0)).current;
   var [blinking, setBlinking] = useState(false);
   useEffect(function() {
+    var loop = null;
     if (breathCycleMs) {
-      Animated.loop(Animated.sequence([
+      loop = Animated.loop(Animated.sequence([
         Animated.timing(breathAnim, { toValue: 1, duration: breathCycleMs / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         Animated.timing(breathAnim, { toValue: 0, duration: breathCycleMs / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])).start();
+      ]));
+      loop.start();
     }
+    var mounted = true;
+    var blinkTimer = null;
     function blink() {
+      if (!mounted) return;
       var delay = 2000 + Math.random() * 4000;
-      setTimeout(function() {
+      blinkTimer = setTimeout(function() {
+        if (!mounted) return;
         setBlinking(true);
-        setTimeout(function() { setBlinking(false); blink(); }, 150);
+        blinkTimer = setTimeout(function() {
+          if (!mounted) return;
+          setBlinking(false);
+          blink();
+        }, 150);
       }, delay);
     }
     blink();
+    return function() {
+      mounted = false;
+      if (blinkTimer) clearTimeout(blinkTimer);
+      if (loop) { try { loop.stop(); } catch (e) {} }
+    };
   }, []);
   var scale = breathAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
   var expr = FACE_EXPRESSIONS[expression % FACE_EXPRESSIONS.length];
@@ -2728,22 +2743,27 @@ function App() {
   const [splashOverlayMounted, setSplashOverlayMounted] = useState(true);
 
   useEffect(function() {
-    if (loading) {
+    if (!loading) return undefined;
+    var intro = Animated.sequence([
+      Animated.parallel([
+        Animated.timing(splashOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.spring(splashScale, { toValue: 1, friction: 6, tension: 40, useNativeDriver: true }),
+      ]),
+      Animated.timing(splashTextOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.timing(splashTagOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+    ]);
+    intro.start();
+    var glowLoop = Animated.loop(
       Animated.sequence([
-        Animated.parallel([
-          Animated.timing(splashOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
-          Animated.spring(splashScale, { toValue: 1, friction: 6, tension: 40, useNativeDriver: true }),
-        ]),
-        Animated.timing(splashTextOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
-        Animated.timing(splashTagOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
-      ]).start();
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(splashGlow, { toValue: 0.8, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(splashGlow, { toValue: 0.3, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        ])
-      ).start();
-    }
+        Animated.timing(splashGlow, { toValue: 0.8, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(splashGlow, { toValue: 0.3, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    );
+    glowLoop.start();
+    return function() {
+      try { intro.stop && intro.stop(); } catch (e) {}
+      try { glowLoop.stop(); } catch (e) {}
+    };
   }, [loading]);
 
   useEffect(function() {
