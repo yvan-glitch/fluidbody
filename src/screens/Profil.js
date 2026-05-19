@@ -18,6 +18,7 @@ import healthkit from '../utils/healthkit';
 import { getPiliers } from '../utils';
 import { getMyReferralCode, getReferralStats } from '../utils/referrals';
 import calendarUtil from '../utils/calendar';
+import { deleteMyAccount } from '../utils/accountDeletion';
 
 // Safe-require expo-clipboard pour le tap-to-copy. Si le module n'est
 // pas dispo (Expo Go ou ancien build), on retombe sur Share.share — qui
@@ -56,7 +57,7 @@ function StatsBarsIcon({ color, size }) {
   );
 }
 
-function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onOpenStatistics, onEditProfile, profileRefreshKey }) {
+function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onOpenStatistics, onEditProfile, profileRefreshKey, onAccountDeleted }) {
   var tr = T[lang] || T['fr'];
   var themeCtx = useTheme();
   var theme = themeCtx.theme;
@@ -106,6 +107,14 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var [coachModeStats, setCoachModeStats] = useState(null);
   var tapCountRef = useRef(0);
   var tapTimerRef = useRef(null);
+  // Account deletion (Apple guideline 5.1.1(v)) — double-confirm flow.
+  // Step 1: native Alert "Are you sure?" → continue opens the typed-confirm
+  // modal. Step 2: user must type the localized confirmation word
+  // (FR: SUPPRIMER, EN: DELETE) before the final destructive button is
+  // active. Loading state disables everything during the RPC round trip.
+  var [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  var [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  var [deletingAccount, setDeletingAccount] = useState(false);
 
   function handleAvatarTap() {
     if (!isAdmin) return;
@@ -145,6 +154,73 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
       });
       setCoachModeVisible(true);
     } catch (e) {}
+  }
+
+  // ── Account deletion handlers ──────────────────────────────────────
+  // Step 1: native Alert. Continue → opens the typed-confirm modal.
+  function startDeleteAccount() {
+    Alert.alert(
+      tr.delete_account_confirm_title || 'Es-tu sûr ?',
+      tr.delete_account_confirm_message || 'Cette action est irréversible.',
+      [
+        { text: tr.delete_account_cancel || 'Annuler', style: 'cancel' },
+        {
+          text: tr.delete_account_continue || 'Continuer',
+          style: 'destructive',
+          onPress: function() {
+            setDeleteConfirmInput('');
+            setDeleteConfirmOpen(true);
+          },
+        },
+      ]
+    );
+  }
+
+  // Step 2: only enabled once the typed word matches (case-insensitive).
+  async function confirmDeleteAccount() {
+    var expected = (tr.delete_account_type_word || 'SUPPRIMER').trim();
+    var typed = (deleteConfirmInput || '').trim();
+    if (typed.toUpperCase() !== expected.toUpperCase()) {
+      Alert.alert(
+        tr.delete_account_error_title || 'Erreur',
+        tr.delete_account_mismatch || 'Le mot tapé ne correspond pas.'
+      );
+      return;
+    }
+    if (deletingAccount) return;
+    setDeletingAccount(true);
+    try {
+      await deleteMyAccount(supabase);
+      // Close the modal before showing the success Alert — keeps the
+      // Modal underlay from intercepting the OK button.
+      setDeleteConfirmOpen(false);
+      setDeleteConfirmInput('');
+      Alert.alert(
+        tr.delete_account_success_title || 'Compte supprimé',
+        tr.delete_account_success_message || 'Ton compte a été supprimé.',
+        [
+          {
+            text: 'OK',
+            onPress: function() {
+              // onAccountDeleted is wired in App.js to reset onboarding
+              // state + clear React state. Local storage was already
+              // wiped by deleteMyAccount. If the prop isn't passed,
+              // signOut() (also inside deleteMyAccount) will still
+              // bounce the user to the unauth UI on the next render.
+              if (typeof onAccountDeleted === 'function') onAccountDeleted();
+            },
+          },
+        ]
+      );
+    } catch (e) {
+      var msg = (e && e.message) ? e.message : null;
+      Alert.alert(
+        tr.delete_account_error_title || 'Suppression impossible',
+        (tr.delete_account_error_message || 'Une erreur est survenue.') + (msg ? '\n\n(' + msg + ')' : '')
+      );
+    } finally {
+      setDeletingAccount(false);
+    }
   }
 
   async function coachActionResetMilestones() {
@@ -1281,7 +1357,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         </GlassCard></View>
 
         {supaUser && onLogout && (
-          <View style={{ marginHorizontal: 20, marginTop: 40, marginBottom: 48 }}>
+          <View style={{ marginHorizontal: 20, marginTop: 40, marginBottom: 16 }}>
             <GlassButton
               onPress={onLogout}
               textColor="#AEEF4D"
@@ -1295,6 +1371,52 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             >
               Se déconnecter
             </GlassButton>
+          </View>
+        )}
+
+        {/*
+          Danger Zone — Apple guideline 5.1.1(v) requires in-app account
+          deletion. Shown only when the user actually has a server-side
+          account (anonymous/local users have nothing to delete server-
+          side; they get the "Réinitialiser toutes les données" button
+          above instead). The double-confirm flow lives in
+          startDeleteAccount + confirmDeleteAccount.
+        */}
+        {supaUser && (
+          <View style={{ marginHorizontal: 20, marginBottom: 48 }}>
+            <View style={{
+              padding: 18,
+              borderRadius: 16,
+              backgroundColor: 'rgba(255,50,50,0.06)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,80,80,0.3)',
+            }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: 'rgba(255,120,120,0.95)', marginBottom: 8, letterSpacing: 0.3 }}>
+                {tr.delete_account_section_title || 'Zone dangereuse'}
+              </Text>
+              <Text style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.65)', lineHeight: 18, marginBottom: 14 }}>
+                {tr.delete_account_warning || 'Cette action est définitive.'}
+              </Text>
+              <TouchableOpacity
+                onPress={startDeleteAccount}
+                disabled={deletingAccount}
+                activeOpacity={0.85}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(255,50,50,0.18)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,80,80,0.45)',
+                  alignItems: 'center',
+                  opacity: deletingAccount ? 0.5 : 1,
+                }}
+              >
+                <Text style={{ fontSize: 13.5, fontWeight: '600', color: 'rgba(255,110,110,1)' }}>
+                  {tr.delete_account_btn || 'Supprimer mon compte'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
         {__DEV__ && (
@@ -1312,6 +1434,104 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </View>
         )}
       </ScrollView>
+
+      {/*
+        Account deletion — typed-confirm modal (step 2 of the double
+        confirm). User must type the localized confirmation word
+        (FR: SUPPRIMER, EN: DELETE) before the destructive button is
+        enabled. Cross-platform Modal (rather than Alert.prompt which is
+        iOS-only) so the same UX ships on Android too.
+      */}
+      <Modal
+        visible={deleteConfirmOpen}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={function() { if (!deletingAccount) setDeleteConfirmOpen(false); }}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,8,18,0.85)', justifyContent: 'center', paddingHorizontal: 20 }}>
+          <View style={{ borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,80,80,0.35)' }}>
+            <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ padding: 24, backgroundColor: 'rgba(20,8,12,0.78)' }}>
+              <Text style={{ fontSize: 12, color: 'rgba(255,120,120,0.95)', letterSpacing: 3, fontWeight: '700', marginBottom: 8 }}>
+                {(tr.delete_account_section_title || 'ZONE DANGEREUSE').toUpperCase()}
+              </Text>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff', marginBottom: 12, letterSpacing: -0.3 }}>
+                {tr.delete_account_type_title || 'Dernière confirmation'}
+              </Text>
+              <Text style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.78)', lineHeight: 20, marginBottom: 16 }}>
+                {tr.delete_account_type_confirm || 'Tape SUPPRIMER pour confirmer.'}
+              </Text>
+              <TextInput
+                value={deleteConfirmInput}
+                onChangeText={setDeleteConfirmInput}
+                editable={!deletingAccount}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                spellCheck={false}
+                placeholder={tr.delete_account_type_placeholder || 'SUPPRIMER'}
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,80,80,0.35)',
+                  color: '#ffffff',
+                  fontSize: 16,
+                  fontWeight: '600',
+                  letterSpacing: 1.5,
+                  marginBottom: 18,
+                }}
+              />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  onPress={function() {
+                    if (deletingAccount) return;
+                    setDeleteConfirmOpen(false);
+                    setDeleteConfirmInput('');
+                  }}
+                  disabled={deletingAccount}
+                  activeOpacity={0.85}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 13,
+                    borderRadius: 12,
+                    backgroundColor: 'rgba(255,255,255,0.06)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.12)',
+                    alignItems: 'center',
+                    opacity: deletingAccount ? 0.5 : 1,
+                  }}
+                >
+                  <Text style={{ color: '#ffffff', fontSize: 13.5, fontWeight: '600' }}>
+                    {tr.delete_account_cancel || 'Annuler'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={confirmDeleteAccount}
+                  disabled={deletingAccount || (deleteConfirmInput || '').trim().toUpperCase() !== (tr.delete_account_type_word || 'SUPPRIMER').toUpperCase()}
+                  activeOpacity={0.85}
+                  style={{
+                    flex: 1.4,
+                    paddingVertical: 13,
+                    borderRadius: 12,
+                    backgroundColor: 'rgba(255,50,50,0.22)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,80,80,0.55)',
+                    alignItems: 'center',
+                    opacity: (deletingAccount || (deleteConfirmInput || '').trim().toUpperCase() !== (tr.delete_account_type_word || 'SUPPRIMER').toUpperCase()) ? 0.4 : 1,
+                  }}
+                >
+                  <Text style={{ color: 'rgba(255,110,110,1)', fontSize: 13.5, fontWeight: '700' }}>
+                    {deletingAccount ? (tr.delete_account_loading || 'Suppression…') : (tr.delete_account_final_btn || 'Supprimer définitivement')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </BlurView>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={coachModeVisible} transparent animationType="fade" statusBarTranslucent onRequestClose={function() { setCoachModeVisible(false); }}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,8,18,0.85)', justifyContent: 'center', paddingHorizontal: 20 }}>
