@@ -56,9 +56,17 @@ function BulletCheck() {
   );
 }
 
+function localeFromLang(lang) {
+  const l = (lang || 'fr').toLowerCase();
+  if (l.indexOf('fr') === 0) return 'fr-FR';
+  if (l.indexOf('es') === 0) return 'es-ES';
+  if (l.indexOf('it') === 0) return 'it-IT';
+  return 'en-US';
+}
+
 // Animated count-up — feels alive, low cost. Lerps over 1.6s with an
 // out-easing so the last digits slow gracefully.
-function AnimatedCount({ to, style }) {
+function AnimatedCount({ to, style, lang }) {
   const animRef = useRef(new Animated.Value(0)).current;
   const [val, setVal] = useState(0);
   useEffect(() => {
@@ -74,7 +82,7 @@ function AnimatedCount({ to, style }) {
     }).start();
     return () => animRef.removeListener(listenerId);
   }, [to]);
-  return <Text style={style}>{val.toLocaleString('fr-FR')}</Text>;
+  return <Text style={style}>{val.toLocaleString(localeFromLang(lang))}</Text>;
 }
 
 // Live-ish active members counter. We don't have a backend signal yet so we
@@ -343,7 +351,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               <Text style={{ fontSize: 32, fontWeight: '800', color: '#ffffff', lineHeight: 36, letterSpacing: -0.4 }}>{heroTitle}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#AEEF4D' }} />
-                <AnimatedCount to={liveMembers} style={{ fontSize: 14, fontWeight: '800', color: '#ffffff' }} />
+                <AnimatedCount to={liveMembers} lang={lang} style={{ fontSize: 14, fontWeight: '800', color: '#ffffff' }} />
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.78)', fontWeight: '500' }}>
                   {tr.paywall_members_label || 'membres pratiquent en ce moment'}
                 </Text>
