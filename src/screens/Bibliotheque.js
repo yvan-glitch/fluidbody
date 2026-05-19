@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, ScrollView, TextInput, Dimensions, Modal } from 'react-native';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { Text, StyleSheet, View, TouchableOpacity, ScrollView, TextInput, Dimensions, Modal, Animated, RefreshControl } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Ellipse, Line, Rect } from 'react-native-svg';
@@ -11,7 +11,9 @@ import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import LivingBackground from '../components/LivingBackground';
 import TheorieDetailScreen from './TheorieDetailScreen';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
-import { getPiliers, getSeances } from '../utils';
+import { getPiliers, getSeances, hapticLight } from '../utils';
+import supabase from '../lib/supabase';
+import { getFavorites, toggleFavorite } from '../utils/favorites';
 
 // Accent / parsing helpers — used by the séance search & filters below.
 // `normalizeStr` is case + diacritic insensitive so "epaule" matches "Épaule".
@@ -339,6 +341,60 @@ function CheckIcon({ size = 12, color = '#AEEF4D' }) {
   );
 }
 
+// Heart icon. Outline when `filled` is false (favori absent), red fill
+// when true. Stays a flat SVG — animation lives on the wrapper.
+function HeartIcon({ size = 18, filled = false }) {
+  const fill = filled ? '#FF4D6D' : 'transparent';
+  const stroke = filled ? '#FF4D6D' : 'rgba(255,255,255,0.92)';
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 21s-7-4.35-9.5-9.5C0.7 8 3 4 6.5 4c2 0 3.5 1 5.5 3 2-2 3.5-3 5.5-3 3.5 0 5.8 4 4 7.5C19 16.65 12 21 12 21z"
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={1.6}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+// FavoriteHeart — pulsing wrapper around HeartIcon, used in the top-right
+// corner of every séance card. Spring up on toggle so the user gets a
+// tactile cue beyond the colour change. Tap area extended via hitSlop.
+function FavoriteHeart({ active, onPress, accessibilityLabel }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.spring(scale, { toValue: 1.35, friction: 4, tension: 220, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, friction: 4, tension: 180, useNativeDriver: true }),
+    ]).start();
+    if (typeof onPress === 'function') onPress();
+  };
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      activeOpacity={0.7}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ selected: !!active }}
+      style={{
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: 'rgba(0,10,26,0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <HeartIcon size={16} filled={active} />
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
 // FilterChip — small Liquid-Glass-ish pill used in the filter scrollers.
 // Active state = subtle green border + light highlight + check icon.
 function FilterChip({ label, active, onPress }) {
@@ -387,13 +443,13 @@ const PILIER_LABELS = {
 };
 
 // SeanceCard — compact tile used in the search/filter results grid and
-// the "Mes favoris" row. Background = pilier image with gradient overlay.
-function SeanceCard({ entry, width, height = 170, lang, labels, onPress }) {
-  const { pilier, seance } = entry;
-  const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+// the "Mes favoris" row. Background = pilier image with gradient overlay,
+// favori heart top-right, métadonnées en bas.
+function SeanceCard({ entry, width, height = 170, lang, labels, onPress, favorite, onToggleFavorite, favoriteLabel }) {
+  const { pilier } = entry;
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={{ width, height, borderRadius: 14, overflow: 'hidden' }}>
-      <View style={{ flex: 1 }}>
+    <View style={{ width, height, borderRadius: 14, overflow: 'hidden' }}>
+      <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={{ flex: 1 }}>
         <Image
           source={PILIER_IMAGES[pilier.key]}
           contentFit="cover"
@@ -415,11 +471,20 @@ function SeanceCard({ entry, width, height = 170, lang, labels, onPress }) {
             {entry.titre}
           </Text>
           <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 3 }} numberOfLines={1}>
-            {entry.duration}{!isFr && /min/.test(entry.duration) ? '' : ''}
+            {entry.duration}
           </Text>
         </LinearGradient>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+      {typeof onToggleFavorite === 'function' ? (
+        <View style={{ position: 'absolute', top: 8, right: 8 }}>
+          <FavoriteHeart
+            active={!!favorite}
+            onPress={onToggleFavorite}
+            accessibilityLabel={favoriteLabel}
+          />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -438,6 +503,9 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
   const [filterTypes, setFilterTypes] = useState(() => new Set());
   // sortMode cycles: 'recent' → 'popular' → 'duration_asc' → 'favorites_first'.
   const [sortMode, setSortMode] = useState('recent');
+  const [favorites, setFavorites] = useState([]);
+  const [userId, setUserId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const articles = ARTICLES[lang] || ARTICLES.fr;
   const fiches = FICHES[lang] || FICHES.fr;
   const labels = PILIER_LABELS[lang] || PILIER_LABELS.fr;
@@ -450,6 +518,52 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
+
+  // Initial favorites load. Cache-first via AsyncStorage (instant), with
+  // background Supabase resync overwriting cache when it succeeds. Also
+  // refreshes when the auth user changes (sign-in / sign-out).
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      let uid = null;
+      try {
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          uid = data?.session?.user?.id || null;
+        }
+      } catch (e) {}
+      if (!mounted) return;
+      setUserId(uid);
+      const list = await getFavorites(supabase, uid);
+      if (mounted) setFavorites(list || []);
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const handleToggleFavorite = useCallback(async (sessionId) => {
+    if (!sessionId) return;
+    hapticLight();
+    // Optimistic local toggle so the heart animates instantly even on a
+    // slow / offline network. The util writes cache, then best-effort
+    // pushes to Supabase.
+    setFavorites((prev) => {
+      const has = prev.indexOf(sessionId) !== -1;
+      return has ? prev.filter((id) => id !== sessionId) : [sessionId, ...prev];
+    });
+    try {
+      const next = await toggleFavorite(supabase, userId, sessionId);
+      if (Array.isArray(next)) setFavorites(next);
+    } catch (e) {}
+  }, [userId]);
+
+  const onPullRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const list = await getFavorites(supabase, userId);
+      if (Array.isArray(list)) setFavorites(list);
+    } catch (e) {}
+    setRefreshing(false);
+  }, [userId]);
 
   // Flat list of every séance across every pilier. Built once per lang.
   // The id matches the convention used by video_assets / DownloadManager
@@ -531,9 +645,26 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
       // Placeholder ranking: stable pseudo-popularity from the id hash.
       // Will be replaced when we have real completion counts.
       list = [...list].sort((a, b) => pseudoPopularity(b.id) - pseudoPopularity(a.id));
+    } else if (sortMode === 'favorites_first') {
+      const favSet = new Set(favorites);
+      list = [...list].sort((a, b) => {
+        const af = favSet.has(a.id) ? 0 : 1;
+        const bf = favSet.has(b.id) ? 0 : 1;
+        return af - bf;
+      });
     }
     return list;
-  }, [allSessions, debouncedSearch, labels, filterPiliers, filterDurations, filterTypes, sortMode]);
+  }, [allSessions, debouncedSearch, labels, filterPiliers, filterDurations, filterTypes, sortMode, favorites]);
+
+  // Resolve favorite IDs → full session entries, preserving favorite order.
+  // Useful both for the top "Mes favoris" row and as a lookup for the
+  // heart state of each card.
+  const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
+  const favoriteSessions = useMemo(() => {
+    const byId = {};
+    allSessions.forEach((s) => { byId[s.id] = s; });
+    return favorites.map((id) => byId[id]).filter(Boolean);
+  }, [favorites, allSessions]);
 
   const filtersActive = filterPiliers.size + filterDurations.size + filterTypes.size > 0 || sortMode !== 'recent';
   const searchActive = debouncedSearch.trim().length > 0;
@@ -634,6 +765,14 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         style={{ flex: 1, zIndex: 2 }}
         contentContainerStyle={{ paddingBottom: 50 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onPullRefresh}
+            tintColor="#AEEF4D"
+            colors={["#AEEF4D"]}
+          />
+        }
       >
         {/* Header */}
         <View style={{ paddingTop: 62, paddingHorizontal: 20, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -745,6 +884,43 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
           </ScrollView>
         </View>
 
+        {/* Mes favoris — horizontal scroller. Shown when the user has at
+            least one favorite AND the active surface isn't already a
+            filtered results grid (we don't want to duplicate UI when the
+            user is hunting). */}
+        {favoriteSessions.length > 0 && !showResults ? (
+          <View style={{ marginBottom: 28 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 12 }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: '#ffffff' }}>
+                {tr.biblio_favorites_header || (lang === 'en' ? '❤️ My favorites' : '❤️ Mes favoris')}
+              </Text>
+              {favoriteSessions.length > 6 ? (
+                <TouchableOpacity onPress={() => setSortMode('favorites_first')} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                  <Text style={{ fontSize: 13, color: '#AEEF4D', fontWeight: '500' }}>
+                    {tr.biblio_favorites_see_all || (lang === 'en' ? 'See all' : 'Voir tout')}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+              {favoriteSessions.slice(0, 6).map((entry) => (
+                <SeanceCard
+                  key={'fav-' + entry.id}
+                  entry={entry}
+                  width={170}
+                  height={150}
+                  lang={lang}
+                  labels={labels}
+                  onPress={() => playSession(entry)}
+                  favorite
+                  onToggleFavorite={() => handleToggleFavorite(entry.id)}
+                  favoriteLabel={tr.a11y_favorite_toggle}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+
         {showResults ? (
           /* Results grid — replaces the standard sections when a search is active */
           filteredSessions.length === 0 ? (
@@ -767,6 +943,9 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                       lang={lang}
                       labels={labels}
                       onPress={() => playSession(entry)}
+                      favorite={favoriteSet.has(entry.id)}
+                      onToggleFavorite={() => handleToggleFavorite(entry.id)}
+                      favoriteLabel={tr.a11y_favorite_toggle}
                     />
                   </View>
                 ))}
@@ -984,6 +1163,15 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
             ))}
           </View>
         </View>
+
+        {/* Discreet onboarding hint when the favorites collection is empty. */}
+        {favoriteSessions.length === 0 ? (
+          <View style={{ paddingHorizontal: 20, marginTop: 28 }}>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontStyle: 'italic' }}>
+              {tr.biblio_favorites_empty_hint || (lang === 'en' ? 'Tap the ♡ on a session to save it.' : 'Tap sur le ♡ d\'une séance pour la sauvegarder.')}
+            </Text>
+          </View>
+        ) : null}
           </>
         )}
       </ScrollView>
