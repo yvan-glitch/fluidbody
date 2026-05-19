@@ -444,7 +444,7 @@ function WeeklySummary({ lang }) {
   );
 }
 
-function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCreateAccount }) {
+function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCreateAccount, onOpenStatistics }) {
   var tr = T[lang] || T['fr'];
   var piliers = getPiliers(lang);
   var [meduseName, setMeduseName] = useState('');
@@ -502,6 +502,30 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
         </View>
 
         <WeeklySummary lang={lang} />
+
+        {onOpenStatistics ? (
+          <TouchableOpacity
+            onPress={onOpenStatistics}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={tr.stats_a11y_open || 'Ouvrir les statistiques avancées'}
+            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center' }}>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                <Path d="M4 20V12" stroke="#AEEF4D" strokeWidth={1.8} strokeLinecap="round" />
+                <Path d="M10 20V8" stroke="#AEEF4D" strokeWidth={1.8} strokeLinecap="round" />
+                <Path d="M16 20V4" stroke="#AEEF4D" strokeWidth={1.8} strokeLinecap="round" />
+                <Path d="M3 20h17" stroke="#AEEF4D" strokeWidth={1.5} strokeLinecap="round" />
+              </Svg>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff' }}>{tr.stats_open_btn || 'Voir mes statistiques avancées'}</Text>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>{tr.stats_subtitle || 'Ta progression dans le temps'}</Text>
+            </View>
+            <Text style={{ fontSize: 18, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
+          </TouchableOpacity>
+        ) : null}
 
         {(function() {
           var stIdx = getMeduseState(pct, streak);
