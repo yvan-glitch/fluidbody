@@ -180,7 +180,8 @@
           "calendarPermission": "Fluidbody peut planifier tes séances de Pilates dans ton agenda pour t'aider à tenir ta routine. — Fluidbody can schedule your Pilates sessions in your calendar to help you stick to your routine."
         }
       ],
-      "@bacons/apple-targets"
+      "@bacons/apple-targets",
+      "./plugins/withFluidLiveActivityBridge"
     ]
   }
 }
