@@ -19,6 +19,7 @@ import { getPiliers } from '../utils';
 import { getMyReferralCode, getReferralStats } from '../utils/referrals';
 import calendarUtil from '../utils/calendar';
 import { deleteMyAccount } from '../utils/accountDeletion';
+import ambient, { AMBIENT_TRACKS } from '../utils/ambientSound';
 
 // Safe-require expo-clipboard pour le tap-to-copy. Si le module n'est
 // pas dispo (Expo Go ou ancien build), on retombe sur Share.share — qui
@@ -75,6 +76,11 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var [quoteEnabled, setQuoteEnabled] = useState(true);
   var [quoteHour, setQuoteHour] = useState(8);
   var [showHrEnabled, setShowHrEnabled] = useState(true);
+  // Ambient sound (background music during sessions). The util has its
+  // own AsyncStorage layer; we mirror the values into local state so the
+  // UI updates instantly when the user taps a tile.
+  var [ambientSlug, setAmbientSlug] = useState('silence');
+  var [ambientVolume, setAmbientVolume] = useState(0.3);
   var [storageUsed, setStorageUsed] = useState('0 B');
   var [hkAuthorized, setHkAuthorized] = useState(false);
   // Apple Calendar — auto-schedule sessions in iOS Calendar.
@@ -243,6 +249,12 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     AsyncStorage.getItem('fluid_quote_enabled').then(function(v) { setQuoteEnabled(v !== 'false'); });
     AsyncStorage.getItem('fluid_quote_hour').then(function(v) { if (v) setQuoteHour(parseInt(v) || 8); });
     AsyncStorage.getItem('fluid_show_hr').then(function(v) { setShowHrEnabled(v !== 'false'); });
+    ambient.loadPreference().then(function(pref) {
+      if (pref) {
+        if (pref.slug) setAmbientSlug(pref.slug);
+        if (typeof pref.volume === 'number') setAmbientVolume(pref.volume);
+      }
+    }).catch(function() {});
     try {
       var { getStorageUsed, formatBytes } = require('../components/DownloadManager');
       getStorageUsed().then(function(s) { setStorageUsed(formatBytes(s)); });
@@ -897,6 +909,57 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               }} style={{ width: 50, height: 28, borderRadius: 14, backgroundColor: showHrEnabled ? '#AEEF4D' : 'rgba(255,255,255,0.15)', justifyContent: 'center', paddingHorizontal: 2 }}>
                 <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#ffffff', alignSelf: showHrEnabled ? 'flex-end' : 'flex-start' }} />
               </TouchableOpacity>
+            </View>
+
+            {/* Ambient sound — global default. The VideoPlayer reads this
+                pref at mount; see INTEGRATION_NOTES.md for the runtime
+                wiring (deferred until the parallel branch lands). */}
+            <View style={{ height: 1, backgroundColor: theme.colors.hairline, marginVertical: 16 }} />
+            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.ambient_section_label || 'Ambiance audio par défaut'}</Text>
+            <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 2 }}>{tr.ambient_section_sub || 'Fond sonore superposé à la voix de Sabrina'}</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+              {AMBIENT_TRACKS.map(function(track) {
+                var active = ambientSlug === track.slug;
+                var label = (tr['ambient_label_' + track.slug]) ||
+                  ({ silence: 'Silence', ocean: 'Océan', medusae: 'Méduses', forest: 'Forêt' })[track.slug] ||
+                  track.slug;
+                return (
+                  <TouchableOpacity
+                    key={'ambient-' + track.slug}
+                    onPress={function() {
+                      setAmbientSlug(track.slug);
+                      ambient.setPreference(track.slug).catch(function() {});
+                    }}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={label}
+                    style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, backgroundColor: active ? 'rgba(174,239,77,0.22)' : 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: active ? 'rgba(174,239,77,0.55)' : 'rgba(255,255,255,0.10)' }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: active ? '#AEEF4D' : theme.colors.text }}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14 }}>
+              <Text style={{ fontSize: 13, color: theme.colors.textSecondary, flex: 1 }}>{tr.ambient_volume_label || 'Volume'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <TouchableOpacity onPress={function() {
+                  var next = Math.max(0, Math.round((ambientVolume - 0.1) * 10) / 10);
+                  setAmbientVolume(next);
+                  ambient.setVolume(next).catch(function() {});
+                }} hitSlop={8} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 18, color: '#AEEF4D', fontWeight: '700' }}>{'−'}</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.text, minWidth: 44, textAlign: 'center' }}>{Math.round(ambientVolume * 100)}%</Text>
+                <TouchableOpacity onPress={function() {
+                  var next = Math.min(1, Math.round((ambientVolume + 0.1) * 10) / 10);
+                  setAmbientVolume(next);
+                  ambient.setVolume(next).catch(function() {});
+                }} hitSlop={8} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 18, color: '#AEEF4D', fontWeight: '700' }}>+</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </GlassCard></View>
         )}
