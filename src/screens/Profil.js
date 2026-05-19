@@ -43,7 +43,19 @@ function TimerIcon({ color, size }) {
   );
 }
 
-function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onEditProfile, profileRefreshKey }) {
+function StatsBarsIcon({ color, size }) {
+  var s = size || 22;
+  return (
+    <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 20V12" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M10 20V8" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M16 20V4" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M3 20h17" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onOpenStatistics, onEditProfile, profileRefreshKey }) {
   var tr = T[lang] || T['fr'];
   var themeCtx = useTheme();
   var theme = themeCtx.theme;
@@ -617,6 +629,25 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             </View>
           </View>
         </Modal>
+
+        {onOpenStatistics && (
+          <TouchableOpacity
+            onPress={onOpenStatistics}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={tr.stats_a11y_open || 'Ouvrir les statistiques avancées'}
+            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
+          >
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+              <StatsBarsIcon color="#AEEF4D" size={22} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.stats_title || 'Statistiques'}</Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.stats_subtitle || 'Ta progression dans le temps'}</Text>
+            </View>
+            <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
+          </TouchableOpacity>
+        )}
 
         {onOpenTimer && (
           <TouchableOpacity
