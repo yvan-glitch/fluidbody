@@ -27,8 +27,9 @@ const path = require('path');
 
 const POST_INSTALL_PATCH = `
     # ===========================================================
-    # tvOS post_install patches — injected by withTVPodfilePatch
-    # See plugins/withTVPodfilePatch.js for rationale.
+    # FLUIDBODY_TV_PATCH — tvOS post_install patches injected by
+    # plugins/withTVPodfilePatch.js. Do not edit by hand; re-run
+    # \`expo prebuild --clean\` if you need to refresh.
     # ===========================================================
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|

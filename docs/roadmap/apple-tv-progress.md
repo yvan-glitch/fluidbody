@@ -353,4 +353,87 @@ curl -X POST ... -d '{"action":"poll","nonce":"<NONCE>","tv_secret":"WRONG"}'
 - État résumé en haut
 - Tableau "Ce qui est fait" si nouveaux fichiers touchés
 - Cases cochées dans "Ce qui reste à faire"
+
+---
+
+## Phase 3 — Build local simulator Apple TV ✅ **Terminée le 2026-05-20**
+
+L'app FluidBody+ **compile, boote et s'affiche sur le simulator Apple TV 4K**
+(tvOS 26.5). UI Connecte ton Apple TV avec méduse animée + branding rendue
+correctement. Supabase connecté. Edge function `tv-pair` déployée.
+
+### Les 8 fixes qui ont débloqué la compilation tvOS
+
+1. **`xcode-select` → Xcode.app** (pas Command Line Tools) sinon `xcrun
+   -sdk iphoneos` plante au pod install de glog.
+   `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`
+
+2. **Sentry sourcemap upload désactivé** :
+   - `ios/.xcode.env.local` : `export SENTRY_DISABLE_AUTO_UPLOAD=true`
+   - Build phase "Upload Debug Symbols to Sentry" dans project.pbxproj
+     préfixée du même export.
+
+3. **`expo-screen-orientation` en lazy require** (le module n'existe pas
+   sur tvOS, l'import statique crashait `[runtime not ready]`). Fichiers :
+   `App.js`, `src/components/VideoPlayer.js`.
+
+4. **`react-native-view-shot` en lazy require + fallback `View`** sur tvOS.
+   Fichiers : `App.js`, `src/components/SeanceShareCard.js`,
+   `src/screens/Profil.js`. La fonctionnalité partage de séance est
+   désactivée sur TV (logique : on partage pas depuis une TV).
+
+5. **`newArchEnabled: false` pour tvOS** dans `app.config.js` quand
+   `EXPO_TV=1`. New Arch / Fabric → `RCTThirdPartyComponentsProvider`
+   contenait des Class Nil (libs sans Fabric Component Views tvOS) → crash
+   natif au boot. Legacy Arch fonctionne sans souci.
+
+6. **Patch `fmt/include/fmt/base.h`** pour forcer `FMT_USE_CONSTEVAL=0`.
+   fmt 11 + Apple Clang (Xcode 26) génère "Call to consteval function in
+   a constant expression". Les macro defines externes ne suffisent pas car
+   la chaîne de détection interne de fmt re-définit la macro. Solution :
+   patch le header directement (chmod 0644 d'abord, CocoaPods extrait
+   read-only depuis le cache).
+
+7. **`.env` copié dans le worktree** (gitignored, donc pas tracké par les
+   worktrees). Sans ça Supabase échoue avec `SUPABASE_URL ou
+   SUPABASE_ANON_KEY manquant`.
+
+8. **Edge function `tv-pair` déployée** sur Supabase via
+   `npx supabase functions deploy tv-pair`. Sans ça la screen affiche
+   `Impossible de récupérer le code — by edge: 404`.
+
+### Patches durables via config plugin
+
+Pour que tout ça survive aux futurs `expo prebuild --clean`, le plugin
+`plugins/withTVPodfilePatch.js` injecte automatiquement les patches
+Podfile (post_install + fmt/base.h) à chaque prebuild quand `EXPO_TV=1`.
+
+Le plugin gère :
+- C++20 standard sur tous les pods (requis par fmt 11 + Folly)
+- `-Werror` désactivé (warnings libavif / RNCAsyncStorage)
+- `TVOS_DEPLOYMENT_TARGET = 15.1` sur tous les targets
+- `FMT_USE_CONSTEVAL=0` preprocessor define sur fmt/Folly/glog
+- Patch direct de `Pods/fmt/include/fmt/base.h`
+
+### Flow build Apple TV dev
+
+```bash
+cd /Users/xvan06/fluidbody/.claude/worktrees/flamboyant-franklin-ee2a5f
+EXPO_TV=1 npx expo prebuild --clean --platform ios
+cd ios && pod install
+open FluidBody.xcworkspace
+# Xcode : destination Apple TV 4K (3rd generation) + Cmd+R
+# Dans un autre terminal : EXPO_TV=1 npx expo start --host localhost --clear
+```
+
+### Reste à faire pour Apple TV en production
+
+- [ ] **Build EAS production-tv sur device physique** — provisioning
+  profile tvOS doit être créé dans Apple Developer Portal (le profile iOS
+  auto-généré exclut tvOS). EAS peut le gérer via credentials managé.
+- [ ] **Test sur Apple TV physique** au bureau et au salon (les deux
+  Apple TVs de Yvan).
+- [ ] **TestFlight tvOS** pour distribution interne avant App Store TV.
+- [ ] **Soumission App Store** avec App Bundle multi-plateforme (iOS +
+  tvOS partagent le même bundle ID + provisioning).
 - Ligne datée dans "Notes & decisions" si choix non trivial
