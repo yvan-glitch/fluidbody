@@ -13,6 +13,24 @@
     },
     "production": {
       "autoIncrement": true
+    },
+    "development-tv": {
+      "extends": "development",
+      "env": {
+        "EXPO_TV": "1"
+      }
+    },
+    "preview-tv": {
+      "extends": "preview",
+      "env": {
+        "EXPO_TV": "1"
+      }
+    },
+    "production-tv": {
+      "extends": "production",
+      "env": {
+        "EXPO_TV": "1"
+      }
     }
   },
   "submit": {
