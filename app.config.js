@@ -43,7 +43,12 @@ module.exports = ({ config }) => {
       const name = Array.isArray(p) ? p[0] : p
       return !PLUGINS_INCOMPATIBLE_WITH_TVOS.includes(name)
     })
-    .concat([['@react-native-tvos/config-tv', { isTV: true }]])
+    .concat([
+      ['@react-native-tvos/config-tv', { isTV: true }],
+      // Patch tvOS Podfile pour gérer fmt 11 consteval + warnings -Werror.
+      // Sans ce plugin, les patches sont wipés à chaque prebuild.
+      './plugins/withTVPodfilePatch.js',
+    ])
 
   const ios = { ...(config.ios || {}) }
   delete ios.usesAppleSignIn
@@ -53,9 +58,15 @@ module.exports = ({ config }) => {
     ios.entitlements = ent
   }
 
+  // tvOS: désactive New Architecture (Fabric/TurboModules).
+  // Certaines libs (react-native-svg, screens, gesture-handler, etc.) ne
+  // fournissent pas les Fabric component views pour tvOS → la dictionary
+  // RCTThirdPartyComponentsProvider contient des Class Nil → crash natif
+  // au boot. Old Arch fonctionne avec les bridges legacy.
   return {
     ...config,
     plugins: tvPlugins,
     ios,
+    newArchEnabled: false,
   }
 }

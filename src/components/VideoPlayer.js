@@ -5,7 +5,9 @@ import {
 } from 'react-native';
 import { Video, ResizeMode, Audio } from 'expo-av';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import * as ScreenOrientation from 'expo-screen-orientation';
+// expo-screen-orientation: native module manquant sur tvOS, lazy require avec fallback
+let ScreenOrientation = null;
+try { ScreenOrientation = require('expo-screen-orientation'); } catch(e) {}
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { T } from '../constants/data';
@@ -406,12 +408,12 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
       });
     })();
     // tvOS n'a pas de notion d'orientation ; ScreenOrientation lèverait
-    // une UnavailabilityError au runtime, donc on saute.
-    if (!IS_TV) ScreenOrientation.unlockAsync();
+    // une UnavailabilityError au runtime, donc on saute. ScreenOrientation peut être null sur tvOS (lazy require).
+    if (!IS_TV && ScreenOrientation) ScreenOrientation.unlockAsync();
     const sub = Dimensions.addEventListener('change', ({ window }) => setDims(window));
     return () => {
       void deactivateKeepAwake().catch(() => {});
-      if (!IS_TV) ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      if (!IS_TV && ScreenOrientation) ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
       if (controlsTimer.current) clearTimeout(controlsTimer.current);
       sub?.remove();
     };
