@@ -73,10 +73,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Svg, { Path, Circle, Ellipse, Line, Rect, Defs, RadialGradient, Stop, G } from 'react-native-svg';
 import { Video, ResizeMode, Audio } from 'expo-av';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import * as ScreenOrientation from 'expo-screen-orientation';
+// expo-screen-orientation: native module manquant sur tvOS, lazy require avec fallback
+let ScreenOrientation = null;
+try { ScreenOrientation = require('expo-screen-orientation'); } catch(e) { if (__DEV__) console.warn('expo-screen-orientation unavailable:', e?.message); }
 import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ViewShot from 'react-native-view-shot';
+// react-native-view-shot: native module manquant sur tvOS, lazy require avec fallback
+let ViewShot = null;
+try { ViewShot = require('react-native-view-shot').default; } catch(e) {}
 import { U_JELLY, U_WAVE, FREE_SEANCE_INDEX, ZONE_TO_PILIER, T, SEANCES_FR, SEANCES_EN, PILIERS_BASE, PILIER_IMAGES, SABRINA_QUOTES } from './src/constants/data';
 import { Linking as RNLinking } from 'react-native';
 import { Bulle, Rayon, Meduse, MeduseCornerIcon, VideoPlaceholderMeduse, BULLES, BULLES_MONCORPS, BULLES_ONBOARDING, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState, LivingMedusa, FloatingMedusas, MeduseRain, PluieBulles } from './src/components/Meduse';

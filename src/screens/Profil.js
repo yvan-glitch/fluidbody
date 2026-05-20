@@ -10,7 +10,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Svg, { Path, Circle } from 'react-native-svg';
-import ViewShot from 'react-native-view-shot';
+// react-native-view-shot: native module manquant sur tvOS, lazy require avec fallback
+let ViewShot = null;
+try { ViewShot = require('react-native-view-shot').default; } catch(e) {}
+if (!ViewShot) ViewShot = require('react-native').View;
 import { T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, FloatingMedusas, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
