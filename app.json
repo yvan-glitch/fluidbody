@@ -174,6 +174,12 @@
         {
           "calendarPermission": "Fluidbody peut planifier tes séances de Pilates dans ton agenda pour t'aider à tenir ta routine. — Fluidbody can schedule your Pilates sessions in your calendar to help you stick to your routine."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Fluidbody utilise l'appareil photo uniquement pour scanner le QR code de pairage avec l'Apple TV. Aucune image n'est enregistrée. — Fluidbody uses the camera only to scan the Apple TV pairing QR code. No image is stored."
+        }
       ]
     ]
   }

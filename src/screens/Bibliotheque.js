@@ -14,6 +14,8 @@ import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import { getPiliers, getSeances, hapticLight } from '../utils';
 import supabase from '../lib/supabase';
 import { getFavorites, toggleFavorite } from '../utils/favorites';
+import { IS_TV, tvFocusProps } from '../utils/platformTV';
+import { FocusableCardTV } from '../components/tv';
 
 // Accent / parsing helpers — used by the séance search & filters below.
 // `normalizeStr` is case + diacritic insensitive so "epaule" matches "Épaule".
@@ -75,6 +77,19 @@ const FICHE_GRADIENT_COLORS = [
   ['rgba(255,145,100,0.7)', 'rgba(120,40,20,0.95)'],
   ['rgba(185,135,255,0.7)', 'rgba(60,30,120,0.95)'],
 ];
+
+// Multiplie l'alpha d'une chaîne `rgba(r,g,b,X)` par `factor` (clampé 0–1).
+// Sert à fabriquer les stops intermédiaires d'un gradient 6-stop anti-banding
+// à partir de la couleur "fin" d'un fiche, sans coder en dur 6 couleurs.
+function mixGradient(rgba, factor) {
+  if (typeof rgba !== 'string') return rgba;
+  const m = rgba.match(/rgba?\(([^)]+)\)/);
+  if (!m) return rgba;
+  const parts = m[1].split(',').map(function(p) { return p.trim(); });
+  const a = parts.length >= 4 ? parseFloat(parts[3]) : 1;
+  const next = Math.max(0, Math.min(1, a * factor));
+  return 'rgba(' + parts[0] + ',' + parts[1] + ',' + parts[2] + ',' + next + ')';
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -746,9 +761,15 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
     </>
   );
 
-  const cardGap = 12;
-  const gridPadding = 20;
-  const cardWidth = (SCREEN_WIDTH - gridPadding * 2 - cardGap) / 2;
+  const cardGap = IS_TV ? 24 : 12;
+  const gridPadding = IS_TV ? 60 : 20;
+  // Sur Apple TV (1920×1080+), une grille 2-cols fait des cards énormes.
+  // 4 colonnes donne une density confortable lisible à 2-3 m.
+  const tvCols = 4;
+  const cardWidth = IS_TV
+    ? (SCREEN_WIDTH - gridPadding * 2 - cardGap * (tvCols - 1)) / tvCols
+    : (SCREEN_WIDTH - gridPadding * 2 - cardGap) / 2;
+  const cardHeight = IS_TV ? 240 : 170;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
@@ -775,11 +796,11 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         }
       >
         {/* Header */}
-        <View style={{ paddingTop: 62, paddingHorizontal: 20, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 28, fontWeight: '700', color: '#ffffff', letterSpacing: -0.3 }}>
+        <View style={{ paddingTop: IS_TV ? 80 : 62, paddingHorizontal: IS_TV ? gridPadding : 20, paddingBottom: IS_TV ? 12 : 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <Text style={{ fontSize: IS_TV ? 64 : 28, fontWeight: IS_TV ? '200' : '700', color: '#ffffff', letterSpacing: IS_TV ? -1 : -0.3, lineHeight: IS_TV ? 72 : undefined }}>
             {lang === 'en' ? 'Library' : 'Bibliothèque'}
           </Text>
-          <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 26 }}>+</AnimatedPlus></Text>
+          <Text style={{ fontSize: IS_TV ? 26 : 20, fontWeight: '800', color: '#ffffff', letterSpacing: IS_TV ? 3 : -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: IS_TV ? 32 : 26 }}>+</AnimatedPlus></Text>
         </View>
 
         {/* Search bar — Liquid Glass capsule */}
@@ -957,11 +978,12 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         {/* Types d'activités section */}
         <View style={{ marginBottom: 32 }}>
           <Text style={{
-            fontSize: 20,
-            fontWeight: '600',
+            fontSize: IS_TV ? 30 : 20,
+            fontWeight: IS_TV ? '500' : '600',
             color: '#ffffff',
-            paddingHorizontal: 20,
-            marginBottom: 14,
+            paddingHorizontal: IS_TV ? gridPadding : 20,
+            marginBottom: IS_TV ? 22 : 14,
+            letterSpacing: IS_TV ? -0.4 : 0,
           }}>
             {lang === 'en' ? 'Activity Types' : "Types d'activités"}
           </Text>
@@ -971,19 +993,20 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
             contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
           >
             {filteredArticles.map((a, i) => (
-              <TouchableOpacity
+              <FocusableCardTV
                 key={a.key}
                 onPress={() => setOpenArticle(a)}
-                activeOpacity={0.8}
-                style={{ width: 140 }}
+                accent="cyan"
+                ringRadius={14}
+                style={{ width: IS_TV ? 240 : 140 }}
               >
                 <View style={{
-                  width: 140,
-                  height: 120,
-                  borderRadius: 12,
+                  width: IS_TV ? 240 : 140,
+                  height: IS_TV ? 200 : 120,
+                  borderRadius: IS_TV ? 18 : 12,
                   overflow: 'hidden',
                   backgroundColor: 'rgba(255,255,255,0.06)',
-                  marginBottom: 8,
+                  marginBottom: IS_TV ? 12 : 8,
                 }}>
                   <Image
                     source={PILIER_IMAGES[a.key]}
@@ -995,32 +1018,35 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                   />
                 </View>
                 <Text style={{
-                  fontSize: 13,
-                  fontWeight: '500',
+                  fontSize: IS_TV ? 18 : 13,
+                  fontWeight: IS_TV ? '600' : '500',
                   color: '#ffffff',
                   textAlign: 'left',
+                  letterSpacing: IS_TV ? -0.2 : 0,
                 }} numberOfLines={1}>
                   {labels[a.key] || a.titre}
                 </Text>
                 <Text style={{
-                  fontSize: 11,
-                  color: 'rgba(255,255,255,0.45)',
-                  marginTop: 2,
+                  fontSize: IS_TV ? 14 : 11,
+                  color: 'rgba(255,255,255,0.55)',
+                  marginTop: IS_TV ? 4 : 2,
+                  letterSpacing: IS_TV ? 0.5 : 0,
                 }}>
                   {a.duree}{tr.lire}
                 </Text>
-              </TouchableOpacity>
+              </FocusableCardTV>
             ))}
           </ScrollView>
         </View>
 
         {/* Découvrir section */}
-        <View style={{ paddingHorizontal: 20 }}>
+        <View style={{ paddingHorizontal: IS_TV ? gridPadding : 20 }}>
           <Text style={{
-            fontSize: 20,
-            fontWeight: '600',
+            fontSize: IS_TV ? 30 : 20,
+            fontWeight: IS_TV ? '500' : '600',
             color: '#ffffff',
-            marginBottom: 14,
+            marginBottom: IS_TV ? 22 : 14,
+            letterSpacing: IS_TV ? -0.4 : 0,
           }}>
             {tr.tab_methode === 'The method' ? 'Discover' : 'Découvrir'}
           </Text>
@@ -1031,14 +1057,16 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
             gap: cardGap,
           }}>
             {fiches.map((f, i) => (
-              <TouchableOpacity
+              <FocusableCardTV
                 key={i}
                 onPress={() => setOpenFiche(f)}
-                activeOpacity={0.85}
+                focusPreferred={i === 0}
+                accent="cyan"
+                ringRadius={16}
                 style={{
                   width: cardWidth,
-                  height: 170,
-                  borderRadius: 14,
+                  height: cardHeight,
+                  borderRadius: IS_TV ? 18 : 14,
                   overflow: 'hidden',
                 }}
               >
@@ -1051,51 +1079,53 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                     recyclingKey={'bib-fiche-' + i}
                     style={StyleSheet.absoluteFill}
                   />
+                  {/* 6-stop gradient — anti-banding on 1080p+ TVs */}
                   <LinearGradient
-                    colors={['transparent', FICHE_GRADIENT_COLORS[i][1]]}
-                    locations={[0.25, 1]}
+                    colors={['transparent', mixGradient(FICHE_GRADIENT_COLORS[i][1], 0.15), mixGradient(FICHE_GRADIENT_COLORS[i][1], 0.35), mixGradient(FICHE_GRADIENT_COLORS[i][1], 0.58), mixGradient(FICHE_GRADIENT_COLORS[i][1], 0.78), FICHE_GRADIENT_COLORS[i][1]]}
+                    locations={[0, 0.25, 0.45, 0.65, 0.85, 1]}
                     style={{
                       flex: 1,
                       justifyContent: 'flex-end',
-                      padding: 14,
+                      padding: IS_TV ? 22 : 14,
                     }}
                   >
                     <Text style={{
-                      fontSize: 11,
+                      fontSize: IS_TV ? 14 : 11,
                       fontWeight: '700',
-                      color: 'rgba(255,255,255,0.55)',
-                      letterSpacing: 1.5,
+                      color: 'rgba(255,255,255,0.65)',
+                      letterSpacing: IS_TV ? 2.5 : 1.5,
                       textTransform: 'uppercase',
-                      marginBottom: 3,
+                      marginBottom: IS_TV ? 6 : 3,
                     }}>
                       {f.num}
                     </Text>
                     <Text style={{
-                      fontSize: 16,
-                      fontWeight: '600',
+                      fontSize: IS_TV ? 26 : 16,
+                      fontWeight: IS_TV ? '500' : '600',
                       color: '#ffffff',
-                      lineHeight: 20,
+                      lineHeight: IS_TV ? 30 : 20,
+                      letterSpacing: IS_TV ? -0.3 : 0,
                     }} numberOfLines={2}>
                       {f.etape}
                     </Text>
                     <Text style={{
-                      fontSize: 11,
-                      color: 'rgba(255,255,255,0.6)',
-                      marginTop: 3,
+                      fontSize: IS_TV ? 14 : 11,
+                      color: 'rgba(255,255,255,0.65)',
+                      marginTop: IS_TV ? 6 : 3,
                     }} numberOfLines={1}>
                       {f.soustitre}
                     </Text>
                   </LinearGradient>
                 </View>
-              </TouchableOpacity>
+              </FocusableCardTV>
             ))}
           </View>
         </View>
 
         {/* Théorie section */}
-        <View style={{ paddingHorizontal: 20, marginTop: 36 }}>
-          <Text style={{ fontSize: 20, fontWeight: '600', color: '#ffffff', marginBottom: 4 }}>{theoryTitle}</Text>
-          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 18 }}>{theorySub}</Text>
+        <View style={{ paddingHorizontal: IS_TV ? gridPadding : 20, marginTop: IS_TV ? 52 : 36 }}>
+          <Text style={{ fontSize: IS_TV ? 30 : 20, fontWeight: IS_TV ? '500' : '600', color: '#ffffff', marginBottom: IS_TV ? 8 : 4, letterSpacing: IS_TV ? -0.4 : 0 }}>{theoryTitle}</Text>
+          <Text style={{ fontSize: IS_TV ? 17 : 13, color: 'rgba(255,255,255,0.55)', marginBottom: IS_TV ? 28 : 18, lineHeight: IS_TV ? 24 : undefined }}>{theorySub}</Text>
           <View style={{
             flexDirection: 'row',
             flexWrap: 'wrap',
@@ -1103,14 +1133,15 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
             gap: cardGap,
           }}>
             {theoryByPilier.map(({ pilier, items }, i) => (
-              <TouchableOpacity
+              <FocusableCardTV
                 key={pilier.key}
                 onPress={() => setOpenTheoryPilier({ pilier, items })}
-                activeOpacity={0.85}
+                accent="cyan"
+                ringRadius={16}
                 style={{
                   width: cardWidth,
-                  height: 170,
-                  borderRadius: 14,
+                  height: cardHeight,
+                  borderRadius: IS_TV ? 18 : 14,
                   overflow: 'hidden',
                 }}
               >
@@ -1123,43 +1154,49 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
                     recyclingKey={'bib-theo-' + pilier.key}
                     style={StyleSheet.absoluteFill}
                   />
+                  {/* 6-stop gradient — anti-banding sur 1080p+ TVs */}
                   <LinearGradient
-                    colors={['transparent', FICHE_GRADIENT_COLORS[i % FICHE_GRADIENT_COLORS.length][1]]}
-                    locations={[0.25, 1]}
+                    colors={(function() {
+                      const c = FICHE_GRADIENT_COLORS[i % FICHE_GRADIENT_COLORS.length][1];
+                      return ['transparent', mixGradient(c, 0.15), mixGradient(c, 0.35), mixGradient(c, 0.58), mixGradient(c, 0.78), c];
+                    })()}
+                    locations={[0, 0.25, 0.45, 0.65, 0.85, 1]}
                     style={{
                       flex: 1,
                       justifyContent: 'flex-end',
-                      padding: 14,
+                      padding: IS_TV ? 22 : 14,
                     }}
                   >
                     <Text style={{
-                      fontSize: 11,
+                      fontSize: IS_TV ? 14 : 11,
                       fontWeight: '700',
-                      color: 'rgba(255,255,255,0.55)',
-                      letterSpacing: 1.5,
+                      color: 'rgba(255,255,255,0.65)',
+                      letterSpacing: IS_TV ? 2.5 : 1.5,
                       textTransform: 'uppercase',
-                      marginBottom: 3,
+                      marginBottom: IS_TV ? 6 : 3,
+                      fontVariant: ['tabular-nums'],
                     }}>
                       {String(i + 1).padStart(2, '0')}
                     </Text>
                     <Text style={{
-                      fontSize: 16,
-                      fontWeight: '600',
+                      fontSize: IS_TV ? 26 : 16,
+                      fontWeight: IS_TV ? '500' : '600',
                       color: '#ffffff',
-                      lineHeight: 20,
+                      lineHeight: IS_TV ? 30 : 20,
+                      letterSpacing: IS_TV ? -0.3 : 0,
                     }} numberOfLines={2}>
                       {pilier.label}
                     </Text>
                     <Text style={{
-                      fontSize: 11,
-                      color: 'rgba(255,255,255,0.6)',
-                      marginTop: 3,
+                      fontSize: IS_TV ? 14 : 11,
+                      color: 'rgba(255,255,255,0.65)',
+                      marginTop: IS_TV ? 6 : 3,
                     }} numberOfLines={1}>
                       {isFr ? `${items.length} vidéos` : `${items.length} videos`}
                     </Text>
                   </LinearGradient>
                 </View>
-              </TouchableOpacity>
+              </FocusableCardTV>
             ))}
           </View>
         </View>

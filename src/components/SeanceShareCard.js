@@ -13,7 +13,11 @@ import { forwardRef } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ExpoImage } from 'expo-image';
-import ViewShot from 'react-native-view-shot';
+// react-native-view-shot: native module manquant sur tvOS, lazy require avec fallback
+let ViewShot = null;
+try { ViewShot = require('react-native-view-shot').default; } catch(e) {}
+// Sur tvOS, on remplace ViewShot par un View transparent (share désactivé).
+if (!ViewShot) ViewShot = require('react-native').View;
 import Svg, { Path, Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { PILIER_IMAGES, T } from '../constants/data';
 
