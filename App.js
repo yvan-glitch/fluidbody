@@ -44,6 +44,19 @@ function sentryCapture(error, ctx) {
     else Sentry.captureException(error);
   } catch (e) {}
 }
+// Promise.race avec timeout — protège les appels réseau (Supabase auth) pour
+// éviter qu'un spinner reste figé indéfiniment si la requête ne résout jamais
+// (réseau flaky au démarrage). Au timeout → reject → le catch existant
+// affiche une erreur et débloque le bouton. Même pattern que le withTimeout
+// local du bootstrap (checkSession).
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise(function(_, reject) {
+      setTimeout(function() { reject(new Error((label || 'request') + ' timeout after ' + ms + 'ms')); }, ms);
+    }),
+  ]);
+}
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 // RevenueCat (achats Apple) — indisponible dans Expo Go, donc import "safe"
@@ -755,16 +768,16 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
     setLoading(true); setError('');
     try {
       if (mode === 'up') {
-        const { data, error: err } = await supabase.auth.signUp({
+        const { data, error: err } = await withTimeout(supabase.auth.signUp({
           email: em,
           password,
           options: { data: { prenom: String(prenomHint || '').trim().slice(0, 50).replace(/[<>]/g, '') } },
-        });
+        }), 15000, 'signUp');
         if (err) { setError(err.message); setLoading(false); return; }
         if (!data.session) { setError(tr.ob_auth_confirm); setLoading(false); return; }
         AsyncStorage.setItem(TERMS_ACCEPTED_STORAGE_KEY, String(LEGAL.termsVersion || '1.0')).catch(() => {});
       } else {
-        const { error: err } = await supabase.auth.signInWithPassword({ email: em, password });
+        const { error: err } = await withTimeout(supabase.auth.signInWithPassword({ email: em, password }), 15000, 'signIn');
         if (err) { setError(err.message); setLoading(false); return; }
       }
       setLoading(false);
@@ -801,10 +814,10 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
         setError(msg); Alert.alert('Apple Sign In', msg);
         setLoading(false); return;
       }
-      const { error: err } = await supabase.auth.signInWithIdToken({
+      const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken,
-      });
+      }), 15000, 'appleSignIn');
       if (err) {
         setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || 'Erreur Supabase');
         setLoading(false); return;
@@ -1052,7 +1065,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
     setLoading(true); setError(''); setEmailExistsErr(false);
     try {
       if (mode === 'up') {
-        const { data, error: err } = await supabase.auth.signUp({ email: em, password });
+        const { data, error: err } = await withTimeout(supabase.auth.signUp({ email: em, password }), 15000, 'signUp');
         if (err) {
           const msg = (err.message || '').toLowerCase();
           if (msg.includes('already') || msg.includes('exists') || msg.includes('registered') || msg.includes('déjà')) {
@@ -1065,7 +1078,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
         }
         if (!data.session) { setError(tr.ob_auth_confirm); setLoading(false); return; }
       } else {
-        const { error: err } = await supabase.auth.signInWithPassword({ email: em, password });
+        const { error: err } = await withTimeout(supabase.auth.signInWithPassword({ email: em, password }), 15000, 'signIn');
         if (err) { setError(err.message); setLoading(false); return; }
       }
       setLoading(false);
@@ -1090,7 +1103,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
         setError(msg); Alert.alert('Apple Sign In', msg);
         setLoading(false); return;
       }
-      const { error: err } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken });
+      const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken }), 15000, 'appleSignIn');
       if (err) {
         setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || 'Erreur Supabase');
         setLoading(false); return;
