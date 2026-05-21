@@ -1506,7 +1506,11 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   useEffect(function() {
     let cancelled = false;
     isCoachWelcomeSeen().then(function(seen) {
-      if (cancelled || seen) return;
+      // tvOS : on n'affiche jamais l'overlay coach. Le press de dismiss
+      // (« Je commence ») laissait fuiter le focus vers le bouton « Mon
+      // compte » → ProfilTV s'ouvrait tout seul. Copie iPhone-centrée en
+      // plus. On le coupe purement sur TV.
+      if (cancelled || seen || IS_TV) return;
       setTimeout(function() { if (!cancelled) setCoachWelcomeVisible(true); }, 700);
     });
     return function() { cancelled = true; };
