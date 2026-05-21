@@ -7,6 +7,7 @@ import { Bulle, Meduse, MeduseCornerIcon, BULLES_ONBOARDING } from '../component
 import AnimatedPlus from '../components/AnimatedPlus';
 import GlassButton from '../components/GlassButton';
 import LivingBackground from '../components/LivingBackground';
+import { withTimeout } from '../utils/withTimeout';
 
 let AppleAuth = null;
 try { AppleAuth = require('expo-apple-authentication'); } catch(e) {}
@@ -65,7 +66,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
     if (!validPass) { setError(tr.ob_auth_err_short || 'Mot de passe trop court.'); return; }
     setLoading(true); setError('');
     try {
-      const { error: err } = await supabase.auth.signInWithPassword({ email: em, password });
+      const { error: err } = await withTimeout(supabase.auth.signInWithPassword({ email: em, password }), 15000, 'signIn');
       if (err) { setError(err.message); setLoading(false); return; }
       setLoading(false);
       onSuccess && onSuccess();
@@ -89,7 +90,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
         setError(msg); Alert.alert('Apple Sign In', msg);
         setLoading(false); return;
       }
-      const { error: err } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken });
+      const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken }), 15000, 'appleSignIn');
       if (err) {
         setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || 'Erreur Supabase');
         setLoading(false); return;
