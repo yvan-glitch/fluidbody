@@ -51,3 +51,7 @@ supabase/.temp/
 
 # Local wallpaper experiments (not part of app assets)
 assets/fluidbody-wallpaper-*.jpg
+
+# EAS credentials (contains cert password - never commit)
+credentials.json
+credentials/
