@@ -98,6 +98,7 @@ import ThemedStatusBar from './src/theme/ThemedStatusBar';
 import Confetti from './src/components/Confetti';
 import LivingBackground from './src/components/LivingBackground';
 import CoachWelcomeOverlay, { isCoachWelcomeSeen } from './src/components/CoachWelcomeOverlay';
+import OtaUpdateBanner from './src/components/OtaUpdateBanner';
 import AnniversaryOverlay, { shouldShowAnniversary } from './src/components/AnniversaryOverlay';
 import WelcomeAnimation, { isWelcomeAnimationShown } from './src/components/WelcomeAnimation';
 import SignInScreen from './src/screens/SignIn';
@@ -619,7 +620,7 @@ function Progresser({ done, lang, tensionIdxs }) {
         </View>
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
           {sortedPiliers.map((p, idx) => {
-            const count = Math.min((done[p.key] || []).filter(v => v === true || v === 'true').length, 5);
+            const count = Math.min((done?.[p.key] || []).filter(v => v === true || v === 'true').length, 5);
             const IconComp = ICONS[p.key];
             const isRec = recommendedPiliers.includes(p.key);
             const pct2 = Math.round(count / 5 * 100);
@@ -659,11 +660,11 @@ import ProfilScreen from './src/screens/Profil';
 // SEANCE DETAIL MODAL
 // ══════════════════════════════════
 function SeanceDetailModal({ visible, onClose, sdj, lang, onPlay }) {
-  if (!visible || !sdj) return null;
+  if (!visible || !sdj || !Array.isArray(sdj.seance)) return null;
   var tr = T[lang] || T["fr"];
-  var titre = sdj.seance[0];
-  var duree = sdj.seance[1];
-  var etape = sdj.seance[2];
+  var titre = sdj.seance[0] || '';
+  var duree = sdj.seance[1] || '';
+  var etape = sdj.seance[2] || '';
   return (
     <Modal visible animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: "#000000" }}>
@@ -1857,13 +1858,13 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           var seen = raw ? JSON.parse(raw) : [];
           if (!seen.includes(newTotal)) {
             seen.push(newTotal);
-            AsyncStorage.setItem('fluid_milestones_seen', JSON.stringify(seen));
+            AsyncStorage.setItem('fluid_milestones_seen', JSON.stringify(seen)).catch(function() {});
             setMilestoneNum(newTotal);
             if (PUSH_MILESTONES.includes(newTotal)) {
               scheduleMilestoneReward({ milestoneNum: newTotal, lang: lang, prenom: prenom });
             }
           }
-        });
+        }).catch(function() {});
       }
     }
     // Calendar heatmap
@@ -1898,7 +1899,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   useEffect(function() {
     if (!supaUser?.id) return undefined;
     flushPendingProfileSync({ userId: supaUser.id }).catch(function() {});
-  }, [supaUser && supaUser.id]);
+  }, [supaUser?.id]);
 
   return (
     <>
@@ -2081,6 +2082,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           <Confetti count={90} duration={2800} />
         </View>
       )}
+      <OtaUpdateBanner lang={lang} />
     </>
   );
 }
