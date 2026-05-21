@@ -1167,7 +1167,26 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 activeOpacity={0.7}
                 style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }}
               >
-                <Text style={{ fontSize: 24, marginRight: 12 }}>📺</Text>
+                {/* Icône Apple TV minimaliste — écran + stand, monochrome
+                    accent vert pour rester cohérent avec le design system. */}
+                <View style={{ width: 28, height: 28, marginRight: 12, alignItems: 'center', justifyContent: 'center' }}>
+                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Path
+                      d="M4 5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 15.5v-9A1.5 1.5 0 0 1 4 5z"
+                      stroke="#AEEF4D"
+                      strokeWidth={1.6}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <Path
+                      d="M9 20.5h6M12 17v3.5"
+                      stroke="#AEEF4D"
+                      strokeWidth={1.6}
+                      strokeLinecap="round"
+                    />
+                    <Circle cx={6.5} cy={10.5} r={1} fill="#AEEF4D" />
+                  </Svg>
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.text, letterSpacing: -0.1 }}>
                     {tr.tv_pair_btn || 'Pairer une Apple TV'}
