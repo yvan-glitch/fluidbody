@@ -44,10 +44,31 @@ module.exports = ({ config }) => {
       return !PLUGINS_INCOMPATIBLE_WITH_TVOS.includes(name)
     })
     .concat([
-      ['@react-native-tvos/config-tv', { isTV: true }],
+      // Plugin officiel — passer `appleTVImages` génère les TVAppIcon.brandassets
+      // ET configure ASSETCATALOG_COMPILER_APPICON_NAME=TVAppIcon dans le projet
+      // Xcode, donc Xcode compile vraiment nos brandassets (au lieu d'AppIcon.appiconset
+      // iOS qu'il ignore pour tvOS). C'est ce point manquant qui causait les rejets
+      // "Missing Image Asset. Home Screen Icon / App Store Icon" d'altool.
+      ['@react-native-tvos/config-tv', {
+        isTV: true,
+        appleTVImages: {
+          icon: './assets/tv/icon-large.png',              // 1280x768 — App Store Icon
+          iconSmall: './assets/tv/icon-small.png',         // 400x240 — Home Screen Icon @1x
+          iconSmall2x: './assets/tv/icon-small@2x.png',    // 800x480 — Home Screen Icon @2x
+          topShelf: './assets/tv/top-shelf.png',           // 1920x720 @1x
+          topShelf2x: './assets/tv/top-shelf@2x.png',      // 3840x1440 @2x
+          topShelfWide: './assets/tv/top-shelf-wide.png',  // 2320x720 @1x
+          topShelfWide2x: './assets/tv/top-shelf-wide@2x.png', // 4640x1440 @2x
+        },
+      }],
       // Patch tvOS Podfile pour gérer fmt 11 consteval + warnings -Werror.
       // Sans ce plugin, les patches sont wipés à chaque prebuild.
       './plugins/withTVPodfilePatch.js',
+      // Note : withTVAssets.js (mon plugin custom) est DÉSACTIVÉ.
+      // Il créait des brandassets dans Images.xcassets mais sans
+      // ASSETCATALOG_COMPILER_APPICON_NAME, Xcode les ignorait.
+      // Le plugin officiel ci-dessus fait les deux choses (assets +
+      // build settings) — c'est ça la solution.
     ])
 
   const ios = { ...(config.ios || {}) }
