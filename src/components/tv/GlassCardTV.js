@@ -149,16 +149,25 @@ export default function GlassCardTV({
           shadowOpacity: 0.32,
           shadowRadius: 30,
           shadowOffset: { width: 0, height: 14 },
-          transform: [
-            { scale: scale },
-            { perspective: 800 },
-            { rotateX: rotX },
-            { rotateY: rotY },
-          ],
+          // Scale only — piloté par le native driver.
+          transform: [{ scale: scale }],
         },
         style,
       ]}
     >
+      {/* Tilt parallax sur un node séparé — rotateX/rotateY sont JS-driven
+          et ne doivent pas cohabiter avec le scale natif sur le même node
+          (tvOS crashe : "JS driven animation on node moved to native"). */}
+      <Animated.View
+        style={{
+          borderRadius: radius,
+          transform: [
+            { perspective: 800 },
+            { rotateX: rotX },
+            { rotateY: rotY },
+          ],
+        }}
+      >
       <Wrapper
         {...wrapperProps}
         style={{ borderRadius: radius }}
@@ -220,6 +229,7 @@ export default function GlassCardTV({
           }}
         />
       </Wrapper>
+      </Animated.View>
     </Animated.View>
   );
 }
