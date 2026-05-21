@@ -44,19 +44,7 @@ function sentryCapture(error, ctx) {
     else Sentry.captureException(error);
   } catch (e) {}
 }
-// Promise.race avec timeout — protège les appels réseau (Supabase auth) pour
-// éviter qu'un spinner reste figé indéfiniment si la requête ne résout jamais
-// (réseau flaky au démarrage). Au timeout → reject → le catch existant
-// affiche une erreur et débloque le bouton. Même pattern que le withTimeout
-// local du bootstrap (checkSession).
-function withTimeout(promise, ms, label) {
-  return Promise.race([
-    promise,
-    new Promise(function(_, reject) {
-      setTimeout(function() { reject(new Error((label || 'request') + ' timeout after ' + ms + 'ms')); }, ms);
-    }),
-  ]);
-}
+import { withTimeout } from './src/utils/withTimeout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 // RevenueCat (achats Apple) — indisponible dans Expo Go, donc import "safe"
