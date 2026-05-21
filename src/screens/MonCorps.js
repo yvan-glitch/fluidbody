@@ -35,7 +35,8 @@ import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
-import { SeanceCompleteTV } from '../components/tv';
+import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel } from '../components/tv';
+import { PILIER_CONTENT } from '../constants/pilierContent';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
@@ -1305,48 +1306,92 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         )}
         {mcTab === 'pour_vous' && (function() {
           if (IS_TV) {
-            // Apple TV : grille uniforme 4 colonnes au lieu de la mosaïque
-            // iPhone (qui, étirée à 1920 px, n'affichait que 2 photos
-            // géantes). Chaque card est un FocusableCard (scale-only native
-            // driver, pas GlassCardTV) → focusable + scale au focus + ring.
-            // La parenthèse latérale ~100 px matche ProfilTV.
-            var SIDE = 100;
-            var GAP = 20;
-            var COLS = 4;
-            var innerW = SW - SIDE * 2;
-            var cardW = Math.floor((innerW - GAP * (COLS - 1)) / COLS);
-            var cardH = Math.round(cardW * 0.62); // ~16:10
-            var tvRows = [];
-            for (var r = 0; r < piliers.length; r += COLS) {
-              tvRows.push(piliers.slice(r, r + COLS));
-            }
-            var tvCardIdx = 0;
+            // Apple TV : disposition style Apple Fitness+ — hero cinématique
+            // en haut + carrousels horizontaux par catégorie. Remplace la
+            // grille 4 colonnes. Tout est TV-only (cette branche), l'iPhone
+            // (code plus bas) est intact.
+            var seancesByKey = getSeances(lang);
+            // Pilier mis en avant = la séance du jour (sinon le 1er pilier).
+            var featured = (sdj && sdj.pilier) || piliers[0];
+            var featuredSeances = seancesByKey[featured.key] || [];
+            var parseMin = function(d) { var m = String(d || '').match(/\d+/); return m ? parseInt(m[0], 10) : 0; };
+            var totalMin = featuredSeances.reduce(function(a, s) { return a + parseMin(s[1]); }, 0);
+            var pilierContent = (PILIER_CONTENT[lang] || PILIER_CONTENT.fr || {})[featured.key] || {};
+            var heroDescription = pilierContent.hero_subtitle || '';
+            var coachAvec = tr.coach_avec || 'Avec Sabrina';
+            var heroSubtitle = featuredSeances.length + ' séances · ~' + totalMin + ' min · ' + coachAvec;
+            // Démarrer la 1re fois, Continuer si la séance du jour est entamée.
+            var heroCta = (sdj && typeof sdj.idx === 'number' && sdj.idx > 0) ? 'Continuer' : 'Démarrer';
+
+            var openSeance = function(pilierKey, idx) {
+              var p = piliers.find(function(x) { return x.key === pilierKey; });
+              if (!p) return;
+              setOpenInitialIdx(typeof idx === 'number' ? idx : null);
+              setOpenPilier(p);
+            };
+            var etapeLabel = function(e) { return (tr.etapes && tr.etapes[e]) || e; };
+
+            // Rangée "Pour vous" — 8 premières séances du pilier mis en avant.
+            var rowPourVous = featuredSeances.slice(0, 8).map(function(s, i) {
+              return { key: 'pv_' + featured.key + '_' + i, title: s[0], subtitle: s[1] + ' · ' + etapeLabel(s[2]), image: PILIER_IMAGES[featured.key], pilierKey: featured.key, idx: i };
+            });
+            // Rangée "Nouveau" — séances avec vidéo produite (tuple[3] === true),
+            // complétées au besoin par la 1re séance de chaque pilier.
+            var rowNouveau = [];
+            piliers.forEach(function(p) {
+              (seancesByKey[p.key] || []).forEach(function(s, i) {
+                if (s[3] === true) rowNouveau.push({ key: 'nv_' + p.key + '_' + i, title: s[0], subtitle: p.label + ' · ' + s[1], image: PILIER_IMAGES[p.key], pilierKey: p.key, idx: i });
+              });
+            });
+            piliers.forEach(function(p) {
+              if (rowNouveau.length >= 8) return;
+              var s0 = (seancesByKey[p.key] || [])[0];
+              if (s0) rowNouveau.push({ key: 'nv0_' + p.key, title: s0[0], subtitle: p.label + ' · ' + s0[1], image: PILIER_IMAGES[p.key], pilierKey: p.key, idx: 0 });
+            });
+            // Rangée "Tous les piliers" — 1 carte par pilier (9), ouvre le panel.
+            var rowPiliers = piliers.map(function(p) {
+              return { key: 'pil_' + p.key, title: p.label, subtitle: (seancesByKey[p.key] || []).length + ' séances', image: PILIER_IMAGES[p.key], accent: 'green', pilierKey: p.key, idx: null };
+            });
+
             return (
-              <View key="pour-vous-tv" style={{ paddingHorizontal: SIDE - 16 }}>
-                {tvRows.map(function(row, ri) {
-                  return (
-                    <View key={'pv-row-' + ri} style={{ flexDirection: 'row', gap: GAP, marginBottom: GAP }}>
-                      {row.map(function(pil) {
-                        var thisIdx = tvCardIdx++;
-                        return (
-                          <FocusableCard
-                            key={pil.key}
-                            focusPreferred={thisIdx === 0}
-                            accent="green"
-                            onPress={function() { setOpenPilier(pil); }}
-                            style={{ width: cardW, height: cardH }}
-                          >
-                            <View style={{ flex: 1, borderRadius: 18, overflow: 'hidden' }}>
-                              <Image source={PILIER_IMAGES[pil.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'pv-tv-' + pil.key} style={StyleSheet.absoluteFill} />
-                              <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.82)']} locations={[0.42, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-                              <Text numberOfLines={1} style={{ position: 'absolute', left: 18, right: 18, bottom: 16, fontSize: 22, fontWeight: '700', color: '#ffffff', letterSpacing: -0.3 }}>{pil.label}</Text>
-                            </View>
-                          </FocusableCard>
-                        );
-                      })}
-                    </View>
-                  );
-                })}
+              <View key="pour-vous-tv">
+                {/* Fond bleu nuit statique (pas de méduses animées sur TV) —
+                    couvre toute la zone hero + carrousels. top:0 pour ne pas
+                    recouvrir le bandeau "programme actif" rendu au-dessus. */}
+                <LinearGradient
+                  colors={['#0A0E1F', '#1A2238']}
+                  style={{ position: 'absolute', top: 0, left: -16, right: -16, height: SH * 2.2 }}
+                  pointerEvents="none"
+                />
+                {/* Hero + carrousels bleed jusqu'aux bords (annule le pad 16). */}
+                <View style={{ marginHorizontal: -16 }}>
+                  <HeroFeatured
+                    image={PILIER_IMAGES[featured.key]}
+                    title={featured.label}
+                    subtitle={heroSubtitle}
+                    description={heroDescription}
+                    ctaLabel={heroCta}
+                    focusPreferred={true}
+                    onStart={function() {
+                      openSeance(featured.key, (sdj && sdj.pilier && sdj.pilier.key === featured.key) ? sdj.idx : null);
+                    }}
+                  />
+                  <HorizontalCarousel
+                    title="Pour vous"
+                    items={rowPourVous}
+                    onItemPress={function(it) { openSeance(it.pilierKey, it.idx); }}
+                  />
+                  <HorizontalCarousel
+                    title="Nouveau"
+                    items={rowNouveau}
+                    onItemPress={function(it) { openSeance(it.pilierKey, it.idx); }}
+                  />
+                  <HorizontalCarousel
+                    title="Tous les piliers"
+                    items={rowPiliers}
+                    onItemPress={function(it) { openSeance(it.pilierKey, it.idx); }}
+                  />
+                </View>
               </View>
             );
           }
