@@ -1304,6 +1304,52 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           </TouchableOpacity>
         )}
         {mcTab === 'pour_vous' && (function() {
+          if (IS_TV) {
+            // Apple TV : grille uniforme 4 colonnes au lieu de la mosaïque
+            // iPhone (qui, étirée à 1920 px, n'affichait que 2 photos
+            // géantes). Chaque card est un FocusableCard (scale-only native
+            // driver, pas GlassCardTV) → focusable + scale au focus + ring.
+            // La parenthèse latérale ~100 px matche ProfilTV.
+            var SIDE = 100;
+            var GAP = 20;
+            var COLS = 4;
+            var innerW = SW - SIDE * 2;
+            var cardW = Math.floor((innerW - GAP * (COLS - 1)) / COLS);
+            var cardH = Math.round(cardW * 0.62); // ~16:10
+            var tvRows = [];
+            for (var r = 0; r < piliers.length; r += COLS) {
+              tvRows.push(piliers.slice(r, r + COLS));
+            }
+            var tvCardIdx = 0;
+            return (
+              <View key="pour-vous-tv" style={{ paddingHorizontal: SIDE - 16 }}>
+                {tvRows.map(function(row, ri) {
+                  return (
+                    <View key={'pv-row-' + ri} style={{ flexDirection: 'row', gap: GAP, marginBottom: GAP }}>
+                      {row.map(function(pil) {
+                        var thisIdx = tvCardIdx++;
+                        return (
+                          <FocusableCard
+                            key={pil.key}
+                            focusPreferred={thisIdx === 0}
+                            accent="green"
+                            onPress={function() { setOpenPilier(pil); }}
+                            style={{ width: cardW, height: cardH }}
+                          >
+                            <View style={{ flex: 1, borderRadius: 18, overflow: 'hidden' }}>
+                              <Image source={PILIER_IMAGES[pil.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'pv-tv-' + pil.key} style={StyleSheet.absoluteFill} />
+                              <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.82)']} locations={[0.42, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                              <Text numberOfLines={1} style={{ position: 'absolute', left: 18, right: 18, bottom: 16, fontSize: 22, fontWeight: '700', color: '#ffffff', letterSpacing: -0.3 }}>{pil.label}</Text>
+                            </View>
+                          </FocusableCard>
+                        );
+                      })}
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          }
           var gridGap = 6;
           var fullW = SW - 32;
           var halfW = Math.floor((fullW - gridGap) / 2);
