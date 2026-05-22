@@ -35,7 +35,7 @@ import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
-import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground } from '../components/tv';
+import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground, RechercheTV } from '../components/tv';
 import { pickSessionImage } from '../components/tv/tvImagePool';
 import { PILIER_CONTENT } from '../constants/pilierContent';
 
@@ -1996,7 +1996,10 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         <StatsTV mode="resume" done={done} streak={streak} piliers={piliers} lang={lang} />
       ) : null}
       {IS_TV && !openPilier && mcTab === 'biblio' ? (
-        <BibliothequeTV piliers={piliers} seancesByKey={getSeances(lang)} done={done} onOpenPilier={setOpenPilier} lang={lang} />
+        <BibliothequeTV piliers={piliers} seancesByKey={getSeances(lang)} done={done} onOpenPilier={setOpenPilier} onOpenSeance={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }} lang={lang} />
+      ) : null}
+      {IS_TV && !openPilier && mcTab === 'recherche' ? (
+        <RechercheTV piliers={piliers} seancesByKey={getSeances(lang)} onOpenPilier={setOpenPilier} onOpenSeance={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }} lang={lang} />
       ) : null}
       {IS_TV && mcTab === 'respire' ? (
         <BreathingCheckIn visible onClose={function() { setMcTab('pour_vous'); }} lang={lang} />
