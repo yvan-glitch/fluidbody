@@ -27,38 +27,32 @@ const { width: SW, height: SH } = Dimensions.get('window');
 // Palette aquatique TV-scale — 6 stops pour éviter le banding visible à
 // 1080p+ (les TVs amplifient les transitions linéaires). Reprend la
 // palette PilierPanel iPhone, élargie en bas.
-// Palette du splash iPhone : navy quasi-noir en haut → teal moyen en bas
-// ("tu plonges dans l'eau"). Seul le dégradé change ; méduses + bulles restent.
-const GRADIENT_COLORS = ['#0A1830', '#142F44', '#225463', '#3A7E8E'];
-const GRADIENT_LOCATIONS = [0, 0.42, 0.74, 1];
+// Dégradé INVERSÉ (Yvan) : turquoise clair en haut (surface) → navy profond
+// en bas (fond) — "tu regardes vers la surface depuis le fond de l'eau".
+const GRADIENT_COLORS = ['#5BA8B5', '#3A7E8E', '#142F44', '#0A1830'];
+const GRADIENT_LOCATIONS = [0, 0.34, 0.7, 1];
 
 // Bulles : positions déterministes pour rester stables au remount (et
 // éviter qu'une bulle clignote au mauvais endroit après navigation).
-// 10 bulles fines (perf — réduit de 16).
+// 6 bulles fines (perf — réduit de 10), montée lente 14–17 s.
 const BULLES_TV = [
-  { x: SW * 0.08, size: 14, delay: 0, duration: 14000 },
-  { x: SW * 0.18, size: 10, delay: 2400, duration: 12000 },
-  { x: SW * 0.28, size: 16, delay: 4800, duration: 16000 },
-  { x: SW * 0.40, size: 11, delay: 1200, duration: 13000 },
-  { x: SW * 0.52, size: 15, delay: 3600, duration: 15000 },
-  { x: SW * 0.62, size: 9, delay: 6000, duration: 11000 },
-  { x: SW * 0.72, size: 16, delay: 800, duration: 14500 },
-  { x: SW * 0.82, size: 12, delay: 5200, duration: 13500 },
-  { x: SW * 0.92, size: 10, delay: 2000, duration: 12500 },
-  { x: SW * 0.34, size: 13, delay: 7000, duration: 10500 },
+  { x: SW * 0.12, size: 12, delay: 0,    duration: 16000 },
+  { x: SW * 0.30, size: 9,  delay: 3000, duration: 14000 },
+  { x: SW * 0.46, size: 14, delay: 6000, duration: 17000 },
+  { x: SW * 0.62, size: 10, delay: 1500, duration: 15000 },
+  { x: SW * 0.78, size: 13, delay: 4500, duration: 16500 },
+  { x: SW * 0.90, size: 9,  delay: 7500, duration: 14500 },
 ];
 
 // 5 méduses dérivantes — points de départ répartis (haut, bas, gauche,
 // droite, centre). Tailles 80–140 px : grandes mais pas envahissantes.
 // Arrière-plan : 6 méduses ~1.4× (perf — Yvan a trouvé 12 en foreground trop
 // lourd ; on garde une taille généreuse mais moins d'éléments).
+// 3 méduses (perf — réduit de 6), taille 1.4× conservée, bien dispersées.
 const MEDUSES_TV = [
-  { baseX: SW * 0.08, baseY: SH * 0.14, size: 140, breath: 3600, tint: 'rgba(174,239,77,1)' },
-  { baseX: SW * 0.80, baseY: SH * 0.10, size: 132, breath: 4200, tint: 'rgba(0,220,255,1)' },
-  { baseX: SW * 0.20, baseY: SH * 0.68, size: 96,  breath: 3400, tint: 'rgba(0,189,208,1)' },
-  { baseX: SW * 0.72, baseY: SH * 0.62, size: 140, breath: 4600, tint: 'rgba(174,239,77,1)' },
-  { baseX: SW * 0.46, baseY: SH * 0.40, size: 88,  breath: 3800, tint: 'rgba(200,240,255,1)' },
-  { baseX: SW * 0.34, baseY: SH * 0.80, size: 112, breath: 4000, tint: 'rgba(0,220,255,1)' },
+  { baseX: SW * 0.10, baseY: SH * 0.16, size: 140, breath: 3600, tint: 'rgba(174,239,77,1)' },
+  { baseX: SW * 0.74, baseY: SH * 0.30, size: 132, breath: 4400, tint: 'rgba(0,220,255,1)' },
+  { baseX: SW * 0.40, baseY: SH * 0.74, size: 112, breath: 4000, tint: 'rgba(0,189,208,1)' },
 ];
 
 function DriftingMeduse({ baseX, baseY, size, breath, tint, paused }) {
