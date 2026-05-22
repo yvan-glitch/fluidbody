@@ -1987,9 +1987,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         <TwoColLandingTV
           piliers={piliers}
           lang={lang}
-          price={'CHF 12.90' + (tr.paywall_per_month || '/mois')}
           onPrimary={function() { var f = (sdj && sdj.pilier) || piliers[0]; if (f) setOpenPilier(f); }}
-          onSecondary={function() { if (onActivateSubscription) onActivateSubscription(); }}
           onOpenPilier={setOpenPilier}
         />
       ) : null}
