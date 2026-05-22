@@ -151,7 +151,7 @@ export default function TVLoginScreen({ lang, onSignedIn }) {
           <View style={styles.tvHero}>
             <MeduseTV size={260} tint="rgba(0,220,255,1)" haloTint="rgba(174,239,77,1)" haloScale={1.8} breathCycleMs={3200} />
             <Text style={styles.tvHeroTagline}>
-              {isFr ? 'Le pilates qui coule.' : 'Pilates that flows.'}
+              {isFr ? 'Le Pilates conscient.' : 'Conscious Pilates.'}
             </Text>
           </View>
         ) : null}
