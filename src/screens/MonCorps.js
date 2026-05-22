@@ -1968,7 +1968,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       {IS_TV && !openPilier ? (
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}>
           {mcTab === 'pour_vous' ? (
-            <AquaticBackground density="low" contentOpacity={0.9} />
+            <AquaticBackground density="rich" contentOpacity={0.95} />
           ) : (
             <Fragment>
               <Image source={SABRINA_BEACH} contentFit="cover" cachePolicy="memory-disk" style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.05 }], opacity: 0.6 }]} />
