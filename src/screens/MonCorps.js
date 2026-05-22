@@ -1961,21 +1961,13 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
 
       {/* ───────── Apple TV — backdrop "monde" ─────────
           Sur "Pour vous" : le vrai fond animé Fluidbody (dégradé turquoise →
-          bleu profond + bulles + méduses dérivantes), via AquaticBackground
-          (composant TV partagé, density "low" pour la perf). Sur les autres
-          onglets : photo Sabrina floutée. Persistant derrière tous les
-          overlays TV (z50). */}
+          esthétique splash iPhone (navy → teal + 1-2 méduses à halo + qq
+          bulles), via AquaticBackground. MÊME fond sur TOUS les onglets TV
+          pour la cohérence (Yvan : "ce fond sur toutes les pages").
+          Persistant derrière tous les overlays TV (z50). */}
       {IS_TV && !openPilier ? (
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}>
-          {mcTab === 'pour_vous' ? (
-            <AquaticBackground density="rich" contentOpacity={0.9} />
-          ) : (
-            <Fragment>
-              <Image source={SABRINA_BEACH} contentFit="cover" cachePolicy="memory-disk" style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.05 }], opacity: 0.6 }]} />
-              {Platform.OS === 'ios' ? <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} /> : null}
-            </Fragment>
-          )}
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.32)' }]} />
+          <AquaticBackground density="rich" contentOpacity={0.9} />
         </View>
       ) : null}
 
