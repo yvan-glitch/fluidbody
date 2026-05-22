@@ -42,10 +42,30 @@ export async function getSignedVideoUrl(sessionId, kind = 'mp4', lang) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('not-signed-in');
 
-    const { data, error } = await supabase.functions.invoke('sign-video-url', {
-      body: { session_id: sessionId, kind, lang },
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    });
+    function callSign(accessToken) {
+      return supabase.functions.invoke('sign-video-url', {
+        body: { session_id: sessionId, kind, lang },
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+    }
+
+    let { data, error } = await callSign(session.access_token);
+
+    // JWT expiré (fréquent sur Apple TV restée idle : autoRefresh ne tourne
+    // pas toujours). On rafraîchit la session une fois puis on retente.
+    const status = error && (error.context?.status || error.status);
+    const looksAuth = error && (status === 401 || /jwt|expired|unauthor|unauthenticated/i.test(error.message || ''));
+    if (looksAuth) {
+      try {
+        const refreshed = await supabase.auth.refreshSession();
+        const newToken = refreshed && refreshed.data && refreshed.data.session && refreshed.data.session.access_token;
+        if (newToken) {
+          const retry = await callSign(newToken);
+          data = retry.data;
+          error = retry.error;
+        }
+      } catch (e) { /* on garde l'erreur d'origine */ }
+    }
 
     if (error) {
       const err = new Error(error.message || 'sign-video-url-failed');
