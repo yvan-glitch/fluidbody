@@ -1958,7 +1958,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           Overlay haut-zIndex qui recouvre tout le chrome iPhone (logoRow +
           tabs masqués sur TV). Le PilierPanel est un Modal → s'affiche au
           dessus quand une séance s'ouvre. */}
-      {IS_TV && mcTab === 'pour_vous' ? (function() {
+      {IS_TV && !openPilier && mcTab === 'pour_vous' ? (function() {
         var seancesByKey = getSeances(lang);
         var featured = (sdj && sdj.pilier) || piliers[0];
         var featuredSeances = seancesByKey[featured.key] || [];
@@ -2015,13 +2015,13 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           </View>
         );
       })() : null}
-      {IS_TV && mcTab === 'explorer' ? (
+      {IS_TV && !openPilier && mcTab === 'explorer' ? (
         <ExplorerTV piliers={piliers} seancesByKey={getSeances(lang)} onOpenPilier={setOpenPilier} lang={lang} />
       ) : null}
-      {IS_TV && mcTab === 'programmes' ? (
+      {IS_TV && !openPilier && mcTab === 'programmes' ? (
         <ProgrammesTV piliers={piliers} lang={lang} activeProgram={activeProgram} onOpenPilier={setOpenPilier} />
       ) : null}
-      {IS_TV ? (
+      {IS_TV && !openPilier ? (
         <TVTopBar
           tabs={[
             { key: 'recherche', label: 'Recherche' },
