@@ -147,6 +147,38 @@ async function getResumeIndicesForPilier(pilierKey) {
   return indices;
 }
 
+// Cherche dans AsyncStorage la séance interrompue la plus récente (non
+// terminée) pour proposer une reprise sur la TV. Renvoie { pilierKey, idx,
+// positionMillis, durationMillis, t } ou null.
+async function getResumableSession() {
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    const matching = keys.filter(function(k) { return k.startsWith(VIDEO_RESUME_PREFIX); });
+    if (matching.length === 0) return null;
+    const entries = await AsyncStorage.multiGet(matching);
+    let best = null;
+    for (const pair of entries) {
+      const key = pair[0];
+      const raw = pair[1];
+      if (!raw) continue;
+      let o;
+      try { o = JSON.parse(raw); } catch (e) { continue; }
+      if (!o || o.positionMillis == null || !o.durationMillis) continue;
+      if (o.positionMillis < 5000) continue;                     // >5s regardés
+      if (o.durationMillis - o.positionMillis < 30000) continue; // pas (presque) fini
+      const rest = key.slice(VIDEO_RESUME_PREFIX.length);         // ex "p1_5"
+      const us = rest.lastIndexOf('_');
+      if (us < 1) continue;
+      const pilierKey = rest.slice(0, us);
+      const idx = parseInt(rest.slice(us + 1), 10);
+      if (Number.isNaN(idx)) continue;
+      const t = o.t || 0;
+      if (!best || t > best.t) best = { pilierKey: pilierKey, idx: idx, positionMillis: o.positionMillis, durationMillis: o.durationMillis, t: t };
+    }
+    return best;
+  } catch (e) { return null; }
+}
+
 export {
   hapticLight,
   hapticSuccess,
@@ -156,5 +188,6 @@ export {
   isComingSoon,
   getSeanceDuJour,
   getResumeIndicesForPilier,
+  getResumableSession,
   PILIER_LABEL_IDX,
 };

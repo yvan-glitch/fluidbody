@@ -1979,8 +1979,10 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         <TwoColLandingTV
           piliers={piliers}
           lang={lang}
+          seancesByKey={getSeances(lang)}
           onPrimary={function() { var f = (sdj && sdj.pilier) || piliers[0]; if (f) setOpenPilier(f); }}
           onOpenPilier={setOpenPilier}
+          onResume={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }}
         />
       ) : null}
       {IS_TV && !openPilier && mcTab === 'explorer' ? (
