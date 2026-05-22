@@ -27,10 +27,10 @@ const { width: SW, height: SH } = Dimensions.get('window');
 // Palette aquatique TV-scale — 6 stops pour éviter le banding visible à
 // 1080p+ (les TVs amplifient les transitions linéaires). Reprend la
 // palette PilierPanel iPhone, élargie en bas.
-// Dégradé identique au splash iPhone : navy quasi-noir en HAUT → teal /
-// turquoise lumineux en BAS (Yvan veut exactement ce rendu).
-const GRADIENT_COLORS = ['#0A1830', '#1B3F52', '#3A7E8E', '#5BA8B5'];
-const GRADIENT_LOCATIONS = [0, 0.4, 0.75, 1];
+// Couleurs samplées pixel-près du splash iPhone (Yvan) : navy quasi-noir en
+// HAUT → teal/turquoise lumineux en BAS.
+const GRADIENT_COLORS = ['#021222', '#071C31', '#12324B', '#2B657D', '#479EB1', '#55BBC9'];
+const GRADIENT_LOCATIONS = [0, 0.15, 0.30, 0.55, 0.75, 1];
 
 // Bulles : positions déterministes pour rester stables au remount (et
 // éviter qu'une bulle clignote au mauvais endroit après navigation).
