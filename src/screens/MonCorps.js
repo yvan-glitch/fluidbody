@@ -35,7 +35,7 @@ import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
-import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV } from '../components/tv';
+import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV } from '../components/tv';
 import { PILIER_CONTENT } from '../constants/pilierContent';
 
 let Notifications = null;
@@ -2015,6 +2015,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           </View>
         );
       })() : null}
+      {IS_TV && mcTab === 'explorer' ? (
+        <ExplorerTV piliers={piliers} seancesByKey={getSeances(lang)} onOpenPilier={setOpenPilier} lang={lang} />
+      ) : null}
+      {IS_TV && mcTab === 'programmes' ? (
+        <ProgrammesTV piliers={piliers} lang={lang} activeProgram={activeProgram} onOpenPilier={setOpenPilier} />
+      ) : null}
       {IS_TV ? (
         <TVTopBar
           tabs={[
