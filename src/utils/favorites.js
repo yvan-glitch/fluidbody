@@ -142,3 +142,27 @@ export async function clearLocalFavorites() {
     await AsyncStorage.removeItem(FAVORITES_KEY);
   } catch (e) {}
 }
+
+// ── Couche cache synchrone (Apple TV) ───────────────────────────────────
+// La TV n'a pas de Supabase câblé ; on garde un cache mémoire synchrone +
+// un pub/sub pour que les cœurs des cards se mettent à jour instantanément.
+// Le toggle écrit en local (best-effort, sans remote). Additif → iPhone safe.
+let _favCache = [];
+const _favSubs = new Set();
+function _notifyFav() { _favSubs.forEach(function (fn) { try { fn(); } catch (e) {} }); }
+
+export function getCachedFavorites() { return _favCache; }
+export function isFavoriteCached(sessionId) { return !!sessionId && _favCache.indexOf(sessionId) !== -1; }
+export function subscribeFavorites(fn) { _favSubs.add(fn); return function () { _favSubs.delete(fn); }; }
+
+export function primeFavoritesCache() {
+  getFavorites().then(function (ids) { _favCache = Array.isArray(ids) ? ids : []; _notifyFav(); }).catch(function () {});
+}
+
+// Toggle local-only (TV) : écrit le cache AsyncStorage partagé, met à jour le
+// cache mémoire et notifie les abonnés. Pas de remote (supabase indispo TV).
+export async function toggleFavoriteLocal(sessionId) {
+  const next = await toggleFavorite(undefined, undefined, sessionId);
+  if (Array.isArray(next)) { _favCache = next; _notifyFav(); }
+  return _favCache;
+}
