@@ -75,9 +75,9 @@ const PROG_IMAGES = {
   souplesse: require('../../assets/programs/souplesse.jpg'),
 };
 
-// Photos coach Sabrina — TV uniquement (mise en avant façon Fitness+).
-const SABRINA_HERO = require('../../assets/coach/sabrina_hero.jpg');
-const SABRINA_BEACH = require('../../assets/coach/sabrina_beach.jpg');
+// Photos coach Sabrina (studio Espace Pilates) — TV uniquement.
+const SABRINA_HERO = require('../../assets/coach/sabrina_1.jpg');   // signature hero
+const SABRINA_BEACH = require('../../assets/coach/sabrina_3.jpg');  // backdrop "monde"
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;

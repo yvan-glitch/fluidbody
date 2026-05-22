@@ -12,6 +12,28 @@
 
 import { PILIER_IMAGES } from '../../constants/data';
 
+// 17 photos studio Sabrina (Espace Pilates Suisse) — exportées aussi pour
+// servir de hero / backdrop ailleurs.
+export const SABRINA_IMAGES = [
+  require('../../../assets/coach/sabrina_1.jpg'),
+  require('../../../assets/coach/sabrina_2.jpg'),
+  require('../../../assets/coach/sabrina_3.jpg'),
+  require('../../../assets/coach/sabrina_4.jpg'),
+  require('../../../assets/coach/sabrina_5.jpg'),
+  require('../../../assets/coach/sabrina_6.jpg'),
+  require('../../../assets/coach/sabrina_7.jpg'),
+  require('../../../assets/coach/sabrina_8.jpg'),
+  require('../../../assets/coach/sabrina_9.jpg'),
+  require('../../../assets/coach/sabrina_10.jpg'),
+  require('../../../assets/coach/sabrina_11.jpg'),
+  require('../../../assets/coach/sabrina_12.jpg'),
+  require('../../../assets/coach/sabrina_13.jpg'),
+  require('../../../assets/coach/sabrina_14.jpg'),
+  require('../../../assets/coach/sabrina_15.jpg'),
+  require('../../../assets/coach/sabrina_16.jpg'),
+  require('../../../assets/coach/sabrina_17.jpg'),
+];
+
 const POOL = [
   PILIER_IMAGES.p1, PILIER_IMAGES.p3, PILIER_IMAGES.p4, PILIER_IMAGES.p6, PILIER_IMAGES.p5,
   PILIER_IMAGES.p2, PILIER_IMAGES.p7, PILIER_IMAGES.p8, PILIER_IMAGES.p9, PILIER_IMAGES.sdj,
@@ -21,10 +43,7 @@ const POOL = [
   require('../../../assets/programs/core-plancher.jpg'),
   require('../../../assets/programs/souplesse.jpg'),
   require('../../../assets/programs/vitaly-gariev-7C_Ri-7kyXc-unsplash.jpg'),
-  require('../../../assets/coach/sabrina_hero.jpg'),
-  require('../../../assets/coach/sabrina_trampoline.jpg'),
-  require('../../../assets/coach/sabrina_beach.jpg'),
-].filter(Boolean);
+].concat(SABRINA_IMAGES).filter(Boolean);
 
 function hashStr(s) {
   let h = 0;
