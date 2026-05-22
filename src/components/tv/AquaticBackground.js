@@ -57,15 +57,21 @@ const BULLES_TV = [
 
 // 5 méduses dérivantes — points de départ répartis (haut, bas, gauche,
 // droite, centre). Tailles 80–140 px : grandes mais pas envahissantes.
-// Plus de méduses, plus petites (feedback Yvan) — 7 réparties sur l'écran.
+// Méduses foreground : plus grandes (~1.6×) et plus nombreuses (12), Y
+// dispersés (feedback Yvan : flottent par-dessus le contenu, façon aquarium).
 const MEDUSES_TV = [
-  { baseX: SW * 0.08, baseY: SH * 0.16, size: 84,  breath: 3600, tint: 'rgba(174,239,77,1)' },
-  { baseX: SW * 0.80, baseY: SH * 0.10, size: 96,  breath: 4200, tint: 'rgba(0,220,255,1)' },
-  { baseX: SW * 0.18, baseY: SH * 0.70, size: 68,  breath: 3400, tint: 'rgba(0,189,208,1)' },
-  { baseX: SW * 0.72, baseY: SH * 0.64, size: 100, breath: 4600, tint: 'rgba(174,239,77,1)' },
-  { baseX: SW * 0.44, baseY: SH * 0.36, size: 60,  breath: 3800, tint: 'rgba(200,240,255,1)' },
-  { baseX: SW * 0.58, baseY: SH * 0.82, size: 76,  breath: 4000, tint: 'rgba(0,220,255,1)' },
-  { baseX: SW * 0.34, baseY: SH * 0.50, size: 64,  breath: 4400, tint: 'rgba(174,239,77,1)' },
+  { baseX: SW * 0.06, baseY: SH * 0.10, size: 150, breath: 3600, tint: 'rgba(174,239,77,1)' },
+  { baseX: SW * 0.82, baseY: SH * 0.06, size: 160, breath: 4200, tint: 'rgba(0,220,255,1)' },
+  { baseX: SW * 0.20, baseY: SH * 0.66, size: 112, breath: 3400, tint: 'rgba(0,189,208,1)' },
+  { baseX: SW * 0.70, baseY: SH * 0.58, size: 158, breath: 4600, tint: 'rgba(174,239,77,1)' },
+  { baseX: SW * 0.44, baseY: SH * 0.30, size: 100, breath: 3800, tint: 'rgba(200,240,255,1)' },
+  { baseX: SW * 0.58, baseY: SH * 0.82, size: 126, breath: 4000, tint: 'rgba(0,220,255,1)' },
+  { baseX: SW * 0.32, baseY: SH * 0.46, size: 104, breath: 4400, tint: 'rgba(174,239,77,1)' },
+  { baseX: SW * 0.90, baseY: SH * 0.40, size: 120, breath: 3900, tint: 'rgba(0,189,208,1)' },
+  { baseX: SW * 0.12, baseY: SH * 0.40, size: 132, breath: 4300, tint: 'rgba(200,240,255,1)' },
+  { baseX: SW * 0.50, baseY: SH * 0.62, size: 110, breath: 4100, tint: 'rgba(0,220,255,1)' },
+  { baseX: SW * 0.78, baseY: SH * 0.84, size: 138, breath: 4500, tint: 'rgba(174,239,77,1)' },
+  { baseX: SW * 0.26, baseY: SH * 0.16, size: 116, breath: 3700, tint: 'rgba(0,189,208,1)' },
 ];
 
 function DriftingMeduse({ baseX, baseY, size, breath, tint, paused }) {
@@ -113,21 +119,34 @@ function DriftingMeduse({ baseX, baseY, size, breath, tint, paused }) {
   );
 }
 
-export default function AquaticBackground({
-  // Densité — on peut atténuer si l'écran TV contient déjà beaucoup de
-  // contenu (paywall, séance complétée), pour ne pas saturer.
+// ── Couche FOND : dégradé turquoise + rayons (z bas, derrière le contenu) ──
+export function AquaticGradient({ style }) {
+  if (!IS_TV) return null;
+  return (
+    <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { overflow: 'hidden' }, style]}>
+      <LinearGradient
+        colors={GRADIENT_COLORS}
+        locations={GRADIENT_LOCATIONS}
+        style={StyleSheet.absoluteFillObject}
+      />
+      {/* Rayons lumineux qui pulsent — profondeur "sous-marine" */}
+      <Rayon left={SW * 0.10} width={SW * 0.05} delay={0}    duration={9000} opacity={0.16} />
+      <Rayon left={SW * 0.42} width={SW * 0.045} delay={3500} duration={9500} opacity={0.12} />
+      <Rayon left={SW * 0.78} width={SW * 0.04} delay={6500} duration={8500} opacity={0.14} />
+    </View>
+  );
+}
+
+// ── Couche AQUATIQUE : méduses + bulles. Utilisable en FOREGROUND (z haut,
+// par-dessus le contenu). pointerEvents="none" CRITIQUE → ne mange jamais le
+// focus de la Siri Remote. ──
+export function AquaticDrifters({
   density = 'normal', // 'normal' | 'low'
-  // `paused` : couper les animations quand un Modal couvre l'écran.
   paused = false,
-  // Opacity globale du calque méduses+bulles. Au-dessus de gros titres
-  // ou d'un QR code, on peut descendre à 0.6 pour ne pas concurrencer.
   contentOpacity = 1,
   style,
 }) {
   if (!IS_TV) return null;
-
-  // Si density === 'low', on enlève la moitié des méduses + bulles. Utile
-  // pour le TVLoginScreen (QR code doit dominer) ou le PaywallModal.
   const meduses = useMemo(function() {
     if (density === 'low') return MEDUSES_TV.slice(0, 3);
     return MEDUSES_TV;
@@ -136,35 +155,34 @@ export default function AquaticBackground({
     if (density === 'low') return BULLES_TV.filter(function(_, i) { return i % 2 === 0; });
     return BULLES_TV;
   }, [density]);
+  return (
+    <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { overflow: 'hidden', opacity: contentOpacity }, style]}>
+      {bulles.map(function(b, i) { return <Bulle key={'tv-b-' + i} {...b} colorIndex={i} />; })}
+      {meduses.map(function(m, i) {
+        return (
+          <DriftingMeduse
+            key={'tv-m-' + i}
+            baseX={m.baseX}
+            baseY={m.baseY}
+            size={m.size}
+            breath={m.breath}
+            tint={m.tint}
+            paused={paused}
+          />
+        );
+      })}
+    </View>
+  );
+}
 
+// Combiné (fond + drifters) — gardé pour TVLoginScreen / ProfilTV / Paywall
+// qui l'utilisent comme arrière-plan plein écran.
+export default function AquaticBackground({ density = 'normal', paused = false, contentOpacity = 1, style }) {
+  if (!IS_TV) return null;
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { overflow: 'hidden' }, style]}>
-      <LinearGradient
-        colors={GRADIENT_COLORS}
-        locations={GRADIENT_LOCATIONS}
-        style={StyleSheet.absoluteFillObject}
-      />
-      {/* Rayons lumineux qui pulsent — donnent la profondeur "sous-marine" */}
-      <Rayon left={SW * 0.10} width={SW * 0.05} delay={0}    duration={9000} opacity={0.16} />
-      <Rayon left={SW * 0.42} width={SW * 0.045} delay={3500} duration={9500} opacity={0.12} />
-      <Rayon left={SW * 0.78} width={SW * 0.04} delay={6500} duration={8500} opacity={0.14} />
-
-      <View style={[StyleSheet.absoluteFillObject, { opacity: contentOpacity }]} pointerEvents="none">
-        {bulles.map(function(b, i) { return <Bulle key={'tv-b-' + i} {...b} colorIndex={i} />; })}
-        {meduses.map(function(m, i) {
-          return (
-            <DriftingMeduse
-              key={'tv-m-' + i}
-              baseX={m.baseX}
-              baseY={m.baseY}
-              size={m.size}
-              breath={m.breath}
-              tint={m.tint}
-              paused={paused}
-            />
-          );
-        })}
-      </View>
+      <AquaticGradient />
+      <AquaticDrifters density={density} paused={paused} contentOpacity={contentOpacity} />
     </View>
   );
 }

@@ -2,7 +2,7 @@
 // puisqu'ils ne sont importés que par des écrans gated `IS_TV` ou par
 // le branche `if (IS_TV) {}` du root.
 
-export { default as AquaticBackground } from './AquaticBackground';
+export { default as AquaticBackground, AquaticGradient, AquaticDrifters } from './AquaticBackground';
 export { default as MeduseTV } from './MeduseTV';
 export { default as GlassCardTV } from './GlassCardTV';
 export { default as FocusableCardTV } from './FocusableCardTV';
