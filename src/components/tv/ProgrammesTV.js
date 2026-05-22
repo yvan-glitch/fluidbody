@@ -14,9 +14,15 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import TVCard16x9 from './TVCard16x9';
+import HorizontalCarousel from './HorizontalCarousel';
 import { tvFocusProps } from '../../utils/platformTV';
 import { T, PILIER_IMAGES } from '../../constants/data';
 import { getProgramStats } from '../../utils/programs';
+
+function parseMin(d) {
+  var m = String(d || '').match(/\d+/);
+  return m ? parseInt(m[0], 10) : 0;
+}
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const SIDE = 80;
@@ -56,12 +62,25 @@ function ContinueButton({ label, onPress, focusPreferred }) {
   );
 }
 
-export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilier }) {
+export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilier, onOpenSeance, seancesByKey }) {
   const tr = T[lang] || T.fr;
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   const cardW = Math.floor((SW - SIDE * 2 - GAP * (COLS - 1)) / COLS);
 
   function pilierByKey(k) { return (piliers || []).find(function (p) { return p.key === k; }); }
+
+  // Rangée "Séances courtes" — les séances pratiques avec vidéo les plus
+  // courtes, tous piliers confondus (esprit "méditations" de Fitness+).
+  const shortItems = [];
+  (piliers || []).forEach(function (p) {
+    ((seancesByKey && seancesByKey[p.key]) || []).forEach(function (s, i) {
+      if (s[2] === 'Comprendre' || s[2] === 'Ressentir') return;
+      if (!s[3]) return; // a une vidéo produite
+      shortItems.push({ key: 'short_' + p.key + '_' + i, title: s[0], subtitle: s[1] + ' · ' + p.label, image: PILIER_IMAGES[p.key], pilier: p, idx: i, _min: parseMin(s[1]) });
+    });
+  });
+  shortItems.sort(function (a, b) { return a._min - b._min; });
+  const shortRow = shortItems.slice(0, 8);
 
   // Hero programme actif (défensif : ne casse jamais l'écran si stats échoue).
   let activeHero = null;
@@ -105,6 +124,20 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
           </View>
         ) : null}
 
+        {shortRow.length > 0 ? (
+          <View style={{ marginBottom: 12 }}>
+            <HorizontalCarousel
+              title={isFr ? 'Séances courtes' : 'Quick sessions'}
+              items={shortRow}
+              firstFocus={!activeHero}
+              onItemPress={function (it) {
+                if (onOpenSeance) onOpenSeance(it.pilier, it.idx);
+                else onOpenPilier(it.pilier);
+              }}
+            />
+          </View>
+        ) : null}
+
         <Text style={{ fontSize: 30, fontWeight: '800', color: '#ffffff', letterSpacing: -0.5, paddingLeft: SIDE, marginBottom: 24 }}>
           {tr.prog_thematiques_title || 'Programmes thématiques'}
         </Text>
@@ -117,7 +150,7 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
                 title={tr[t.titleKey] || t.fallback}
                 subtitle={t.duration}
                 image={t.img}
-                focusPreferred={!activeHero && i === 0}
+                focusPreferred={!activeHero && shortRow.length === 0 && i === 0}
                 onPress={function () { var p = pilierByKey(t.pilier); if (p) onOpenPilier(p); }}
               />
             );

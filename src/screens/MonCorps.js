@@ -2016,10 +2016,10 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         );
       })() : null}
       {IS_TV && !openPilier && mcTab === 'explorer' ? (
-        <ExplorerTV piliers={piliers} seancesByKey={getSeances(lang)} onOpenPilier={setOpenPilier} lang={lang} />
+        <ExplorerTV piliers={piliers} seancesByKey={getSeances(lang)} onOpenPilier={setOpenPilier} onActivateSubscription={onActivateSubscription} lang={lang} />
       ) : null}
       {IS_TV && !openPilier && mcTab === 'programmes' ? (
-        <ProgrammesTV piliers={piliers} lang={lang} activeProgram={activeProgram} onOpenPilier={setOpenPilier} />
+        <ProgrammesTV piliers={piliers} lang={lang} activeProgram={activeProgram} seancesByKey={getSeances(lang)} onOpenPilier={setOpenPilier} onOpenSeance={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }} />
       ) : null}
       {IS_TV && !openPilier && mcTab === 'activite' ? (
         <StatsTV mode="activity" done={done} streak={streak} piliers={piliers} lang={lang} />
