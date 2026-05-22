@@ -29,6 +29,7 @@ import VideoPlayer from '../VideoPlayer';
 import SeanceCompleteTV from './SeanceCompleteTV';
 import AquaticBackground from './AquaticBackground';
 import { pickSessionImage } from './tvImagePool';
+import { isFavoriteCached, subscribeFavorites, toggleFavoriteLocal } from '../../utils/favorites';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const FITNESS_GREEN = '#00DB7D';
@@ -83,9 +84,10 @@ function HeroPillButton({ label, variant, onPress, focusPreferred }) {
 }
 
 // ── Carte séance focusable (16:9) ────────────────────────────────────────
-function SeanceCardTV({ width, title, duree, etape, etapeLabel, done, locked, comingSoon, focusPreferred, image, onPress, onFocus }) {
+function SeanceCardTV({ width, title, duree, etape, etapeLabel, done, locked, comingSoon, focusPreferred, image, sessionId, onPress, onFocus }) {
   const cardH = Math.round((width * 9) / 16);
   const [focused, setFocused] = useState(false);
+  const [fav, setFav] = useState(function () { return isFavoriteCached(sessionId); });
   const scale = useRef(new Animated.Value(1)).current;
   const ring = useRef(new Animated.Value(0)).current;
   useEffect(function () {
@@ -94,6 +96,10 @@ function SeanceCardTV({ width, title, duree, etape, etapeLabel, done, locked, co
       Animated.timing(ring, { toValue: focused ? 1 : 0, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
   }, [focused]);
+  useEffect(function () {
+    setFav(isFavoriteCached(sessionId));
+    return subscribeFavorites(function () { setFav(isFavoriteCached(sessionId)); });
+  }, [sessionId]);
   const tint = ETAPE_TINT[etape] || '#00BDD0';
   return (
     <Animated.View style={[{ width: width, height: cardH, borderRadius: 20, transform: [{ scale: scale }] }, focused ? { shadowColor: '#FFFFFF', shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: { width: 0, height: 6 } } : null]}>
@@ -101,6 +107,8 @@ function SeanceCardTV({ width, title, duree, etape, etapeLabel, done, locked, co
         {...tvFocusProps(focusPreferred)}
         activeOpacity={0.9}
         onPress={onPress}
+        onLongPress={sessionId ? function () { toggleFavoriteLocal(sessionId); } : undefined}
+        delayLongPress={1000}
         onFocus={function () { setFocused(true); if (onFocus) onFocus(); }}
         onBlur={function () { setFocused(false); }}
         style={{ flex: 1 }}
@@ -112,6 +120,12 @@ function SeanceCardTV({ width, title, duree, etape, etapeLabel, done, locked, co
           <View style={{ position: 'absolute', top: 12, right: 12, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? 'rgba(174,239,77,0.22)' : 'rgba(0,0,0,0.45)', borderWidth: done ? 1.5 : 0, borderColor: 'rgba(174,239,77,0.6)' }}>
             <Text style={{ fontSize: 18, color: done ? '#AEEF4D' : '#ffffff' }}>{locked ? '🔒' : (done ? '✓' : '▶')}</Text>
           </View>
+          {/* coin haut-gauche : cœur favori (maintenir OK 1 s pour toggler) */}
+          {sessionId ? (
+            <View style={{ position: 'absolute', top: 12, left: 12, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+              <Text style={{ fontSize: 17, color: fav ? '#FF4D6D' : 'rgba(255,255,255,0.92)' }}>{fav ? '♥' : '♡'}</Text>
+            </View>
+          ) : null}
           <View style={{ position: 'absolute', left: 16, right: 16, bottom: 14 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: tint }}>
@@ -272,6 +286,7 @@ export default function PilierPanelTV({ pilier, done, onToggle, onClose, lang, i
                 locked={locked}
                 comingSoon={isComingSoon(pilier.key, i)}
                 image={pickSessionImage(pilier.key, i)}
+                sessionId={pilier.key + '_' + i}
                 focusPreferred={false}
                 onPress={function () { tryOpenSeance(i); }}
               />

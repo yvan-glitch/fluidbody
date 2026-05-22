@@ -37,6 +37,7 @@ import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
 import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground, RechercheTV } from '../components/tv';
 import { pickSessionImage } from '../components/tv/tvImagePool';
+import { primeFavoritesCache } from '../utils/favorites';
 import { PILIER_CONTENT } from '../constants/pilierContent';
 
 let Notifications = null;
@@ -980,6 +981,8 @@ function ZoneIcon({ idx, color, size }) {
 
 function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout, supabase, supaUser, onOpenProfile }) {
   var tr = T[lang] || T["fr"];
+  // TV : précharge le cache favoris (cœurs + section "Mes favoris").
+  useEffect(function() { if (IS_TV) primeFavoritesCache(); }, []);
   var theme = useTheme().theme;
   var navigation = useSafeNavigation();
   var [openPilier, setOpenPilier] = useState(null);
