@@ -1,13 +1,11 @@
 // TVCard16x9 — carte focusable 16:9 pour les carrousels Apple TV (style
 // Fitness+). Image full-bleed + gradient bas + titre/sous-titre en overlay.
 //
-// Focus = scale 1.06 (native driver) + ring 2px (blanc par défaut, vert si
-// accent === 'green'). Même pattern safe que le FocusableCard de MonCorps —
-// uniquement des transforms native-driven, JAMAIS de rotateX/Y JS sur le
-// même node (cf. le crash GlassCardTV corrigé en amont).
+// Focus = scale 1.08 (native driver) + ring blanc 2.5px + glow/shadow blanc
+// (élévation). Uniquement des transforms native-driven, JAMAIS de rotateX/Y
+// JS sur le même node (cf. crash GlassCardTV corrigé en amont).
 //
-// N'est importée que par des composants TV / branches `IS_TV`, donc zéro
-// impact iPhone.
+// TV-only — zéro impact iPhone.
 
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, TouchableOpacity, View, Text, StyleSheet } from 'react-native';
@@ -22,7 +20,6 @@ export default function TVCard16x9({
   image,
   width = 360,
   focusPreferred = false,
-  accent,
   onPress,
   onFocus,
 }) {
@@ -34,7 +31,7 @@ export default function TVCard16x9({
 
   useEffect(function () {
     Animated.parallel([
-      Animated.timing(scale, { toValue: focused ? 1.06 : 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(scale, { toValue: focused ? 1.08 : 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(ring, { toValue: focused ? 1 : 0, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
   }, [focused]);
@@ -44,7 +41,12 @@ export default function TVCard16x9({
   }, []);
 
   return (
-    <Animated.View style={{ width: cardW, height: cardH, transform: [{ scale: scale }] }}>
+    <Animated.View
+      style={[
+        { width: cardW, height: cardH, borderRadius: 20, transform: [{ scale: scale }] },
+        focused ? { shadowColor: '#FFFFFF', shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: { width: 0, height: 6 } } : null,
+      ]}
+    >
       <TouchableOpacity
         {...tvFocusProps(focusPreferred)}
         activeOpacity={0.9}
@@ -53,20 +55,20 @@ export default function TVCard16x9({
         onBlur={function () { setFocused(false); }}
         style={{ flex: 1 }}
       >
-        <View style={{ flex: 1, borderRadius: 14, overflow: 'hidden', backgroundColor: '#10162B' }}>
+        <View style={{ flex: 1, borderRadius: 20, overflow: 'hidden', backgroundColor: '#10131C' }}>
           {image ? (
             <Image source={image} contentFit="cover" transition={200} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
           ) : null}
           <LinearGradient
-            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.85)']}
-            locations={[0.4, 1]}
+            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.88)']}
+            locations={[0.38, 1]}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
-          <View style={{ position: 'absolute', left: 14, right: 14, bottom: 12 }}>
-            <Text numberOfLines={1} style={{ fontSize: 17, fontWeight: '700', color: '#ffffff', letterSpacing: -0.2 }}>{title}</Text>
+          <View style={{ position: 'absolute', left: 16, right: 16, bottom: 14 }}>
+            <Text numberOfLines={1} style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', letterSpacing: -0.2 }}>{title}</Text>
             {subtitle ? (
-              <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '400', color: 'rgba(255,255,255,0.72)', marginTop: 2 }}>{subtitle}</Text>
+              <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '400', color: 'rgba(255,255,255,0.72)', marginTop: 3 }}>{subtitle}</Text>
             ) : null}
           </View>
         </View>
@@ -75,9 +77,9 @@ export default function TVCard16x9({
           style={{
             position: 'absolute',
             top: -2, left: -2, right: -2, bottom: -2,
-            borderRadius: 16,
-            borderWidth: 2,
-            borderColor: accent === 'green' ? '#AEEF4D' : '#FFFFFF',
+            borderRadius: 22,
+            borderWidth: 2.5,
+            borderColor: '#FFFFFF',
             opacity: ring,
           }}
         />

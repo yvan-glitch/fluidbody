@@ -1392,7 +1392,6 @@ const STREAK_DATE_KEY = 'fluid_streak_seance_last_date';
 // ══════════════════════════════════
 function TVMainView({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, isAdmin, openPaywall, saveHealthKitWorkout, supaUser, onLogout }) {
   const [profileOpen, setProfileOpen] = useState(false);
-  const [profileBtnFocused, setProfileBtnFocused] = useState(false);
   return (
     <View style={{ flex: 1 }}>
       <MonCorps
@@ -1406,30 +1405,10 @@ function TVMainView({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChan
         isSubscriber={isSubscriber}
         onActivateSubscription={openPaywall}
         saveHealthKitWorkout={saveHealthKitWorkout}
+        onOpenProfile={function() { setProfileOpen(true); }}
       />
-      {/* Bouton Profil discret en haut à droite. Focusable Siri Remote
-          — par défaut, le focus initial est sur la première card de
-          MonCorps (cf. tvFocusProps preferred=true là-bas) ; on doit
-          flèche-droite-haut pour atteindre celui-ci. */}
-      <TouchableOpacity
-        hasTVPreferredFocus={false}
-        onPress={function() { setProfileOpen(true); }}
-        onFocus={function() { setProfileBtnFocused(true); }}
-        onBlur={function() { setProfileBtnFocused(false); }}
-        activeOpacity={0.85}
-        style={{
-          position: 'absolute',
-          top: 56, right: 80,
-          paddingHorizontal: 22, paddingVertical: 12,
-          borderRadius: 14,
-          backgroundColor: profileBtnFocused ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.08)',
-          borderWidth: 2,
-          borderColor: profileBtnFocused ? '#AEEF4D' : 'rgba(255,255,255,0.15)',
-          zIndex: 50,
-        }}
-      >
-        <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '600', letterSpacing: 0.3 }}>👤 {(T[lang] || T.fr).mon_compte || 'Mon compte'}</Text>
-      </TouchableOpacity>
+      {/* Le point d'entrée Profil vit désormais dans la TVTopBar (avatar en
+          haut à droite, rendu par MonCorps) → onOpenProfile ci-dessus. */}
 
       <Modal visible={profileOpen} animationType="fade" presentationStyle="fullScreen" onRequestClose={function() { setProfileOpen(false); }}>
         <ProfilTV

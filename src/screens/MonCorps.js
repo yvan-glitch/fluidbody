@@ -35,7 +35,7 @@ import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
-import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel } from '../components/tv';
+import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar } from '../components/tv';
 import { PILIER_CONTENT } from '../constants/pilierContent';
 
 let Notifications = null;
@@ -973,7 +973,7 @@ function ZoneIcon({ idx, color, size }) {
   }
 }
 
-function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout, supabase, supaUser }) {
+function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout, supabase, supaUser, onOpenProfile }) {
   var tr = T[lang] || T["fr"];
   var theme = useTheme().theme;
   var navigation = useSafeNavigation();
@@ -1153,6 +1153,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad1-" + i} delay={b.delay + 2000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.35))} size={b.size} duration={b.duration} />; })}
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad2-" + i} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />; })}
       </View>
+      {!IS_TV && (<Fragment>
       <View style={[localStyles.logoRow, { justifyContent: "space-between", paddingLeft: 20, paddingRight: 20, paddingTop: 10, marginBottom: 20, flexDirection: 'row', alignItems: 'center' }]} pointerEvents="box-none">
         <Text style={localStyles.logoWordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
           FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: "900", color: "#AEEF4D", fontSize: 34 }}>+</AnimatedPlus>
@@ -1235,6 +1236,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           </LiquidGlassCapsule>
         </ScrollView>
       </View>
+      </Fragment>)}
       <ScrollView
         key={mcTab}
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 3 }}
@@ -1306,94 +1308,11 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         )}
         {mcTab === 'pour_vous' && (function() {
           if (IS_TV) {
-            // Apple TV : disposition style Apple Fitness+ — hero cinématique
-            // en haut + carrousels horizontaux par catégorie. Remplace la
-            // grille 4 colonnes. Tout est TV-only (cette branche), l'iPhone
-            // (code plus bas) est intact.
-            var seancesByKey = getSeances(lang);
-            // Pilier mis en avant = la séance du jour (sinon le 1er pilier).
-            var featured = (sdj && sdj.pilier) || piliers[0];
-            var featuredSeances = seancesByKey[featured.key] || [];
-            var parseMin = function(d) { var m = String(d || '').match(/\d+/); return m ? parseInt(m[0], 10) : 0; };
-            var totalMin = featuredSeances.reduce(function(a, s) { return a + parseMin(s[1]); }, 0);
-            var pilierContent = (PILIER_CONTENT[lang] || PILIER_CONTENT.fr || {})[featured.key] || {};
-            var heroDescription = pilierContent.hero_subtitle || '';
-            var coachAvec = tr.coach_avec || 'Avec Sabrina';
-            var heroSubtitle = featuredSeances.length + ' séances · ~' + totalMin + ' min · ' + coachAvec;
-            // Démarrer la 1re fois, Continuer si la séance du jour est entamée.
-            var heroCta = (sdj && typeof sdj.idx === 'number' && sdj.idx > 0) ? 'Continuer' : 'Démarrer';
-
-            var openSeance = function(pilierKey, idx) {
-              var p = piliers.find(function(x) { return x.key === pilierKey; });
-              if (!p) return;
-              setOpenInitialIdx(typeof idx === 'number' ? idx : null);
-              setOpenPilier(p);
-            };
-            var etapeLabel = function(e) { return (tr.etapes && tr.etapes[e]) || e; };
-
-            // Rangée "Pour vous" — 8 premières séances du pilier mis en avant.
-            var rowPourVous = featuredSeances.slice(0, 8).map(function(s, i) {
-              return { key: 'pv_' + featured.key + '_' + i, title: s[0], subtitle: s[1] + ' · ' + etapeLabel(s[2]), image: PILIER_IMAGES[featured.key], pilierKey: featured.key, idx: i };
-            });
-            // Rangée "Nouveau" — séances avec vidéo produite (tuple[3] === true),
-            // complétées au besoin par la 1re séance de chaque pilier.
-            var rowNouveau = [];
-            piliers.forEach(function(p) {
-              (seancesByKey[p.key] || []).forEach(function(s, i) {
-                if (s[3] === true) rowNouveau.push({ key: 'nv_' + p.key + '_' + i, title: s[0], subtitle: p.label + ' · ' + s[1], image: PILIER_IMAGES[p.key], pilierKey: p.key, idx: i });
-              });
-            });
-            piliers.forEach(function(p) {
-              if (rowNouveau.length >= 8) return;
-              var s0 = (seancesByKey[p.key] || [])[0];
-              if (s0) rowNouveau.push({ key: 'nv0_' + p.key, title: s0[0], subtitle: p.label + ' · ' + s0[1], image: PILIER_IMAGES[p.key], pilierKey: p.key, idx: 0 });
-            });
-            // Rangée "Tous les piliers" — 1 carte par pilier (9), ouvre le panel.
-            var rowPiliers = piliers.map(function(p) {
-              return { key: 'pil_' + p.key, title: p.label, subtitle: (seancesByKey[p.key] || []).length + ' séances', image: PILIER_IMAGES[p.key], accent: 'green', pilierKey: p.key, idx: null };
-            });
-
-            return (
-              <View key="pour-vous-tv">
-                {/* Fond bleu nuit statique (pas de méduses animées sur TV) —
-                    couvre toute la zone hero + carrousels. top:0 pour ne pas
-                    recouvrir le bandeau "programme actif" rendu au-dessus. */}
-                <LinearGradient
-                  colors={['#0A0E1F', '#1A2238']}
-                  style={{ position: 'absolute', top: 0, left: -16, right: -16, height: SH * 2.2 }}
-                  pointerEvents="none"
-                />
-                {/* Hero + carrousels bleed jusqu'aux bords (annule le pad 16). */}
-                <View style={{ marginHorizontal: -16 }}>
-                  <HeroFeatured
-                    image={PILIER_IMAGES[featured.key]}
-                    title={featured.label}
-                    subtitle={heroSubtitle}
-                    description={heroDescription}
-                    ctaLabel={heroCta}
-                    focusPreferred={true}
-                    onStart={function() {
-                      openSeance(featured.key, (sdj && sdj.pilier && sdj.pilier.key === featured.key) ? sdj.idx : null);
-                    }}
-                  />
-                  <HorizontalCarousel
-                    title="Pour vous"
-                    items={rowPourVous}
-                    onItemPress={function(it) { openSeance(it.pilierKey, it.idx); }}
-                  />
-                  <HorizontalCarousel
-                    title="Nouveau"
-                    items={rowNouveau}
-                    onItemPress={function(it) { openSeance(it.pilierKey, it.idx); }}
-                  />
-                  <HorizontalCarousel
-                    title="Tous les piliers"
-                    items={rowPiliers}
-                    onItemPress={function(it) { openSeance(it.pilierKey, it.idx); }}
-                  />
-                </View>
-              </View>
-            );
+            // Apple TV : "Pour vous" est rendu en plein écran style Fitness+
+            // par un overlay haut-zIndex en fin de composant (cf. plus bas) —
+            // pas ici dans le scroll. On ne rend donc rien dans la branche
+            // tab pour éviter un double rendu / des focusables fantômes.
+            return null;
           }
           var gridGap = 6;
           var fullW = SW - 32;
@@ -2032,6 +1951,82 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         try { return <BreathingCheckIn visible={showBreathing} onClose={function() { setShowBreathing(false); }} lang={lang} />; }
         catch (e) { if (__DEV__) console.warn('[breath-modal] render throw:', e); return null; }
       })()}
+
+      {/* ───────── Apple TV — "Pour vous" plein écran style Fitness+ ─────────
+          Overlay haut-zIndex qui recouvre tout le chrome iPhone (logoRow +
+          tabs masqués sur TV). Le PilierPanel est un Modal → s'affiche au
+          dessus quand une séance s'ouvre. */}
+      {IS_TV && mcTab === 'pour_vous' ? (function() {
+        var seancesByKey = getSeances(lang);
+        var featured = (sdj && sdj.pilier) || piliers[0];
+        var featuredSeances = seancesByKey[featured.key] || [];
+        var parseMin = function(d) { var m = String(d || '').match(/\d+/); return m ? parseInt(m[0], 10) : 0; };
+        var totalMin = featuredSeances.reduce(function(a, s) { return a + parseMin(s[1]); }, 0);
+        var pilierContent = (PILIER_CONTENT[lang] || PILIER_CONTENT.fr || {})[featured.key] || {};
+        var coachAvec = tr.coach_avec || 'Avec Sabrina';
+        var heroSubtitle = featuredSeances.length + ' séances · ~' + totalMin + ' min · ' + coachAvec;
+        var inProgress = sdj && typeof sdj.idx === 'number' && sdj.idx > 0;
+        var openSeance = function(pilierKey, idx) {
+          var p = piliers.find(function(x) { return x.key === pilierKey; });
+          if (!p) return;
+          setOpenInitialIdx(typeof idx === 'number' ? idx : null);
+          setOpenPilier(p);
+        };
+        var etapeLabel = function(e) { return (tr.etapes && tr.etapes[e]) || e; };
+        var rowPourVous = featuredSeances.slice(0, 8).map(function(s, i) {
+          return { key: 'pv_' + featured.key + '_' + i, title: s[0], subtitle: s[1] + ' · ' + etapeLabel(s[2]), image: PILIER_IMAGES[featured.key], pilierKey: featured.key, idx: i };
+        });
+        var rowNouveau = [];
+        piliers.forEach(function(p) {
+          (seancesByKey[p.key] || []).forEach(function(s, i) {
+            if (s[3] === true) rowNouveau.push({ key: 'nv_' + p.key + '_' + i, title: s[0], subtitle: p.label + ' · ' + s[1], image: PILIER_IMAGES[p.key], pilierKey: p.key, idx: i });
+          });
+        });
+        piliers.forEach(function(p) {
+          if (rowNouveau.length >= 8) return;
+          var s0 = (seancesByKey[p.key] || [])[0];
+          if (s0) rowNouveau.push({ key: 'nv0_' + p.key, title: s0[0], subtitle: p.label + ' · ' + s0[1], image: PILIER_IMAGES[p.key], pilierKey: p.key, idx: 0 });
+        });
+        var rowPiliers = piliers.map(function(p) {
+          return { key: 'pil_' + p.key, title: p.label, subtitle: (seancesByKey[p.key] || []).length + ' séances', image: PILIER_IMAGES[p.key], pilierKey: p.key, idx: null };
+        });
+        return (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60, backgroundColor: '#000000' }}>
+            <LinearGradient colors={['#000000', '#0F1014']} locations={[0, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+              <HeroFeatured
+                image={PILIER_IMAGES[featured.key]}
+                title={featured.label}
+                subtitle={heroSubtitle}
+                description={pilierContent.hero_subtitle || ''}
+                primaryLabel={inProgress ? 'Continuer' : "Commencer l'exercice"}
+                secondaryLabel={"Découvrir l'abonnement annuel"}
+                onPrimary={function() { openSeance(featured.key, inProgress ? sdj.idx : null); }}
+                onSecondary={function() { if (onActivateSubscription) onActivateSubscription(); }}
+              />
+              <View style={{ marginTop: 14 }}>
+                <HorizontalCarousel title="Pour vous" items={rowPourVous} onItemPress={function(it) { openSeance(it.pilierKey, it.idx); }} />
+                <HorizontalCarousel title="Nouveau" items={rowNouveau} onItemPress={function(it) { openSeance(it.pilierKey, it.idx); }} />
+                <HorizontalCarousel title="Tous les piliers" items={rowPiliers} onItemPress={function(it) { openSeance(it.pilierKey, it.idx); }} />
+              </View>
+            </ScrollView>
+          </View>
+        );
+      })() : null}
+      {IS_TV ? (
+        <TVTopBar
+          tabs={[
+            { key: 'recherche', label: 'Recherche' },
+            { key: 'pour_vous', label: 'Pour vous' },
+            { key: 'explorer', label: 'Explorer' },
+            { key: 'programmes', label: 'Programmes' },
+          ]}
+          activeKey={mcTab}
+          onSelectTab={setMcTab}
+          prenom={prenom}
+          onOpenProfile={onOpenProfile}
+        />
+      ) : null}
     </View>
   );
 }
