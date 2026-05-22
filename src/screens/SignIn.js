@@ -82,9 +82,9 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
     if (!appleAvailable) { Alert.alert('FluidBody+', 'Sign in with Apple disponible sur iOS uniquement.'); return; }
     setLoading(true); setError('');
     try {
-      const credential = await AppleAuth.signInAsync({
+      const credential = await withTimeout(AppleAuth.signInAsync({
         requestedScopes: [AppleAuth.AppleAuthenticationScope.FULL_NAME, AppleAuth.AppleAuthenticationScope.EMAIL],
-      });
+      }), 45000, 'appleSheet');
       if (!credential.identityToken) {
         const msg = 'Apple identity token manquant.';
         setError(msg); Alert.alert('Apple Sign In', msg);
@@ -108,7 +108,9 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
       setLoading(false);
       onSuccess && onSuccess();
     } catch (e) {
-      if (e?.code !== 'ERR_REQUEST_CANCELED') {
+      if (e?.message && e.message.indexOf('timeout') !== -1) {
+        setError(tr.ob_auth_err_apple_timeout || "L'identification Apple a pris trop de temps. Vérifie ta connexion.");
+      } else if (e?.code !== 'ERR_REQUEST_CANCELED') {
         const msg = e?.message || tr.ob_auth_err_net || 'Erreur.';
         setError(msg);
         Alert.alert('Apple Sign In — erreur', `${msg}\n\nCode: ${e?.code || 'n/a'}`);
