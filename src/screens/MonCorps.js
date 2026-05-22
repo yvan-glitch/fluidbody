@@ -35,7 +35,7 @@ import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
-import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground, AquaticGradient, AquaticDrifters } from '../components/tv';
+import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground } from '../components/tv';
 import { pickSessionImage } from '../components/tv/tvImagePool';
 import { PILIER_CONTENT } from '../constants/pilierContent';
 
@@ -1968,7 +1968,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       {IS_TV && !openPilier ? (
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}>
           {mcTab === 'pour_vous' ? (
-            <AquaticGradient />
+            <AquaticBackground density="rich" contentOpacity={0.9} />
           ) : (
             <Fragment>
               <Image source={SABRINA_BEACH} contentFit="cover" cachePolicy="memory-disk" style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.05 }], opacity: 0.6 }]} />
@@ -2026,16 +2026,6 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           prenom={prenom}
           onOpenProfile={onOpenProfile}
         />
-      ) : null}
-
-      {/* ───────── Apple TV — couche aquatique FOREGROUND ─────────
-          Méduses + bulles flottent PAR-DESSUS tout le contenu (z9999) →
-          impression d'aquarium. pointerEvents="none" CRITIQUE : ne mange
-          jamais le focus de la Siri Remote. Translucide pour rester lisible. */}
-      {IS_TV && !openPilier ? (
-        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
-          <AquaticDrifters density="rich" contentOpacity={0.5} />
-        </View>
       ) : null}
     </View>
   );
