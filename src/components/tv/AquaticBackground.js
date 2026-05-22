@@ -34,44 +34,31 @@ const GRADIENT_LOCATIONS = [0, 0.22, 0.44, 0.64, 0.82, 1];
 
 // Bulles : positions déterministes pour rester stables au remount (et
 // éviter qu'une bulle clignote au mauvais endroit après navigation).
-// Plus de bulles, plus petites (feedback Yvan) — l'écran TV est grand, on
-// remplit l'espace avec des bulles fines plutôt que grosses.
+// 10 bulles fines (perf — réduit de 16).
 const BULLES_TV = [
-  { x: SW * 0.05, size: 14, delay: 0, duration: 14000 },
-  { x: SW * 0.12, size: 9, delay: 2400, duration: 12000 },
-  { x: SW * 0.19, size: 18, delay: 4800, duration: 16000 },
-  { x: SW * 0.26, size: 11, delay: 1200, duration: 13000 },
-  { x: SW * 0.33, size: 15, delay: 3600, duration: 15000 },
-  { x: SW * 0.40, size: 8, delay: 6000, duration: 11000 },
-  { x: SW * 0.47, size: 16, delay: 800, duration: 14500 },
-  { x: SW * 0.54, size: 12, delay: 5200, duration: 13500 },
-  { x: SW * 0.61, size: 10, delay: 2000, duration: 12500 },
-  { x: SW * 0.68, size: 17, delay: 7000, duration: 10500 },
-  { x: SW * 0.75, size: 9, delay: 1600, duration: 15500 },
-  { x: SW * 0.82, size: 14, delay: 4200, duration: 12800 },
-  { x: SW * 0.89, size: 11, delay: 6400, duration: 13800 },
-  { x: SW * 0.95, size: 8, delay: 3000, duration: 11500 },
-  { x: SW * 0.30, size: 13, delay: 8000, duration: 16500 },
-  { x: SW * 0.65, size: 10, delay: 9000, duration: 14200 },
+  { x: SW * 0.08, size: 14, delay: 0, duration: 14000 },
+  { x: SW * 0.18, size: 10, delay: 2400, duration: 12000 },
+  { x: SW * 0.28, size: 16, delay: 4800, duration: 16000 },
+  { x: SW * 0.40, size: 11, delay: 1200, duration: 13000 },
+  { x: SW * 0.52, size: 15, delay: 3600, duration: 15000 },
+  { x: SW * 0.62, size: 9, delay: 6000, duration: 11000 },
+  { x: SW * 0.72, size: 16, delay: 800, duration: 14500 },
+  { x: SW * 0.82, size: 12, delay: 5200, duration: 13500 },
+  { x: SW * 0.92, size: 10, delay: 2000, duration: 12500 },
+  { x: SW * 0.34, size: 13, delay: 7000, duration: 10500 },
 ];
 
 // 5 méduses dérivantes — points de départ répartis (haut, bas, gauche,
 // droite, centre). Tailles 80–140 px : grandes mais pas envahissantes.
-// Méduses foreground : plus grandes (~1.6×) et plus nombreuses (12), Y
-// dispersés (feedback Yvan : flottent par-dessus le contenu, façon aquarium).
+// Arrière-plan : 6 méduses ~1.4× (perf — Yvan a trouvé 12 en foreground trop
+// lourd ; on garde une taille généreuse mais moins d'éléments).
 const MEDUSES_TV = [
-  { baseX: SW * 0.06, baseY: SH * 0.10, size: 150, breath: 3600, tint: 'rgba(174,239,77,1)' },
-  { baseX: SW * 0.82, baseY: SH * 0.06, size: 160, breath: 4200, tint: 'rgba(0,220,255,1)' },
-  { baseX: SW * 0.20, baseY: SH * 0.66, size: 112, breath: 3400, tint: 'rgba(0,189,208,1)' },
-  { baseX: SW * 0.70, baseY: SH * 0.58, size: 158, breath: 4600, tint: 'rgba(174,239,77,1)' },
-  { baseX: SW * 0.44, baseY: SH * 0.30, size: 100, breath: 3800, tint: 'rgba(200,240,255,1)' },
-  { baseX: SW * 0.58, baseY: SH * 0.82, size: 126, breath: 4000, tint: 'rgba(0,220,255,1)' },
-  { baseX: SW * 0.32, baseY: SH * 0.46, size: 104, breath: 4400, tint: 'rgba(174,239,77,1)' },
-  { baseX: SW * 0.90, baseY: SH * 0.40, size: 120, breath: 3900, tint: 'rgba(0,189,208,1)' },
-  { baseX: SW * 0.12, baseY: SH * 0.40, size: 132, breath: 4300, tint: 'rgba(200,240,255,1)' },
-  { baseX: SW * 0.50, baseY: SH * 0.62, size: 110, breath: 4100, tint: 'rgba(0,220,255,1)' },
-  { baseX: SW * 0.78, baseY: SH * 0.84, size: 138, breath: 4500, tint: 'rgba(174,239,77,1)' },
-  { baseX: SW * 0.26, baseY: SH * 0.16, size: 116, breath: 3700, tint: 'rgba(0,189,208,1)' },
+  { baseX: SW * 0.08, baseY: SH * 0.14, size: 140, breath: 3600, tint: 'rgba(174,239,77,1)' },
+  { baseX: SW * 0.80, baseY: SH * 0.10, size: 132, breath: 4200, tint: 'rgba(0,220,255,1)' },
+  { baseX: SW * 0.20, baseY: SH * 0.68, size: 96,  breath: 3400, tint: 'rgba(0,189,208,1)' },
+  { baseX: SW * 0.72, baseY: SH * 0.62, size: 140, breath: 4600, tint: 'rgba(174,239,77,1)' },
+  { baseX: SW * 0.46, baseY: SH * 0.40, size: 88,  breath: 3800, tint: 'rgba(200,240,255,1)' },
+  { baseX: SW * 0.34, baseY: SH * 0.80, size: 112, breath: 4000, tint: 'rgba(0,220,255,1)' },
 ];
 
 function DriftingMeduse({ baseX, baseY, size, breath, tint, paused }) {
