@@ -27,6 +27,7 @@ import { getSeances, canAccessSeanceIndex, getResumeIndicesForPilier, isComingSo
 import { prefetchSignedVideoUrl, buildSessionId } from '../../utils/videoUrl';
 import VideoPlayer from '../VideoPlayer';
 import SeanceCompleteTV from './SeanceCompleteTV';
+import AquaticBackground from './AquaticBackground';
 import { pickSessionImage } from './tvImagePool';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -219,10 +220,8 @@ export default function PilierPanelTV({ pilier, done, onToggle, onClose, lang, i
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}>
-      {/* Backdrop "monde" : image du pilier floutée + assombrie. */}
-      <Image source={PILIER_IMAGES[pilier.key]} contentFit="cover" cachePolicy="memory-disk" style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.08 }], opacity: 0.55 }]} />
-      {Platform.OS === 'ios' ? <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" /> : null}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} pointerEvents="none" />
+      {/* Backdrop "monde" aquatique (même fond splash que le reste de la TV). */}
+      <AquaticBackground density="rich" contentOpacity={0.85} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
         {/* Hero */}
         <View style={{ height: heroH, overflow: 'hidden' }}>

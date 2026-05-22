@@ -27,38 +27,26 @@ const { width: SW, height: SH } = Dimensions.get('window');
 // Palette aquatique TV-scale — 6 stops pour éviter le banding visible à
 // 1080p+ (les TVs amplifient les transitions linéaires). Reprend la
 // palette PilierPanel iPhone, élargie en bas.
-// Palette poussée vers le turquoise "Maldives" en haut → bleu profond en bas
-// (feedback Yvan : "+ turquoise, plus aquatique").
-const GRADIENT_COLORS = ['#1FBED6', '#159FC4', '#0C7FB0', '#085C94', '#06396E', '#041E45'];
-const GRADIENT_LOCATIONS = [0, 0.22, 0.44, 0.64, 0.82, 1];
+// Palette du splash iPhone : navy quasi-noir en haut → teal moyen en bas.
+// Calme et profond (Yvan veut ce fond sur toutes les pages TV).
+const GRADIENT_COLORS = ['#0A1830', '#142F44', '#225463', '#3A7E8E'];
+const GRADIENT_LOCATIONS = [0, 0.42, 0.74, 1];
 
 // Bulles : positions déterministes pour rester stables au remount (et
 // éviter qu'une bulle clignote au mauvais endroit après navigation).
-// 10 bulles fines (perf — réduit de 16).
+// 4 minuscules bulles, lentes (style splash : juste quelques taches en bas).
 const BULLES_TV = [
-  { x: SW * 0.08, size: 14, delay: 0, duration: 14000 },
-  { x: SW * 0.18, size: 10, delay: 2400, duration: 12000 },
-  { x: SW * 0.28, size: 16, delay: 4800, duration: 16000 },
-  { x: SW * 0.40, size: 11, delay: 1200, duration: 13000 },
-  { x: SW * 0.52, size: 15, delay: 3600, duration: 15000 },
-  { x: SW * 0.62, size: 9, delay: 6000, duration: 11000 },
-  { x: SW * 0.72, size: 16, delay: 800, duration: 14500 },
-  { x: SW * 0.82, size: 12, delay: 5200, duration: 13500 },
-  { x: SW * 0.92, size: 10, delay: 2000, duration: 12500 },
-  { x: SW * 0.34, size: 13, delay: 7000, duration: 10500 },
+  { x: SW * 0.30, size: 6, delay: 0,    duration: 22000 },
+  { x: SW * 0.46, size: 5, delay: 6000, duration: 26000 },
+  { x: SW * 0.58, size: 7, delay: 3000, duration: 24000 },
+  { x: SW * 0.70, size: 5, delay: 9000, duration: 28000 },
 ];
 
-// 5 méduses dérivantes — points de départ répartis (haut, bas, gauche,
-// droite, centre). Tailles 80–140 px : grandes mais pas envahissantes.
-// Arrière-plan : 6 méduses ~1.4× (perf — Yvan a trouvé 12 en foreground trop
-// lourd ; on garde une taille généreuse mais moins d'éléments).
+// Style splash : 1 méduse "héroïne" centrée haut + 1 plus petite en retrait,
+// teinte douce blanc-teal. Halo glow dessiné derrière chacune (cf. DriftingMeduse).
 const MEDUSES_TV = [
-  { baseX: SW * 0.08, baseY: SH * 0.14, size: 140, breath: 3600, tint: 'rgba(174,239,77,1)' },
-  { baseX: SW * 0.80, baseY: SH * 0.10, size: 132, breath: 4200, tint: 'rgba(0,220,255,1)' },
-  { baseX: SW * 0.20, baseY: SH * 0.68, size: 96,  breath: 3400, tint: 'rgba(0,189,208,1)' },
-  { baseX: SW * 0.72, baseY: SH * 0.62, size: 140, breath: 4600, tint: 'rgba(174,239,77,1)' },
-  { baseX: SW * 0.46, baseY: SH * 0.40, size: 88,  breath: 3800, tint: 'rgba(200,240,255,1)' },
-  { baseX: SW * 0.34, baseY: SH * 0.80, size: 112, breath: 4000, tint: 'rgba(0,220,255,1)' },
+  { baseX: SW * 0.5 - 100, baseY: SH * 0.24, size: 200, breath: 5200, tint: 'rgba(196,228,236,1)' },
+  { baseX: SW * 0.66,      baseY: SH * 0.44, size: 110, breath: 6200, tint: 'rgba(150,205,220,1)' },
 ];
 
 function DriftingMeduse({ baseX, baseY, size, breath, tint, paused }) {
@@ -71,13 +59,13 @@ function DriftingMeduse({ baseX, baseY, size, breath, tint, paused }) {
     let current = null;
     function drift() {
       if (!mounted) return;
-      // Dérive aléatoire dans un rayon ~200–300 px autour du point initial.
-      const tx = (Math.random() * 280) - 140;
-      const ty = (Math.random() * 200) - 100;
-      const dur = 11000 + Math.random() * 7000;
+      // Léger sway lent (~±40 px), cycle 22–30 s : calme, méditatif.
+      const tx = (Math.random() * 80) - 40;
+      const ty = (Math.random() * 60) - 30;
+      const dur = 22000 + Math.random() * 8000;
       const p = Animated.parallel([
-        Animated.timing(dx, { toValue: tx, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
-        Animated.timing(dy, { toValue: ty, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
+        Animated.timing(dx, { toValue: tx, duration: dur, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(dy, { toValue: ty, duration: dur, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ]);
       current = p;
       p.start(function() { if (mounted) drift(); });
@@ -90,6 +78,7 @@ function DriftingMeduse({ baseX, baseY, size, breath, tint, paused }) {
     };
   }, [paused]);
 
+  const halo = Math.round(size * 2.4);
   return (
     <Animated.View
       pointerEvents="none"
@@ -97,11 +86,24 @@ function DriftingMeduse({ baseX, baseY, size, breath, tint, paused }) {
         position: 'absolute',
         left: baseX,
         top: baseY,
-        opacity: 0.82,
+        opacity: 0.7,
         transform: [{ translateX: dx }, { translateY: dy }],
       }}
     >
-      <MeduseCornerIcon size={size} breathCycleMs={breath} breathMaxScale={1.18} tint={tint} />
+      {/* Halo glow doux derrière la méduse (aura splash). */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: (size - halo) / 2,
+          top: (size - halo) / 2,
+          width: halo,
+          height: halo,
+          borderRadius: halo / 2,
+          backgroundColor: 'rgba(180,220,230,0.08)',
+        }}
+      />
+      <MeduseCornerIcon size={size} breathCycleMs={breath} breathMaxScale={1.10} tint={tint} />
     </Animated.View>
   );
 }
@@ -144,7 +146,9 @@ export function AquaticDrifters({
   }, [density]);
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { overflow: 'hidden', opacity: contentOpacity }, style]}>
-      {bulles.map(function(b, i) { return <Bulle key={'tv-b-' + i} {...b} colorIndex={i} />; })}
+      <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { opacity: 0.4 }]}>
+        {bulles.map(function(b, i) { return <Bulle key={'tv-b-' + i} {...b} colorIndex={i} />; })}
+      </View>
       {meduses.map(function(m, i) {
         return (
           <DriftingMeduse
