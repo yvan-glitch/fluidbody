@@ -35,7 +35,7 @@ import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
-import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV } from '../components/tv';
+import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground } from '../components/tv';
 import { pickSessionImage } from '../components/tv/tvImagePool';
 import { PILIER_CONTENT } from '../constants/pilierContent';
 
@@ -78,8 +78,6 @@ const PROG_IMAGES = {
 // Photos coach Sabrina (studio Espace Pilates) — TV uniquement.
 const SABRINA_HERO = require('../../assets/coach/sabrina_1.jpg');   // signature hero
 const SABRINA_BEACH = require('../../assets/coach/sabrina_3.jpg');  // backdrop "monde"
-// Méduses bleues — iconique de marque Fluidbody, backdrop par défaut de "Pour vous".
-const MEDUSES_BLUE = require('../../assets/coach/meduses_blue.jpg');
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
@@ -1961,20 +1959,23 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         catch (e) { if (__DEV__) console.warn('[breath-modal] render throw:', e); return null; }
       })()}
 
-      {/* ───────── Apple TV — backdrop "monde" Liquid Glass ─────────
-          Image du pilier en cours, floutée + assombrie, persistante derrière
-          TOUS les overlays TV (z50). Donne la profondeur frosted-glass : les
-          surfaces translucides au-dessus laissent vivre cette photo. */}
+      {/* ───────── Apple TV — backdrop "monde" ─────────
+          Sur "Pour vous" : le vrai fond animé Fluidbody (dégradé turquoise →
+          bleu profond + bulles + méduses dérivantes), via AquaticBackground
+          (composant TV partagé, density "low" pour la perf). Sur les autres
+          onglets : photo Sabrina floutée. Persistant derrière tous les
+          overlays TV (z50). */}
       {IS_TV && !openPilier ? (
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}>
-          <Image
-            source={mcTab === 'pour_vous' ? MEDUSES_BLUE : SABRINA_BEACH}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.05 }], opacity: 0.6 }]}
-          />
-          {Platform.OS === 'ios' ? <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} /> : null}
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
+          {mcTab === 'pour_vous' ? (
+            <AquaticBackground density="low" contentOpacity={0.9} />
+          ) : (
+            <Fragment>
+              <Image source={SABRINA_BEACH} contentFit="cover" cachePolicy="memory-disk" style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.05 }], opacity: 0.6 }]} />
+              {Platform.OS === 'ios' ? <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} /> : null}
+            </Fragment>
+          )}
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.32)' }]} />
         </View>
       ) : null}
 
