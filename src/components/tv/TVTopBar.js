@@ -14,9 +14,12 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 
 import TVMenuDropdown from './TVMenuDropdown';
+import { Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { tvFocusProps } from '../../utils/platformTV';
 
 const SIDE = 80;
+const BAR_H = 118;
 
 export default function TVTopBar({ tabs, activeKey, onSelectTab, prenom, onOpenProfile }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -26,6 +29,9 @@ export default function TVTopBar({ tabs, activeKey, onSelectTab, prenom, onOpenP
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingTop: 44, paddingHorizontal: SIDE, zIndex: 70 }} pointerEvents="box-none">
+      {/* Barre frostée Liquid Glass */}
+      {Platform.OS === 'ios' ? <BlurView intensity={85} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: BAR_H }} pointerEvents="none" /> : null}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: BAR_H, backgroundColor: 'rgba(0,0,0,0.25)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' }} pointerEvents="none" />
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         {/* Hamburger + dropdown */}
         <View>
@@ -37,8 +43,8 @@ export default function TVTopBar({ tabs, activeKey, onSelectTab, prenom, onOpenP
             onBlur={function () { setBurgerFocused(false); }}
             style={{
               flexDirection: 'row', alignItems: 'center', gap: 12,
-              paddingHorizontal: 18, paddingVertical: 12, borderRadius: 14,
-              backgroundColor: burgerFocused ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.07)',
+              paddingHorizontal: 20, paddingVertical: 12, borderRadius: 32,
+              backgroundColor: burgerFocused ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.10)',
               borderWidth: 1, borderColor: burgerFocused ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.14)',
             }}
           >

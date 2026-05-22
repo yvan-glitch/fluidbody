@@ -49,7 +49,7 @@ export default function HorizontalCarousel({
   return (
     <View style={{ marginBottom: 40 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: SIDE, paddingRight: SIDE, marginBottom: 16 }}>
-        <Text style={{ fontSize: 26, fontWeight: '700', color: '#ffffff', letterSpacing: -0.3 }}>{title}</Text>
+        <Text style={{ fontSize: 26, fontWeight: '700', color: '#ffffff', letterSpacing: -0.3, textShadowColor: 'rgba(0,0,0,0.4)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } }}>{title}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
           {Array.from({ length: dotCount }).map(function (_, i) {
             var on = i === activeDot;

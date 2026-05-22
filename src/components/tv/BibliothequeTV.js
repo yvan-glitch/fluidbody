@@ -30,8 +30,7 @@ export default function BibliothequeTV({ piliers, seancesByKey, done, onOpenPili
   const cardW = Math.floor((SW - SIDE * 2 - GAP * (COLS - 1)) / COLS);
 
   return (
-    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60, backgroundColor: '#000000' }}>
-      <LinearGradient colors={['#000000', '#0F1014']} locations={[0, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 140, paddingBottom: 90 }}>
         <Text style={{ fontSize: 44, fontWeight: '800', color: '#ffffff', letterSpacing: -1, paddingLeft: SIDE, marginBottom: 8 }}>
           {(tr.tabs && tr.tabs[2]) || (isFr ? 'Bibliothèque' : 'Library')}

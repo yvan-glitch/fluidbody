@@ -1954,6 +1954,23 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         catch (e) { if (__DEV__) console.warn('[breath-modal] render throw:', e); return null; }
       })()}
 
+      {/* ───────── Apple TV — backdrop "monde" Liquid Glass ─────────
+          Image du pilier en cours, floutée + assombrie, persistante derrière
+          TOUS les overlays TV (z50). Donne la profondeur frosted-glass : les
+          surfaces translucides au-dessus laissent vivre cette photo. */}
+      {IS_TV && !openPilier ? (
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}>
+          <Image
+            source={(sdj && sdj.pilier && PILIER_IMAGES[sdj.pilier.key]) || PILIER_IMAGES[(piliers[0] || {}).key]}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.05 }], opacity: 0.6 }]}
+          />
+          {Platform.OS === 'ios' ? <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} /> : null}
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
+        </View>
+      ) : null}
+
       {/* ───────── Apple TV — "Pour vous" plein écran style Fitness+ ─────────
           Overlay haut-zIndex qui recouvre tout le chrome iPhone (logoRow +
           tabs masqués sur TV). Le PilierPanel est un Modal → s'affiche au
@@ -1993,8 +2010,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           return { key: 'pil_' + p.key, title: p.label, subtitle: (seancesByKey[p.key] || []).length + ' séances', image: PILIER_IMAGES[p.key], pilierKey: p.key, idx: null };
         });
         return (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60, backgroundColor: '#000000' }}>
-            <LinearGradient colors={['#000000', '#0F1014']} locations={[0, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
               <HeroFeatured
                 image={PILIER_IMAGES[featured.key]}
