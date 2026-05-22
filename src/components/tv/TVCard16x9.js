@@ -72,12 +72,10 @@ export default function TVCard16x9({
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
-          {/* Overlay glass frosté monté seulement au focus (perf). */}
+          {/* Focus = bordure highlight légère (PAS de BlurView : il voilait
+              l'image et la rendait illisible quand sélectionnée). */}
           {focused ? (
-            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: glassOpacity }]}>
-              {Platform.OS === 'ios' ? <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} /> : null}
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
-            </Animated.View>
+            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: 24, borderWidth: 2, borderColor: 'rgba(255,255,255,0.45)', opacity: glassOpacity }]} />
           ) : null}
           <View style={{ position: 'absolute', left: 16, right: 16, bottom: 14 }}>
             <Text numberOfLines={1} style={[{ fontSize: 18, fontWeight: '700', color: '#ffffff', letterSpacing: -0.2 }, TEXT_SHADOW]}>{title}</Text>
