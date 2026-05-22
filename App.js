@@ -672,7 +672,7 @@ function SeanceDetailModal({ visible, onClose, sdj, lang, onPlay }) {
         <View style={{ height: SH * 0.42, width: "100%" }}>
           <ExpoImage source={PILIER_IMAGES[sdj.pilier.key]} contentFit="cover" cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
           <LinearGradient colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.7)"]} style={{ flex: 1 }}>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={{ position: "absolute", top: 56, left: 20, width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
+            <TouchableOpacity onPress={onClose} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Retour" style={{ position: "absolute", top: 56, left: 20, width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
               <Text style={{ fontSize: 18, color: "#ffffff" }}>{"\u2190"}</Text>
             </TouchableOpacity>
           </LinearGradient>
