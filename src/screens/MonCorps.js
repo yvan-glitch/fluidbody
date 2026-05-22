@@ -36,6 +36,7 @@ import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
 import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV } from '../components/tv';
+import { pickSessionImage } from '../components/tv/tvImagePool';
 import { PILIER_CONTENT } from '../constants/pilierContent';
 
 let Notifications = null;
@@ -1993,18 +1994,18 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         };
         var etapeLabel = function(e) { return (tr.etapes && tr.etapes[e]) || e; };
         var rowPourVous = featuredSeances.slice(0, 8).map(function(s, i) {
-          return { key: 'pv_' + featured.key + '_' + i, title: s[0], subtitle: s[1] + ' · ' + etapeLabel(s[2]), image: PILIER_IMAGES[featured.key], pilierKey: featured.key, idx: i };
+          return { key: 'pv_' + featured.key + '_' + i, title: s[0], subtitle: s[1] + ' · ' + etapeLabel(s[2]), image: pickSessionImage(featured.key, i), pilierKey: featured.key, idx: i };
         });
         var rowNouveau = [];
         piliers.forEach(function(p) {
           (seancesByKey[p.key] || []).forEach(function(s, i) {
-            if (s[3] === true) rowNouveau.push({ key: 'nv_' + p.key + '_' + i, title: s[0], subtitle: p.label + ' · ' + s[1], image: PILIER_IMAGES[p.key], pilierKey: p.key, idx: i });
+            if (s[3] === true) rowNouveau.push({ key: 'nv_' + p.key + '_' + i, title: s[0], subtitle: p.label + ' · ' + s[1], image: pickSessionImage(p.key, i), pilierKey: p.key, idx: i });
           });
         });
         piliers.forEach(function(p) {
           if (rowNouveau.length >= 8) return;
           var s0 = (seancesByKey[p.key] || [])[0];
-          if (s0) rowNouveau.push({ key: 'nv0_' + p.key, title: s0[0], subtitle: p.label + ' · ' + s0[1], image: PILIER_IMAGES[p.key], pilierKey: p.key, idx: 0 });
+          if (s0) rowNouveau.push({ key: 'nv0_' + p.key, title: s0[0], subtitle: p.label + ' · ' + s0[1], image: pickSessionImage(p.key, 0), pilierKey: p.key, idx: 0 });
         });
         var rowPiliers = piliers.map(function(p) {
           return { key: 'pil_' + p.key, title: p.label, subtitle: (seancesByKey[p.key] || []).length + ' séances', image: PILIER_IMAGES[p.key], pilierKey: p.key, idx: null };
