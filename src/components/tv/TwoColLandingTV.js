@@ -15,8 +15,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
 import HorizontalCarousel from './HorizontalCarousel';
+import { pickSessionImage } from './tvImagePool';
 import { tvFocusProps } from '../../utils/platformTV';
 import { PILIER_IMAGES } from '../../constants/data';
+import { getResumableSession } from '../../utils';
 
 const { width: SW } = Dimensions.get('window');
 const SIDE = 80;
@@ -81,8 +83,55 @@ function MosaicCell({ image, size, onPress }) {
   );
 }
 
-export default function TwoColLandingTV({ piliers, lang, title, description, primaryLabel, onPrimary, onOpenPilier }) {
+// Carte "Reprendre votre dernière séance" — pleine largeur, focusable.
+function ResumeCard({ image, title, pilierLabel, positionMillis, durationMillis, label, onPress, focusPreferred }) {
+  const [focused, setFocused] = useState(false);
+  const scale = useRef(new Animated.Value(1)).current;
+  useEffect(function () {
+    Animated.timing(scale, { toValue: focused ? 1.03 : 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [focused]);
+  const ratio = durationMillis ? Math.max(0, Math.min(1, positionMillis / durationMillis)) : 0;
+  const posMin = Math.round(positionMillis / 60000);
+  const durMin = Math.round(durationMillis / 60000);
+  const glow = Platform.OS === 'ios' ? { shadowColor: FITNESS_GREEN, shadowOpacity: 0.5, shadowRadius: 24, shadowOffset: { width: 0, height: 0 } } : { elevation: 20 };
+  return (
+    <Animated.View style={[{ marginHorizontal: SIDE, marginBottom: 36, borderRadius: 24, transform: [{ scale: scale }] }, focused ? glow : null]}>
+      <TouchableOpacity
+        {...tvFocusProps(focusPreferred)}
+        activeOpacity={0.9}
+        onPress={onPress}
+        onFocus={function () { setFocused(true); }}
+        onBlur={function () { setFocused(false); }}
+        style={{ height: 200, borderRadius: 24, overflow: 'hidden' }}
+      >
+        {image ? <Image source={image} contentFit="cover" transition={200} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} /> : null}
+        <LinearGradient colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.85)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 44 }}>
+          <Text style={{ fontSize: 14, fontWeight: '800', color: FITNESS_GREEN, letterSpacing: 1.5, marginBottom: 8 }}>{label.toUpperCase()}</Text>
+          <Text numberOfLines={1} style={[{ fontSize: 38, fontWeight: '800', color: '#ffffff', letterSpacing: -0.6, marginBottom: 4 }, TEXT_SHADOW]}>{title}</Text>
+          <Text style={[{ fontSize: 18, fontWeight: '500', color: 'rgba(255,255,255,0.82)', marginBottom: 12 }, TEXT_SHADOW]}>{pilierLabel + ' · ' + posMin + ' / ' + durMin + ' min'}</Text>
+          <View style={{ width: 360, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden' }}>
+            <View style={{ width: Math.round(ratio * 360), height: 6, borderRadius: 3, backgroundColor: FITNESS_GREEN }} />
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+export default function TwoColLandingTV({ piliers, lang, title, description, primaryLabel, onPrimary, onOpenPilier, seancesByKey, onResume }) {
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+  const [resume, setResume] = useState(null);
+  useEffect(function () {
+    let cancelled = false;
+    getResumableSession().then(function (r) {
+      if (cancelled || !r) return;
+      const pil = (piliers || []).find(function (p) { return p.key === r.pilierKey; });
+      const seance = pil && seancesByKey && seancesByKey[r.pilierKey] && seancesByKey[r.pilierKey][r.idx];
+      if (pil && seance) setResume({ pilier: pil, idx: r.idx, seance: seance, positionMillis: r.positionMillis, durationMillis: r.durationMillis });
+    }).catch(function () {});
+    return function () { cancelled = true; };
+  }, [piliers, seancesByKey]);
   const t = title || (isFr ? 'Le Pilates conscient' : 'Conscious Pilates');
   const desc = description || (isFr ? 'Guidé par Sabrina, à ton rythme. Choisis un pilier et commence quand tu veux.' : 'Guided by Sabrina, at your pace. Pick a pillar and start anytime.');
   // Pas de prix / paywall sur TV : l'Apple TV est associée à l'abonnement
@@ -102,12 +151,24 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 150, paddingBottom: 90 }}>
+        {resume ? (
+          <ResumeCard
+            image={pickSessionImage(resume.pilier.key, resume.idx)}
+            title={resume.seance[0]}
+            pilierLabel={resume.pilier.label}
+            positionMillis={resume.positionMillis}
+            durationMillis={resume.durationMillis}
+            label={isFr ? 'Reprendre votre dernière séance' : 'Resume your last session'}
+            focusPreferred
+            onPress={function () { if (onResume) onResume(resume.pilier, resume.idx); else onOpenPilier(resume.pilier); }}
+          />
+        ) : null}
         <View style={{ flexDirection: 'row', paddingHorizontal: SIDE, marginBottom: 56 }}>
           {/* Colonne gauche */}
           <View style={{ width: leftW, paddingRight: 28, justifyContent: 'center' }}>
             <Text style={[{ fontSize: 56, fontWeight: '800', color: '#ffffff', letterSpacing: -1, lineHeight: 62, marginBottom: 18 }, TEXT_SHADOW]}>{t}</Text>
             <Text style={[{ fontSize: 21, fontWeight: '400', color: 'rgba(255,255,255,0.7)', lineHeight: 29, marginBottom: 26 }, TEXT_SHADOW]}>{desc}</Text>
-            <CTA label={primLabel} variant="primary" focusPreferred onPress={onPrimary} />
+            <CTA label={primLabel} variant="primary" focusPreferred={!resume} onPress={onPrimary} />
           </View>
           {/* Colonne droite : mosaïque 3×3 focusable */}
           <View style={{ width: rightW, flexDirection: 'row', flexWrap: 'wrap', gap: cellGap }}>
