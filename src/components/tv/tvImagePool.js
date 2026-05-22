@@ -21,6 +21,9 @@ const POOL = [
   require('../../../assets/programs/core-plancher.jpg'),
   require('../../../assets/programs/souplesse.jpg'),
   require('../../../assets/programs/vitaly-gariev-7C_Ri-7kyXc-unsplash.jpg'),
+  require('../../../assets/coach/sabrina_hero.jpg'),
+  require('../../../assets/coach/sabrina_trampoline.jpg'),
+  require('../../../assets/coach/sabrina_beach.jpg'),
 ].filter(Boolean);
 
 function hashStr(s) {

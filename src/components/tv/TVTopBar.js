@@ -14,12 +14,14 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 
 import TVMenuDropdown from './TVMenuDropdown';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { tvFocusProps } from '../../utils/platformTV';
 
 const SIDE = 80;
 const BAR_H = 118;
+const SABRINA_AVATAR = require('../../../assets/coach/sabrina_avatar.jpg');
 
 export default function TVTopBar({ tabs, activeKey, onSelectTab, prenom, onOpenProfile }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -78,11 +80,8 @@ export default function TVTopBar({ tabs, activeKey, onSelectTab, prenom, onOpenP
             borderWidth: 1, borderColor: avatarFocused ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.14)',
           }}
         >
-          <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,219,125,0.22)', alignItems: 'center', justifyContent: 'center' }}>
-            <Svg width={16} height={16} viewBox="0 0 24 24">
-              <Circle cx="12" cy="8" r="4" stroke="#ffffff" strokeWidth={1.8} />
-              <Path d="M4 20c0-4 4-6 8-6s8 2 8 6" stroke="#ffffff" strokeWidth={1.8} strokeLinecap="round" />
-            </Svg>
+          <View style={{ width: 34, height: 34, borderRadius: 17, overflow: 'hidden', borderWidth: 1.5, borderColor: avatarFocused ? '#ffffff' : 'rgba(255,255,255,0.4)' }}>
+            <Image source={SABRINA_AVATAR} contentFit="cover" cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
           </View>
           {prenom ? <Text style={{ fontSize: 18, fontWeight: '600', color: '#ffffff' }}>{prenom}</Text> : null}
         </TouchableOpacity>
