@@ -17,3 +17,4 @@ export { default as ExplorerTV } from './ExplorerTV';
 export { default as ProgrammesTV } from './ProgrammesTV';
 export { default as StatsTV } from './StatsTV';
 export { default as BibliothequeTV } from './BibliothequeTV';
+export { default as TwoColLandingTV } from './TwoColLandingTV';

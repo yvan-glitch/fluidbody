@@ -35,7 +35,7 @@ import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
-import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV } from '../components/tv';
+import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV } from '../components/tv';
 import { pickSessionImage } from '../components/tv/tvImagePool';
 import { PILIER_CONTENT } from '../constants/pilierContent';
 
@@ -1982,63 +1982,16 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           Overlay haut-zIndex qui recouvre tout le chrome iPhone (logoRow +
           tabs masqués sur TV). Le PilierPanel est un Modal → s'affiche au
           dessus quand une séance s'ouvre. */}
-      {IS_TV && !openPilier && mcTab === 'pour_vous' ? (function() {
-        var seancesByKey = getSeances(lang);
-        var featured = (sdj && sdj.pilier) || piliers[0];
-        var featuredSeances = seancesByKey[featured.key] || [];
-        var parseMin = function(d) { var m = String(d || '').match(/\d+/); return m ? parseInt(m[0], 10) : 0; };
-        var totalMin = featuredSeances.reduce(function(a, s) { return a + parseMin(s[1]); }, 0);
-        var pilierContent = (PILIER_CONTENT[lang] || PILIER_CONTENT.fr || {})[featured.key] || {};
-        var coachAvec = tr.coach_avec || 'Avec Sabrina';
-        var coachExp = tr.coach_exp || '30 ans de pratique';
-        var heroSubtitle = featuredSeances.length + ' séances · ~' + totalMin + ' min · ' + coachAvec + ' · ' + coachExp;
-        var inProgress = sdj && typeof sdj.idx === 'number' && sdj.idx > 0;
-        var openSeance = function(pilierKey, idx) {
-          var p = piliers.find(function(x) { return x.key === pilierKey; });
-          if (!p) return;
-          setOpenInitialIdx(typeof idx === 'number' ? idx : null);
-          setOpenPilier(p);
-        };
-        var etapeLabel = function(e) { return (tr.etapes && tr.etapes[e]) || e; };
-        var rowPourVous = featuredSeances.slice(0, 8).map(function(s, i) {
-          return { key: 'pv_' + featured.key + '_' + i, title: s[0], subtitle: s[1] + ' · ' + etapeLabel(s[2]), image: pickSessionImage(featured.key, i), pilierKey: featured.key, idx: i };
-        });
-        var rowNouveau = [];
-        piliers.forEach(function(p) {
-          (seancesByKey[p.key] || []).forEach(function(s, i) {
-            if (s[3] === true) rowNouveau.push({ key: 'nv_' + p.key + '_' + i, title: s[0], subtitle: p.label + ' · ' + s[1], image: pickSessionImage(p.key, i), pilierKey: p.key, idx: i });
-          });
-        });
-        piliers.forEach(function(p) {
-          if (rowNouveau.length >= 8) return;
-          var s0 = (seancesByKey[p.key] || [])[0];
-          if (s0) rowNouveau.push({ key: 'nv0_' + p.key, title: s0[0], subtitle: p.label + ' · ' + s0[1], image: pickSessionImage(p.key, 0), pilierKey: p.key, idx: 0 });
-        });
-        var rowPiliers = piliers.map(function(p) {
-          return { key: 'pil_' + p.key, title: p.label, subtitle: (seancesByKey[p.key] || []).length + ' séances', image: PILIER_IMAGES[p.key], pilierKey: p.key, idx: null };
-        });
-        return (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
-              <HeroFeatured
-                image={featured.key === 'p7' ? SABRINA_HERO : PILIER_IMAGES[featured.key]}
-                title={featured.label}
-                subtitle={heroSubtitle}
-                description={pilierContent.hero_subtitle || ''}
-                primaryLabel={inProgress ? 'Continuer' : "Commencer l'exercice"}
-                secondaryLabel={"Découvrir l'abonnement annuel"}
-                onPrimary={function() { openSeance(featured.key, inProgress ? sdj.idx : null); }}
-                onSecondary={function() { if (onActivateSubscription) onActivateSubscription(); }}
-              />
-              <View style={{ marginTop: 14 }}>
-                <HorizontalCarousel title="Pour vous" items={rowPourVous} onItemPress={function(it) { openSeance(it.pilierKey, it.idx); }} />
-                <HorizontalCarousel title="Nouveau" items={rowNouveau} onItemPress={function(it) { openSeance(it.pilierKey, it.idx); }} />
-                <HorizontalCarousel title="Tous les piliers" items={rowPiliers} onItemPress={function(it) { openSeance(it.pilierKey, it.idx); }} />
-              </View>
-            </ScrollView>
-          </View>
-        );
-      })() : null}
+      {IS_TV && !openPilier && mcTab === 'pour_vous' ? (
+        <TwoColLandingTV
+          piliers={piliers}
+          lang={lang}
+          price={'CHF 12.90' + (tr.paywall_per_month || '/mois')}
+          onPrimary={function() { var f = (sdj && sdj.pilier) || piliers[0]; if (f) setOpenPilier(f); }}
+          onSecondary={function() { if (onActivateSubscription) onActivateSubscription(); }}
+          onOpenPilier={setOpenPilier}
+        />
+      ) : null}
       {IS_TV && !openPilier && mcTab === 'explorer' ? (
         <ExplorerTV piliers={piliers} seancesByKey={getSeances(lang)} onOpenPilier={setOpenPilier} onActivateSubscription={onActivateSubscription} lang={lang} />
       ) : null}
