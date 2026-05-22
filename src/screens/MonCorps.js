@@ -35,7 +35,7 @@ import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
-import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV } from '../components/tv';
+import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV } from '../components/tv';
 import { PILIER_CONTENT } from '../constants/pilierContent';
 
 let Notifications = null;
@@ -2021,6 +2021,18 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       {IS_TV && !openPilier && mcTab === 'programmes' ? (
         <ProgrammesTV piliers={piliers} lang={lang} activeProgram={activeProgram} onOpenPilier={setOpenPilier} />
       ) : null}
+      {IS_TV && !openPilier && mcTab === 'activite' ? (
+        <StatsTV mode="activity" done={done} streak={streak} piliers={piliers} lang={lang} />
+      ) : null}
+      {IS_TV && !openPilier && mcTab === 'resume' ? (
+        <StatsTV mode="resume" done={done} streak={streak} piliers={piliers} lang={lang} />
+      ) : null}
+      {IS_TV && !openPilier && mcTab === 'biblio' ? (
+        <BibliothequeTV piliers={piliers} seancesByKey={getSeances(lang)} done={done} onOpenPilier={setOpenPilier} lang={lang} />
+      ) : null}
+      {IS_TV && mcTab === 'respire' ? (
+        <BreathingCheckIn visible onClose={function() { setMcTab('pour_vous'); }} lang={lang} />
+      ) : null}
       {IS_TV && !openPilier ? (
         <TVTopBar
           tabs={[
@@ -2028,6 +2040,10 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             { key: 'pour_vous', label: 'Pour vous' },
             { key: 'explorer', label: 'Explorer' },
             { key: 'programmes', label: 'Programmes' },
+            { key: 'activite', label: 'Activité' },
+            { key: 'resume', label: 'Résumé' },
+            { key: 'biblio', label: 'Bibliothèque' },
+            { key: 'respire', label: 'Respire' },
           ]}
           activeKey={mcTab}
           onSelectTab={setMcTab}
