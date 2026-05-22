@@ -12,10 +12,12 @@
 // Écran informatif : aucun élément focusable (la navigation se fait via la
 // TVTopBar qui reste affichée). TV-only — zéro impact iPhone.
 
-import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, ScrollView, StyleSheet, Dimensions, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 
 import { T } from '../../constants/data';
+
+const TEXT_SHADOW = { textShadowColor: 'rgba(0,0,0,0.4)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } };
 
 const { width: SW } = Dimensions.get('window');
 const SIDE = 80;
@@ -29,9 +31,13 @@ function countDone(arr) {
 
 function StatTile({ value, label, accent }) {
   return (
-    <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', paddingVertical: 32, paddingHorizontal: 28 }}>
-      <Text style={{ fontSize: 72, fontWeight: '800', color: accent || '#ffffff', letterSpacing: -2, marginBottom: 6 }}>{value}</Text>
-      <Text style={{ fontSize: 18, fontWeight: '500', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.3 }}>{label}</Text>
+    <View style={{ flex: 1, borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }}>
+      {Platform.OS === 'ios' ? <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" /> : null}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.06)' }]} pointerEvents="none" />
+      <View style={{ paddingVertical: 32, paddingHorizontal: 28 }}>
+        <Text style={[{ fontSize: 76, fontWeight: '800', color: accent || '#ffffff', letterSpacing: -2, marginBottom: 6 }, TEXT_SHADOW]}>{value}</Text>
+        <Text style={[{ fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.72)', letterSpacing: 0.3 }, TEXT_SHADOW]}>{label}</Text>
+      </View>
     </View>
   );
 }
@@ -52,8 +58,7 @@ export default function StatsTV({ mode, done, streak, piliers, lang }) {
     : (tr.tabs && tr.tabs[1]) || (isFr ? 'Résumé' : 'Summary');
 
   return (
-    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60, backgroundColor: '#000000' }}>
-      <LinearGradient colors={['#000000', '#0F1014']} locations={[0, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 140, paddingBottom: 90, paddingHorizontal: SIDE }}>
         <Text style={{ fontSize: 44, fontWeight: '800', color: '#ffffff', letterSpacing: -1, marginBottom: 32 }}>{title}</Text>
 

@@ -79,8 +79,7 @@ export default function ExplorerTV({ piliers, seancesByKey, onOpenPilier, onActi
   const firstPilier = piliers && piliers[0];
 
   return (
-    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60, backgroundColor: '#000000' }}>
-      <LinearGradient colors={['#000000', '#0F1014']} locations={[0, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 150, paddingBottom: 90 }}>
         {/* Bloc 2 colonnes */}
         <View style={{ flexDirection: 'row', paddingHorizontal: SIDE, marginBottom: 56 }}>

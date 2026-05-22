@@ -30,9 +30,9 @@ function MenuItem({ label, active, focusPreferred, onPress }) {
 
 export default function TVMenuDropdown({ items, activeKey, onSelect }) {
   return (
-    <View style={{ width: 320, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }}>
-      {Platform.OS === 'ios' ? <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" /> : null}
-      <View style={{ backgroundColor: 'rgba(12,14,22,0.82)', padding: 10 }}>
+    <View style={{ width: 320, borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' }}>
+      {Platform.OS === 'ios' ? <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" /> : null}
+      <View style={{ backgroundColor: 'rgba(0,0,0,0.4)', padding: 10 }}>
         {items.map(function (it, i) {
           return (
             <MenuItem

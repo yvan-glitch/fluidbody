@@ -217,8 +217,11 @@ export default function PilierPanelTV({ pilier, done, onToggle, onClose, lang, i
   const cardW = Math.floor((SW - SIDE * 2 - GAP * (COLS - 1)) / COLS);
 
   return (
-    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, backgroundColor: '#000000' }}>
-      <LinearGradient colors={['#000000', '#0F1014']} locations={[0, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}>
+      {/* Backdrop "monde" : image du pilier floutée + assombrie. */}
+      <Image source={PILIER_IMAGES[pilier.key]} contentFit="cover" cachePolicy="memory-disk" style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.08 }], opacity: 0.55 }]} />
+      {Platform.OS === 'ios' ? <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" /> : null}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} pointerEvents="none" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
         {/* Hero */}
         <View style={{ height: heroH, overflow: 'hidden' }}>
