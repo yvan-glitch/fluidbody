@@ -18,6 +18,7 @@ import HorizontalCarousel from './HorizontalCarousel';
 import { tvFocusProps } from '../../utils/platformTV';
 import { T, PILIER_IMAGES } from '../../constants/data';
 import { getProgramStats } from '../../utils/programs';
+import { pickSessionImage } from './tvImagePool';
 
 function parseMin(d) {
   var m = String(d || '').match(/\d+/);
@@ -76,7 +77,7 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
     ((seancesByKey && seancesByKey[p.key]) || []).forEach(function (s, i) {
       if (s[2] === 'Comprendre' || s[2] === 'Ressentir') return;
       if (!s[3]) return; // a une vidéo produite
-      shortItems.push({ key: 'short_' + p.key + '_' + i, title: s[0], subtitle: s[1] + ' · ' + p.label, image: PILIER_IMAGES[p.key], pilier: p, idx: i, _min: parseMin(s[1]) });
+      shortItems.push({ key: 'short_' + p.key + '_' + i, title: s[0], subtitle: s[1] + ' · ' + p.label, image: pickSessionImage(p.key, i), pilier: p, idx: i, _min: parseMin(s[1]) });
     });
   });
   shortItems.sort(function (a, b) { return a._min - b._min; });

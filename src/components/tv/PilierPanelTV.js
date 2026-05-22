@@ -27,6 +27,7 @@ import { getSeances, canAccessSeanceIndex, getResumeIndicesForPilier, isComingSo
 import { prefetchSignedVideoUrl, buildSessionId } from '../../utils/videoUrl';
 import VideoPlayer from '../VideoPlayer';
 import SeanceCompleteTV from './SeanceCompleteTV';
+import { pickSessionImage } from './tvImagePool';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const FITNESS_GREEN = '#00DB7D';
@@ -271,7 +272,7 @@ export default function PilierPanelTV({ pilier, done, onToggle, onClose, lang, i
                 done={isDone}
                 locked={locked}
                 comingSoon={isComingSoon(pilier.key, i)}
-                image={PILIER_IMAGES[pilier.key]}
+                image={pickSessionImage(pilier.key, i)}
                 focusPreferred={false}
                 onPress={function () { tryOpenSeance(i); }}
               />
