@@ -75,6 +75,10 @@ const PROG_IMAGES = {
   souplesse: require('../../assets/programs/souplesse.jpg'),
 };
 
+// Photos coach Sabrina — TV uniquement (mise en avant façon Fitness+).
+const SABRINA_HERO = require('../../assets/coach/sabrina_hero.jpg');
+const SABRINA_BEACH = require('../../assets/coach/sabrina_beach.jpg');
+
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
 
@@ -1962,7 +1966,9 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       {IS_TV && !openPilier ? (
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}>
           <Image
-            source={(sdj && sdj.pilier && PILIER_IMAGES[sdj.pilier.key]) || PILIER_IMAGES[(piliers[0] || {}).key]}
+            source={mcTab === 'pour_vous'
+              ? ((sdj && sdj.pilier && PILIER_IMAGES[sdj.pilier.key]) || PILIER_IMAGES[(piliers[0] || {}).key])
+              : SABRINA_BEACH}
             contentFit="cover"
             cachePolicy="memory-disk"
             style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.05 }], opacity: 0.6 }]}
@@ -1984,7 +1990,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         var totalMin = featuredSeances.reduce(function(a, s) { return a + parseMin(s[1]); }, 0);
         var pilierContent = (PILIER_CONTENT[lang] || PILIER_CONTENT.fr || {})[featured.key] || {};
         var coachAvec = tr.coach_avec || 'Avec Sabrina';
-        var heroSubtitle = featuredSeances.length + ' séances · ~' + totalMin + ' min · ' + coachAvec;
+        var coachExp = tr.coach_exp || '30 ans de pratique';
+        var heroSubtitle = featuredSeances.length + ' séances · ~' + totalMin + ' min · ' + coachAvec + ' · ' + coachExp;
         var inProgress = sdj && typeof sdj.idx === 'number' && sdj.idx > 0;
         var openSeance = function(pilierKey, idx) {
           var p = piliers.find(function(x) { return x.key === pilierKey; });
@@ -2014,7 +2021,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
               <HeroFeatured
-                image={PILIER_IMAGES[featured.key]}
+                image={featured.key === 'p7' ? SABRINA_HERO : PILIER_IMAGES[featured.key]}
                 title={featured.label}
                 subtitle={heroSubtitle}
                 description={pilierContent.hero_subtitle || ''}

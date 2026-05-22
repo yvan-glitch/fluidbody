@@ -27,6 +27,7 @@ const { width: SW, height: SH } = Dimensions.get('window');
 const SIDE = 80;
 const FITNESS_GREEN = '#00DB7D';
 const TEXT_SHADOW = { textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } };
+const SABRINA_ABOUT = require('../../../assets/coach/sabrina_beach.jpg');
 
 function parseMin(d) {
   var m = String(d || '').match(/\d+/);
@@ -188,6 +189,23 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
               <Text style={[{ fontSize: 38, fontWeight: '800', color: '#ffffff', letterSpacing: -0.6, marginBottom: 8 }, TEXT_SHADOW]}>{tr.prog_custom_card || 'Programme personnalisé'}</Text>
               <Text style={[{ fontSize: 19, fontWeight: '500', color: 'rgba(255,255,255,0.9)', maxWidth: 720 }, TEXT_SHADOW]}>{tr.prog_custom_card_sub || 'Vos activités, la durée de vos exercices, vos jours et votre rythme.'}</Text>
               <VisualPill label={tr.prog_custom_btn || 'Créer un programme'} />
+            </View>
+          </FocusableSurface>
+        </View>
+
+        {/* 4b — À propos de Sabrina */}
+        <View style={{ paddingHorizontal: SIDE, marginBottom: 44 }}>
+          <FocusableSurface focusPreferred={false} height={220} onPress={function () { var p = pilierByKey('p7'); if (p) onOpenPilier(p); }}>
+            <Image source={SABRINA_ABOUT} contentFit="cover" transition={200} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.9)']} locations={[0, 0.45, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
+            <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 44, maxWidth: '70%' }}>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: FITNESS_GREEN, letterSpacing: 1.5, marginBottom: 8 }}>{(tr.coach_avec || 'Avec Sabrina').toUpperCase()}</Text>
+              <Text style={[{ fontSize: 38, fontWeight: '800', color: '#ffffff', letterSpacing: -0.6, marginBottom: 8 }, TEXT_SHADOW]}>{tr.coach_name || 'Sabrina'}</Text>
+              <Text numberOfLines={2} style={[{ fontSize: 19, fontWeight: '500', color: 'rgba(255,255,255,0.88)', lineHeight: 26 }, TEXT_SHADOW]}>
+                {isFr
+                  ? 'Coach Pilates depuis 1995, fondatrice d’Espace Pilates Suisse. Elle te guide à chaque séance.'
+                  : 'Pilates coach since 1995, founder of Espace Pilates Suisse. She guides you through every session.'}
+              </Text>
             </View>
           </FocusableSurface>
         </View>
