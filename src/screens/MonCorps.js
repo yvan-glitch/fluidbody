@@ -78,6 +78,8 @@ const PROG_IMAGES = {
 // Photos coach Sabrina (studio Espace Pilates) — TV uniquement.
 const SABRINA_HERO = require('../../assets/coach/sabrina_1.jpg');   // signature hero
 const SABRINA_BEACH = require('../../assets/coach/sabrina_3.jpg');  // backdrop "monde"
+// Méduses bleues — iconique de marque Fluidbody, backdrop par défaut de "Pour vous".
+const MEDUSES_BLUE = require('../../assets/coach/meduses_blue.jpg');
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
@@ -1966,9 +1968,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       {IS_TV && !openPilier ? (
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}>
           <Image
-            source={mcTab === 'pour_vous'
-              ? ((sdj && sdj.pilier && PILIER_IMAGES[sdj.pilier.key]) || PILIER_IMAGES[(piliers[0] || {}).key])
-              : SABRINA_BEACH}
+            source={mcTab === 'pour_vous' ? MEDUSES_BLUE : SABRINA_BEACH}
             contentFit="cover"
             cachePolicy="memory-disk"
             style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.05 }], opacity: 0.6 }]}
