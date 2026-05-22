@@ -62,6 +62,19 @@ export default function StatsTV({ mode, done, streak, piliers, lang }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 140, paddingBottom: 90, paddingHorizontal: SIDE }}>
         <Text style={{ fontSize: 44, fontWeight: '800', color: '#ffffff', letterSpacing: -1, marginBottom: 32 }}>{title}</Text>
 
+        {totalDone === 0 ? (
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', paddingVertical: 44, paddingHorizontal: 40, marginBottom: 44 }}>
+            <Text style={{ fontSize: 30, fontWeight: '700', color: '#ffffff', letterSpacing: -0.4, marginBottom: 10 }}>
+              {isFr ? 'Ta pratique commence ici' : 'Your practice starts here'}
+            </Text>
+            <Text style={{ fontSize: 19, fontWeight: '400', color: 'rgba(255,255,255,0.6)', lineHeight: 27, maxWidth: 760 }}>
+              {isFr
+                ? 'Termine ta première séance pour voir tes statistiques apparaître. Ouvre un pilier depuis Explorer.'
+                : 'Finish your first session to see your stats here. Open a pillar from Explore.'}
+            </Text>
+          </View>
+        ) : null}
+
         <View style={{ flexDirection: 'row', gap: 24, marginBottom: 44 }}>
           <StatTile value={String(totalDone)} label={isFr ? 'Séances faites' : 'Sessions done'} accent="#AEEF4D" />
           <StatTile value={String(streak || 0)} label={isFr ? 'Jours de suite' : 'Day streak'} accent="#00DCEC" />
