@@ -27,32 +27,45 @@ const { width: SW, height: SH } = Dimensions.get('window');
 // Palette aquatique TV-scale — 6 stops pour éviter le banding visible à
 // 1080p+ (les TVs amplifient les transitions linéaires). Reprend la
 // palette PilierPanel iPhone, élargie en bas.
-const GRADIENT_COLORS = ['#000a1a', '#001a2e', '#002a44', '#003a55', '#005572', '#00708a'];
-const GRADIENT_LOCATIONS = [0, 0.2, 0.4, 0.6, 0.8, 1];
+// Palette poussée vers le turquoise "Maldives" en haut → bleu profond en bas
+// (feedback Yvan : "+ turquoise, plus aquatique").
+const GRADIENT_COLORS = ['#1FBED6', '#159FC4', '#0C7FB0', '#085C94', '#06396E', '#041E45'];
+const GRADIENT_LOCATIONS = [0, 0.22, 0.44, 0.64, 0.82, 1];
 
 // Bulles : positions déterministes pour rester stables au remount (et
 // éviter qu'une bulle clignote au mauvais endroit après navigation).
+// Plus de bulles, plus petites (feedback Yvan) — l'écran TV est grand, on
+// remplit l'espace avec des bulles fines plutôt que grosses.
 const BULLES_TV = [
-  { x: SW * 0.08, size: 22, delay: 0, duration: 14000 },
-  { x: SW * 0.18, size: 16, delay: 2400, duration: 12000 },
-  { x: SW * 0.28, size: 28, delay: 4800, duration: 16000 },
-  { x: SW * 0.40, size: 18, delay: 1200, duration: 13000 },
-  { x: SW * 0.52, size: 24, delay: 3600, duration: 15000 },
-  { x: SW * 0.62, size: 14, delay: 6000, duration: 11000 },
-  { x: SW * 0.72, size: 26, delay: 800, duration: 14500 },
-  { x: SW * 0.82, size: 20, delay: 5200, duration: 13500 },
-  { x: SW * 0.92, size: 16, delay: 2000, duration: 12500 },
-  { x: SW * 0.34, size: 12, delay: 7000, duration: 10500 },
+  { x: SW * 0.05, size: 14, delay: 0, duration: 14000 },
+  { x: SW * 0.12, size: 9, delay: 2400, duration: 12000 },
+  { x: SW * 0.19, size: 18, delay: 4800, duration: 16000 },
+  { x: SW * 0.26, size: 11, delay: 1200, duration: 13000 },
+  { x: SW * 0.33, size: 15, delay: 3600, duration: 15000 },
+  { x: SW * 0.40, size: 8, delay: 6000, duration: 11000 },
+  { x: SW * 0.47, size: 16, delay: 800, duration: 14500 },
+  { x: SW * 0.54, size: 12, delay: 5200, duration: 13500 },
+  { x: SW * 0.61, size: 10, delay: 2000, duration: 12500 },
+  { x: SW * 0.68, size: 17, delay: 7000, duration: 10500 },
+  { x: SW * 0.75, size: 9, delay: 1600, duration: 15500 },
+  { x: SW * 0.82, size: 14, delay: 4200, duration: 12800 },
+  { x: SW * 0.89, size: 11, delay: 6400, duration: 13800 },
+  { x: SW * 0.95, size: 8, delay: 3000, duration: 11500 },
+  { x: SW * 0.30, size: 13, delay: 8000, duration: 16500 },
+  { x: SW * 0.65, size: 10, delay: 9000, duration: 14200 },
 ];
 
 // 5 méduses dérivantes — points de départ répartis (haut, bas, gauche,
 // droite, centre). Tailles 80–140 px : grandes mais pas envahissantes.
+// Plus de méduses, plus petites (feedback Yvan) — 7 réparties sur l'écran.
 const MEDUSES_TV = [
-  { baseX: SW * 0.10, baseY: SH * 0.18, size: 110, breath: 3600, tint: 'rgba(174,239,77,1)' },
-  { baseX: SW * 0.82, baseY: SH * 0.12, size: 130, breath: 4200, tint: 'rgba(0,220,255,1)' },
-  { baseX: SW * 0.20, baseY: SH * 0.72, size: 90,  breath: 3400, tint: 'rgba(0,189,208,1)' },
-  { baseX: SW * 0.74, baseY: SH * 0.66, size: 140, breath: 4600, tint: 'rgba(174,239,77,1)' },
-  { baseX: SW * 0.46, baseY: SH * 0.38, size: 80,  breath: 3800, tint: 'rgba(200,240,255,1)' },
+  { baseX: SW * 0.08, baseY: SH * 0.16, size: 84,  breath: 3600, tint: 'rgba(174,239,77,1)' },
+  { baseX: SW * 0.80, baseY: SH * 0.10, size: 96,  breath: 4200, tint: 'rgba(0,220,255,1)' },
+  { baseX: SW * 0.18, baseY: SH * 0.70, size: 68,  breath: 3400, tint: 'rgba(0,189,208,1)' },
+  { baseX: SW * 0.72, baseY: SH * 0.64, size: 100, breath: 4600, tint: 'rgba(174,239,77,1)' },
+  { baseX: SW * 0.44, baseY: SH * 0.36, size: 60,  breath: 3800, tint: 'rgba(200,240,255,1)' },
+  { baseX: SW * 0.58, baseY: SH * 0.82, size: 76,  breath: 4000, tint: 'rgba(0,220,255,1)' },
+  { baseX: SW * 0.34, baseY: SH * 0.50, size: 64,  breath: 4400, tint: 'rgba(174,239,77,1)' },
 ];
 
 function DriftingMeduse({ baseX, baseY, size, breath, tint, paused }) {
