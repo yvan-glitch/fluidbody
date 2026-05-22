@@ -81,12 +81,13 @@ function MosaicCell({ image, size, onPress }) {
   );
 }
 
-export default function TwoColLandingTV({ piliers, lang, title, description, price, primaryLabel, onPrimary, secondaryLabel, onSecondary, onOpenPilier }) {
+export default function TwoColLandingTV({ piliers, lang, title, description, primaryLabel, onPrimary, onOpenPilier }) {
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   const t = title || (isFr ? 'Le Pilates conscient' : 'Conscious Pilates');
   const desc = description || (isFr ? 'Guidé par Sabrina, à ton rythme. Choisis un pilier et commence quand tu veux.' : 'Guided by Sabrina, at your pace. Pick a pillar and start anytime.');
-  const primLabel = primaryLabel || (isFr ? "Commencez l'exercice" : 'Start exercising');
-  const secLabel = secondaryLabel || (isFr ? 'Économisez avec le forfait annuel' : 'Save with the annual plan');
+  // Pas de prix / paywall sur TV : l'Apple TV est associée à l'abonnement
+  // iPhone (pairing QR). On ne propose que de démarrer une séance.
+  const primLabel = primaryLabel || (isFr ? 'Commencer la séance' : 'Start the session');
   const innerW = SW - SIDE * 2;
   const rightW = Math.round(innerW * 0.56);
   const leftW = innerW - rightW - 40;
@@ -105,10 +106,8 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
           {/* Colonne gauche */}
           <View style={{ width: leftW, paddingRight: 28, justifyContent: 'center' }}>
             <Text style={[{ fontSize: 56, fontWeight: '800', color: '#ffffff', letterSpacing: -1, lineHeight: 62, marginBottom: 18 }, TEXT_SHADOW]}>{t}</Text>
-            <Text style={[{ fontSize: 21, fontWeight: '400', color: 'rgba(255,255,255,0.7)', lineHeight: 29, marginBottom: 14 }, TEXT_SHADOW]}>{desc}</Text>
-            {price ? <Text style={[{ fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.85)', marginBottom: 24 }, TEXT_SHADOW]}>{price}</Text> : null}
+            <Text style={[{ fontSize: 21, fontWeight: '400', color: 'rgba(255,255,255,0.7)', lineHeight: 29, marginBottom: 26 }, TEXT_SHADOW]}>{desc}</Text>
             <CTA label={primLabel} variant="primary" focusPreferred onPress={onPrimary} />
-            <CTA label={secLabel} variant="secondary" onPress={onSecondary} />
           </View>
           {/* Colonne droite : mosaïque 3×3 focusable */}
           <View style={{ width: rightW, flexDirection: 'row', flexWrap: 'wrap', gap: cellGap }}>
