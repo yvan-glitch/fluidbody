@@ -44,6 +44,27 @@ const BULLES_TV = [
   { x: SW * 0.90, size: 9,  delay: 7500, duration: 14500 },
 ];
 
+// Set "high" (~18 bulles) pour BreathingCheckIn : on veut le sentiment d'un
+// vrai banc de bulles qui monte (effet méditation). Ralenti (durations
+// 18-22 s) pour cohérence avec le rythme respiration.
+const BULLES_TV_HIGH = [
+  { x: SW * 0.05, size: 10, delay: 0,    duration: 20000 },
+  { x: SW * 0.12, size: 13, delay: 1800, duration: 18500 },
+  { x: SW * 0.19, size: 9,  delay: 4200, duration: 21000 },
+  { x: SW * 0.27, size: 12, delay: 6500, duration: 19000 },
+  { x: SW * 0.34, size: 8,  delay: 800,  duration: 22000 },
+  { x: SW * 0.42, size: 14, delay: 3000, duration: 18000 },
+  { x: SW * 0.49, size: 10, delay: 5400, duration: 20500 },
+  { x: SW * 0.56, size: 11, delay: 7600, duration: 19500 },
+  { x: SW * 0.62, size: 9,  delay: 1200, duration: 21500 },
+  { x: SW * 0.69, size: 13, delay: 4000, duration: 18800 },
+  { x: SW * 0.76, size: 8,  delay: 6100, duration: 20200 },
+  { x: SW * 0.83, size: 12, delay: 8400, duration: 19200 },
+  { x: SW * 0.88, size: 10, delay: 2400, duration: 22000 },
+  { x: SW * 0.93, size: 11, delay: 5000, duration: 21000 },
+  { x: SW * 0.97, size: 9,  delay: 7200, duration: 18700 },
+];
+
 // 5 méduses dérivantes — points de départ répartis (haut, bas, gauche,
 // droite, centre). Tailles 80–140 px : grandes mais pas envahissantes.
 // Arrière-plan : 6 méduses ~1.4× (perf — Yvan a trouvé 12 en foreground trop
@@ -53,6 +74,21 @@ const MEDUSES_TV = [
   { baseX: SW * 0.10, baseY: SH * 0.16, size: 140, breath: 3600, tint: 'rgba(174,239,77,1)' },
   { baseX: SW * 0.74, baseY: SH * 0.30, size: 132, breath: 4400, tint: 'rgba(0,220,255,1)' },
   { baseX: SW * 0.40, baseY: SH * 0.74, size: 112, breath: 4000, tint: 'rgba(0,189,208,1)' },
+];
+
+// Set "high" (~9 méduses) pour BreathingCheckIn — réparties sur 4 colonnes
+// et 3 rangées hors centre (le BreathRing vit au milieu, on évite de
+// l'envahir). Cycles de respiration ralentis pour le rituel méditatif.
+const MEDUSES_TV_HIGH = [
+  { baseX: SW * 0.06, baseY: SH * 0.10, size: 90,  breath: 5200, tint: 'rgba(174,239,77,0.95)' },
+  { baseX: SW * 0.86, baseY: SH * 0.08, size: 110, breath: 5600, tint: 'rgba(0,220,255,0.95)' },
+  { baseX: SW * 0.32, baseY: SH * 0.18, size: 78,  breath: 5000, tint: 'rgba(170,210,255,0.9)' },
+  { baseX: SW * 0.66, baseY: SH * 0.22, size: 96,  breath: 5400, tint: 'rgba(0,189,208,0.92)' },
+  { baseX: SW * 0.08, baseY: SH * 0.62, size: 104, breath: 5800, tint: 'rgba(0,220,255,0.92)' },
+  { baseX: SW * 0.90, baseY: SH * 0.58, size: 88,  breath: 5200, tint: 'rgba(174,239,77,0.88)' },
+  { baseX: SW * 0.26, baseY: SH * 0.82, size: 82,  breath: 5400, tint: 'rgba(170,210,255,0.88)' },
+  { baseX: SW * 0.72, baseY: SH * 0.84, size: 100, breath: 5600, tint: 'rgba(0,189,208,0.92)' },
+  { baseX: SW * 0.48, baseY: SH * 0.90, size: 76,  breath: 5800, tint: 'rgba(174,239,77,0.85)' },
 ];
 
 function DriftingMeduse({ baseX, baseY, size, breath, tint, paused }) {
@@ -123,17 +159,19 @@ export function AquaticGradient({ style }) {
 // par-dessus le contenu). pointerEvents="none" CRITIQUE → ne mange jamais le
 // focus de la Siri Remote. ──
 export function AquaticDrifters({
-  density = 'normal', // 'normal' | 'low'
+  density = 'normal', // 'normal' | 'low' | 'high'
   paused = false,
   contentOpacity = 1,
   style,
 }) {
   if (!IS_TV) return null;
   const meduses = useMemo(function() {
+    if (density === 'high') return MEDUSES_TV_HIGH;
     if (density === 'low') return MEDUSES_TV.slice(0, 3);
     return MEDUSES_TV;
   }, [density]);
   const bulles = useMemo(function() {
+    if (density === 'high') return BULLES_TV_HIGH;
     if (density === 'low') return BULLES_TV.filter(function(_, i) { return i % 2 === 0; });
     return BULLES_TV;
   }, [density]);
