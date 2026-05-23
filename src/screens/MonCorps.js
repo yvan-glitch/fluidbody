@@ -40,7 +40,7 @@ import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
-import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVHeaderBar, TVHeaderSearchIcon, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground, RechercheTV } from '../components/tv';
+import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVHeaderBar, TVHeaderSearchIcon, TVHeaderBreathIcon, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground, RechercheTV } from '../components/tv';
 import { pickSessionImage } from '../components/tv/tvImagePool';
 import { primeFavoritesCache } from '../utils/favorites';
 import { getDailyQuote } from '../constants/sabrinaQuotes';
@@ -2080,10 +2080,18 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             { key: 'pour_vous', label: tr.tab_pour_vous || 'Pour vous' },
             { key: 'explorer', label: tr.tab_explorer || 'Explorer' },
             { key: 'programmes', label: tr.tab_programmes || 'Programmes' },
+            // Le tab "Respiration" n'agit pas comme une section navigable —
+            // au tap il déclenche la modal BreathingCheckIn (raccourci redondant
+            // avec la pill centrale, par demande Yvan). Mêmes méduses + bulles
+            // que sur iPhone, ajoutées en foreground dans BreathingCheckIn.
+            { key: 'respiration', label: tr.tab_respiration || 'Respiration', icon: TVHeaderBreathIcon, modal: true },
             { key: 'recherche', icon: TVHeaderSearchIcon },
           ]}
           activeKey={mcTab}
-          onSelectTab={setMcTab}
+          onSelectTab={function(k) {
+            if (k === 'respiration') { setShowBreathing(true); return; }
+            setMcTab(k);
+          }}
           prenom={prenom}
           onOpenProfile={onOpenProfile}
           onOpenBreathing={function() { setShowBreathing(true); }}
