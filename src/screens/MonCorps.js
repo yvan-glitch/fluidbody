@@ -28,7 +28,9 @@ import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
 import PostSessionReflection from '../components/PostSessionReflection';
 import DailyIntentionPrompt from '../components/DailyIntentionPrompt';
+import StreakCelebration from '../components/StreakCelebration';
 import { getTodayIntention, getPilierKeyForIntention, findIntention } from '../utils/dailyIntention';
+import { shouldCelebrate, markCelebrated } from '../utils/streakMilestones';
 import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
@@ -1019,6 +1021,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   // F1 — intention du jour (cold-start prompt + recommandation pilier).
   var [todayIntention, setTodayIntentionState] = useState(null);
   var [showIntentionPrompt, setShowIntentionPrompt] = useState(false);
+  // F3 — milestone de streak fêtée (3/7/14/21/30/50/100).
+  var [celebratedStreakN, setCelebratedStreakN] = useState(null);
 
   useEffect(function() { diag('MonCorps.mount', 'start'); loadSavedPrograms(); diag('MonCorps.mount', 'done'); }, []);
 
@@ -1033,6 +1037,21 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
     }).catch(function() {});
     return function() { cancelled = true; };
   }, []);
+
+  // F3 — détecte la transition vers une milestone (3/7/14/21/30/50/100).
+  // On regarde si la milestone N n'a pas encore été célébrée (storage). Si
+  // c'est le cas, on l'affiche puis on marque comme célébrée pour ne pas
+  // re-afficher à chaque ouverture du même nombre.
+  useEffect(function() {
+    var cancelled = false;
+    if (!streak) return undefined;
+    shouldCelebrate(streak).then(function(go) {
+      if (cancelled || !go) return;
+      setCelebratedStreakN(streak);
+      markCelebrated(streak);
+    }).catch(function() {});
+    return function() { cancelled = true; };
+  }, [streak]);
 
   useEffect(function() {
     var cancelled = false;
@@ -2079,6 +2098,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         lang={lang}
         onPicked={function(key) { setTodayIntentionState(key); setShowIntentionPrompt(false); }}
         onClose={function() { setShowIntentionPrompt(false); }}
+      />
+      <StreakCelebration
+        visible={celebratedStreakN != null}
+        streak={celebratedStreakN || 0}
+        lang={lang}
+        onClose={function() { setCelebratedStreakN(null); }}
       />
     </View>
   );
