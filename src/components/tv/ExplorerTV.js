@@ -23,7 +23,7 @@ export default function ExplorerTV({ piliers, seancesByKey, onOpenPilier, lang }
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 150, paddingBottom: 90 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 184, paddingBottom: 90 }}>
         <Text style={{ fontSize: 44, fontWeight: '800', color: '#ffffff', letterSpacing: -1, paddingLeft: SIDE, marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.4)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } }}>
           {isFr ? 'Explorer' : 'Explore'}
         </Text>

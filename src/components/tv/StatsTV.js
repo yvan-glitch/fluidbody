@@ -59,7 +59,7 @@ export default function StatsTV({ mode, done, streak, piliers, lang }) {
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 140, paddingBottom: 90, paddingHorizontal: SIDE }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 184, paddingBottom: 90, paddingHorizontal: SIDE }}>
         <Text style={{ fontSize: 44, fontWeight: '800', color: '#ffffff', letterSpacing: -1, marginBottom: 32 }}>{title}</Text>
 
         {totalDone === 0 ? (

@@ -53,7 +53,7 @@ export default function BibliothequeTV({ piliers, seancesByKey, done, onOpenPili
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 140, paddingBottom: 90 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 184, paddingBottom: 90 }}>
         {favCards.length > 0 ? (
           <View style={{ marginBottom: 36 }}>
             <Text style={{ fontSize: 30, fontWeight: '800', color: '#ffffff', letterSpacing: -0.5, paddingLeft: SIDE, marginBottom: 18, textShadowColor: 'rgba(0,0,0,0.4)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } }}>

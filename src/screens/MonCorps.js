@@ -40,7 +40,7 @@ import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
-import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVTopBar, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground, RechercheTV } from '../components/tv';
+import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVHeaderBar, TVHeaderSearchIcon, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground, RechercheTV } from '../components/tv';
 import { pickSessionImage } from '../components/tv/tvImagePool';
 import { primeFavoritesCache } from '../utils/favorites';
 import { getDailyQuote } from '../constants/sabrinaQuotes';
@@ -2072,26 +2072,28 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       {IS_TV && !openPilier && mcTab === 'recherche' ? (
         <RechercheTV piliers={piliers} seancesByKey={getSeances(lang)} onOpenPilier={setOpenPilier} onOpenSeance={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }} lang={lang} />
       ) : null}
-      {IS_TV && mcTab === 'respire' ? (
-        <BreathingCheckIn visible onClose={function() { setMcTab('pour_vous'); }} lang={lang} />
-      ) : null}
+      {/* (Ancien : `mcTab === 'respire'` rendait BreathingCheckIn. Le nouveau
+          header utilise une pill modale → cette branche n'a plus de sens.) */}
       {IS_TV && !openPilier ? (
-        <TVTopBar
+        <TVHeaderBar
           tabs={[
-            { key: 'recherche', label: 'Recherche' },
-            { key: 'pour_vous', label: 'Pour vous' },
-            { key: 'explorer', label: 'Explorer' },
-            { key: 'programmes', label: 'Programmes' },
-            { key: 'activite', label: 'Activité' },
-            { key: 'resume', label: 'Résumé' },
-            { key: 'biblio', label: 'Bibliothèque' },
-            { key: 'respire', label: 'Respire' },
+            { key: 'pour_vous', label: tr.tab_pour_vous || 'Pour vous' },
+            { key: 'explorer', label: tr.tab_explorer || 'Explorer' },
+            { key: 'programmes', label: tr.tab_programmes || 'Programmes' },
+            { key: 'recherche', icon: TVHeaderSearchIcon },
           ]}
           activeKey={mcTab}
           onSelectTab={setMcTab}
           prenom={prenom}
           onOpenProfile={onOpenProfile}
+          onOpenBreathing={function() { setShowBreathing(true); }}
+          breathDone={breathDoneToday}
+          lang={lang}
         />
+      ) : null}
+      {/* BreathingCheckIn modal — déclenché par la pill Respirer du header TV. */}
+      {IS_TV && showBreathing ? (
+        <BreathingCheckIn visible onClose={function() { setShowBreathing(false); }} lang={lang} />
       ) : null}
       <DailyIntentionPrompt
         visible={showIntentionPrompt}
