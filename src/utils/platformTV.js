@@ -54,13 +54,15 @@ export function tvFocusProps (preferred = false) {
   }
 }
 
-// Style additionnel à merger sur la card focusée. Bordure jaune Fluidbody
-// + ombre lumineuse, lisible à 2-3 m.
+// Style additionnel à merger sur la card focusée. Bordure blanche opaque
+// + glow blanc fort (~40 px). Aligné avec le pass focus du polish round 2 :
+// les indicateurs étaient pas assez visibles à 2-3 m, on passe du jaune
+// `#E5FF00` à un ring blanc 3 px qui pop sur n'importe quel fond.
 export const TV_FOCUS_RING = {
-  borderWidth: 4,
-  borderColor: '#E5FF00',
-  shadowColor: '#E5FF00',
-  shadowOpacity: 0.9,
-  shadowRadius: 14,
+  borderWidth: 3,
+  borderColor: 'rgba(255,255,255,0.85)',
+  shadowColor: '#FFFFFF',
+  shadowOpacity: 0.78,
+  shadowRadius: 40,
   shadowOffset: { width: 0, height: 0 },
 }

@@ -19,7 +19,15 @@ function MenuItem({ label, active, focusPreferred, onPress }) {
       onPress={onPress}
       onFocus={function () { setFocused(true); }}
       onBlur={function () { setFocused(false); }}
-      style={{ height: 64, justifyContent: 'center', paddingHorizontal: 26, borderRadius: 14, backgroundColor: focused ? 'rgba(255,255,255,0.16)' : 'transparent' }}
+      style={{
+        height: 64,
+        justifyContent: 'center',
+        paddingHorizontal: 26,
+        borderRadius: 14,
+        backgroundColor: focused ? 'rgba(255,255,255,0.22)' : 'transparent',
+        borderWidth: focused ? 2 : 0,
+        borderColor: focused ? 'rgba(255,255,255,0.85)' : 'transparent',
+      }}
     >
       <Text style={{ fontSize: 22, fontWeight: (focused || active) ? '700' : '500', color: focused ? '#ffffff' : (active ? '#00DB7D' : 'rgba(255,255,255,0.85)') }}>
         {label}
@@ -29,17 +37,20 @@ function MenuItem({ label, active, focusPreferred, onPress }) {
 }
 
 export default function TVMenuDropdown({ items, activeKey, onSelect }) {
+  // Focus initial sur l'item sélectionné (et pas systématiquement le premier)
+  // — feedback "focus initial sur l'item sélectionné".
+  const activeIdx = Math.max(0, (items || []).findIndex(function (it) { return it.key === activeKey; }));
   return (
-    <View style={{ width: 320, borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' }}>
+    <View style={{ width: 320, borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }}>
       {Platform.OS === 'ios' ? <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" /> : null}
-      <View style={{ backgroundColor: 'rgba(0,0,0,0.4)', padding: 10 }}>
+      <View style={{ backgroundColor: 'rgba(2,12,24,0.5)', padding: 10 }}>
         {items.map(function (it, i) {
           return (
             <MenuItem
               key={it.key}
               label={it.label}
               active={it.key === activeKey}
-              focusPreferred={i === 0}
+              focusPreferred={i === activeIdx}
               onPress={function () { onSelect(it.key); }}
             />
           );

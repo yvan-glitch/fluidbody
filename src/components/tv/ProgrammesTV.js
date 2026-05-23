@@ -42,16 +42,22 @@ const THEMES = [
   { key: 'souplesse', img: require('../../../assets/programs/souplesse.jpg'), pilier: 'p3', titleKey: 'prog_souplesse', fallback: 'Souplesse totale', duration: '14 JOURS · 20 MIN/JOUR' },
 ];
 
-// Card large focusable réutilisable (scale + glow au focus).
+// Card large focusable réutilisable (scale + glow + ring blanc au focus).
 function FocusableSurface({ children, onPress, focusPreferred, height, glowColor, radius = 24 }) {
   const [focused, setFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
+  const ringO = useRef(new Animated.Value(0)).current;
   useEffect(function () {
-    Animated.timing(scale, { toValue: focused ? 1.03 : 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.parallel([
+      Animated.timing(scale, { toValue: focused ? 1.06 : 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(ringO, { toValue: focused ? 1 : 0, duration: 180, useNativeDriver: true }),
+    ]).start();
   }, [focused]);
+  // Card very large : scale 1.06 plutôt que 1.10 pour ne pas déborder de
+  // la mise en page latérale, mais glow et ring poussés au max.
   const glow = Platform.OS === 'ios'
-    ? { shadowColor: glowColor || '#FFFFFF', shadowOpacity: 0.5, shadowRadius: 26, shadowOffset: { width: 0, height: 0 } }
-    : { elevation: 20 };
+    ? { shadowColor: glowColor || '#FFFFFF', shadowOpacity: 0.78, shadowRadius: 40, shadowOffset: { width: 0, height: 0 } }
+    : { elevation: 30 };
   return (
     <Animated.View style={[{ borderRadius: radius, transform: [{ scale: scale }] }, focused ? glow : null]}>
       <TouchableOpacity
@@ -63,7 +69,11 @@ function FocusableSurface({ children, onPress, focusPreferred, height, glowColor
         style={{ height: height, borderRadius: radius, overflow: 'hidden' }}
       >
         {children}
+        {focused ? (
+          <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.05)' }} />
+        ) : null}
       </TouchableOpacity>
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', top: -3, left: -3, right: -3, bottom: -3, borderRadius: radius + 3, borderWidth: 3, borderColor: 'rgba(255,255,255,0.85)', opacity: ringO }} />
     </Animated.View>
   );
 }
