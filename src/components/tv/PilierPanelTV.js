@@ -26,6 +26,7 @@ import { T, PILIER_IMAGES } from '../../constants/data';
 import { getSeances, canAccessSeanceIndex, getResumeIndicesForPilier, isComingSoon, hapticLight } from '../../utils';
 import { prefetchSignedVideoUrl, buildSessionId } from '../../utils/videoUrl';
 import VideoPlayer from '../VideoPlayer';
+import PostSessionReflection from '../PostSessionReflection';
 import SeanceCompleteTV from './SeanceCompleteTV';
 import AquaticBackground from './AquaticBackground';
 import { pickSessionImage } from './tvImagePool';
@@ -150,6 +151,8 @@ export default function PilierPanelTV({ pilier, done, onToggle, onClose, lang, i
   const [activeVideo, setActiveVideo] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebratedSeance, setCelebratedSeance] = useState(null);
+  const [celebratedIdx, setCelebratedIdx] = useState(null);
+  const [showReflection, setShowReflection] = useState(false);
   const [showDemoLimit, setShowDemoLimit] = useState(false);
   const [resumeIndices, setResumeIndices] = useState(function () { return new Set(); });
 
@@ -213,7 +216,7 @@ export default function PilierPanelTV({ pilier, done, onToggle, onClose, lang, i
           seanceIndex={activeVideo}
           isDemo={activeVideo === sdjIndex && !isSubscriber}
           onClose={function () { setShowDemoLimit(false); setActiveVideo(null); }}
-          onComplete={function () { setCelebratedSeance(seances[activeVideo]); onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
+          onComplete={function () { setCelebratedSeance(seances[activeVideo]); setCelebratedIdx(activeVideo); onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
           onDemoLimit={function () { setShowDemoLimit(true); }}
           saveHealthKitWorkout={saveHealthKitWorkout}
         />
@@ -302,11 +305,17 @@ export default function PilierPanelTV({ pilier, done, onToggle, onClose, lang, i
             durationLabel={celebratedSeance ? celebratedSeance[1] : null}
             seanceTitle={celebratedSeance ? celebratedSeance[0] : null}
             pilierLabel={pilier.label}
-            onContinue={function () { setShowCelebration(false); }}
-            onClose={function () { setShowCelebration(false); onClose && onClose(); }}
+            onContinue={function () { setShowCelebration(false); setShowReflection(true); }}
+            onClose={function () { setShowCelebration(false); setShowReflection(true); onClose && onClose(); }}
           />
         </View>
       )}
+      <PostSessionReflection
+        visible={showReflection}
+        sessionId={celebratedIdx != null ? pilier.key + '_' + celebratedIdx : null}
+        lang={lang}
+        onClose={function () { setShowReflection(false); }}
+      />
     </View>
   );
 }

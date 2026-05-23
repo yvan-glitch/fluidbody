@@ -26,6 +26,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import LivingBackground from '../components/LivingBackground';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
+import PostSessionReflection from '../components/PostSessionReflection';
 import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
@@ -430,6 +431,8 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
   // Remember the seance that just finished so the share card has its data
   // even after `activeVideo` resets to null.
   const [celebratedSeance, setCelebratedSeance] = useState(null);
+  const [celebratedIdx, setCelebratedIdx] = useState(null);
+  const [showReflection, setShowReflection] = useState(false);
   const [showDemoLimit, setShowDemoLimit] = useState(false);
   const [resumeIndices, setResumeIndices] = useState(() => new Set());
 
@@ -513,7 +516,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
           seanceIndex={activeVideo}
           isDemo={activeVideo === sdjIndex && !isSubscriber}
           onClose={() => { setShowDemoLimit(false); setActiveVideo(null); }}
-          onComplete={() => { setCelebratedSeance(seances[activeVideo]); onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
+          onComplete={() => { setCelebratedSeance(seances[activeVideo]); setCelebratedIdx(activeVideo); onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
           onDemoLimit={() => setShowDemoLimit(true)}
           saveHealthKitWorkout={saveHealthKitWorkout}
         />
@@ -679,14 +682,20 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
               durationLabel={celebratedSeance ? celebratedSeance[1] : null}
               seanceTitle={celebratedSeance ? celebratedSeance[0] : null}
               pilierLabel={pilier.label}
-              onContinue={() => setShowCelebration(false)}
-              onClose={() => { setShowCelebration(false); onClose && onClose(); }}
+              onContinue={() => { setShowCelebration(false); setShowReflection(true); }}
+              onClose={() => { setShowCelebration(false); setShowReflection(true); onClose && onClose(); }}
             />
           </View>
         )
       ) : (
-        <CelebrationOverlay visible={showCelebration} onDone={() => setShowCelebration(false)} pilier={pilier} lang={lang} seance={celebratedSeance} />
+        <CelebrationOverlay visible={showCelebration} onDone={() => { setShowCelebration(false); setShowReflection(true); }} pilier={pilier} lang={lang} seance={celebratedSeance} />
       )}
+      <PostSessionReflection
+        visible={showReflection}
+        sessionId={celebratedIdx != null ? pilier.key + '_' + celebratedIdx : null}
+        lang={lang}
+        onClose={() => setShowReflection(false)}
+      />
     </View>
   );
 }
