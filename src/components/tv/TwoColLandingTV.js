@@ -19,6 +19,7 @@ import { pickSessionImage } from './tvImagePool';
 import { tvFocusProps } from '../../utils/platformTV';
 import { PILIER_IMAGES } from '../../constants/data';
 import { getResumableSession } from '../../utils';
+import { getDailyQuote } from '../../constants/sabrinaQuotes';
 
 const { width: SW } = Dimensions.get('window');
 const SIDE = 80;
@@ -166,6 +167,7 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
         <View style={{ flexDirection: 'row', paddingHorizontal: SIDE, marginBottom: 56 }}>
           {/* Colonne gauche */}
           <View style={{ width: leftW, paddingRight: 28, justifyContent: 'center' }}>
+            <Text style={[{ fontSize: 16, fontWeight: '500', fontStyle: 'italic', color: 'rgba(255,255,255,0.62)', letterSpacing: 0.2, marginBottom: 12 }, TEXT_SHADOW]}>« {getDailyQuote()} »</Text>
             <Text style={[{ fontSize: 56, fontWeight: '800', color: '#ffffff', letterSpacing: -1, lineHeight: 62, marginBottom: 18 }, TEXT_SHADOW]}>{t}</Text>
             <Text style={[{ fontSize: 21, fontWeight: '400', color: 'rgba(255,255,255,0.7)', lineHeight: 29, marginBottom: 26 }, TEXT_SHADOW]}>{desc}</Text>
             <CTA label={primLabel} variant="primary" focusPreferred={!resume} onPress={onPrimary} />
