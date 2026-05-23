@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { T } from '../constants/data';
 import { VideoPlaceholderMeduse } from './Meduse';
+import Skeleton from './Skeleton';
 import LiquidGlassCapsule from './LiquidGlassCapsule';
 import HeartRatePill from './HeartRatePill';
 import { GlassView, GlassButton, GLASS_RADII, GLASS_EASING, GLASS_DURATIONS } from './ui';
@@ -620,6 +621,9 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, backgroundColor: '#000', width: dims.width, height: dims.height }}>
+      {hasRealVideo && !uri && !videoLoadFailed ? (
+        <Skeleton style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} radius={0} />
+      ) : null}
       {hasRealVideo && uri ? (
         <Video
           key={videoResetKey}
