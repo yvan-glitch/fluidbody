@@ -11,7 +11,7 @@ export { default as HeroFeatured } from './HeroFeatured';
 export { default as HorizontalCarousel } from './HorizontalCarousel';
 export { default as TVCard16x9 } from './TVCard16x9';
 export { default as TVTopBar } from './TVTopBar';
-export { default as TVHeaderBar, SearchIcon as TVHeaderSearchIcon } from './TVHeaderBar';
+export { default as TVHeaderBar, SearchIcon as TVHeaderSearchIcon, BreathIcon as TVHeaderBreathIcon } from './TVHeaderBar';
 export { default as TVMenuDropdown } from './TVMenuDropdown';
 export { default as PilierPanelTV } from './PilierPanelTV';
 export { default as ExplorerTV } from './ExplorerTV';

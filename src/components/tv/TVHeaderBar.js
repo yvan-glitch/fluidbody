@@ -227,3 +227,14 @@ export function SearchIcon(color) {
     </Svg>
   );
 }
+
+// Icône respiration (cercles concentriques — même langage visuel que la
+// pill BreathePill, pour signaler "même action").
+export function BreathIcon(color) {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={1.8} />
+      <Circle cx="12" cy="12" r="4.5" stroke={color} strokeWidth={1.4} opacity={0.6} />
+    </Svg>
+  );
+}
