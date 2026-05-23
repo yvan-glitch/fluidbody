@@ -20,6 +20,7 @@ import { tvFocusProps } from '../../utils/platformTV';
 import { PILIER_IMAGES } from '../../constants/data';
 import { getResumableSession } from '../../utils';
 import { getDailyQuote } from '../../constants/sabrinaQuotes';
+import { getTodayIntention, getPilierKeyForIntention, findIntention } from '../../utils/dailyIntention';
 
 const { width: SW } = Dimensions.get('window');
 const SIDE = 80;
@@ -123,6 +124,8 @@ function ResumeCard({ image, title, pilierLabel, positionMillis, durationMillis,
 export default function TwoColLandingTV({ piliers, lang, title, description, primaryLabel, onPrimary, onOpenPilier, seancesByKey, onResume }) {
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   const [resume, setResume] = useState(null);
+  const [intent, setIntent] = useState(null);
+  const [intentPilier, setIntentPilier] = useState(null);
   useEffect(function () {
     let cancelled = false;
     getResumableSession().then(function (r) {
@@ -130,6 +133,14 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
       const pil = (piliers || []).find(function (p) { return p.key === r.pilierKey; });
       const seance = pil && seancesByKey && seancesByKey[r.pilierKey] && seancesByKey[r.pilierKey][r.idx];
       if (pil && seance) setResume({ pilier: pil, idx: r.idx, seance: seance, positionMillis: r.positionMillis, durationMillis: r.durationMillis });
+    }).catch(function () {});
+    getTodayIntention().then(function (k) {
+      if (cancelled || !k) return;
+      const found = findIntention(k);
+      const pilKey = getPilierKeyForIntention(k);
+      const pil = pilKey && (piliers || []).find(function (p) { return p.key === pilKey; });
+      if (found) setIntent(found);
+      if (pil) setIntentPilier(pil);
     }).catch(function () {});
     return function () { cancelled = true; };
   }, [piliers, seancesByKey]);
@@ -167,6 +178,22 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
         <View style={{ flexDirection: 'row', paddingHorizontal: SIDE, marginBottom: 56 }}>
           {/* Colonne gauche */}
           <View style={{ width: leftW, paddingRight: 28, justifyContent: 'center' }}>
+            {intent && intentPilier ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={function () { onOpenPilier(intentPilier); }}
+                accessibilityRole="button"
+                accessibilityLabel={(isFr ? 'Intention du jour' : 'Daily intention') + ' : ' + (isFr ? intent.labelFr : intent.labelEn) + ' → ' + intentPilier.label}
+                style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 10, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 18, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.5)', marginBottom: 14 }}
+              >
+                <Text style={{ fontSize: 22 }}>{intent.emoji}</Text>
+                <Text style={{ fontSize: 12, color: '#AEEF4D', fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' }}>{isFr ? 'Intention' : 'Intention'}</Text>
+                <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '700' }}>{isFr ? intent.labelFr : intent.labelEn}</Text>
+                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>{'·'}</Text>
+                <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.78)', fontWeight: '500' }}>{intentPilier.label}</Text>
+                <Text style={{ fontSize: 18, color: '#AEEF4D', fontWeight: '300', marginLeft: 4 }}>{'›'}</Text>
+              </TouchableOpacity>
+            ) : null}
             <Text style={[{ fontSize: 16, fontWeight: '500', fontStyle: 'italic', color: 'rgba(255,255,255,0.62)', letterSpacing: 0.2, marginBottom: 12 }, TEXT_SHADOW]}>« {getDailyQuote()} »</Text>
             <Text style={[{ fontSize: 56, fontWeight: '800', color: '#ffffff', letterSpacing: -1, lineHeight: 62, marginBottom: 18 }, TEXT_SHADOW]}>{t}</Text>
             <Text style={[{ fontSize: 21, fontWeight: '400', color: 'rgba(255,255,255,0.7)', lineHeight: 29, marginBottom: 26 }, TEXT_SHADOW]}>{desc}</Text>

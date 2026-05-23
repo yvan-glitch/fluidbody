@@ -27,6 +27,8 @@ import LivingBackground from '../components/LivingBackground';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
 import PostSessionReflection from '../components/PostSessionReflection';
+import DailyIntentionPrompt from '../components/DailyIntentionPrompt';
+import { getTodayIntention, getPilierKeyForIntention, findIntention } from '../utils/dailyIntention';
 import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
@@ -1014,8 +1016,23 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   var [showMyPrograms, setShowMyPrograms] = useState(false);
   var [showProgramBuilder, setShowProgramBuilder] = useState(false);
   var [programRefreshTick, setProgramRefreshTick] = useState(0);
+  // F1 — intention du jour (cold-start prompt + recommandation pilier).
+  var [todayIntention, setTodayIntentionState] = useState(null);
+  var [showIntentionPrompt, setShowIntentionPrompt] = useState(false);
 
   useEffect(function() { diag('MonCorps.mount', 'start'); loadSavedPrograms(); diag('MonCorps.mount', 'done'); }, []);
+
+  useEffect(function() {
+    var cancelled = false;
+    getTodayIntention().then(function(intent) {
+      if (cancelled) return;
+      if (intent) { setTodayIntentionState(intent); return; }
+      // Pas d'intention pour aujourd'hui — petit délai pour ne pas afficher
+      // par-dessus l'éventuel onboarding/auth qui se monte juste après.
+      setTimeout(function() { if (!cancelled) setShowIntentionPrompt(true); }, 900);
+    }).catch(function() {});
+    return function() { cancelled = true; };
+  }, []);
 
   useEffect(function() {
     var cancelled = false;
@@ -1351,8 +1368,27 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               </View>
             );
           };
+          var intent = todayIntention ? findIntention(todayIntention) : null;
+          var intentPilierKey = todayIntention ? getPilierKeyForIntention(todayIntention) : null;
+          var intentPilier = intentPilierKey ? piliers.find(function(p) { return p.key === intentPilierKey; }) : null;
           return (
             <View key="pour-vous">
+              {intent && intentPilier ? (
+                <TouchableOpacity
+                  onPress={function() { setOpenPilier(intentPilier); }}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel={(tr.intention_aujourdhui || "Intention du jour") + " : " + (lang === 'fr' ? intent.labelFr : intent.labelEn) + " → " + intentPilier.label}
+                  style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.42)', marginBottom: 12 }}
+                >
+                  <Text style={{ fontSize: 16 }}>{intent.emoji}</Text>
+                  <Text style={{ fontSize: 11, color: '#AEEF4D', fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' }}>{tr.intention_aujourdhui || 'Intention'}</Text>
+                  <Text style={{ fontSize: 13, color: '#ffffff', fontWeight: '600' }}>{lang === 'fr' ? intent.labelFr : intent.labelEn}</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>{'·'}</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', fontWeight: '500' }}>{intentPilier.label}</Text>
+                  <Text style={{ fontSize: 14, color: '#AEEF4D', fontWeight: '300', marginLeft: 2 }}>{'›'}</Text>
+                </TouchableOpacity>
+              ) : null}
               <Text style={{ fontSize: 13, fontWeight: '500', fontStyle: 'italic', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.1, marginBottom: 14, paddingHorizontal: 4 }}>« {getDailyQuote()} »</Text>
               <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
                 {glassCell(mosaicImages[0], halfW, rowH1, 'm0')}
@@ -2038,6 +2074,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           onOpenProfile={onOpenProfile}
         />
       ) : null}
+      <DailyIntentionPrompt
+        visible={showIntentionPrompt}
+        lang={lang}
+        onPicked={function(key) { setTodayIntentionState(key); setShowIntentionPrompt(false); }}
+        onClose={function() { setShowIntentionPrompt(false); }}
+      />
     </View>
   );
 }
