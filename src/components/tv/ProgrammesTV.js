@@ -134,34 +134,43 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
   const shortFocus = !activeHero && shortRow.length > 0;
   const wideFocus = !activeHero && shortRow.length === 0;
 
+  // Largeur max pour les cards larges et les titres (sinon sur un 1920×1080
+  // les cards s'étirent et la page semble vide au milieu — feedback Yvan
+  // "écran Programmes étiré"). Les carrousels gardent le full-bleed scroll.
+  const CONTENT_MAX_W = 1200;
+  const wideCardStyle = { width: '100%', maxWidth: CONTENT_MAX_W, alignSelf: 'center', paddingHorizontal: 24, marginBottom: 44 };
+  const wideTitleStyle = { width: '100%', maxWidth: CONTENT_MAX_W, alignSelf: 'center', paddingHorizontal: 24, marginBottom: 18 };
+
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90, paddingTop: activeHero ? 0 : 184 }}>
-        {/* 1 — Hero programme actif */}
+        {/* 1 — Hero programme actif (image full-bleed, contenu max 1200 centered) */}
         {activeHero ? (
           <View style={{ height: heroH, overflow: 'hidden', marginBottom: 40 }}>
             <Image source={PILIER_IMAGES[activeHero.pilier.key]} contentFit="cover" transition={250} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
             <LinearGradient colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.55)', '#000000']} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-            <View style={{ position: 'absolute', left: SIDE, right: SIDE, bottom: 48 }}>
-              <Text style={{ fontSize: 15, fontWeight: '800', color: FITNESS_GREEN, letterSpacing: 1.2, marginBottom: 8 }}>
-                {(tr.program_active_tag || 'PROGRAMME ACTIF') + ' · ' + (tr.program_week_label || 'Semaine') + ' ' + activeHero.stats.currentWeek + '/' + activeHero.program.duration_weeks}
-              </Text>
-              <Text numberOfLines={1} style={[{ fontSize: 66, fontWeight: '800', color: '#ffffff', letterSpacing: -1.2, marginBottom: 10 }, TEXT_SHADOW]}>
-                {activeHero.program.name || (tr.program_default_name || 'Programme')}
-              </Text>
-              <Text style={[{ fontSize: 24, fontWeight: '500', color: 'rgba(255,255,255,0.82)' }, TEXT_SHADOW]}>
-                {activeHero.stats.percent + '% · ' + (tr.program_next_label || 'Prochaine séance') + ' : ' + activeHero.pilier.label}
-              </Text>
-              <FocusableSurface focusPreferred={heroFocus} height={56} glowColor={FITNESS_GREEN} radius={30} onPress={function () { onOpenPilier(activeHero.pilier); }}>
-                <View style={{ backgroundColor: FITNESS_GREEN, flex: 1, paddingHorizontal: 40, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 20, fontWeight: '700', color: '#001B10' }}>{'▶  ' + (isFr ? 'Continuer' : 'Continue')}</Text>
-                </View>
-              </FocusableSurface>
+            <View style={{ position: 'absolute', left: 0, right: 0, bottom: 48, alignItems: 'center' }}>
+              <View style={{ width: '100%', maxWidth: CONTENT_MAX_W, paddingHorizontal: 24 }}>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: FITNESS_GREEN, letterSpacing: 1.2, marginBottom: 8 }}>
+                  {(tr.program_active_tag || 'PROGRAMME ACTIF') + ' · ' + (tr.program_week_label || 'Semaine') + ' ' + activeHero.stats.currentWeek + '/' + activeHero.program.duration_weeks}
+                </Text>
+                <Text numberOfLines={1} style={[{ fontSize: 66, fontWeight: '800', color: '#ffffff', letterSpacing: -1.2, marginBottom: 10 }, TEXT_SHADOW]}>
+                  {activeHero.program.name || (tr.program_default_name || 'Programme')}
+                </Text>
+                <Text style={[{ fontSize: 24, fontWeight: '500', color: 'rgba(255,255,255,0.82)' }, TEXT_SHADOW]}>
+                  {activeHero.stats.percent + '% · ' + (tr.program_next_label || 'Prochaine séance') + ' : ' + activeHero.pilier.label}
+                </Text>
+                <FocusableSurface focusPreferred={heroFocus} height={56} glowColor={FITNESS_GREEN} radius={30} onPress={function () { onOpenPilier(activeHero.pilier); }}>
+                  <View style={{ backgroundColor: FITNESS_GREEN, flex: 1, paddingHorizontal: 40, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 20, fontWeight: '700', color: '#001B10' }}>{'▶  ' + (isFr ? 'Continuer' : 'Continue')}</Text>
+                  </View>
+                </FocusableSurface>
+              </View>
             </View>
           </View>
         ) : null}
 
-        {/* 2 — Séances courtes */}
+        {/* 2 — Séances courtes (carrousel : full-bleed scroll, OK) */}
         {shortRow.length > 0 ? (
           <HorizontalCarousel
             title={isFr ? 'Séances courtes' : 'Quick sessions'}
@@ -171,11 +180,11 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
           />
         ) : null}
 
-        {/* 3 — Vos programmes sur mesure (card large étirée) */}
-        <Text style={[{ fontSize: 30, fontWeight: '800', color: '#ffffff', letterSpacing: -0.5, paddingLeft: SIDE, marginBottom: 18 }, TEXT_SHADOW]}>
+        {/* 3 — Vos programmes sur mesure (card large, max 1200 centered) */}
+        <Text style={[{ fontSize: 30, fontWeight: '800', color: '#ffffff', letterSpacing: -0.5 }, TEXT_SHADOW, wideTitleStyle]}>
           {tr.prog_section_title || 'Vos programmes sur mesure'}
         </Text>
-        <View style={{ paddingHorizontal: SIDE, marginBottom: 44 }}>
+        <View style={wideCardStyle}>
           <FocusableSurface focusPreferred={wideFocus} height={220} onPress={function () { var p = pilierByKey('p1'); if (p) onOpenPilier(p); }}>
             <Image source={PILIER_IMAGES.p1} contentFit="cover" transition={200} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
             <LinearGradient colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.85)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
@@ -188,11 +197,11 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
           </FocusableSurface>
         </View>
 
-        {/* 4 — Créez votre propre programme (mauve) */}
-        <Text style={[{ fontSize: 30, fontWeight: '800', color: '#ffffff', letterSpacing: -0.5, paddingLeft: SIDE, marginBottom: 18 }, TEXT_SHADOW]}>
+        {/* 4 — Créez votre propre programme (mauve, max 1200) */}
+        <Text style={[{ fontSize: 30, fontWeight: '800', color: '#ffffff', letterSpacing: -0.5 }, TEXT_SHADOW, wideTitleStyle]}>
           {tr.prog_custom_title || 'Créez votre propre programme'}
         </Text>
-        <View style={{ paddingHorizontal: SIDE, marginBottom: 44 }}>
+        <View style={wideCardStyle}>
           <FocusableSurface focusPreferred={false} height={200} glowColor="#B16CFF" onPress={function () { var p = pilierByKey('p7'); if (p) onOpenPilier(p); }}>
             <LinearGradient colors={['#7A5CFF', '#B16CFF']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
             <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 44 }}>
@@ -203,8 +212,8 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
           </FocusableSurface>
         </View>
 
-        {/* 4b — À propos de Sabrina */}
-        <View style={{ paddingHorizontal: SIDE, marginBottom: 44 }}>
+        {/* 4b — À propos de Sabrina (max 1200) */}
+        <View style={wideCardStyle}>
           <FocusableSurface focusPreferred={false} height={220} onPress={function () { var p = pilierByKey('p7'); if (p) onOpenPilier(p); }}>
             <Image source={SABRINA_ABOUT} contentFit="cover" transition={200} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
             <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.9)']} locations={[0, 0.45, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
@@ -220,7 +229,7 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
           </FocusableSurface>
         </View>
 
-        {/* 5 — Programmes thématiques (carrousel cinématique) */}
+        {/* 5 — Programmes thématiques (carrousel : full-bleed scroll, OK) */}
         <HorizontalCarousel
           title={tr.prog_thematiques_title || 'Programmes thématiques'}
           items={themeItems}
