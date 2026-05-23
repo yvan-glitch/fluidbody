@@ -28,19 +28,29 @@ export default function TVTopBar({ tabs, activeKey, onSelectTab, prenom, onOpenP
   const [burgerFocused, setBurgerFocused] = useState(false);
   const [avatarFocused, setAvatarFocused] = useState(false);
   const avatarScale = useRef(new Animated.Value(1)).current;
+  const burgerScale = useRef(new Animated.Value(1)).current;
   useEffect(function () {
-    Animated.timing(avatarScale, { toValue: avatarFocused ? 1.06 : 1, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(avatarScale, { toValue: avatarFocused ? 1.10 : 1, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [avatarFocused]);
+  useEffect(function () {
+    Animated.timing(burgerScale, { toValue: burgerFocused ? 1.10 : 1, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [burgerFocused]);
   const activeLabel = (tabs.find(function (t) { return t.key === activeKey; }) || {}).label || '';
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingTop: 44, paddingHorizontal: SIDE, zIndex: 70 }} pointerEvents="box-none">
-      {/* Barre frostée Liquid Glass */}
-      {Platform.OS === 'ios' ? <BlurView intensity={85} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: BAR_H }} pointerEvents="none" /> : null}
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: BAR_H, backgroundColor: 'rgba(0,0,0,0.25)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' }} pointerEvents="none" />
+      {/* Barre frostée Liquid Glass — intensité poussée pour brouiller
+          franchement le contenu qui scrolle dessous + bordure bas subtile
+          pour bien délimiter la barre (feedback "pas assez glassy"). */}
+      {Platform.OS === 'ios' ? <BlurView intensity={98} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: BAR_H }} pointerEvents="none" /> : null}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: BAR_H, backgroundColor: 'rgba(2,12,24,0.32)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.12)' }} pointerEvents="none" />
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         {/* Hamburger + dropdown */}
         <View>
+          <Animated.View style={[
+            { transform: [{ scale: burgerScale }], borderRadius: 32 },
+            burgerFocused && Platform.OS === 'ios' ? { shadowColor: '#FFFFFF', shadowOpacity: 0.6, shadowRadius: 28, shadowOffset: { width: 0, height: 0 } } : null,
+          ]}>
           <TouchableOpacity
             {...tvFocusProps(false)}
             activeOpacity={0.85}
@@ -50,8 +60,8 @@ export default function TVTopBar({ tabs, activeKey, onSelectTab, prenom, onOpenP
             style={{
               flexDirection: 'row', alignItems: 'center', gap: 12,
               paddingHorizontal: 20, paddingVertical: 12, borderRadius: 32,
-              backgroundColor: burgerFocused ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.10)',
-              borderWidth: 1, borderColor: burgerFocused ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.14)',
+              backgroundColor: burgerFocused ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.10)',
+              borderWidth: burgerFocused ? 3 : 1, borderColor: burgerFocused ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.14)',
             }}
           >
             <Svg width={22} height={22} viewBox="0 0 24 24">
@@ -59,6 +69,7 @@ export default function TVTopBar({ tabs, activeKey, onSelectTab, prenom, onOpenP
             </Svg>
             <Text style={{ fontSize: 20, fontWeight: '600', color: '#ffffff' }}>{activeLabel}</Text>
           </TouchableOpacity>
+          </Animated.View>
           {menuOpen ? (
             <View style={{ marginTop: 10 }}>
               <TVMenuDropdown
@@ -71,7 +82,10 @@ export default function TVTopBar({ tabs, activeKey, onSelectTab, prenom, onOpenP
         </View>
 
         {/* Avatar coach Sabrina */}
-        <Animated.View style={{ transform: [{ scale: avatarScale }] }}>
+        <Animated.View style={[
+          { transform: [{ scale: avatarScale }], borderRadius: 999 },
+          avatarFocused && Platform.OS === 'ios' ? { shadowColor: '#FFFFFF', shadowOpacity: 0.6, shadowRadius: 28, shadowOffset: { width: 0, height: 0 } } : null,
+        ]}>
           <TouchableOpacity
             {...tvFocusProps(false)}
             activeOpacity={0.85}
@@ -81,8 +95,8 @@ export default function TVTopBar({ tabs, activeKey, onSelectTab, prenom, onOpenP
             style={{
               flexDirection: 'row', alignItems: 'center', gap: 12,
               paddingLeft: 8, paddingRight: 20, paddingVertical: 8, borderRadius: 999,
-              backgroundColor: avatarFocused ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.07)',
-              borderWidth: 1, borderColor: avatarFocused ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.14)',
+              backgroundColor: avatarFocused ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.07)',
+              borderWidth: avatarFocused ? 3 : 1, borderColor: avatarFocused ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.14)',
             }}
           >
             <View style={{ width: 36, height: 36, borderRadius: 18, overflow: 'hidden', borderWidth: 2, borderColor: avatarFocused ? '#ffffff' : 'rgba(255,255,255,0.45)' }}>

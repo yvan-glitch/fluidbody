@@ -27,60 +27,83 @@ const SIDE = 80;
 const FITNESS_GREEN = '#00DB7D';
 const TEXT_SHADOW = { textShadowColor: 'rgba(0,0,0,0.45)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } };
 const GLOW = Platform.OS === 'ios'
-  ? { shadowColor: '#FFFFFF', shadowOpacity: 0.55, shadowRadius: 26, shadowOffset: { width: 0, height: 0 } }
-  : { elevation: 22 };
+  ? { shadowColor: '#FFFFFF', shadowOpacity: 0.78, shadowRadius: 40, shadowOffset: { width: 0, height: 0 } }
+  : { elevation: 30 };
 
 function CTA({ label, variant, onPress, focusPreferred }) {
   const primary = variant === 'primary';
   const [focused, setFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
+  const ringO = useRef(new Animated.Value(0)).current;
   useEffect(function () {
-    Animated.timing(scale, { toValue: focused ? 1.05 : 1, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.parallel([
+      Animated.timing(scale, { toValue: focused ? 1.10 : 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(ringO, { toValue: focused ? 1 : 0, duration: 180, useNativeDriver: true }),
+    ]).start();
   }, [focused]);
   return (
-    <Animated.View style={[{ alignSelf: 'flex-start', marginBottom: 14, borderRadius: 30, transform: [{ scale: scale }] }, focused && primary ? { shadowColor: FITNESS_GREEN, shadowOpacity: 0.55, shadowRadius: 16, shadowOffset: { width: 0, height: 4 } } : null]}>
+    <Animated.View style={[{ alignSelf: 'flex-start', marginBottom: 14, borderRadius: 32, transform: [{ scale: scale }] }, focused && primary ? { shadowColor: FITNESS_GREEN, shadowOpacity: 0.7, shadowRadius: 28, shadowOffset: { width: 0, height: 4 } } : (focused ? GLOW : null)]}>
       <TouchableOpacity
         {...tvFocusProps(focusPreferred)}
         activeOpacity={0.9}
         onPress={onPress}
         onFocus={function () { setFocused(true); }}
         onBlur={function () { setFocused(false); }}
-        style={{ borderRadius: 30, overflow: 'hidden', borderWidth: primary ? 0 : 1, borderColor: 'rgba(255,255,255,0.3)' }}
+        style={{ borderRadius: 32, overflow: 'hidden' }}
       >
         {primary ? (
-          <View style={{ backgroundColor: focused ? '#00F08A' : FITNESS_GREEN, paddingVertical: 16, paddingHorizontal: 40 }}>
+          // Pill verte frostée — frost BlurView en dessous pour aplatir
+          // le vert pur et donner l'effet aquatique demandé.
+          <View style={{ paddingVertical: 16, paddingHorizontal: 40, position: 'relative', overflow: 'hidden' }}>
+            {Platform.OS === 'ios' ? (
+              <BlurView intensity={35} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
+            ) : null}
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: focused ? 'rgba(0,240,138,0.92)' : 'rgba(0,219,125,0.88)' }]} pointerEvents="none" />
+            <View style={[StyleSheet.absoluteFill, { borderRadius: 32, borderWidth: 1, borderColor: 'rgba(255,255,255,0.42)' }]} pointerEvents="none" />
             <Text style={{ fontSize: 21, fontWeight: '700', color: '#001B10', letterSpacing: 0.2 }}>{label}</Text>
           </View>
         ) : (
-          <View style={{ paddingVertical: 16, paddingHorizontal: 40, backgroundColor: focused ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.5)' }}>
-            {Platform.OS === 'ios' ? <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" /> : null}
+          // Pill secondaire — frost dark.
+          <View style={{ paddingVertical: 16, paddingHorizontal: 40, position: 'relative', overflow: 'hidden' }}>
+            {Platform.OS === 'ios' ? <BlurView intensity={36} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" /> : null}
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: focused ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.06)' }]} pointerEvents="none" />
+            <View style={[StyleSheet.absoluteFill, { borderRadius: 32, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }]} pointerEvents="none" />
             <Text style={{ fontSize: 21, fontWeight: '600', color: '#ffffff', letterSpacing: 0.2 }}>{label}</Text>
           </View>
         )}
       </TouchableOpacity>
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', top: -3, left: -3, right: -3, bottom: -3, borderRadius: 35, borderWidth: 3, borderColor: 'rgba(255,255,255,0.85)', opacity: ringO }} />
     </Animated.View>
   );
 }
 
-// Cellule mosaïque focusable (image seule, scale + glow + bordure, sans blur).
-function MosaicCell({ image, size, onPress }) {
+// Cellule mosaïque focusable (image seule, scale + glow + ring blanc 3 px).
+function MosaicCell({ image, size, onPress, focusPreferred }) {
   const [focused, setFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
+  const ringO = useRef(new Animated.Value(0)).current;
   useEffect(function () {
-    Animated.timing(scale, { toValue: focused ? 1.08 : 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.parallel([
+      Animated.timing(scale, { toValue: focused ? 1.10 : 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(ringO, { toValue: focused ? 1 : 0, duration: 180, useNativeDriver: true }),
+    ]).start();
   }, [focused]);
   return (
     <Animated.View style={[{ width: size, height: size, borderRadius: 18, transform: [{ scale: scale }] }, focused ? GLOW : null]}>
       <TouchableOpacity
-        {...tvFocusProps(false)}
+        {...tvFocusProps(!!focusPreferred)}
         activeOpacity={0.9}
         onPress={onPress}
         onFocus={function () { setFocused(true); }}
         onBlur={function () { setFocused(false); }}
-        style={{ flex: 1, borderRadius: 18, overflow: 'hidden', borderWidth: focused ? 2 : 0, borderColor: 'rgba(255,255,255,0.5)' }}
+        style={{ flex: 1, borderRadius: 18, overflow: 'hidden' }}
       >
         <Image source={image} contentFit="cover" transition={200} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
+        {focused ? (
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
+        ) : null}
       </TouchableOpacity>
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', top: -3, left: -3, right: -3, bottom: -3, borderRadius: 21, borderWidth: 3, borderColor: 'rgba(255,255,255,0.85)', opacity: ringO }} />
     </Animated.View>
   );
 }
@@ -89,13 +112,19 @@ function MosaicCell({ image, size, onPress }) {
 function ResumeCard({ image, title, pilierLabel, positionMillis, durationMillis, label, onPress, focusPreferred }) {
   const [focused, setFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
+  const ringO = useRef(new Animated.Value(0)).current;
   useEffect(function () {
-    Animated.timing(scale, { toValue: focused ? 1.03 : 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.parallel([
+      Animated.timing(scale, { toValue: focused ? 1.04 : 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(ringO, { toValue: focused ? 1 : 0, duration: 180, useNativeDriver: true }),
+    ]).start();
   }, [focused]);
   const ratio = durationMillis ? Math.max(0, Math.min(1, positionMillis / durationMillis)) : 0;
   const posMin = Math.round(positionMillis / 60000);
   const durMin = Math.round(durationMillis / 60000);
-  const glow = Platform.OS === 'ios' ? { shadowColor: FITNESS_GREEN, shadowOpacity: 0.5, shadowRadius: 24, shadowOffset: { width: 0, height: 0 } } : { elevation: 20 };
+  // Glow blanc fort (cohérent avec le pass focus) + halo vert subtil de
+  // signalisation "Reprendre".
+  const glow = Platform.OS === 'ios' ? { shadowColor: '#FFFFFF', shadowOpacity: 0.72, shadowRadius: 38, shadowOffset: { width: 0, height: 0 } } : { elevation: 28 };
   return (
     <Animated.View style={[{ marginHorizontal: SIDE, marginBottom: 36, borderRadius: 24, transform: [{ scale: scale }] }, focused ? glow : null]}>
       <TouchableOpacity
@@ -108,6 +137,9 @@ function ResumeCard({ image, title, pilierLabel, positionMillis, durationMillis,
       >
         {image ? <Image source={image} contentFit="cover" transition={200} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} /> : null}
         <LinearGradient colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.85)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        {focused ? (
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
+        ) : null}
         <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 44 }}>
           <Text style={{ fontSize: 14, fontWeight: '800', color: FITNESS_GREEN, letterSpacing: 1.5, marginBottom: 8 }}>{label.toUpperCase()}</Text>
           <Text numberOfLines={1} style={[{ fontSize: 38, fontWeight: '800', color: '#ffffff', letterSpacing: -0.6, marginBottom: 4 }, TEXT_SHADOW]}>{title}</Text>
@@ -117,6 +149,7 @@ function ResumeCard({ image, title, pilierLabel, positionMillis, durationMillis,
           </View>
         </View>
       </TouchableOpacity>
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', top: -3, left: -3, right: -3, bottom: -3, borderRadius: 27, borderWidth: 3, borderColor: 'rgba(255,255,255,0.85)', opacity: ringO }} />
     </Animated.View>
   );
 }
