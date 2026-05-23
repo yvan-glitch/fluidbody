@@ -12,7 +12,8 @@
 // TV-only — zéro impact iPhone.
 
 import { useRef, useState } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Platform, StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
 
 import TVCard16x9 from './TVCard16x9';
 
@@ -49,7 +50,13 @@ export default function HorizontalCarousel({
   return (
     <View style={{ marginBottom: 40 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: SIDE, paddingRight: SIDE, marginBottom: 16 }}>
-        <Text style={{ fontSize: 26, fontWeight: '700', color: '#ffffff', letterSpacing: -0.3, textShadowColor: 'rgba(0,0,0,0.4)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } }}>{title}</Text>
+        <View style={{ borderRadius: 14, overflow: 'hidden', paddingHorizontal: 14, paddingVertical: 6, position: 'relative' }}>
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
+          ) : null}
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.18)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }]} pointerEvents="none" />
+          <Text style={{ fontSize: 26, fontWeight: '700', color: '#ffffff', letterSpacing: -0.3, textShadowColor: 'rgba(0,0,0,0.4)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } }}>{title}</Text>
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
           {Array.from({ length: dotCount }).map(function (_, i) {
             var on = i === activeDot;

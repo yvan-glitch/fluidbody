@@ -56,30 +56,42 @@ function HeroPillButton({ label, variant, onPress, focusPreferred }) {
   const primary = variant === 'primary';
   const [focused, setFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
+  const ringO = useRef(new Animated.Value(0)).current;
   useEffect(function () {
-    Animated.timing(scale, { toValue: focused ? 1.05 : 1, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.parallel([
+      Animated.timing(scale, { toValue: focused ? 1.10 : 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(ringO, { toValue: focused ? 1 : 0, duration: 180, useNativeDriver: true }),
+    ]).start();
   }, [focused]);
   return (
-    <Animated.View style={[{ alignSelf: 'flex-start', borderRadius: 30, transform: [{ scale: scale }] }, focused && primary ? { shadowColor: FITNESS_GREEN, shadowOpacity: 0.55, shadowRadius: 16, shadowOffset: { width: 0, height: 4 } } : null]}>
+    <Animated.View style={[{ alignSelf: 'flex-start', borderRadius: 32, transform: [{ scale: scale }] }, focused ? { shadowColor: primary ? FITNESS_GREEN : '#FFFFFF', shadowOpacity: primary ? 0.72 : 0.7, shadowRadius: primary ? 30 : 36, shadowOffset: { width: 0, height: 4 } } : null]}>
       <TouchableOpacity
         {...tvFocusProps(focusPreferred)}
         activeOpacity={0.9}
         onPress={onPress}
         onFocus={function () { setFocused(true); }}
         onBlur={function () { setFocused(false); }}
-        style={{ borderRadius: 30, overflow: 'hidden', borderWidth: primary ? 0 : 1, borderColor: 'rgba(255,255,255,0.3)' }}
+        style={{ borderRadius: 32, overflow: 'hidden' }}
       >
         {primary ? (
-          <View style={{ backgroundColor: focused ? '#00F08A' : FITNESS_GREEN, paddingVertical: 16, paddingHorizontal: 40 }}>
+          <View style={{ paddingVertical: 16, paddingHorizontal: 40, position: 'relative', overflow: 'hidden' }}>
+            {Platform.OS === 'ios' ? (
+              <BlurView intensity={35} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
+            ) : null}
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: focused ? 'rgba(0,240,138,0.92)' : 'rgba(0,219,125,0.88)' }]} pointerEvents="none" />
+            <View style={[StyleSheet.absoluteFill, { borderRadius: 32, borderWidth: 1, borderColor: 'rgba(255,255,255,0.42)' }]} pointerEvents="none" />
             <Text style={{ fontSize: 22, fontWeight: '700', color: '#001B10', letterSpacing: 0.2 }}>{'▶  ' + label}</Text>
           </View>
         ) : (
-          <View style={{ paddingVertical: 14, paddingHorizontal: 28, backgroundColor: focused ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.45)' }}>
-            {Platform.OS === 'ios' ? <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" /> : null}
+          <View style={{ paddingVertical: 14, paddingHorizontal: 28, position: 'relative', overflow: 'hidden' }}>
+            {Platform.OS === 'ios' ? <BlurView intensity={36} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" /> : null}
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: focused ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.06)' }]} pointerEvents="none" />
+            <View style={[StyleSheet.absoluteFill, { borderRadius: 32, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }]} pointerEvents="none" />
             <Text style={{ fontSize: 18, fontWeight: '600', color: '#ffffff', letterSpacing: 0.2 }}>{label}</Text>
           </View>
         )}
       </TouchableOpacity>
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', top: -3, left: -3, right: -3, bottom: -3, borderRadius: 35, borderWidth: 3, borderColor: 'rgba(255,255,255,0.85)', opacity: ringO }} />
     </Animated.View>
   );
 }
@@ -93,7 +105,7 @@ function SeanceCardTV({ width, title, duree, etape, etapeLabel, done, locked, co
   const ring = useRef(new Animated.Value(0)).current;
   useEffect(function () {
     Animated.parallel([
-      Animated.timing(scale, { toValue: focused ? 1.08 : 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(scale, { toValue: focused ? 1.10 : 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(ring, { toValue: focused ? 1 : 0, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
   }, [focused]);
@@ -103,7 +115,7 @@ function SeanceCardTV({ width, title, duree, etape, etapeLabel, done, locked, co
   }, [sessionId]);
   const tint = ETAPE_TINT[etape] || '#00BDD0';
   return (
-    <Animated.View style={[{ width: width, height: cardH, borderRadius: 20, transform: [{ scale: scale }] }, focused ? { shadowColor: '#FFFFFF', shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: { width: 0, height: 6 } } : null]}>
+    <Animated.View style={[{ width: width, height: cardH, borderRadius: 20, transform: [{ scale: scale }] }, focused ? { shadowColor: '#FFFFFF', shadowOpacity: 0.78, shadowRadius: 40, shadowOffset: { width: 0, height: 0 } } : null]}>
       <TouchableOpacity
         {...tvFocusProps(focusPreferred)}
         activeOpacity={0.9}
@@ -116,7 +128,14 @@ function SeanceCardTV({ width, title, duree, etape, etapeLabel, done, locked, co
       >
         <View style={{ flex: 1, borderRadius: 20, overflow: 'hidden', backgroundColor: '#10131C', opacity: locked ? 0.55 : 1 }}>
           {image ? <Image source={image} contentFit="cover" transition={200} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} /> : null}
-          <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.9)']} locations={[0.35, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+          <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)']} locations={[0.42, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+          {/* Bandeau bas glassy — frost léger pour fondre titre + metas. */}
+          <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '40%', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, overflow: 'hidden' }} pointerEvents="none">
+            {Platform.OS === 'ios' ? (
+              <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+            ) : null}
+            <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.32)']} locations={[0, 1]} style={StyleSheet.absoluteFill} />
+          </View>
           {/* coin haut-droit : état */}
           <View style={{ position: 'absolute', top: 12, right: 12, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? 'rgba(174,239,77,0.22)' : 'rgba(0,0,0,0.45)', borderWidth: done ? 1.5 : 0, borderColor: 'rgba(174,239,77,0.6)' }}>
             <Text style={{ fontSize: 18, color: done ? '#AEEF4D' : '#ffffff' }}>{locked ? '🔒' : (done ? '✓' : '▶')}</Text>
@@ -127,18 +146,22 @@ function SeanceCardTV({ width, title, duree, etape, etapeLabel, done, locked, co
               <Text style={{ fontSize: 17, color: fav ? '#FF4D6D' : 'rgba(255,255,255,0.92)' }}>{fav ? '♥' : '♡'}</Text>
             </View>
           ) : null}
+          {/* Voile blanc subtile au focus pour sortir la card du fond. */}
+          {focused ? (
+            <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 20 }]} />
+          ) : null}
           <View style={{ position: 'absolute', left: 16, right: 16, bottom: 14 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: tint }}>
                 <Text style={{ fontSize: 12, fontWeight: '700', color: tint, letterSpacing: 0.3 }}>{etapeLabel}</Text>
               </View>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.78)' }}>{duree}</Text>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.82)' }}>{duree}</Text>
               {comingSoon ? <Text style={{ fontSize: 11, fontWeight: '700', color: '#E1A8C8', textTransform: 'uppercase' }}>· Bientôt</Text> : null}
             </View>
             <Text numberOfLines={2} style={{ fontSize: 19, fontWeight: '700', color: '#ffffff', letterSpacing: -0.2, lineHeight: 24 }}>{title}</Text>
           </View>
         </View>
-        <Animated.View pointerEvents="none" style={{ position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 22, borderWidth: 2.5, borderColor: '#FFFFFF', opacity: ring }} />
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', top: -3, left: -3, right: -3, bottom: -3, borderRadius: 23, borderWidth: 3, borderColor: 'rgba(255,255,255,0.85)', opacity: ring }} />
       </TouchableOpacity>
     </Animated.View>
   );
