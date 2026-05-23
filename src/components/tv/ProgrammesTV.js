@@ -136,7 +136,7 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90, paddingTop: activeHero ? 0 : 140 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90, paddingTop: activeHero ? 0 : 184 }}>
         {/* 1 — Hero programme actif */}
         {activeHero ? (
           <View style={{ height: heroH, overflow: 'hidden', marginBottom: 40 }}>

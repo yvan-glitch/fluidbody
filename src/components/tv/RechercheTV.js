@@ -53,7 +53,7 @@ export default function RechercheTV({ piliers, seancesByKey, lang, onOpenPilier,
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 150, paddingBottom: 90 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 184, paddingBottom: 90 }}>
         <View style={{ paddingHorizontal: SIDE, marginBottom: 28 }}>
           <Text style={{ fontSize: 40, fontWeight: '800', color: '#ffffff', letterSpacing: -0.8, marginBottom: 18, textShadowColor: 'rgba(0,0,0,0.4)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } }}>
             {isFr ? 'Recherche' : 'Search'}

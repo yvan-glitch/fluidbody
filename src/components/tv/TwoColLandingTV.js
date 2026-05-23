@@ -195,7 +195,7 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 150, paddingBottom: 90 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 184, paddingBottom: 90 }}>
         {resume ? (
           <ResumeCard
             image={pickSessionImage(resume.pilier.key, resume.idx)}
