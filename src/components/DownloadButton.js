@@ -52,7 +52,20 @@ export default function DownloadButton({ pilierKey, idx, lang, disabled, size = 
   }, [status]);
 
   function press() {
-    if (disabled) return;
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      // eslint-disable-next-line no-console
+      console.log('[DownloadButton] press', { pilierKey: pilierKey, idx: idx, status: status, disabled: disabled });
+    }
+    if (disabled) {
+      // Le bouton est grisé pour les séances paywallées — on remontre un
+      // message clair plutôt que de fail silencieusement.
+      Alert.alert(
+        isFr ? 'Téléchargement réservé aux abonnés' : 'Downloads for subscribers',
+        isFr ? 'Abonne-toi à FluidBody+ pour télécharger les séances et les jouer hors-ligne.' : 'Subscribe to FluidBody+ to download sessions and play them offline.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     if (status === 'downloading') return; // no-op pendant DL
     if (status === 'done') {
       Alert.alert(

@@ -17,6 +17,8 @@
 // Convention session id : `${pilierKey}_${seanceIndex}` — même clé que
 // favorites/resume/video_assets.
 
+import { Alert } from 'react-native';
+
 import {
   downloadVideo,
   deleteDownload,
@@ -25,6 +27,13 @@ import {
   getStorageUsed,
   formatBytes,
 } from '../components/DownloadManager';
+
+function devLog() {
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    // eslint-disable-next-line no-console
+    console.log.apply(console, ['[downloads]'].concat(Array.prototype.slice.call(arguments)));
+  }
+}
 
 // État local cache : map id → { status, progress (0..1), size, date, error }.
 // status ∈ 'idle' | 'downloading' | 'done' | 'error'.
@@ -83,14 +92,26 @@ export async function primeDownloadsCache() {
 // Démarre un download. Met le status à 'downloading' immédiatement, notify
 // l'UI, puis lance l'opération réelle (DownloadManager) avec callback de
 // progression qui met à jour `progress` (0..1).
+//
+// Sur erreur (signing, réseau, FileSystem), surface un Alert.alert au lieu
+// de fail silencieusement — sinon l'utilisateur tape, rien ne semble se
+// passer et le bug est invisible.
 export async function startDownload(pilierKey, idx) {
   const id = _idFor(pilierKey, idx);
-  if (!id) return false;
+  devLog('startDownload', pilierKey, idx, '→ id', id);
+  if (!id) {
+    Alert.alert('Téléchargement', 'Identifiant de séance invalide (' + pilierKey + ' / ' + idx + ')');
+    return false;
+  }
   // Pas de double-launch sur un download déjà en cours.
-  if (_cache[id] && _cache[id].status === 'downloading') return false;
+  if (_cache[id] && _cache[id].status === 'downloading') {
+    devLog('startDownload', id, 'already downloading — no-op');
+    return false;
+  }
   _cache[id] = { status: 'downloading', progress: 0, date: new Date().toISOString() };
   _notify();
   try {
+    devLog('startDownload', id, 'calling downloadVideo…');
     await downloadVideo(pilierKey, idx, function (p) {
       // Mise à jour progressive (sans spam : on agrège à 1% près).
       const prev = (_cache[id] && _cache[id].progress) || 0;
@@ -99,12 +120,20 @@ export async function startDownload(pilierKey, idx) {
         _notify();
       }
     });
+    devLog('startDownload', id, 'success — re-priming cache');
     // Re-prime pour récupérer la taille finale + status 'done' depuis disque.
     await primeDownloadsCache();
     return true;
   } catch (e) {
-    _cache[id] = { status: 'error', progress: 0, date: new Date().toISOString(), error: (e && e.message) || 'error' };
+    const msg = (e && e.message) || 'Erreur inconnue';
+    devLog('startDownload', id, 'FAILED →', msg);
+    _cache[id] = { status: 'error', progress: 0, date: new Date().toISOString(), error: msg };
     _notify();
+    Alert.alert(
+      'Téléchargement impossible',
+      msg + '\n\nVérifie ta connexion ou ton abonnement, puis réessaie.',
+      [{ text: 'OK' }]
+    );
     return false;
   }
 }

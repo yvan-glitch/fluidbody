@@ -72,36 +72,41 @@ export default function TheorieDetailScreen({ pilier, items, lang, isSubscriber,
               }
               onPlay(seance, idx);
             };
+            // On lift le DownloadButton HORS de la TouchableOpacity parente :
+            //   - parent : TouchableOpacity row (tap → play)
+            //   - sibling : DownloadButton positionné en absolute à droite
+            // Cette structure évite les soucis de nested touchables (parents
+            // qui interceptent le tap silencieusement). Le bouton et la row
+            // sont enfants d'un même View flex relative.
             return (
-              <TouchableOpacity
-                key={pilier.key + '-' + idx}
-                onPress={handlePress}
-                disabled={noVideo}
-                activeOpacity={0.85}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  borderRadius: 14,
-                  backgroundColor: 'rgba(255,255,255,0.04)',
-                  borderWidth: 1,
-                  borderColor: locked ? 'rgba(255,255,255,0.08)' : (isFree ? 'rgba(174,239,77,0.35)' : 'rgba(255,255,255,0.08)'),
-                  marginBottom: 8,
-                  opacity: noVideo ? 0.45 : (locked ? 0.55 : 1),
-                }}
-              >
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(174,239,77,0.10)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                  {locked ? <LockIcon size={14} color="#AEEF4D" /> : <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{noVideo ? '·' : '▶'}</Text>}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#ffffff' }} numberOfLines={1}>{titre}</Text>
-                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 4, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 10, color: '#AEEF4D', letterSpacing: 0.6, textTransform: 'uppercase', fontWeight: '700' }}>{etapeLabel}</Text>
-                    <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>{duree}</Text>
+              <View key={pilier.key + '-' + idx} style={{ marginBottom: 8, position: 'relative' }}>
+                <TouchableOpacity
+                  onPress={handlePress}
+                  disabled={noVideo}
+                  activeOpacity={0.85}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    paddingRight: !IS_TV && !noVideo ? 56 : 14,
+                    borderRadius: 14,
+                    backgroundColor: 'rgba(255,255,255,0.04)',
+                    borderWidth: 1,
+                    borderColor: locked ? 'rgba(255,255,255,0.08)' : (isFree ? 'rgba(174,239,77,0.35)' : 'rgba(255,255,255,0.08)'),
+                    opacity: noVideo ? 0.45 : (locked ? 0.55 : 1),
+                  }}
+                >
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(174,239,77,0.10)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    {locked ? <LockIcon size={14} color="#AEEF4D" /> : <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{noVideo ? '·' : '▶'}</Text>}
                   </View>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#ffffff' }} numberOfLines={1}>{titre}</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 4, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 10, color: '#AEEF4D', letterSpacing: 0.6, textTransform: 'uppercase', fontWeight: '700' }}>{etapeLabel}</Text>
+                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>{duree}</Text>
+                    </View>
+                  </View>
                   {isComingSoon(pilier.key, idx) ? (
                     <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(210,140,190,0.18)', borderWidth: 1, borderColor: 'rgba(210,140,190,0.5)' }}>
                       <Text style={{ fontSize: 10, fontWeight: '800', color: '#E1A8C8', letterSpacing: 0.6, textTransform: 'uppercase' }}>{tr.coming_soon_badge || 'Bientôt'}</Text>
@@ -116,14 +121,16 @@ export default function TheorieDetailScreen({ pilier, items, lang, isSubscriber,
                       <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.4, textTransform: 'uppercase' }}>{premiumBadge}</Text>
                     </View>
                   ) : null}
-                  {/* Bouton download (iPhone) — visible si la séance a une vidéo.
-                      Désactivé pour les séances verrouillées (paywall) ; activé
-                      pour les séances gratuites + abonnés. */}
-                  {!IS_TV && !noVideo ? (
+                </TouchableOpacity>
+                {/* DownloadButton lifted out of the TouchableOpacity — son
+                    propre TouchableOpacity ne risque plus l'interception par
+                    le parent. Position absolue à droite, centré verticalement. */}
+                {!IS_TV && !noVideo ? (
+                  <View style={{ position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' }}>
                     <DownloadButton pilierKey={pilier.key} idx={idx} lang={lang} size={32} disabled={locked} />
-                  ) : null}
-                </View>
-              </TouchableOpacity>
+                  </View>
+                ) : null}
+              </View>
             );
           })}
         </View>
