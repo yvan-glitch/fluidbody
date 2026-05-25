@@ -1060,12 +1060,21 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   // "Mes favoris" + badges sur les cards. `favVersion` force un rerender
   // de la branche Pour vous quand un cœur est toggle ailleurs.
   var [favVersion, setFavVersion] = useState(0);
+  // Section Hors-ligne iPhone : version cache téléchargements pour
+  // rerender quand une séance est téléchargée/supprimée.
+  var [dlVersion, setDlVersion] = useState(0);
 
   useEffect(function() { diag('MonCorps.mount', 'start'); loadSavedPrograms(); diag('MonCorps.mount', 'done'); }, []);
 
   useEffect(function() {
     if (IS_TV) return undefined; // TV : déjà câblé via TwoColLandingTV.
     var unsub = subscribeFavorites(function() { setFavVersion(function(v) { return v + 1; }); });
+    return function() { try { if (unsub) unsub(); } catch (e) {} };
+  }, []);
+
+  useEffect(function() {
+    if (IS_TV) return undefined; // TV : pas de downloads.
+    var unsub = subscribeDownloads(function() { setDlVersion(function(v) { return v + 1; }); });
     return function() { try { if (unsub) unsub(); } catch (e) {} };
   }, []);
 
@@ -1434,6 +1443,59 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           var intentPilierKey = todayIntention ? getPilierKeyForIntention(todayIntention) : null;
           var intentPilier = intentPilierKey ? piliers.find(function(p) { return p.key === intentPilierKey; }) : null;
 
+          // Section "Hors-ligne" iPhone — séances téléchargées (status 'done').
+          // Visible uniquement s'il y en a ≥ 1. Stats + bouton "Tout supprimer"
+          // en headerRight.
+          // eslint-disable-next-line no-unused-vars
+          var _dlTick = dlVersion;
+          var seancesByKeyForDl = getSeances(lang);
+          var dlCache = getCachedDownloads() || {};
+          var offlineItems = [];
+          Object.keys(dlCache).forEach(function(dlId) {
+            var entry = dlCache[dlId];
+            if (!entry || entry.status !== 'done') return;
+            var us = dlId.lastIndexOf('_');
+            if (us < 1) return;
+            var dPk = dlId.slice(0, us);
+            var dIdx = parseInt(dlId.slice(us + 1), 10);
+            if (Number.isNaN(dIdx)) return;
+            var dPil = piliers.find(function(p) { return p.key === dPk; });
+            var dS = dPil && seancesByKeyForDl[dPk] && seancesByKeyForDl[dPk][dIdx];
+            if (!dPil || !dS) return;
+            offlineItems.push({
+              key: 'off_' + dlId,
+              title: dS[0],
+              subtitle: dS[1] + ' · ' + dPil.label,
+              image: pickSessionImage(dPk, dIdx),
+              pilier: dPil,
+              idx: dIdx,
+            });
+          });
+          var offlineBytes = getCachedStorageBytes();
+          var offlineHeaderRight = offlineItems.length > 0 ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontVariant: ['tabular-nums'] }}>
+                {formatBytes(offlineBytes) + ' · ' + offlineItems.length + (lang === 'fr' ? ' séances' : ' sessions')}
+              </Text>
+              <TouchableOpacity
+                onPress={function() {
+                  Alert.alert(
+                    lang === 'fr' ? 'Supprimer tous les téléchargements ?' : 'Delete all downloads?',
+                    lang === 'fr' ? 'Tu auras besoin d\'une connexion pour rejouer ces séances.' : 'You will need an internet connection to play these sessions again.',
+                    [
+                      { text: lang === 'fr' ? 'Annuler' : 'Cancel', style: 'cancel' },
+                      { text: lang === 'fr' ? 'Tout supprimer' : 'Delete all', style: 'destructive', onPress: function() { removeAllDownloads(); } },
+                    ]
+                  );
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 12, color: '#FF8A5C', fontWeight: '700', letterSpacing: 0.3 }}>{lang === 'fr' ? 'Tout supprimer' : 'Delete all'}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null;
+
           // Rangée "Mes favoris" iPhone — items dérivés du cache synchrone.
           // Hidden si 0 favori. favVersion (dans une useEffect ailleurs) force
           // un rerender quand un cœur est toggle.
@@ -1533,6 +1595,20 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 </TouchableOpacity>
               ) : null}
               <Text style={{ fontSize: 13, fontWeight: '500', fontStyle: 'italic', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.1, marginBottom: 14, paddingHorizontal: 4 }}>« {getDailyQuote()} »</Text>
+              {/* Section "Hors-ligne" — visible si l'utilisateur a téléchargé
+                  ≥ 1 séance. Headerright affiche la taille + bouton "Tout
+                  supprimer". Chaque card a un DownloadButton pour suppression
+                  rapide individuelle. Tap card → ouvre la séance (qui sera
+                  jouée depuis le fichier local par le VideoPlayer). */}
+              {offlineItems.length > 0 ? (
+                <SeanceCarouselRow
+                  title={lang === 'fr' ? 'Hors-ligne' : 'Offline'}
+                  headerRight={offlineHeaderRight}
+                  items={offlineItems}
+                  onItemPress={function(it) { setOpenInitialIdx(it.idx); setOpenPilier(it.pilier); }}
+                  renderItemAction={function(it) { return <DownloadButton pilierKey={it.pilier.key} idx={it.idx} lang={lang} size={26} />; }}
+                />
+              ) : null}
               <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
                 {glassCell(mosaicImages[0], halfW, rowH1, 'm0')}
                 {glassCell(mosaicImages[1], halfW, rowH1, 'm1')}
