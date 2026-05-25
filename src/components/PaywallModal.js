@@ -524,7 +524,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
     : "Sabrina's conscious Pilates, on every screen. Founder pricing for the first members.");
   const annualLabel = isFr ? 'Annuel' : 'Annual';
   const monthlyLabel = isFr ? 'Mensuel' : 'Monthly';
-  const ctaLabel = tr.paywall_founder_cta || (isFr ? 'Commencer 7 jours gratuits' : 'Start 7 free days');
+  const ctaLabel = tr.paywall_founder_cta || (isFr ? 'S\'abonner' : 'Subscribe');
 
   const founderBullets = Array.isArray(tr.paywall_founder_bullets) && tr.paywall_founder_bullets.length > 0
     ? tr.paywall_founder_bullets
@@ -827,7 +827,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 borderColor: 'rgba(174,239,77,0.5)',
               }}>
                 <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.accentText, letterSpacing: 0.3 }}>
-                  {tr.paywall_guarantee_pill || 'Annule sans frais dans les 7 premiers jours'}
+                  {tr.paywall_guarantee_pill || (isFr ? 'Annulable depuis Réglages Apple' : 'Cancel anytime in Apple Settings')}
                 </Text>
               </View>
               <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 14, letterSpacing: 0.2 }}>
