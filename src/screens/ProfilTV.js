@@ -61,6 +61,7 @@ export default function ProfilTV({
   isAdmin,
   onLogout,
   onClose,
+  onOpenSabrina,
 }) {
   const tr = T[lang] || T['fr'];
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
@@ -113,6 +114,14 @@ export default function ProfilTV({
           label="Email"
           value={supaUser?.email || ''}
         />
+        {onOpenSabrina ? (
+          <Card
+            label={isFr ? 'Votre coach' : 'Your coach'}
+            value={isFr ? 'Découvrir Sabrina' : 'Discover Sabrina'}
+            accent
+            onPress={onOpenSabrina}
+          />
+        ) : null}
         <Card
           label={isFr ? 'Support' : 'Support'}
           value="yvan@espace-pilates.ch"
