@@ -8,11 +8,8 @@ import { Bulle, FloatingMedusas, BULLES_ONBOARDING } from './Meduse';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { LEGAL, getTermsUrl } from '../constants/legal';
 import {
-  STANDARD_PRICES,
-  FOUNDER_PRICES,
-  FOUNDER_SAVINGS,
   FOUNDER_MEMBER_CAP,
-  formatPriceCHF,
+  FOUNDER_INTRO_SAVINGS_CHF,
 } from '../constants/iap';
 import {
   GlassView,
@@ -562,9 +559,9 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
         'Personalised Sabrina AI — coming soon',
       ]);
 
-  // Prix de référence (standard) affichés barrés à côté du prix d'introduction.
-  const standardMonthlyStr = formatPriceCHF(STANDARD_PRICES.monthly, isFr ? 'fr' : 'en');
-  const standardYearlyStr  = formatPriceCHF(STANDARD_PRICES.yearly,  isFr ? 'fr' : 'en');
+  // (Le tarif standard ne s'affiche plus barré sur les cards : on a
+  // remplacé par "Puis 24.90 / Puis 199" en small print sous le prix
+  // d'introduction. Cf. planPill ci-dessus.)
 
   function onCta() {
     if (loadingPrices) return;
@@ -576,10 +573,13 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
     Alert.alert('FluidBody+', isFr ? 'Abonnement disponible dans la version App Store.' : 'Subscription available in the App Store version.');
   }
 
-  // Pilule segmentée Mensuel / Annuel (toggle Liquid Glass) — version
-  // founder : prix barré du tarif standard à côté du prix actuel, pill
-  // d'économie verte sur le plan annuel.
-  function planPill(key, label, sub, priceText, standardPriceText, savingsPct) {
+  // Plan card founder — grand prix d'introduction au centre, sous-titre
+  // "Tarif fondateur · 3 premiers mois" / "1re année", small print "Puis
+  // 24.90 CHF/mois" / "Puis 199 CHF/an" en bas. Pill éco "Économise 100
+  // CHF la 1re année" uniquement sur l'annuel.
+  //
+  // Signature : (key, label, introSub, priceText, thenText, savingsLabel).
+  function planPill(key, label, introSub, priceText, thenText, savingsLabel) {
     var active = selected === key;
     return (
       <GlassPressable
@@ -587,8 +587,8 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
         onPress={function() { setSelected(key); }}
         accessibilityRole="radio"
         accessibilityState={{ selected: active }}
-        accessibilityLabel={`${label} ${priceText}`}
-        accessibilityHint={sub || undefined}
+        accessibilityLabel={`${label} ${priceText} ${thenText || ''}`}
+        accessibilityHint={introSub || undefined}
         style={{ flex: 1 }}
       >
         <GlassView
@@ -596,48 +596,49 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
           borderRadius={GLASS_RADII.card}
           substrateColor={active ? theme.glass.substrateAccent : theme.glass.substrate}
           contentStyle={{
-            paddingVertical: 14,
+            paddingVertical: 16,
             paddingHorizontal: 16,
             alignItems: 'flex-start',
             justifyContent: 'center',
-            minHeight: 92,
+            minHeight: 132,
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: active ? theme.colors.accentText : theme.colors.text, letterSpacing: -0.2 }}>{label}</Text>
-              {sub ? <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.accentText, opacity: 0.85, marginTop: 4 }}>{sub}</Text> : null}
-            </View>
+          {/* Ligne 1 — label de plan + radio à droite */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', marginBottom: 6 }}>
+            <Text style={{ flex: 1, fontSize: 14, fontWeight: '700', color: active ? theme.colors.accentText : theme.colors.text, letterSpacing: -0.1 }}>{label}</Text>
             <View style={{
               width: 18, height: 18, borderRadius: 9,
-              borderWidth: 2,
-              borderColor: active ? theme.colors.accent : theme.colors.textTertiary,
+              borderWidth: 1.5,
+              borderColor: active ? theme.colors.accent : 'rgba(255,255,255,0.45)',
               alignItems: 'center', justifyContent: 'center',
             }}>
               {active && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.accent }} />}
             </View>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}>
-            <Text style={{ fontSize: 14, fontWeight: '800', color: theme.colors.text, letterSpacing: -0.2 }}>{priceText}</Text>
-            {standardPriceText ? (
-              <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.textTertiary, marginLeft: 6, textDecorationLine: 'line-through' }}>{standardPriceText}</Text>
-            ) : null}
-          </View>
-          {savingsPct ? (
+          {/* Ligne 2 — grand prix d'introduction */}
+          <Text style={{ fontSize: 22, fontWeight: '800', color: theme.colors.text, letterSpacing: -0.6 }}>{priceText}</Text>
+          {/* Ligne 3 — sous-titre "Tarif fondateur · 3 premiers mois / 1re année" */}
+          {introSub ? (
+            <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.accentText, letterSpacing: 0.1, marginTop: 4 }}>{introSub}</Text>
+          ) : null}
+          {/* Ligne 4 — small print "Puis 24.90 CHF/mois" / "Puis 199 CHF/an" */}
+          {thenText ? (
+            <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.textTertiary, marginTop: 6 }}>{thenText}</Text>
+          ) : null}
+          {/* Pill éco — uniquement annuel, outline lime sobre */}
+          {savingsLabel ? (
             <View style={{
               alignSelf: 'flex-start',
-              marginTop: 8,
-              paddingHorizontal: 8,
-              paddingVertical: 3,
-              borderRadius: 10,
-              backgroundColor: 'rgba(174,239,77,0.18)',
+              marginTop: 10,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 999,
+              backgroundColor: 'rgba(255,255,255,0.04)',
               borderWidth: 1,
-              borderColor: 'rgba(174,239,77,0.45)',
+              borderColor: 'rgba(174,239,77,0.55)',
             }}>
-              <Text style={{ fontSize: 10, fontWeight: '800', color: '#AEEF4D', letterSpacing: 0.4 }}>
-                {(typeof tr.paywall_founder_save_pill === 'function'
-                  ? tr.paywall_founder_save_pill(savingsPct)
-                  : ((isFr ? 'Économise ' : 'Save ') + savingsPct + (isFr ? '% à vie' : '% for life')))}
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#AEEF4D', letterSpacing: 0.4 }}>
+                {savingsLabel}
               </Text>
             </View>
           ) : null}
@@ -784,15 +785,29 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 })}
               </View>
 
-              {/* Toggle Mensuel / Annuel — prix barré standard à droite,
-                  pill d'éco verte sous le prix annuel.
-                  Note : on affiche le prix RC actuel (qui peut être en
-                  CHF, EUR selon la storefront de l'utilisateur), et on
-                  garde le strikethrough en CHF — c'est le prix
-                  marketing de référence Suisse. */}
-              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-                {planPill('yearly', annualLabel, annualSub, yearlyDisplay, standardYearlyStr, FOUNDER_SAVINGS.yearlyVsStandardPct)}
-                {planPill('monthly', monthlyLabel, null, monthlyDisplay, standardMonthlyStr, null)}
+              {/* Toggle Mensuel / Annuel — structure d'intro :
+                  - Mensuel : 12.90 CHF/mois pendant 3 mois, puis 24.90.
+                  - Annuel : 99 CHF la 1re année, puis 199. Pill éco "Économise
+                    100 CHF la 1re année" sur l'annuel uniquement. */}
+              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+                {planPill(
+                  'yearly',
+                  annualLabel,
+                  tr.paywall_founder_intro_yearly_sub || (isFr ? 'Tarif fondateur · 1re année' : 'Founder pricing · first year'),
+                  yearlyDisplay,
+                  tr.paywall_founder_then_yearly || (isFr ? 'Puis 199 CHF/an' : 'Then 199 CHF/year'),
+                  tr.paywall_founder_save_intro_yearly || (isFr
+                    ? ('Économise ' + FOUNDER_INTRO_SAVINGS_CHF + ' CHF la 1re année')
+                    : ('Save ' + FOUNDER_INTRO_SAVINGS_CHF + ' CHF on year one'))
+                )}
+                {planPill(
+                  'monthly',
+                  monthlyLabel,
+                  tr.paywall_founder_intro_monthly_sub || (isFr ? 'Tarif fondateur · 3 premiers mois' : 'Founder pricing · first 3 months'),
+                  monthlyDisplay,
+                  tr.paywall_founder_then_monthly || (isFr ? 'Puis 24.90 CHF/mois' : 'Then 24.90 CHF/month'),
+                  null
+                )}
               </View>
 
               {/* CTA principal */}
