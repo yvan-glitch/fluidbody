@@ -65,17 +65,21 @@ function getEncPath(pilierKey, seanceIndex) {
 
 // Download and encrypt a video. The URL is signed server-side; the caller
 // only supplies the session id, never a raw Bunny URL.
+//
+// `quality` (optionnel) : 'eco' | 'standard' | 'hd' — passé à
+// getSignedVideoUrl pour récupérer le variant adéquat. Persisté dans
+// l'entrée AsyncStorage pour l'affichage dans Mes téléchargements.
 // Returns a callback to track progress: onProgress(progress 0-1)
-async function downloadVideo(pilierKey, seanceIndex, onProgress) {
+async function downloadVideo(pilierKey, seanceIndex, onProgress, quality) {
   await ensureDir();
   const sessionId = buildSessionId(pilierKey, seanceIndex);
   if (!sessionId) throw new Error('Invalid session');
-  const mp4Url = await getSignedVideoUrl(sessionId, 'mp4');
+  const mp4Url = await getSignedVideoUrl(sessionId, 'mp4', undefined, quality);
   if (!mp4Url) throw new Error('Could not sign download URL');
 
   const downloads = await getDownloads();
   const dlKey = pilierKey + '_' + seanceIndex;
-  downloads[dlKey] = { status: 'downloading', date: new Date().toISOString(), size: 0 };
+  downloads[dlKey] = { status: 'downloading', date: new Date().toISOString(), size: 0, quality: quality || 'standard' };
   await saveDownloads(downloads);
 
   try {
@@ -125,7 +129,7 @@ async function downloadVideo(pilierKey, seanceIndex, onProgress) {
     // Get file size
     const encInfo = await FileSystem.getInfoAsync(encPath);
 
-    downloads[dlKey] = { status: 'done', date: new Date().toISOString(), size: encInfo.size || 0 };
+    downloads[dlKey] = { status: 'done', date: new Date().toISOString(), size: encInfo.size || 0, quality: quality || 'standard' };
     await saveDownloads(downloads);
 
     return true;

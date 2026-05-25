@@ -78,9 +78,22 @@ async function signBunnyUrl(
   };
 }
 
-function pathForKind(bunnyPath: string, kind: Kind, lang?: string): string {
+type Quality = "eco" | "standard" | "hd";
+
+// Variant Bunny par qualité — actuellement seul "standard" (720p) est
+// publié pour toutes les séances. Quand Yvan publiera les 480p/1080p,
+// décommenter les variants correspondants. Tant qu'ils ne sont pas
+// publiés, on retombe sur 720p pour les 3 qualités — l'UI marche, le
+// fichier livré est juste le même.
+function mp4FileForQuality(quality?: Quality): string {
+  // if (quality === "eco") return "play_480p.mp4";
+  // if (quality === "hd") return "play_1080p.mp4";
+  return "play_720p.mp4";
+}
+
+function pathForKind(bunnyPath: string, kind: Kind, lang?: string, quality?: Quality): string {
   const base = `/${bunnyPath.replace(/^\/+|\/+$/g, "")}`;
-  if (kind === "mp4") return `${base}/play_720p.mp4`;
+  if (kind === "mp4") return `${base}/${mp4FileForQuality(quality)}`;
   if (kind === "vtt") {
     const l = (lang || "fr").replace(/[^a-z]/gi, "").toLowerCase() || "fr";
     return `${base}/subtitles/${l}.vtt`;
@@ -125,7 +138,7 @@ Deno.serve(async (req) => {
   const jwt = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   if (!jwt) return json({ error: "unauthenticated" }, 401);
 
-  let body: { session_id?: string; kind?: Kind; lang?: string } = {};
+  let body: { session_id?: string; kind?: Kind; lang?: string; quality?: Quality } = {};
   try {
     body = await req.json();
   } catch (_) {
@@ -135,6 +148,10 @@ Deno.serve(async (req) => {
   const kind: Kind =
     body.kind === "hls" || body.kind === "vtt" ? body.kind : "mp4";
   const lang = typeof body.lang === "string" ? body.lang : undefined;
+  const quality: Quality | undefined =
+    body.quality === "eco" || body.quality === "standard" || body.quality === "hd"
+      ? body.quality
+      : undefined;
   if (!/^[a-z0-9]+_\d+$/i.test(sessionId)) {
     return json({ error: "bad-session-id" }, 400);
   }
@@ -184,7 +201,7 @@ Deno.serve(async (req) => {
 
   if (!entitled) return json({ error: "not-subscribed" }, 403);
 
-  const path = pathForKind(asset.bunny_path, kind, lang);
+  const path = pathForKind(asset.bunny_path, kind, lang, quality);
   const signed = await signBunnyUrl(
     BUNNY_PULL_ZONE_HOST,
     path,

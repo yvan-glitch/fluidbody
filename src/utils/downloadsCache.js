@@ -96,9 +96,9 @@ export async function primeDownloadsCache() {
 // Sur erreur (signing, réseau, FileSystem), surface un Alert.alert au lieu
 // de fail silencieusement — sinon l'utilisateur tape, rien ne semble se
 // passer et le bug est invisible.
-export async function startDownload(pilierKey, idx) {
+export async function startDownload(pilierKey, idx, quality) {
   const id = _idFor(pilierKey, idx);
-  devLog('startDownload', pilierKey, idx, '→ id', id);
+  devLog('startDownload', pilierKey, idx, 'q=', quality, '→ id', id);
   if (!id) {
     Alert.alert('Téléchargement', 'Identifiant de séance invalide (' + pilierKey + ' / ' + idx + ')');
     return false;
@@ -108,7 +108,7 @@ export async function startDownload(pilierKey, idx) {
     devLog('startDownload', id, 'already downloading — no-op');
     return false;
   }
-  _cache[id] = { status: 'downloading', progress: 0, date: new Date().toISOString() };
+  _cache[id] = { status: 'downloading', progress: 0, quality: quality || 'standard', date: new Date().toISOString() };
   _notify();
   try {
     devLog('startDownload', id, 'calling downloadVideo…');
@@ -119,7 +119,7 @@ export async function startDownload(pilierKey, idx) {
         _cache[id] = Object.assign({}, _cache[id], { status: 'downloading', progress: p });
         _notify();
       }
-    });
+    }, quality);
     devLog('startDownload', id, 'success — re-priming cache');
     // Re-prime pour récupérer la taille finale + status 'done' depuis disque.
     await primeDownloadsCache();
