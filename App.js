@@ -656,6 +656,8 @@ function Progresser({ done, lang, tensionIdxs }) {
 // ProfilScreen moved to src/screens/Profil.js
 import ProfilScreen from './src/screens/Profil';
 import MesTelechargements from './src/screens/MesTelechargements';
+import PreferencesScreen from './src/screens/Preferences';
+import { primePreferencesCache } from './src/utils/userPreferences';
 
 
 // ══════════════════════════════════
@@ -1460,7 +1462,13 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [showStretchTimer, setShowStretchTimer] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
   const [showDownloads, setShowDownloads] = useState(false);
+  const [showPreferences, setShowPreferences] = useState(false);
   const [pendingDownloadOpen, setPendingDownloadOpen] = useState(null); // { pilier, idx } pour ouvrir VideoPlayer depuis MesTelechargements
+
+  // Précharge le cache des préférences au mount pour que les composants
+  // critiques (VideoPlayer audio mode, getSignedVideoUrl quality, DownloadButton)
+  // puissent lire en sync dès le 1er rendu.
+  useEffect(function() { primePreferencesCache(); }, []);
   const [editingProfile, setEditingProfile] = useState(false);
   const [editingProfileInitial, setEditingProfileInitial] = useState(null);
   const [profileRefreshKey, setProfileRefreshKey] = useState(0);
@@ -2006,13 +2014,20 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
               } catch (e) {
                 Alert.alert('FluidBody+', e?.message || 'Erreur de déconnexion.');
               }
-            }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onOpenDownloads={() => setShowDownloads(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
+            }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onOpenDownloads={() => setShowDownloads(true)} onOpenPreferences={() => setShowPreferences(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
           </Tab.Navigator>
         </NavigationContainer>
       )}
       <StretchTimerModal visible={showStretchTimer} onClose={function() { setShowStretchTimer(false); }} lang={lang} />
       <Modal visible={showStatistics} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setShowStatistics(false); }}>
         <StatisticsScreen lang={lang} done={done} streak={streak} supaUser={supaUser} onClose={function() { setShowStatistics(false); }} />
+      </Modal>
+      <Modal visible={showPreferences} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setShowPreferences(false); }}>
+        <PreferencesScreen
+          visible={showPreferences}
+          lang={lang}
+          onClose={function() { setShowPreferences(false); }}
+        />
       </Modal>
       <Modal visible={showDownloads} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setShowDownloads(false); }}>
         <MesTelechargements
