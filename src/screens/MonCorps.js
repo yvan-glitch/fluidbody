@@ -44,6 +44,7 @@ import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVHeaderBar, TVHead
 import { pickBadge } from '../utils/sessionBadges';
 import { getCachedFavorites, subscribeFavorites } from '../utils/favorites';
 import { getThisWeekSchedule } from '../utils/weeklySchedule';
+import SeanceCarouselRow from '../components/SeanceCarouselRow';
 import { pickSessionImage } from '../components/tv/tvImagePool';
 import { primeFavoritesCache } from '../utils/favorites';
 import { getDailyQuote } from '../constants/sabrinaQuotes';
@@ -1009,8 +1010,9 @@ function ZoneIcon({ idx, color, size }) {
 
 function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout, supabase, supaUser, onOpenProfile }) {
   var tr = T[lang] || T["fr"];
-  // TV : précharge le cache favoris (cœurs + section "Mes favoris").
-  useEffect(function() { if (IS_TV) primeFavoritesCache(); }, []);
+  // Précharge le cache favoris : cœurs visibles (Bibliothèque TV, badges
+  // iPhone) + rangée "Mes favoris" (TV + iPhone Pour vous).
+  useEffect(function() { primeFavoritesCache(); }, []);
   var theme = useTheme().theme;
   var navigation = useSafeNavigation();
   var [openPilier, setOpenPilier] = useState(null);
@@ -1037,8 +1039,18 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   var [showIntentionPrompt, setShowIntentionPrompt] = useState(false);
   // F3 — milestone de streak fêtée (3/7/14/21/30/50/100).
   var [celebratedStreakN, setCelebratedStreakN] = useState(null);
+  // Speir-inspired Lots iPhone — favoris live-updatable pour les rangées
+  // "Mes favoris" + badges sur les cards. `favVersion` force un rerender
+  // de la branche Pour vous quand un cœur est toggle ailleurs.
+  var [favVersion, setFavVersion] = useState(0);
 
   useEffect(function() { diag('MonCorps.mount', 'start'); loadSavedPrograms(); diag('MonCorps.mount', 'done'); }, []);
+
+  useEffect(function() {
+    if (IS_TV) return undefined; // TV : déjà câblé via TwoColLandingTV.
+    var unsub = subscribeFavorites(function() { setFavVersion(function(v) { return v + 1; }); });
+    return function() { try { if (unsub) unsub(); } catch (e) {} };
+  }, []);
 
   useEffect(function() {
     var cancelled = false;
@@ -1404,6 +1416,36 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           var intent = todayIntention ? findIntention(todayIntention) : null;
           var intentPilierKey = todayIntention ? getPilierKeyForIntention(todayIntention) : null;
           var intentPilier = intentPilierKey ? piliers.find(function(p) { return p.key === intentPilierKey; }) : null;
+
+          // Rangée "Mes favoris" iPhone — items dérivés du cache synchrone.
+          // Hidden si 0 favori. favVersion (dans une useEffect ailleurs) force
+          // un rerender quand un cœur est toggle.
+          // eslint-disable-next-line no-unused-vars
+          var _favTick = favVersion;
+          var seancesByKey = getSeances(lang);
+          var favItems = [];
+          var favIds = getCachedFavorites() || [];
+          for (var i = 0; i < favIds.length; i++) {
+            var id = favIds[i];
+            var us = id.lastIndexOf('_');
+            if (us < 1) continue;
+            var pk = id.slice(0, us);
+            var sIdx = parseInt(id.slice(us + 1), 10);
+            if (Number.isNaN(sIdx)) continue;
+            var pil = piliers.find(function(p) { return p.key === pk; });
+            var s = pil && seancesByKey[pk] && seancesByKey[pk][sIdx];
+            if (!pil || !s) continue;
+            favItems.push({
+              key: 'fav_' + id,
+              title: s[0],
+              subtitle: s[1] + ' · ' + pil.label,
+              image: pickSessionImage(pk, sIdx),
+              badge: pickBadge({ pilierKey: pk, idx: sIdx, lang: lang, isFavorite: true }),
+              pilier: pil,
+              idx: sIdx,
+            });
+            if (favItems.length >= 12) break;
+          }
           return (
             <View key="pour-vous">
               {intent && intentPilier ? (
@@ -1436,6 +1478,16 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 {glassCell(mosaicImages[5], halfW, rowH1, 'm5')}
                 {glassCell(mosaicImages[6], halfW, rowH1, 'm6')}
               </View>
+              {/* Rangée "Mes favoris" iPhone (Lot 2 Speir-inspired) — hidden
+                  si l'utilisateur n'a aucun cœur. Tap → ouvre la séance
+                  directement via setOpenInitialIdx + setOpenPilier. */}
+              {favItems.length > 0 ? (
+                <SeanceCarouselRow
+                  title={lang === 'fr' ? 'Mes favoris' : 'My favorites'}
+                  items={favItems}
+                  onItemPress={function(it) { setOpenInitialIdx(it.idx); setOpenPilier(it.pilier); }}
+                />
+              ) : null}
               <LinearGradient colors={["rgba(28,28,30,0.3)", "rgba(28,28,30,0.88)", "rgba(28,28,30,0.95)"]} locations={[0, 0.4, 1]} style={{ borderRadius: 16, marginTop: 14, paddingTop: 60, paddingBottom: 24, paddingHorizontal: 20, alignItems: "center" }}>
                 <Text style={{ fontSize: 23, fontWeight: "700", color: "#ffffff", textAlign: "center", marginBottom: 6 }}>{tr.paywall_title}</Text>
                 <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.65)", textAlign: "center", lineHeight: 19, marginBottom: 16 }}>{tr.paywall_sub}</Text>
