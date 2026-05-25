@@ -20,6 +20,7 @@ import {
   startDownload,
   removeDownload,
 } from '../utils/downloadsCache';
+import { getCachedPref } from '../utils/userPreferences';
 
 // Lecture/sub abonnement à un id donné. Force un re-render quand le state
 // global change. Renvoie { status, progress }.
@@ -129,6 +130,11 @@ export default function DownloadButton({ pilierKey, idx, lang, disabled, size = 
           { text: isFr ? 'Supprimer' : 'Delete', style: 'destructive', onPress: function () { removeDownload(pilierKey, idx); } },
         ]
       );
+      return;
+    }
+    // Préf "HD systématique" → skip le picker, lance direct en HD.
+    if (getCachedPref('hdDownloadsAlways')) {
+      startDownload(pilierKey, idx, 'hd');
       return;
     }
     // idle / error → ActionSheet de qualité, puis startDownload avec le

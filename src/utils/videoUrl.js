@@ -7,6 +7,7 @@
 // in the `video_assets` table — never in the bundled JS.
 
 import supabase from '../lib/supabase';
+import { getCachedPref } from './userPreferences';
 
 const SAFETY_MARGIN_MS = 60_000; // re-sign 1 min before the token expires
 const cache = new Map();
@@ -30,11 +31,23 @@ function cacheKey(sessionId, kind, lang, quality) {
 // sign-video-url peut adapter le bunny_path (variant 480p/720p/1080p) si
 // les variants sont publiés ; sinon elle renvoie l'URL standard pour
 // toutes les qualités (l'UI marche, le backend suivra).
+//
+// Si `quality` n'est pas fourni, on consulte la préférence utilisateur
+// `streamQuality` (Profil > Préférences). 'auto' = laisser le serveur
+// choisir (param non envoyé). Les downloads passent toujours une qualité
+// explicite (cf. DownloadManager.downloadVideo) donc cette logique
+// auto-pick ne s'applique qu'au streaming temps réel.
 export async function getSignedVideoUrl(sessionId, kind = 'mp4', lang, quality) {
   if (!sessionId) throw new Error('sessionId required');
   if (!supabase) throw new Error('Supabase non configuré');
 
-  const key = cacheKey(sessionId, kind, lang, quality);
+  let effectiveQuality = quality;
+  if (!effectiveQuality) {
+    const pref = getCachedPref('streamQuality');
+    if (pref && pref !== 'auto') effectiveQuality = pref;
+  }
+
+  const key = cacheKey(sessionId, kind, lang, effectiveQuality);
   const now = Date.now();
   const cached = cache.get(key);
   if (cached && cached.expiresAt - SAFETY_MARGIN_MS > now) return cached.url;
@@ -49,7 +62,7 @@ export async function getSignedVideoUrl(sessionId, kind = 'mp4', lang, quality) 
 
     function callSign(accessToken) {
       const body = { session_id: sessionId, kind, lang };
-      if (quality) body.quality = quality;
+      if (effectiveQuality) body.quality = effectiveQuality;
       return supabase.functions.invoke('sign-video-url', {
         body: body,
         headers: { Authorization: `Bearer ${accessToken}` },
