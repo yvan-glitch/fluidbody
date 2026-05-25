@@ -65,7 +65,7 @@ function StatsBarsIcon({ color, size }) {
 // ne demande pas explicitement le pairage).
 let _PairAppleTV = null;
 
-function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onOpenStatistics, onEditProfile, profileRefreshKey, onAccountDeleted }) {
+function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onOpenStatistics, onOpenSabrina, onEditProfile, profileRefreshKey, onAccountDeleted }) {
   var tr = T[lang] || T['fr'];
   var themeCtx = useTheme();
   var theme = themeCtx.theme;
@@ -761,7 +761,10 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             </View>
           </View>
           <Text style={{ fontSize: 13, fontWeight: '300', color: theme.colors.textSecondary, lineHeight: 20, fontStyle: 'italic', marginBottom: 14 }}>{tr.coach_bio || 'Passionnée par le mouvement conscient, je vous guide vers un corps plus libre et plus fort.'}</Text>
-          <TouchableOpacity activeOpacity={0.85} onPress={function() { setShowCoachBio(true); }} style={{ paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center' }}>
+          <TouchableOpacity activeOpacity={0.85} onPress={function() {
+            if (onOpenSabrina) onOpenSabrina();
+            else setShowCoachBio(true);
+          }} style={{ paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center' }}>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.coach_more || 'En savoir plus'}</Text>
           </TouchableOpacity>
         </GlassCard></View>

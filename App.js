@@ -109,6 +109,7 @@ import ProfilTV from './src/screens/ProfilTV';
 import { IS_TV } from './src/utils/platformTV';
 import ActivityScreen from './src/screens/Activity';
 import ProfileOnboardingScreen from './src/screens/ProfileOnboarding';
+import SabrinaProfileTVScreen, { SabrinaProfileModal } from './src/screens/SabrinaProfile';
 import { flushPendingProfileSync, syncProfilePatch, refreshFromRemote } from './src/utils/profileSync';
 import {
   getPreferredHour,
@@ -1392,6 +1393,8 @@ const STREAK_DATE_KEY = 'fluid_streak_seance_last_date';
 function TVMainView({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, isAdmin, openPaywall, saveHealthKitWorkout, supaUser, onLogout }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileBtnFocused, setProfileBtnFocused] = useState(false);
+  const [sabrinaOpen, setSabrinaOpen] = useState(false);
+  const [sabrinaBtnFocused, setSabrinaBtnFocused] = useState(false);
   return (
     <View style={{ flex: 1 }}>
       <MonCorps
@@ -1437,11 +1440,41 @@ function TVMainView({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChan
           isSubscriber={isSubscriber}
           isAdmin={isAdmin}
           onClose={function() { setProfileOpen(false); }}
+          onOpenSabrina={function() { setSabrinaOpen(true); }}
           onLogout={async function() {
             setProfileOpen(false);
             await onLogout();
           }}
         />
+      </Modal>
+
+      {/* Avatar Sabrina — pill focusable à gauche du bouton "Mon compte".
+          Ouvre l'écran SabrinaProfile (bio, citation, parcours). */}
+      <TouchableOpacity
+        hasTVPreferredFocus={false}
+        onPress={function() { setSabrinaOpen(true); }}
+        onFocus={function() { setSabrinaBtnFocused(true); }}
+        onBlur={function() { setSabrinaBtnFocused(false); }}
+        activeOpacity={0.85}
+        accessibilityLabel="Sabrina"
+        style={{
+          position: 'absolute',
+          top: 56, right: 270,
+          paddingLeft: 8, paddingRight: 18, paddingVertical: 8,
+          borderRadius: 28,
+          flexDirection: 'row', alignItems: 'center', gap: 12,
+          backgroundColor: sabrinaBtnFocused ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.08)',
+          borderWidth: 2,
+          borderColor: sabrinaBtnFocused ? '#AEEF4D' : 'rgba(255,255,255,0.15)',
+          zIndex: 50,
+        }}
+      >
+        <ExpoImage source={require('./assets/coach/sabrina_avatar.jpg')} contentFit="cover" cachePolicy="memory-disk" style={{ width: 36, height: 36, borderRadius: 18 }} />
+        <Text style={{ fontSize: 15, color: '#ffffff', fontWeight: '600', letterSpacing: 0.3 }}>Sabrina</Text>
+      </TouchableOpacity>
+
+      <Modal visible={sabrinaOpen} animationType="fade" presentationStyle="fullScreen" onRequestClose={function() { setSabrinaOpen(false); }}>
+        <SabrinaProfileTVScreen lang={lang} onClose={function() { setSabrinaOpen(false); }} />
       </Modal>
     </View>
   );
@@ -1475,6 +1508,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [showAuthScreen, setShowAuthScreen] = useState(false);
   const [showStretchTimer, setShowStretchTimer] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
+  const [showSabrinaProfile, setShowSabrinaProfile] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [editingProfileInitial, setEditingProfileInitial] = useState(null);
   const [profileRefreshKey, setProfileRefreshKey] = useState(0);
@@ -2016,11 +2050,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
               } catch (e) {
                 Alert.alert('FluidBody+', e?.message || 'Erreur de déconnexion.');
               }
-            }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
+            }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onOpenSabrina={() => setShowSabrinaProfile(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
           </Tab.Navigator>
         </NavigationContainer>
       )}
       <StretchTimerModal visible={showStretchTimer} onClose={function() { setShowStretchTimer(false); }} lang={lang} />
+      <SabrinaProfileModal visible={showSabrinaProfile} lang={lang} onClose={function() { setShowSabrinaProfile(false); }} />
       <Modal visible={showStatistics} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setShowStatistics(false); }}>
         <StatisticsScreen lang={lang} done={done} streak={streak} supaUser={supaUser} onClose={function() { setShowStatistics(false); }} />
       </Modal>
