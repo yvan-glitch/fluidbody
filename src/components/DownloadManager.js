@@ -134,7 +134,17 @@ async function isDownloaded(pilierKey, seanceIndex) {
   return info.exists;
 }
 
-// Get local video URI (decrypt to temp file for playback)
+// Get local video URI (decrypt to temp file for playback).
+//
+// IMPORTANT — bug fix : on splittait au caractère `|` (séparateur entre la
+// verification key et le cipher). Mais le cipher XOR'd peut contenir des
+// octets `|` (codepoint 124) — à peu près certain dans un fichier de
+// plusieurs Mo. `split('|')` tronquait alors le cipher à la première
+// occurrence accidentelle → fichier MP4 corrompu → vidéo ne se charge pas.
+// Fix : utiliser `indexOf('|')` pour ne prendre QUE le 1er séparateur, le
+// reste de la chaîne (y compris les futures occurrences de `|`) appartient
+// au cipher. Récupère aussi les fichiers déjà téléchargés (pas besoin de
+// re-télécharger).
 async function getLocalVideoUri(pilierKey, seanceIndex) {
   const encPath = getEncPath(pilierKey, seanceIndex);
   const info = await FileSystem.getInfoAsync(encPath);
@@ -143,12 +153,15 @@ async function getLocalVideoUri(pilierKey, seanceIndex) {
   const key = await getEncryptionKey();
   const encrypted = await FileSystem.readAsStringAsync(encPath, { encoding: FileSystem.EncodingType.UTF8 });
 
-  // Verify key
-  const parts = encrypted.split('|');
-  if (parts.length < 2 || parts[0] !== key.substring(0, 16)) return null;
+  // Verify key + extract cipher (split only on the FIRST '|').
+  const sepIdx = encrypted.indexOf('|');
+  if (sepIdx < 0) return null;
+  const verification = encrypted.slice(0, sepIdx);
+  const cipher = encrypted.slice(sepIdx + 1);
+  if (verification !== key.substring(0, 16)) return null;
 
   // Decrypt
-  const decrypted = parts[1].split('').map(function(c, i) {
+  const decrypted = cipher.split('').map(function(c, i) {
     return String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length));
   }).join('');
 
