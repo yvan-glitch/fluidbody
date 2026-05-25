@@ -20,6 +20,7 @@ import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import useLiveHeartRate from '../hooks/useLiveHeartRate';
 import { recordSessionHour, cancelPauseActiveNotifications } from '../utils/notifications';
 import { IS_TV, tvFocusProps } from '../utils/platformTV';
+import { isDownloaded, getLocalVideoUri, cleanupTempVideo } from './DownloadManager';
 
 // ── Small utilities (local copies to avoid circular deps) ──
 // Haptics are fired by GlassButton (FAIT) via `haptic="success"`, so
@@ -289,22 +290,44 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   var [playbackRate, setPlaybackRate] = useState(1.0);
 
   // Fetch a fresh signed MP4 URL whenever we need one (initial mount or after
-  // a forced reset). The token is short-lived, so we always re-resolve through
-  // the cache instead of caching the URL in component state long-term.
+  // a forced reset). If the session is downloaded locally, decrypt-to-temp
+  // first and play from disk — no Bunny round-trip, works offline.
+  // Sinon : signed Bunny URL via l'edge function (token court).
   useEffect(function() {
-    if (!hasRealVideo || !sessionId) return;
+    if (!hasRealVideo || !sessionId || !pilier?.key || typeof seanceIndex !== 'number') return;
     let cancelled = false;
     setUri('');
     hasRestoredRef.current = false;
-    getSignedVideoUrl(sessionId, 'mp4')
-      .then(function(signed) { if (!cancelled) setUri(signed); })
-      .catch(function(err) {
+
+    (async function() {
+      try {
+        // Étape 1 — fichier local (iPhone download). Sur TV `isDownloaded`
+        // renvoie false (rien n'est jamais téléchargé sur tvOS).
+        if (!IS_TV) {
+          const local = await isDownloaded(pilier.key, seanceIndex);
+          if (local) {
+            const localUri = await getLocalVideoUri(pilier.key, seanceIndex);
+            if (!cancelled && localUri) { setUri(localUri); return; }
+          }
+        }
+        // Étape 2 — fallback Bunny signé.
+        const signed = await getSignedVideoUrl(sessionId, 'mp4');
+        if (!cancelled) setUri(signed);
+      } catch (err) {
         if (cancelled) return;
-        if (__DEV__) devWarn('getSignedVideoUrl', err?.message || err);
+        if (__DEV__) devWarn('VideoPlayer.urlResolve', err?.message || err);
         setVideoLoadFailed(true);
-      });
-    return function() { cancelled = true; };
-  }, [hasRealVideo, sessionId, videoResetKey]);
+      }
+    })();
+
+    return function() {
+      cancelled = true;
+      // Cleanup décrypté temp file au unmount (best-effort).
+      if (!IS_TV && pilier?.key && typeof seanceIndex === 'number') {
+        try { cleanupTempVideo(pilier.key, seanceIndex); } catch (e) {}
+      }
+    };
+  }, [hasRealVideo, sessionId, pilier?.key, seanceIndex, videoResetKey]);
 
   useEffect(function() {
     if (!ccEnabled || !hasRealVideo || !sessionId) { setCcCues([]); return; }
