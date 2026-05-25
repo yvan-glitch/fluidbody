@@ -655,6 +655,7 @@ function Progresser({ done, lang, tensionIdxs }) {
 
 // ProfilScreen moved to src/screens/Profil.js
 import ProfilScreen from './src/screens/Profil';
+import MesTelechargements from './src/screens/MesTelechargements';
 
 
 // ══════════════════════════════════
@@ -1459,6 +1460,8 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [showAuthScreen, setShowAuthScreen] = useState(false);
   const [showStretchTimer, setShowStretchTimer] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
+  const [showDownloads, setShowDownloads] = useState(false);
+  const [pendingDownloadOpen, setPendingDownloadOpen] = useState(null); // { pilier, idx } pour ouvrir VideoPlayer depuis MesTelechargements
   const [editingProfile, setEditingProfile] = useState(false);
   const [editingProfileInitial, setEditingProfileInitial] = useState(null);
   const [profileRefreshKey, setProfileRefreshKey] = useState(0);
@@ -2004,7 +2007,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
               } catch (e) {
                 Alert.alert('FluidBody+', e?.message || 'Erreur de déconnexion.');
               }
-            }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
+            }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onOpenDownloads={() => setShowDownloads(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
           </Tab.Navigator>
         </NavigationContainer>
       )}
@@ -2012,6 +2015,34 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       <Modal visible={showStatistics} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setShowStatistics(false); }}>
         <StatisticsScreen lang={lang} done={done} streak={streak} supaUser={supaUser} onClose={function() { setShowStatistics(false); }} />
       </Modal>
+      <Modal visible={showDownloads} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setShowDownloads(false); }}>
+        <MesTelechargements
+          visible={showDownloads}
+          lang={lang}
+          onClose={function() { setShowDownloads(false); }}
+          onOpenSeance={function(pilier, idx) {
+            // Au tap d'un download, on ferme la modal et on ouvre le
+            // VideoPlayer (qui auto-detect le local file via DownloadManager).
+            setShowDownloads(false);
+            setTimeout(function() { setPendingDownloadOpen({ pilier: pilier, idx: idx }); }, 220);
+          }}
+        />
+      </Modal>
+      {pendingDownloadOpen ? (
+        <Modal visible animationType="fade" presentationStyle="fullScreen" statusBarTranslucent supportedOrientations={['portrait', 'landscape-left', 'landscape-right']} onRequestClose={function() { setPendingDownloadOpen(null); }}>
+          <VideoPlayer
+            key={'dl-' + pendingDownloadOpen.pilier.key + '-' + pendingDownloadOpen.idx}
+            seance={(getSeances(lang)[pendingDownloadOpen.pilier.key] || [])[pendingDownloadOpen.idx]}
+            pilier={pendingDownloadOpen.pilier}
+            lang={lang}
+            seanceIndex={pendingDownloadOpen.idx}
+            isDemo={false}
+            onClose={function() { setPendingDownloadOpen(null); }}
+            onComplete={function() { setPendingDownloadOpen(null); }}
+            saveHealthKitWorkout={saveHealthKitWorkout}
+          />
+        </Modal>
+      ) : null}
       <Modal visible={editingProfile} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setEditingProfile(false); }}>
         <ProfileOnboardingScreen
           lang={lang}

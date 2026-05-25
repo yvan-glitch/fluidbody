@@ -65,7 +65,7 @@ function StatsBarsIcon({ color, size }) {
 // ne demande pas explicitement le pairage).
 let _PairAppleTV = null;
 
-function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onOpenStatistics, onEditProfile, profileRefreshKey, onAccountDeleted }) {
+function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onOpenStatistics, onOpenDownloads, onEditProfile, profileRefreshKey, onAccountDeleted }) {
   var tr = T[lang] || T['fr'];
   var themeCtx = useTheme();
   var theme = themeCtx.theme;
@@ -820,6 +820,26 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.timer_title || 'Minuteur Stretching & Eldoa'}</Text>
               <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.timer_sub || 'Lance un minuteur pour tes étirements'}</Text>
+            </View>
+            <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Mes téléchargements — accessible aux iPhone abonnés. La gestion
+            réelle des fichiers (cache, suppression, espace) vit dans le
+            screen dédié MesTelechargements. */}
+        {onOpenDownloads && (
+          <TouchableOpacity
+            onPress={onOpenDownloads}
+            activeOpacity={0.85}
+            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
+          >
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+              <Text style={{ fontSize: 22, color: '#AEEF4D', fontWeight: '300' }}>{'↓'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.downloads_title || (lang === 'fr' ? 'Mes téléchargements' : 'My downloads')}</Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.downloads_sub || (lang === 'fr' ? 'Séances disponibles hors-ligne' : 'Sessions available offline')}</Text>
             </View>
             <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
           </TouchableOpacity>
