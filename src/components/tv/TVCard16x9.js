@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
 import { tvFocusProps } from '../../utils/platformTV';
+import SessionBadge from './SessionBadge';
 
 const GLOW = Platform.OS === 'ios'
   ? { shadowColor: '#FFFFFF', shadowOpacity: 0.78, shadowRadius: 40, shadowOffset: { width: 0, height: 0 } }
@@ -30,6 +31,7 @@ export default function TVCard16x9({
   focusPreferred = false,
   onPress,
   onFocus,
+  badge, // { label, tone } | null — affiché en top-left si présent.
 }) {
   const cardW = width;
   const cardH = Math.round((width * 9) / 16);
@@ -90,6 +92,14 @@ export default function TVCard16x9({
           {/* Voile blanc très subtil au focus, pour faire ressortir la card. */}
           {focused ? (
             <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 24 }]} />
+          ) : null}
+          {/* Badge top-left (Reprendre / Nouveau / Programme / Favori).
+              `pointerEvents` reste none sur le badge (cf. SessionBadge),
+              donc la card reste focusable. */}
+          {badge && badge.label ? (
+            <View style={{ position: 'absolute', top: 14, left: 14 }}>
+              <SessionBadge label={badge.label} tone={badge.tone} />
+            </View>
           ) : null}
           <View style={{ position: 'absolute', left: 16, right: 16, bottom: 14 }}>
             <Text numberOfLines={1} style={[{ fontSize: 18, fontWeight: '700', color: '#ffffff', letterSpacing: -0.2 }, TEXT_SHADOW]}>{title}</Text>

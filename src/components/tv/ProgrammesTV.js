@@ -22,6 +22,7 @@ import { tvFocusProps } from '../../utils/platformTV';
 import { T, PILIER_IMAGES } from '../../constants/data';
 import { getProgramStats } from '../../utils/programs';
 import { pickSessionImage } from './tvImagePool';
+import { pickBadge } from '../../utils/sessionBadges';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const SIDE = 80;
@@ -101,13 +102,15 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
 
   function pilierByKey(k) { return (piliers || []).find(function (p) { return p.key === k; }); }
 
-  // Rangée "Séances courtes".
+  // Rangée "Séances courtes" — badge "Nouveau / Favori / Programme" en
+  // top-left selon le contexte de chaque card (cf. sessionBadges.js).
   const shortItems = [];
   (piliers || []).forEach(function (p) {
     ((seancesByKey && seancesByKey[p.key]) || []).forEach(function (s, i) {
       if (s[2] === 'Comprendre' || s[2] === 'Ressentir') return;
       if (!s[3]) return;
-      shortItems.push({ key: 'short_' + p.key + '_' + i, title: s[0], subtitle: s[1] + ' · ' + p.label, image: pickSessionImage(p.key, i), pilier: p, idx: i, _min: parseMin(s[1]) });
+      const badge = pickBadge({ pilierKey: p.key, idx: i, lang: lang });
+      shortItems.push({ key: 'short_' + p.key + '_' + i, title: s[0], subtitle: s[1] + ' · ' + p.label, image: pickSessionImage(p.key, i), badge: badge, pilier: p, idx: i, _min: parseMin(s[1]) });
     });
   });
   shortItems.sort(function (a, b) { return a._min - b._min; });

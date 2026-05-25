@@ -85,6 +85,7 @@ export default function HorizontalCarousel({
                 title={it.title}
                 subtitle={it.subtitle}
                 image={it.image}
+                badge={it.badge}
                 width={cardWidth}
                 focusPreferred={firstFocus && i === 0}
                 onPress={function () { if (onItemPress) onItemPress(it); }}
