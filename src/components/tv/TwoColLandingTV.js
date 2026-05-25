@@ -21,6 +21,8 @@ import { PILIER_IMAGES } from '../../constants/data';
 import { getResumableSession } from '../../utils';
 import { getDailyQuote } from '../../constants/sabrinaQuotes';
 import { getTodayIntention, getPilierKeyForIntention, findIntention } from '../../utils/dailyIntention';
+import { getCachedFavorites, primeFavoritesCache, subscribeFavorites } from '../../utils/favorites';
+import { pickBadge } from '../../utils/sessionBadges';
 
 const { width: SW } = Dimensions.get('window');
 const SIDE = 80;
@@ -154,11 +156,12 @@ function ResumeCard({ image, title, pilierLabel, positionMillis, durationMillis,
   );
 }
 
-export default function TwoColLandingTV({ piliers, lang, title, description, primaryLabel, onPrimary, onOpenPilier, seancesByKey, onResume }) {
+export default function TwoColLandingTV({ piliers, lang, title, description, primaryLabel, onPrimary, onOpenPilier, onOpenSeance, seancesByKey, onResume }) {
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   const [resume, setResume] = useState(null);
   const [intent, setIntent] = useState(null);
   const [intentPilier, setIntentPilier] = useState(null);
+  const [favVersion, setFavVersion] = useState(0);
   useEffect(function () {
     let cancelled = false;
     getResumableSession().then(function (r) {
@@ -175,7 +178,11 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
       if (found) setIntent(found);
       if (pil) setIntentPilier(pil);
     }).catch(function () {});
-    return function () { cancelled = true; };
+    // Précharge le cache favoris + abonne aux changements pour rerender la
+    // rangée "Mes favoris" en live quand l'utilisateur toggle un cœur ailleurs.
+    primeFavoritesCache();
+    const unsub = subscribeFavorites(function () { setFavVersion(function (v) { return v + 1; }); });
+    return function () { cancelled = true; if (unsub) unsub(); };
   }, [piliers, seancesByKey]);
   const t = title || (isFr ? 'Le Pilates conscient' : 'Conscious Pilates');
   const desc = description || (isFr ? 'Guidé par Sabrina, à ton rythme. Choisis un pilier et commence quand tu veux.' : 'Guided by Sabrina, at your pace. Pick a pillar and start anytime.');
@@ -192,6 +199,36 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
   const carouselItems = (piliers || []).map(function (p) {
     return { key: 'pv2_' + p.key, title: p.label, subtitle: '', image: PILIER_IMAGES[p.key], pilier: p };
   });
+
+  // Rangée "Mes favoris" — depuis le cache synchrone (alimenté par
+  // primeFavoritesCache + maintenu par subscribeFavorites). On ne rend
+  // rien si l'utilisateur n'a aucun favori. favVersion dans les deps
+  // garantit un rebuild quand un cœur change ailleurs dans l'app.
+  // eslint-disable-next-line no-unused-vars
+  const _favTrigger = favVersion; // force recompute when favorites flip
+  const favItems = [];
+  const favIds = getCachedFavorites() || [];
+  for (let i = 0; i < favIds.length; i++) {
+    const id = favIds[i];
+    const us = id.lastIndexOf('_');
+    if (us < 1) continue;
+    const pk = id.slice(0, us);
+    const idx = parseInt(id.slice(us + 1), 10);
+    if (Number.isNaN(idx)) continue;
+    const pil = (piliers || []).find(function (p) { return p.key === pk; });
+    const seance = pil && seancesByKey && seancesByKey[pk] && seancesByKey[pk][idx];
+    if (!pil || !seance) continue;
+    favItems.push({
+      key: 'fav_' + id,
+      title: seance[0],
+      subtitle: seance[1] + ' · ' + pil.label,
+      image: pickSessionImage(pk, idx),
+      badge: pickBadge({ pilierKey: pk, idx: idx, lang: lang, isFavorite: true }),
+      pilier: pil,
+      idx: idx,
+    });
+    if (favItems.length >= 8) break;
+  }
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
@@ -246,6 +283,20 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
             })}
           </View>
         </View>
+
+        {/* Rangée "Mes favoris" — masquée si l'utilisateur n'a aucun cœur.
+            Au tap d'une card, on ouvre directement la séance (onOpenSeance)
+            ou à défaut le pilier (fallback existant onOpenPilier). */}
+        {favItems.length > 0 ? (
+          <HorizontalCarousel
+            title={isFr ? 'Mes favoris' : 'My favorites'}
+            items={favItems}
+            onItemPress={function (it) {
+              if (onOpenSeance) { onOpenSeance(it.pilier, it.idx); return; }
+              if (onOpenPilier) onOpenPilier(it.pilier);
+            }}
+          />
+        ) : null}
 
         <HorizontalCarousel
           title={isFr ? "Types d'activités" : 'Activity types'}

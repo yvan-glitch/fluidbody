@@ -2051,6 +2051,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           seancesByKey={getSeances(lang)}
           onPrimary={function() { var f = (sdj && sdj.pilier) || piliers[0]; if (f) setOpenPilier(f); }}
           onOpenPilier={setOpenPilier}
+          onOpenSeance={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }}
           onResume={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }}
         />
       ) : null}
