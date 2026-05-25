@@ -118,3 +118,19 @@ export function getPhaseFromProductId(productId) {
 // Cap soft pour la mention "tarif limité aux 500 premiers membres". Yvan
 // confirme/ajuste avant de l'afficher.
 export const FOUNDER_MEMBER_CAP = 500;
+
+// Durée de la promo fondateur (avant retour au tarif standard).
+// - Le mensuel founder vaut 12.90 CHF/mois pendant 3 mois, puis bascule
+//   automatiquement au prix standard (24.90).
+// - L'annuel founder vaut 99 CHF la première année, puis 199 ensuite.
+// La bascule réelle est gérée côté App Store Connect / RevenueCat
+// (subscription group + intro offer). Ici on garde les durées pour
+// l'affichage UX seulement.
+export const FOUNDER_INTRO = {
+  monthlyMonths: 3,
+  yearlyYears: 1,
+};
+
+// Économie absolue la première année si l'utilisateur prend l'annuel
+// founder (99) plutôt que l'annuel standard (199) : 100 CHF.
+export const FOUNDER_INTRO_SAVINGS_CHF = STANDARD_PRICES.yearly - FOUNDER_PRICES.yearly;
