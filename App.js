@@ -2780,6 +2780,11 @@ function App() {
           await withTimeout(fetchAndMergeProfile(session.user), 5000, 'fetchProfile');
           setShowAuth(false);
           setOnboardingDone(true);
+          // Session restaurée → l'utilisateur a déjà passé l'intro/sign-in.
+          // Sans ce flag, le gate `!introShown` (renderActiveScreen) afficherait
+          // l'OnboardingScreen à chaque cold-start malgré la session valide,
+          // donnant l'impression qu'il faut "se reconnecter".
+          setIntroShown(true);
         }
       } catch (e) { devWarn('Session / profil', e); }
       finishLoading();
@@ -2793,6 +2798,9 @@ function App() {
           await fetchAndMergeProfile(session.user);
           setShowAuth(false);
           setOnboardingDone(true);
+          // Idem : si le SIGNED_IN ou TOKEN_REFRESHED arrive après le bootstrap
+          // (rare mais possible), on s'assure aussi de passer l'intro.
+          setIntroShown(true);
         } catch (e) { devWarn('Profil après connexion', e); }
       }
     });
