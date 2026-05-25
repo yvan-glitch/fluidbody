@@ -11,8 +11,7 @@
 // iPhone-only — la TV passe directement au stream signé (pas de download).
 
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, Animated, Easing, Platform, StyleSheet } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { View, Text, TouchableOpacity, Alert, Animated, Easing } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import {
@@ -71,16 +70,20 @@ export default function DownloadButton({ pilierKey, idx, lang, disabled, size = 
   }
 
   const accent = '#AEEF4D';
-  const ringStroke = status === 'done' ? accent : 'rgba(255,255,255,0.85)';
-  const arrowColor = status === 'done' ? accent : '#ffffff';
+  // Solid lime semi-transparent + lime border : meilleure visibilité que
+  // BlurView dark sur n'importe quel fond (gradient turquoise, image…).
+  const isDone = status === 'done';
+  const bg = isDone ? 'rgba(174,239,77,0.32)' : 'rgba(174,239,77,0.18)';
+  const borderColor = isDone ? '#AEEF4D' : 'rgba(174,239,77,0.65)';
+  const arrowColor = isDone ? accent : '#ffffff';
 
   return (
     <TouchableOpacity
       onPress={press}
-      activeOpacity={0.85}
+      activeOpacity={0.82}
       accessibilityRole="button"
       accessibilityLabel={
-        status === 'done' ? (isFr ? 'Téléchargée — appuyer pour supprimer' : 'Downloaded — tap to delete')
+        isDone ? (isFr ? 'Téléchargée — appuyer pour supprimer' : 'Downloaded — tap to delete')
         : status === 'downloading' ? (isFr ? 'Téléchargement en cours' : 'Downloading')
         : (isFr ? 'Télécharger la séance' : 'Download session')
       }
@@ -89,43 +92,35 @@ export default function DownloadButton({ pilierKey, idx, lang, disabled, size = 
         {
           width: size, height: size, borderRadius: size / 2,
           alignItems: 'center', justifyContent: 'center',
-          overflow: 'hidden',
-          borderWidth: 1,
-          borderColor: status === 'done' ? 'rgba(174,239,77,0.55)' : 'rgba(255,255,255,0.35)',
+          backgroundColor: bg,
+          borderWidth: 1.2,
+          borderColor: borderColor,
           opacity: disabled ? 0.4 : 1,
         },
         style,
       ]}
     >
-      {Platform.OS === 'ios' ? (
-        <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
-      ) : null}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.42)' }]} pointerEvents="none" />
-
       {status === 'downloading' ? (
-        // Anneau de progression : background + arc lime proportionnel à `progress`.
-        <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-          <Animated.View style={{ transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-            <Svg width={size - 4} height={size - 4} viewBox="0 0 24 24">
-              <Circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,0.18)" strokeWidth={2.2} fill="none" />
-              <Circle
-                cx="12" cy="12" r="9"
-                stroke={accent}
-                strokeWidth={2.4}
-                fill="none"
-                strokeDasharray={`${Math.max(2, progress * 56.55)} 56.55`}
-                strokeLinecap="round"
-                transform="rotate(-90 12 12)"
-              />
-            </Svg>
-          </Animated.View>
-        </View>
+        <Animated.View style={{ transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
+          <Svg width={size - 6} height={size - 6} viewBox="0 0 24 24">
+            <Circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,0.22)" strokeWidth={2.2} fill="none" />
+            <Circle
+              cx="12" cy="12" r="9"
+              stroke={accent}
+              strokeWidth={2.6}
+              fill="none"
+              strokeDasharray={`${Math.max(3, progress * 56.55)} 56.55`}
+              strokeLinecap="round"
+              transform="rotate(-90 12 12)"
+            />
+          </Svg>
+        </Animated.View>
       ) : (
-        <Svg width={size - 8} height={size - 8} viewBox="0 0 24 24" fill="none">
-          <Circle cx="12" cy="12" r="10" stroke={ringStroke} strokeWidth={1.2} opacity={status === 'done' ? 1 : 0.65} />
-          <Path d="M12 6 L12 14 M8 10 L12 14 L16 10" stroke={arrowColor} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-          {status === 'done' ? (
-            <Circle cx="18" cy="6" r="3" fill={accent} />
+        <Svg width={size - 10} height={size - 10} viewBox="0 0 24 24" fill="none">
+          <Path d="M12 4 L12 16 M7 11 L12 16 L17 11" stroke={arrowColor} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          <Path d="M5 20 L19 20" stroke={arrowColor} strokeWidth={2.2} strokeLinecap="round" fill="none" />
+          {isDone ? (
+            <Circle cx="19" cy="5" r="3.5" fill={accent} />
           ) : null}
         </Svg>
       )}

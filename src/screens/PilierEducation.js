@@ -41,7 +41,9 @@ import { GLASS_RADII } from '../components/ui';
 import GlassView from '../components/ui/GlassView';
 import GlassButton from '../components/GlassButton';
 import LivingBackground from '../components/LivingBackground';
+import DownloadButton from '../components/DownloadButton';
 import { useTheme } from '../theme/ThemeProvider';
+import { IS_TV } from '../utils/platformTV';
 
 const { width: SW } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
@@ -449,6 +451,18 @@ export default function PilierEducation({ visible, pilier, lang, onClose, onOpen
           <Section title={tr.pilier_education_section_movements || 'Key movements'} accent={accentSolid} fadeStyle={{ opacity: sectionFades[4].opacity, transform: [{ translateY: sectionFades[4].translateY }] }}>
             {content.key_movements.map(function(mv, i) {
               const hasSeance = !!mv.linked_session_id;
+              // Parse "<pilierKey>_<idx>" pour DownloadButton (iPhone uniquement).
+              let dlPilierKey = null;
+              let dlIdx = null;
+              if (hasSeance && !IS_TV) {
+                const m = String(mv.linked_session_id).match(/^([a-z]\d+)_(\d+)$/i);
+                if (m) {
+                  dlPilierKey = m[1];
+                  const parsed = parseInt(m[2], 10);
+                  if (!Number.isNaN(parsed)) dlIdx = parsed;
+                }
+              }
+              const canDownload = dlPilierKey != null && dlIdx != null;
               return (
                 <TouchableOpacity
                   key={i}
@@ -466,6 +480,14 @@ export default function PilierEducation({ visible, pilier, lang, onClose, onOpen
                       <Text style={{ flex: 1, fontSize: 16, fontWeight: '700', color: sectionTextColor }}>
                         {mv.name}
                       </Text>
+                      {/* Download button inline à droite du titre (iPhone) —
+                          position fixe, fond lime semi-transparent + bordure
+                          lime, donc visible sur tous les thèmes. Tap interne
+                          ne déclenche pas le press de la card (RN nested
+                          touchables → l'inner gagne). */}
+                      {canDownload ? (
+                        <DownloadButton pilierKey={dlPilierKey} idx={dlIdx} lang={lang} size={32} />
+                      ) : null}
                     </View>
                     <Text style={{ fontSize: 14, lineHeight: 20, color: bodyColor, marginBottom: 10 }}>
                       {mv.description}
