@@ -23,6 +23,7 @@ import { getDailyQuote } from '../../constants/sabrinaQuotes';
 import { getTodayIntention, getPilierKeyForIntention, findIntention } from '../../utils/dailyIntention';
 import { getCachedFavorites, primeFavoritesCache, subscribeFavorites } from '../../utils/favorites';
 import { pickBadge } from '../../utils/sessionBadges';
+import { getThisWeekSchedule } from '../../utils/weeklySchedule';
 
 const { width: SW } = Dimensions.get('window');
 const SIDE = 80;
@@ -256,6 +257,26 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
     if (favItems.length >= 8) break;
   }
 
+  // Rangée "Cette semaine" — 7 séances réparties sur les 7 prochains jours.
+  // L'intention du jour biaise la séance J0 vers le pilier matchant.
+  // Badge "LUN", "MAR", … dérivé du jour. Stable au sein d'une même date
+  // (seed dayOfYear), bouge automatiquement à 00:00.
+  const weekSchedule = getThisWeekSchedule(piliers, seancesByKey, {
+    intentionKey: intent && intent.key,
+    lang: lang,
+  });
+  const weekItems = weekSchedule.map(function (e) {
+    return {
+      key: 'wk_' + e.dayIdx + '_' + e.pilier.key + '_' + e.idx,
+      title: e.seance[0],
+      subtitle: e.seance[1] + ' · ' + e.pilier.label,
+      image: pickSessionImage(e.pilier.key, e.idx),
+      badge: { label: e.dayLabel, tone: 'white' },
+      pilier: e.pilier,
+      idx: e.idx,
+    };
+  });
+
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 184, paddingBottom: 90 }}>
@@ -319,6 +340,20 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
           <HorizontalCarousel
             title={isFr ? 'Mes favoris' : 'My favorites'}
             items={favItems}
+            onItemPress={function (it) {
+              if (onOpenSeance) { onOpenSeance(it.pilier, it.idx); return; }
+              if (onOpenPilier) onOpenPilier(it.pilier);
+            }}
+          />
+        ) : null}
+
+        {/* Rangée "Cette semaine" — 7 séances/7 jours, biaisée par
+            l'intention du jour si présente. Badge en haut-left avec le
+            jour (LUN, MAR, ...). */}
+        {weekItems.length > 0 ? (
+          <HorizontalCarousel
+            title={isFr ? 'Cette semaine' : 'This week'}
+            items={weekItems}
             onItemPress={function (it) {
               if (onOpenSeance) { onOpenSeance(it.pilier, it.idx); return; }
               if (onOpenPilier) onOpenPilier(it.pilier);
