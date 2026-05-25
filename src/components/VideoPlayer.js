@@ -304,18 +304,29 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         // Étape 1 — fichier local (iPhone download). Sur TV `isDownloaded`
         // renvoie false (rien n'est jamais téléchargé sur tvOS).
         if (!IS_TV) {
+          if (__DEV__) devWarn('VideoPlayer.urlResolve', 'checking local for', pilier.key, seanceIndex);
           const local = await isDownloaded(pilier.key, seanceIndex);
+          if (__DEV__) devWarn('VideoPlayer.urlResolve', 'isDownloaded →', local);
           if (local) {
             const localUri = await getLocalVideoUri(pilier.key, seanceIndex);
+            if (__DEV__) devWarn('VideoPlayer.urlResolve', 'localUri →', localUri);
             if (!cancelled && localUri) { setUri(localUri); return; }
+            // Si on est marqué "downloaded" mais que le décrypte fail, on
+            // surface l'erreur — sinon l'utilisateur retombe sur Bunny qui
+            // peut aussi échouer offline et il aura le mauvais message.
+            if (!cancelled && !localUri) {
+              if (__DEV__) devWarn('VideoPlayer.urlResolve', 'local decrypt returned null — falling back to Bunny');
+            }
           }
         }
         // Étape 2 — fallback Bunny signé.
+        if (__DEV__) devWarn('VideoPlayer.urlResolve', 'requesting Bunny signed URL');
         const signed = await getSignedVideoUrl(sessionId, 'mp4');
+        if (__DEV__) devWarn('VideoPlayer.urlResolve', 'Bunny signed →', signed ? 'ok' : 'empty');
         if (!cancelled) setUri(signed);
       } catch (err) {
         if (cancelled) return;
-        if (__DEV__) devWarn('VideoPlayer.urlResolve', err?.message || err);
+        if (__DEV__) devWarn('VideoPlayer.urlResolve.ERR', err?.message || err);
         setVideoLoadFailed(true);
       }
     })();
