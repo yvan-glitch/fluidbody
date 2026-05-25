@@ -40,7 +40,10 @@ import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
-import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVHeaderBar, TVHeaderSearchIcon, TVHeaderBreathIcon, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground, RechercheTV } from '../components/tv';
+import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVHeaderBar, TVHeaderSearchIcon, TVHeaderBreathIcon, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground, RechercheTV, SessionBadge } from '../components/tv';
+import { pickBadge } from '../utils/sessionBadges';
+import { getCachedFavorites, subscribeFavorites } from '../utils/favorites';
+import { getThisWeekSchedule } from '../utils/weeklySchedule';
 import { pickSessionImage } from '../components/tv/tvImagePool';
 import { primeFavoritesCache } from '../utils/favorites';
 import { getDailyQuote } from '../constants/sabrinaQuotes';
@@ -628,6 +631,17 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
               accent={isDone ? 'green' : 'cyan'}
               style={{ borderRadius: IS_TV ? 20 : 16, overflow: 'hidden', marginBottom: IS_TV ? 22 : 12, height: IS_TV ? 200 : 110, opacity: noVideo ? 0.45 : (locked ? 0.4 : 1) }}
             >
+              {(function() {
+                // Badge top-left (REPRENDRE / NOUVEAU / FAVORI). On désactive
+                // "PROGRAMME" à l'intérieur d'un pilier (redondant : toutes
+                // les séances du pilier le porteraient).
+                var b = pickBadge({ pilierKey: pilier.key, idx: i, lang: lang, isResume: resumeIndices.has(i), isProgram: false });
+                return b && !noVideo ? (
+                  <View style={{ position: 'absolute', top: IS_TV ? 14 : 8, left: IS_TV ? 14 : 8, zIndex: 4 }}>
+                    <SessionBadge label={b.label} tone={b.tone} />
+                  </View>
+                ) : null;
+              })()}
               <View style={{ flex: 1 }}>
                 <Image source={PILIER_IMAGES[pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pil-bg-' + pilier.key} style={StyleSheet.absoluteFill} />
                 <LinearGradient
