@@ -200,6 +200,32 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
     return { key: 'pv2_' + p.key, title: p.label, subtitle: '', image: PILIER_IMAGES[p.key], pilier: p };
   });
 
+  // Métadonnées enrichies sous le titre : nombre de séances pratiques avec
+  // vidéo + minutes totales + "Avec Sabrina". On scanne `seancesByKey`
+  // une fois (les piliers/seances ne changent pas au runtime).
+  const heroMeta = (function () {
+    let count = 0;
+    let totalMin = 0;
+    (piliers || []).forEach(function (p) {
+      const arr = (seancesByKey && seancesByKey[p.key]) || [];
+      arr.forEach(function (s) {
+        if (!s) return;
+        const etape = s[2];
+        if (etape === 'Comprendre' || etape === 'Ressentir') return; // pratiques uniquement
+        if (!s[3]) return; // vidéo dispo seulement
+        count += 1;
+        const m = String(s[1] || '').match(/\d+/);
+        if (m) totalMin += parseInt(m[0], 10);
+      });
+    });
+    const hours = Math.round(totalMin / 60);
+    const minLabel = hours >= 2
+      ? (hours + (isFr ? ' h de pratique' : ' h of practice'))
+      : (totalMin + (isFr ? ' min de pratique' : ' min of practice'));
+    const left = count + (isFr ? ' séances guidées' : ' guided sessions');
+    return left + ' · ' + minLabel + ' · ' + (isFr ? 'Avec Sabrina' : 'With Sabrina');
+  })();
+
   // Rangée "Mes favoris" — depuis le cache synchrone (alimenté par
   // primeFavoritesCache + maintenu par subscribeFavorites). On ne rend
   // rien si l'utilisateur n'a aucun favori. favVersion dans les deps
@@ -265,7 +291,9 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
               </TouchableOpacity>
             ) : null}
             <Text style={[{ fontSize: 16, fontWeight: '500', fontStyle: 'italic', color: 'rgba(255,255,255,0.62)', letterSpacing: 0.2, marginBottom: 12 }, TEXT_SHADOW]}>« {getDailyQuote()} »</Text>
-            <Text style={[{ fontSize: 56, fontWeight: '800', color: '#ffffff', letterSpacing: -1, lineHeight: 62, marginBottom: 18 }, TEXT_SHADOW]}>{t}</Text>
+            <Text style={[{ fontSize: 56, fontWeight: '800', color: '#ffffff', letterSpacing: -1, lineHeight: 62, marginBottom: 10 }, TEXT_SHADOW]}>{t}</Text>
+            {/* Métadata enrichie : X séances · Y min · Avec Sabrina. */}
+            <Text style={[{ fontSize: 17, fontWeight: '500', color: 'rgba(255,255,255,0.78)', letterSpacing: 0.3, marginBottom: 16 }, TEXT_SHADOW]}>{heroMeta}</Text>
             <Text style={[{ fontSize: 21, fontWeight: '400', color: 'rgba(255,255,255,0.7)', lineHeight: 29, marginBottom: 26 }, TEXT_SHADOW]}>{desc}</Text>
             <CTA label={primLabel} variant="primary" focusPreferred={!resume} onPress={onPrimary} />
           </View>
