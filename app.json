@@ -33,6 +33,7 @@
             }
           }
         },
+        "NSPhotoLibraryUsageDescription": "FluidBody+ n'accède pas à ta photothèque. — FluidBody+ does not access your photo library.",
         "NSHealthShareUsageDescription": "Fluidbody utilise votre fréquence cardiaque mesurée par votre Apple Watch pour afficher en temps réel votre intensité d'effort pendant les séances de Pilates et enregistrer votre activité dans l'app Santé. — Fluidbody uses heart-rate data from your Apple Watch to display your real-time effort intensity during Pilates sessions and to log your activity in the Health app.",
         "NSHealthUpdateUsageDescription": "Fluidbody enregistre vos séances de Pilates dans Apple Santé (durée, calories estimées, fréquence cardiaque) pour que vous puissiez suivre votre progression. — Fluidbody logs your Pilates sessions to Apple Health (duration, estimated calories, heart rate) so you can track your progress.",
         "NSCalendarsFullAccessUsageDescription": "Fluidbody peut planifier tes séances de Pilates dans ton agenda pour t'aider à tenir ta routine. — Fluidbody can schedule your Pilates sessions in your calendar to help you stick to your routine.",
