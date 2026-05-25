@@ -45,6 +45,8 @@ import { pickBadge } from '../utils/sessionBadges';
 import { getCachedFavorites, subscribeFavorites } from '../utils/favorites';
 import { getThisWeekSchedule } from '../utils/weeklySchedule';
 import SeanceCarouselRow from '../components/SeanceCarouselRow';
+import DownloadButton from '../components/DownloadButton';
+import { primeDownloadsCache, subscribeDownloads, getCachedDownloads, getCachedStorageBytes, formatBytes, removeDownload, removeAllDownloads, isDownloadedCached } from '../utils/downloadsCache';
 import { pickSessionImage } from '../components/tv/tvImagePool';
 import { primeFavoritesCache } from '../utils/favorites';
 import { getDailyQuote } from '../constants/sabrinaQuotes';
@@ -643,6 +645,17 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                   </View>
                 ) : null;
               })()}
+              {/* Bouton télécharger (iPhone uniquement). En top-right pour
+                  ne pas chevaucher le badge top-left ni les chips bas-gauche
+                  (Gratuit / Reprise / Bientôt). Peut chevaucher légèrement
+                  le watermark "FLUIDBODY+" décoratif — le bouton est
+                  fonctionnel, prioritaire. Désactivé si pas vidéo ou pas
+                  abonné (le DL nécessite l'abonnement comme le stream). */}
+              {!IS_TV && !noVideo && !locked ? (
+                <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 4 }}>
+                  <DownloadButton pilierKey={pilier.key} idx={i} lang={lang} disabled={!isSubscriber} />
+                </View>
+              ) : null}
               <View style={{ flex: 1 }}>
                 <Image source={PILIER_IMAGES[pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pil-bg-' + pilier.key} style={StyleSheet.absoluteFill} />
                 <LinearGradient
@@ -1013,6 +1026,10 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   // Précharge le cache favoris : cœurs visibles (Bibliothèque TV, badges
   // iPhone) + rangée "Mes favoris" (TV + iPhone Pour vous).
   useEffect(function() { primeFavoritesCache(); }, []);
+  // Précharge le cache des téléchargements (iPhone) pour que les boutons
+  // download dans PilierPanel et la section Hors-ligne reflètent l'état
+  // dès le premier rendu.
+  useEffect(function() { if (!IS_TV) primeDownloadsCache(); }, []);
   var theme = useTheme().theme;
   var navigation = useSafeNavigation();
   var [openPilier, setOpenPilier] = useState(null);
