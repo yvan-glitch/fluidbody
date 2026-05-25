@@ -46,16 +46,18 @@ function estimateSizeMB(quality, minutes) {
 
 function showQualityPicker(opts) {
   // opts : { isFr, durationMin, onPick(quality: 'eco'|'standard'|'hd') }
+  // Les labels guident l'utilisateur selon l'appareil de lecture cible —
+  // iPhone (Eco suffit), iPad (Standard), Apple TV (HD pour grand écran).
   const isFr = !!opts.isFr;
   const dur = opts.durationMin || 12;
-  const optionEco = (isFr ? 'Économique' : 'Economy') + ' (~' + estimateSizeMB('eco', dur) + ' MB)';
-  const optionStd = (isFr ? 'Standard' : 'Standard') + ' (~' + estimateSizeMB('standard', dur) + ' MB)';
-  const optionHd  = (isFr ? 'HD' : 'HD') + ' (~' + estimateSizeMB('hd', dur) + ' MB)';
+  const optionEco = (isFr ? 'Économique' : 'Economical') + ' • iPhone (~' + estimateSizeMB('eco', dur) + ' MB)';
+  const optionStd = 'Standard • iPad (~' + estimateSizeMB('standard', dur) + ' MB)';
+  const optionHd  = 'HD • Apple TV (~' + estimateSizeMB('hd', dur) + ' MB)';
   const optionCancel = isFr ? 'Annuler' : 'Cancel';
   const title = isFr ? 'Qualité du téléchargement' : 'Download quality';
   const message = isFr
-    ? 'Choisis la qualité. Eco économise de l\'espace, HD garde la meilleure définition.'
-    : 'Pick a quality. Eco saves space, HD keeps the best definition.';
+    ? 'Choisis selon ton appareil de lecture.'
+    : 'Choose based on your playback device.';
 
   if (Platform.OS === 'ios' && ActionSheetIOS && ActionSheetIOS.showActionSheetWithOptions) {
     ActionSheetIOS.showActionSheetWithOptions(
