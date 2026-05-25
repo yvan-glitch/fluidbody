@@ -1425,23 +1425,27 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           var seancesByKey = getSeances(lang);
 
           // Métadonnées catalogue pour la card CTA "Le Pilates conscient,
-          // au quotidien" : X séances · Y min/h · Avec Sabrina. Compté
-          // depuis seancesByKey une fois par rendu (catalogue ~140 entrées
-          // au total — négligeable).
+          // au quotidien" : X séances · Y min/h · Avec Sabrina. Compte
+          // TOUTES les séances du catalogue (pas de filtre vidéo — sinon
+          // on affichait "0 séances" tant que peu de vidéos étaient
+          // tournées). Parser de durée gère "12 min" et "1'59''".
           var catCount = 0;
-          var catMin = 0;
+          var catMinDecimal = 0;
           piliers.forEach(function(p) {
             var arr = (seancesByKey && seancesByKey[p.key]) || [];
             arr.forEach(function(ss) {
               if (!ss) return;
-              var eet = ss[2];
-              if (eet === 'Comprendre' || eet === 'Ressentir') return;
-              if (!ss[3]) return;
               catCount += 1;
-              var mm = String(ss[1] || '').match(/\d+/);
-              if (mm) catMin += parseInt(mm[0], 10);
+              var raw = String(ss[1] || '');
+              // "X'YY''" → X minutes + YY secondes (ex. "1'59''" → 1.98 min)
+              var ap = raw.match(/(\d+)\s*'\s*(\d+)/);
+              if (ap) { catMinDecimal += parseInt(ap[1], 10) + parseInt(ap[2], 10) / 60; return; }
+              // "X min" ou juste "X"
+              var m = raw.match(/(\d+)/);
+              if (m) catMinDecimal += parseInt(m[1], 10);
             });
           });
+          var catMin = Math.round(catMinDecimal);
           var heroMetaIPhone = (function() {
             var dur;
             if (catMin >= 120) {
