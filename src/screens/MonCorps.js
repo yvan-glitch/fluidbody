@@ -985,6 +985,78 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   var [savedPrograms, setSavedPrograms] = useState([]);
   var [searchQuery, setSearchQuery] = useState('');
   var [searchEtape, setSearchEtape] = useState(null);
+  // Duration filter — partagé entre l'onglet Explorer et Recherche.
+  // Buckets : '5' (<=5min), '10' (6-10min), '1520' (15-20min), 'long' (>20min).
+  var [durationFilter, setDurationFilter] = useState(null);
+
+  // Helpers durée — partagés entre Explorer / Recherche.
+  function _matchesDurationBucket(durationLabel, bucket) {
+    if (!bucket) return true;
+    var m = parseDurationMinutes(durationLabel);
+    if (!m && m !== 0) return false;
+    if (bucket === '5') return m > 0 && m <= 5;
+    if (bucket === '10') return m > 5 && m <= 10;
+    if (bucket === '1520') return m > 10 && m <= 20;
+    if (bucket === 'long') return m > 20;
+    return true;
+  }
+  var DURATION_CHIPS = [
+    { key: '5', labelFr: '5 min', labelEn: '5 min' },
+    { key: '10', labelFr: '10 min', labelEn: '10 min' },
+    { key: '1520', labelFr: '15-20 min', labelEn: '15-20 min' },
+    { key: 'long', labelFr: '20 min +', labelEn: '20 min +' },
+  ];
+  function DurationChipsRow() {
+    var isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+    return (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8, paddingRight: 6 }}>
+        {DURATION_CHIPS.map(function (c) {
+          var active = durationFilter === c.key;
+          return (
+            <TouchableOpacity
+              key={c.key}
+              onPress={function () { setDurationFilter(active ? null : c.key); }}
+              accessibilityLabel={(active ? (isFrLang ? 'Retirer le filtre ' : 'Remove filter ') : (isFrLang ? 'Filtrer ' : 'Filter ')) + (isFrLang ? c.labelFr : c.labelEn)}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 20,
+                backgroundColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.08)',
+                borderWidth: 1,
+                borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.12)',
+              }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '700', color: active ? '#001226' : 'rgba(255,255,255,0.75)' }}>
+                {isFrLang ? c.labelFr : c.labelEn}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+        {durationFilter ? (
+          <TouchableOpacity
+            onPress={function () { setDurationFilter(null); }}
+            accessibilityLabel={(lang || 'fr').toLowerCase().indexOf('fr') === 0 ? 'Réinitialiser le filtre durée' : 'Reset duration filter'}
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              borderRadius: 20,
+              backgroundColor: 'rgba(255,255,255,0.04)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.18)',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.7)' }}>
+              {(lang || 'fr').toLowerCase().indexOf('fr') === 0 ? 'Réinitialiser' : 'Reset'}
+            </Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>{'×'}</Text>
+          </TouchableOpacity>
+        ) : null}
+      </ScrollView>
+    );
+  }
   var [showBreathing, setShowBreathing] = useState(false);
   var [breathDoneToday, setBreathDoneToday] = useState(false);
   // Algorithmic programs: active row pulled from Supabase + screens
@@ -1710,9 +1782,21 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             var seance = (seancesData[item.pilier] || [])[item.idx];
             if (!p || !seance) return null;
             return { pilier: p, idx: item.idx, titre: seance[0], duree: seance[1], etape: seance[2] };
-          }).filter(Boolean);
+          }).filter(Boolean).filter(function (it) {
+            return _matchesDurationBucket(it.duree, durationFilter);
+          });
+          // Filter piliers to those containing at least one session matching the duration bucket.
+          var piliersFiltered = piliers.filter(function (p) {
+            if (!durationFilter) return true;
+            var ps = seancesData[p.key] || [];
+            for (var i = 0; i < ps.length; i++) {
+              if (_matchesDurationBucket(ps[i] && ps[i][1], durationFilter)) return true;
+            }
+            return false;
+          });
           return (
             <View key="explorer-sections">
+              <DurationChipsRow />
               {freeItems.length > 0 && (
                 <View style={{ marginBottom: 24, marginHorizontal: -16 }}>
                   <View style={{ paddingHorizontal: 22, marginBottom: 12 }}>
@@ -1756,7 +1840,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   </ScrollView>
                 </View>
               )}
-              {piliers.map(function(p, pi) {
+              {piliersFiltered.length === 0 && durationFilter ? (
+                <Text style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: 30, fontSize: 14 }}>
+                  {(lang || 'fr').toLowerCase().indexOf('fr') === 0 ? 'Aucun pilier avec cette durée' : 'No pillar with this duration'}
+                </Text>
+              ) : null}
+              {piliersFiltered.map(function(p, pi) {
                 var ps = seancesData[p.key] || [];
                 var doneCount = done[p.key] ? done[p.key].filter(Boolean).length : 0;
                 // Sur TV : si pas de bandeau "gratuit du mois" au-dessus, la
@@ -1847,7 +1936,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               var etape = s[2] || '';
               var matchQuery = !searchQuery || titre.toLowerCase().includes(searchQuery.toLowerCase());
               var matchEtape = !searchEtape || etape === searchEtape;
-              if (matchQuery && matchEtape) {
+              var matchDur = _matchesDurationBucket(s[1], durationFilter);
+              if (matchQuery && matchEtape && matchDur) {
                 allResults.push({ seance: s, idx: idx, pilier: p });
               }
             });
@@ -1868,6 +1958,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   />
                 </LiquidGlassCapsule>
               </View>
+              {/* Durée filter chips */}
+              <DurationChipsRow />
               {/* Étape filter chips */}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
                 {['Comprendre', 'Ressentir', 'Préparer', 'Exécuter', 'Évoluer'].map(function(etape) {
