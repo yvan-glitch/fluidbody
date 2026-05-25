@@ -27,6 +27,13 @@ import {
   getStorageUsed,
   formatBytes,
 } from '../components/DownloadManager';
+import { getCachedPref } from './userPreferences';
+
+// NetInfo : non installé en hard-dep (cf. package.json). Safe-require pour
+// dégrader gracieusement — si le module n'est pas dispo, on autorise tous
+// les downloads (préférence Wi-Fi-only sans effet, message log dev).
+let _NetInfo = null;
+try { _NetInfo = require('@react-native-community/netinfo').default; } catch (e) {}
 
 function devLog() {
   if (typeof __DEV__ !== 'undefined' && __DEV__) {
@@ -107,6 +114,30 @@ export async function startDownload(pilierKey, idx, quality) {
   if (_cache[id] && _cache[id].status === 'downloading') {
     devLog('startDownload', id, 'already downloading — no-op');
     return false;
+  }
+
+  // Préf "Télécharger uniquement en Wi-Fi" — check NetInfo si dispo.
+  // Si le module n'est pas installé, on log et autorise (préférence sans effet).
+  if (getCachedPref('wifiOnlyDownload')) {
+    if (_NetInfo && _NetInfo.fetch) {
+      try {
+        const state = await _NetInfo.fetch();
+        const isWifi = state && state.type === 'wifi';
+        devLog('startDownload', id, 'wifiOnly check — type=', state && state.type);
+        if (!isWifi) {
+          Alert.alert(
+            'Téléchargement bloqué',
+            'L\'option « Télécharger uniquement en Wi-Fi » est active. Connecte-toi en Wi-Fi ou désactive l\'option dans Profil > Préférences.',
+            [{ text: 'OK' }]
+          );
+          return false;
+        }
+      } catch (e) {
+        devLog('startDownload', id, 'NetInfo.fetch threw — allowing download', e && e.message);
+      }
+    } else {
+      devLog('startDownload', id, 'NetInfo unavailable, ignoring wifiOnly pref');
+    }
   }
   _cache[id] = { status: 'downloading', progress: 0, quality: quality || 'standard', date: new Date().toISOString() };
   _notify();

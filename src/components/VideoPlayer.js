@@ -21,6 +21,7 @@ import useLiveHeartRate from '../hooks/useLiveHeartRate';
 import { recordSessionHour, cancelPauseActiveNotifications } from '../utils/notifications';
 import { IS_TV, tvFocusProps } from '../utils/platformTV';
 import { isDownloaded, getLocalVideoUri, cleanupTempVideo } from './DownloadManager';
+import { getCachedPref } from '../utils/userPreferences';
 
 // ── Small utilities (local copies to avoid circular deps) ──
 // Haptics are fired by GlassButton (FAIT) via `haptic="success"`, so
@@ -462,9 +463,13 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
 
   useEffect(() => {
     (async () => {
+      // staysActiveInBackground piloté par la préférence utilisateur
+      // (Profil > Préférences > "Lecture audio en arrière-plan").
+      // Default false — l'utilisateur doit explicitement opt-in.
+      const bgAudio = !!getCachedPref('backgroundAudio');
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
-        staysActiveInBackground: false,
+        staysActiveInBackground: bgAudio,
         playsInSilentModeIOS: true,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
