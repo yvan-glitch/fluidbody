@@ -346,7 +346,7 @@ export const T = {
       'Sabrina IA pour personnaliser ta pratique — à venir',
     ],
     paywall_founder_cta: 'Commencer 7 jours gratuits',
-    paywall_founder_urgency: 'Tarif limité aux 500 premiers membres',
+    paywall_founder_urgency: 'Offre fondateur — pour les premiers membres',
     paywall_founder_legal: 'Aucun engagement, annulable à tout moment depuis tes Réglages Apple',
     // Structure de l'offre d'introduction (3 mois / 1re année).
     paywall_founder_intro_monthly_sub: 'Tarif fondateur · 3 premiers mois',
@@ -996,7 +996,7 @@ export const T = {
       'Sabrina AI to personalise your practice — coming soon',
     ],
     paywall_founder_cta: 'Start 7 free days',
-    paywall_founder_urgency: 'Limited price for the first 500 members',
+    paywall_founder_urgency: 'Founder offer — for early members',
     paywall_founder_legal: 'No commitment, cancel anytime from your Apple Settings',
     paywall_founder_intro_monthly_sub: 'Founder pricing · first 3 months',
     paywall_founder_intro_yearly_sub: 'Founder pricing · first year',
