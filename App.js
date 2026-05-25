@@ -110,6 +110,7 @@ import { IS_TV } from './src/utils/platformTV';
 import ActivityScreen from './src/screens/Activity';
 import ProfileOnboardingScreen from './src/screens/ProfileOnboarding';
 import SabrinaProfileTVScreen, { SabrinaProfileModal } from './src/screens/SabrinaProfile';
+import { detectNewUnlocks, prime as primeAchievements, getAchievementById, recordPilierUsage, getRecentPiliers, clearAchievements } from './src/utils/achievements';
 import { flushPendingProfileSync, syncProfilePatch, refreshFromRemote } from './src/utils/profileSync';
 import {
   getPreferredHour,
@@ -1505,6 +1506,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [freeVideoPlaying, setFreeVideoPlaying] = useState(false);
   const [showFirstSeanceModal, setShowFirstSeanceModal] = useState(false);
   const [milestoneNum, setMilestoneNum] = useState(null);
+  const [newAchievement, setNewAchievement] = useState(null);
   const [showAuthScreen, setShowAuthScreen] = useState(false);
   const [showStretchTimer, setShowStretchTimer] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
@@ -1717,6 +1719,8 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       // Schedule the 24h post-onboarding nudge (no-op if already scheduled or
       // permission denied).
       schedulePostOnboardingNudge({ lang: lang });
+      // Prime achievements cache for instant render in Stats/Activité.
+      primeAchievements().catch(function () {});
     }, 800);
     return function() { try { clearTimeout(deferTimer); } catch (e) {} };
   }, []);
@@ -1862,6 +1866,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     setDone({ p1: Array(20).fill(false), p2: Array(20).fill(false), p3: Array(20).fill(false), p4: Array(20).fill(false), p5: Array(20).fill(false), p6: Array(20).fill(false), p7: Array(20).fill(false), p8: Array(20).fill(false) });
     setStreak(0);
     setIsSubscriber(false);
+    try { await clearAchievements(); } catch (e) {}
   }
 
   async function toggleDone(key, idx) {
@@ -1911,6 +1916,26 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         cal[todayCal] = (cal[todayCal] || 0) + 1;
         await AsyncStorage.setItem(calKey, JSON.stringify(cal));
       } catch(e) {}
+    }
+    // Achievements — auto-détection en parallèle des milestones.
+    if (!done[key][idx]) {
+      try {
+        await recordPilierUsage(key);
+        const recent = await getRecentPiliers();
+        // Recompute streak fresh (above block writes STREAK_KEY in same tick — read it).
+        const streakNow = parseInt(await AsyncStorage.getItem(STREAK_KEY) || '0') || streak;
+        const fresh = await detectNewUnlocks({
+          done: next,
+          streak: streakNow,
+          nowHour: new Date().getHours(),
+          recentPiliers: recent,
+        });
+        if (fresh && fresh.length > 0) {
+          // On affiche le premier débloqué ; les éventuels suivants seront
+          // visibles dans la section "Badges" de l'écran Activité.
+          setTimeout(function () { setNewAchievement(fresh[0]); }, 800);
+        }
+      } catch (e) {}
     }
     // Streak
     if (!done[key][idx]) {
@@ -2093,6 +2118,37 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           </View>
         </Modal>
       )}
+      {newAchievement ? (function () {
+        var meta = getAchievementById(newAchievement);
+        if (!meta) return null;
+        var isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+        return (
+          <Modal visible={true} transparent animationType="fade" statusBarTranslucent>
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.92)', justifyContent: 'center', alignItems: 'center' }}>
+              <View style={{ alignItems: 'center', padding: 40, maxWidth: 360 }}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#AEEF4D', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 18 }}>
+                  {isFrLang ? 'Badge débloqué' : 'Badge unlocked'}
+                </Text>
+                <Text style={{ fontSize: 72, marginBottom: 18 }}>{meta.icon}</Text>
+                <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', textAlign: 'center', marginBottom: 10, letterSpacing: -0.3 }}>
+                  {isFrLang ? meta.titleFr : meta.titleEn}
+                </Text>
+                <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.75)', textAlign: 'center', marginBottom: 32, lineHeight: 22 }}>
+                  {isFrLang ? meta.descFr : meta.descEn}
+                </Text>
+                <GlassButton
+                  onPress={function () { setNewAchievement(null); }}
+                  fullWidth={false}
+                  textColor="#AEEF4D"
+                  style={{ paddingHorizontal: 40 }}
+                >
+                  {isFrLang ? 'Continuer' : 'Continue'}
+                </GlassButton>
+              </View>
+            </View>
+          </Modal>
+        );
+      })() : null}
       <CoachWelcomeOverlay
         visible={coachWelcomeVisible}
         lang={lang}
