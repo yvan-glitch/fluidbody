@@ -37,6 +37,7 @@ import Confetti from '../components/Confetti';
 import ActivityRings, { MiniActivityRings, RING_COLORS } from '../components/ActivityRings';
 import healthkit from '../utils/healthkit';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
+import { ACHIEVEMENTS, getUnlockedSync, subscribe as subscribeAchievements, prime as primeAchievements } from '../utils/achievements';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -302,6 +303,7 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
   const [goals, setGoals] = useState(DEFAULT_GOALS);
   const [streakCount, setStreakCount] = useState(0);
   const [streakLastDate, setStreakLastDate] = useState(null);
+  const [unlockedIds, setUnlockedIds] = useState(function () { return getUnlockedSync(); });
   const [showRingDetail, setShowRingDetail] = useState(null);
   const [showGoalEditor, setShowGoalEditor] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -351,6 +353,13 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
       setHkAuthorized(!!(res && res.ok));
     });
     return function () { cancelled = true; };
+  }, []);
+
+  // ── Achievements live cache ──
+  useEffect(function () {
+    primeAchievements().then(function (ids) { setUnlockedIds(ids); }).catch(function () {});
+    var unsub = subscribeAchievements(function (ids) { setUnlockedIds(ids); });
+    return unsub;
   }, []);
 
   // ── Load goals + streak from cache ──
@@ -734,6 +743,49 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
                 </View>
               );
             })}
+          </GlassCard>
+        </View>
+
+        {/* Badges (achievements) */}
+        <View style={{ paddingHorizontal: 22, marginBottom: 18 }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
+            {tr.activity_badges || 'Badges'}
+          </Text>
+          <GlassCard padding={14}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {ACHIEVEMENTS.map(function (a) {
+                var unlocked = unlockedIds.indexOf(a.id) !== -1;
+                var isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+                return (
+                  <View
+                    key={a.id}
+                    accessibilityLabel={(isFrLang ? a.titleFr : a.titleEn) + (unlocked ? '' : ' (verrouillé)')}
+                    style={{
+                      width: '30%',
+                      alignItems: 'center',
+                      paddingVertical: 14,
+                      paddingHorizontal: 6,
+                      borderRadius: 14,
+                      backgroundColor: unlocked ? 'rgba(174,239,77,0.12)' : 'rgba(255,255,255,0.04)',
+                      borderWidth: 1,
+                      borderColor: unlocked ? 'rgba(174,239,77,0.35)' : colors.hairline,
+                      opacity: unlocked ? 1 : 0.5,
+                    }}
+                  >
+                    <Text style={{ fontSize: 28, marginBottom: 6 }}>{unlocked ? a.icon : '🔒'}</Text>
+                    <Text numberOfLines={2} style={{ fontSize: 10, fontWeight: '700', color: colors.text, textAlign: 'center', lineHeight: 13 }}>
+                      {isFrLang ? a.titleFr : a.titleEn}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+            <Text style={{ marginTop: 14, fontSize: 11, color: colors.textTertiary, textAlign: 'center' }}>
+              {(function () {
+                var isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+                return (isFrLang ? 'Débloqués · ' : 'Unlocked · ') + unlockedIds.length + ' / ' + ACHIEVEMENTS.length;
+              })()}
+            </Text>
           </GlassCard>
         </View>
 
