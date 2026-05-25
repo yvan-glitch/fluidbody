@@ -8,7 +8,6 @@ import { Bulle, FloatingMedusas, BULLES_ONBOARDING } from './Meduse';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { LEGAL, getTermsUrl } from '../constants/legal';
 import {
-  FOUNDER_MEMBER_CAP,
   FOUNDER_INTRO_SAVINGS_CHF,
 } from '../constants/iap';
 import {
@@ -833,8 +832,8 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               </View>
               <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 14, letterSpacing: 0.2 }}>
                 {tr.paywall_founder_urgency || (isFr
-                  ? ('Tarif limité aux ' + FOUNDER_MEMBER_CAP + ' premiers membres')
-                  : ('Limited price for the first ' + FOUNDER_MEMBER_CAP + ' members'))}
+                  ? 'Offre fondateur — pour les premiers membres'
+                  : 'Founder offer — for early members')}
               </Text>
               <Text style={{ fontSize: 11, fontWeight: '400', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 6, lineHeight: 16, letterSpacing: 0.1 }}>
                 {tr.paywall_founder_legal || (isFr

@@ -115,8 +115,12 @@ export function getPhaseFromProductId(productId) {
   return { phase: phase, ...IAP_PRODUCTS[phase] };
 }
 
-// Cap soft pour la mention "tarif limité aux 500 premiers membres". Yvan
-// confirme/ajuste avant de l'afficher.
+// Cap "membres" — non utilisé pendant la phase de tournage. Yvan préfère
+// éviter l'urgence factice tant que les vidéos sont en cours de production ;
+// la mention urgency sur le paywall est qualitative ("Offre fondateur — pour
+// les premiers membres") sans chiffre. La constante reste exportée pour
+// réactivation future (ajouter "Tarif limité aux N premiers membres" dans
+// paywall_founder_urgency dès que les contenus sont prêts).
 export const FOUNDER_MEMBER_CAP = 500;
 
 // Durée de la promo fondateur (avant retour au tarif standard).
