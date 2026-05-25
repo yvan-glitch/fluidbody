@@ -7,6 +7,8 @@ import { isComingSoon } from '../utils';
 import { Bulle, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import LivingBackground from '../components/LivingBackground';
+import DownloadButton from '../components/DownloadButton';
+import { IS_TV } from '../utils/platformTV';
 
 function LockIcon({ size = 14, color = 'rgba(255,255,255,0.5)' }) {
   return (
@@ -99,20 +101,28 @@ export default function TheorieDetailScreen({ pilier, items, lang, isSubscriber,
                     <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>{duree}</Text>
                   </View>
                 </View>
-                {isComingSoon(pilier.key, idx) ? (
-                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(210,140,190,0.18)', borderWidth: 1, borderColor: 'rgba(210,140,190,0.5)' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#E1A8C8', letterSpacing: 0.6, textTransform: 'uppercase' }}>{tr.coming_soon_badge || 'Bientôt'}</Text>
-                  </View>
-                ) : isFree ? (
-                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: '#AEEF4D' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#AEEF4D', letterSpacing: 0.6, textTransform: 'uppercase' }}>{freeBadge}</Text>
-                  </View>
-                ) : locked ? (
-                  <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <LockIcon size={11} color="rgba(255,255,255,0.65)" />
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.4, textTransform: 'uppercase' }}>{premiumBadge}</Text>
-                  </View>
-                ) : null}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {isComingSoon(pilier.key, idx) ? (
+                    <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(210,140,190,0.18)', borderWidth: 1, borderColor: 'rgba(210,140,190,0.5)' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#E1A8C8', letterSpacing: 0.6, textTransform: 'uppercase' }}>{tr.coming_soon_badge || 'Bientôt'}</Text>
+                    </View>
+                  ) : isFree ? (
+                    <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: '#AEEF4D' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#AEEF4D', letterSpacing: 0.6, textTransform: 'uppercase' }}>{freeBadge}</Text>
+                    </View>
+                  ) : locked ? (
+                    <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <LockIcon size={11} color="rgba(255,255,255,0.65)" />
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.4, textTransform: 'uppercase' }}>{premiumBadge}</Text>
+                    </View>
+                  ) : null}
+                  {/* Bouton download (iPhone) — visible si la séance a une vidéo.
+                      Désactivé pour les séances verrouillées (paywall) ; activé
+                      pour les séances gratuites + abonnés. */}
+                  {!IS_TV && !noVideo ? (
+                    <DownloadButton pilierKey={pilier.key} idx={idx} lang={lang} size={32} disabled={locked} />
+                  ) : null}
+                </View>
               </TouchableOpacity>
             );
           })}
