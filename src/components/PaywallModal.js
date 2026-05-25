@@ -8,6 +8,13 @@ import { Bulle, FloatingMedusas, BULLES_ONBOARDING } from './Meduse';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { LEGAL, getTermsUrl } from '../constants/legal';
 import {
+  STANDARD_PRICES,
+  FOUNDER_PRICES,
+  FOUNDER_SAVINGS,
+  FOUNDER_MEMBER_CAP,
+  formatPriceCHF,
+} from '../constants/iap';
+import {
   GlassView,
   GlassButton,
   GlassCard,
@@ -529,23 +536,35 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   const testimonials = Array.isArray(tr.paywall_testimonials) ? tr.paywall_testimonials : null;
   const compareFeatures = Array.isArray(tr.paywall_compare_features) ? tr.paywall_compare_features : null;
 
-  const heroTitle = isFr ? 'Le Pilates conscient, au quotidien' : 'Conscious Pilates, every day';
+  // Founder copy : nouveau titre/sous-titre + bullets enrichis (icône + texte).
+  const heroTitle = tr.paywall_founder_hero_title || (isFr ? 'Rejoins les fondateurs FluidBody+' : 'Join the FluidBody+ founders');
+  const heroSub = tr.paywall_founder_hero_sub || (isFr
+    ? 'Le Pilates conscient de Sabrina, sur tous tes écrans. Pour la moitié du prix, à vie.'
+    : "Sabrina's conscious Pilates, on every screen. For half the price, for life.");
   const annualLabel = isFr ? 'Annuel' : 'Annual';
   const annualSub = isFr ? '12 mois pour le prix de 8' : '12 months for the price of 8';
   const monthlyLabel = isFr ? 'Mensuel' : 'Monthly';
-  const ctaLabel = isFr ? 'Commencer' : 'Start';
+  const ctaLabel = tr.paywall_founder_cta || (isFr ? 'Commencer 7 jours gratuits' : 'Start 7 free days');
 
-  const benefits = isFr ? [
-    'Toutes les séances vidéo en HD',
-    'Téléchargements hors-ligne',
-    'Programmes personnalisés selon ton corps',
-    'Sans engagement, résiliable à tout moment',
-  ] : [
-    'All video sessions in HD',
-    'Offline downloads',
-    'Personalised programs for your body',
-    'Cancel anytime, no commitment',
-  ];
+  const founderBullets = Array.isArray(tr.paywall_founder_bullets) && tr.paywall_founder_bullets.length > 0
+    ? tr.paywall_founder_bullets
+    : (isFr ? [
+        { icon: '✨', text: '9 piliers de Pilates conscient' },
+        { icon: '🎬', text: 'iPhone + Apple TV inclus' },
+        { icon: '👩‍🏫', text: 'Guidé par Sabrina, 30 ans de pratique' },
+        { icon: '🌍', text: 'Disponible en 4 langues' },
+        { icon: '🪼', text: 'Sabrina IA personnalisée (à venir)' },
+      ] : [
+        { icon: '✨', text: '9 pillars of conscious Pilates' },
+        { icon: '🎬', text: 'iPhone + Apple TV included' },
+        { icon: '👩‍🏫', text: 'Guided by Sabrina, 30 years of practice' },
+        { icon: '🌍', text: 'Available in 4 languages' },
+        { icon: '🪼', text: 'Personalised Sabrina AI (coming soon)' },
+      ]);
+
+  // Prix de référence (standard) affichés barrés à côté du prix founder.
+  const standardMonthlyStr = formatPriceCHF(STANDARD_PRICES.monthly, isFr ? 'fr' : 'en');
+  const standardYearlyStr  = formatPriceCHF(STANDARD_PRICES.yearly,  isFr ? 'fr' : 'en');
 
   function onCta() {
     if (loadingPrices) return;
@@ -557,8 +576,10 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
     Alert.alert('FluidBody+', isFr ? 'Abonnement disponible dans la version App Store.' : 'Subscription available in the App Store version.');
   }
 
-  // Pilule segmentée Mensuel / Annuel (toggle Liquid Glass).
-  function planPill(key, label, sub, priceText) {
+  // Pilule segmentée Mensuel / Annuel (toggle Liquid Glass) — version
+  // founder : prix barré du tarif standard à côté du prix actuel, pill
+  // d'économie verte sur le plan annuel.
+  function planPill(key, label, sub, priceText, standardPriceText, savingsPct) {
     var active = selected === key;
     return (
       <GlassPressable
@@ -579,7 +600,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
             paddingHorizontal: 16,
             alignItems: 'flex-start',
             justifyContent: 'center',
-            minHeight: 78,
+            minHeight: 92,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' }}>
@@ -596,7 +617,30 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               {active && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.accent }} />}
             </View>
           </View>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.text, marginTop: 6 }}>{priceText}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: theme.colors.text, letterSpacing: -0.2 }}>{priceText}</Text>
+            {standardPriceText ? (
+              <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.textTertiary, marginLeft: 6, textDecorationLine: 'line-through' }}>{standardPriceText}</Text>
+            ) : null}
+          </View>
+          {savingsPct ? (
+            <View style={{
+              alignSelf: 'flex-start',
+              marginTop: 8,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 10,
+              backgroundColor: 'rgba(174,239,77,0.18)',
+              borderWidth: 1,
+              borderColor: 'rgba(174,239,77,0.45)',
+            }}>
+              <Text style={{ fontSize: 10, fontWeight: '800', color: '#AEEF4D', letterSpacing: 0.4 }}>
+                {(typeof tr.paywall_founder_save_pill === 'function'
+                  ? tr.paywall_founder_save_pill(savingsPct)
+                  : ((isFr ? 'Économise ' : 'Save ') + savingsPct + (isFr ? '% à vie' : '% for life')))}
+              </Text>
+            </View>
+          ) : null}
         </GlassView>
       </GlassPressable>
     );
@@ -652,7 +696,8 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 <Text style={{ fontSize: 18, fontWeight: '900', color: '#AEEF4D', letterSpacing: 3 }}>FLUIDBODY</Text>
                 <AnimatedPlus style={{ fontSize: 18, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
               </View>
-              <Text style={{ fontSize: 32, fontWeight: '800', color: '#ffffff', lineHeight: 36, letterSpacing: -0.4 }}>{heroTitle}</Text>
+              <Text style={{ fontSize: 30, fontWeight: '800', color: '#ffffff', lineHeight: 34, letterSpacing: -0.4 }}>{heroTitle}</Text>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.86)', lineHeight: 20, marginTop: 10 }}>{heroSub}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#AEEF4D' }} />
                 <AnimatedCount to={liveMembers} lang={lang} style={{ fontSize: 14, fontWeight: '800', color: '#ffffff' }} />
@@ -671,6 +716,29 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               padding={20}
               elevated
             >
+              {/* Bandeau "PRIX FONDATEUR" — gradient lime → vert, animé
+                  via AnimatedPlus déjà importé. Source d'info : iap.js
+                  (FOUNDER_SAVINGS.annualVsMonthlyStandardCHF = 200 CHF/an). */}
+              <View style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(174,239,77,0.55)' }}>
+                <LinearGradient
+                  colors={['rgba(174,239,77,0.32)', 'rgba(60,200,90,0.28)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ paddingVertical: 12, paddingHorizontal: 14 }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 16, marginRight: 8 }}>🎯</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#AEEF4D', letterSpacing: 1.4 }}>
+                      {tr.paywall_founder_tag || (isFr ? 'PRIX FONDATEUR' : 'FOUNDER PRICE')}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#ffffff', lineHeight: 18 }}>
+                    {tr.paywall_founder_banner_sub || (isFr
+                      ? ('Économise ' + FOUNDER_SAVINGS.annualVsMonthlyStandardCHF + ' CHF/an à vie en rejoignant les premiers membres')
+                      : ('Save ' + FOUNDER_SAVINGS.annualVsMonthlyStandardCHF + ' CHF/year for life by joining the first members'))}
+                  </Text>
+                </LinearGradient>
+              </View>
               {/* Bandeau bonus parrainage — uniquement si l'utilisateur a
                   des mois gratuits en attente (filleule qui a un parrain,
                   ou parrain dont une amie vient de s'abonner). Visuel
@@ -702,20 +770,45 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                   </View>
                 </View>
               ) : null}
-              {/* Bénéfices */}
+              {/* Bénéfices founder : icône (emoji) + texte. Un poil plus
+                  riche que des checks ; le ton reste posé (la conversion
+                  vient du bandeau d'éco + du prix barré, pas du push). */}
               <View style={{ marginBottom: 18 }}>
-                {benefits.map((b, i) => (
-                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: i === benefits.length - 1 ? 0 : 10 }}>
-                    <BulletCheck />
-                    <Text style={{ flex: 1, fontSize: 14, color: theme.colors.text, fontWeight: '500', letterSpacing: -0.1 }}>{b}</Text>
-                  </View>
-                ))}
+                {founderBullets.map(function (b, i) {
+                  return (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: i === founderBullets.length - 1 ? 0 : 10 }}>
+                      <View style={{ width: 28, alignItems: 'center', marginRight: 10, marginTop: 1 }}>
+                        <Text style={{ fontSize: 18 }}>{b.icon || '•'}</Text>
+                      </View>
+                      <Text style={{ flex: 1, fontSize: 14, color: theme.colors.text, fontWeight: '500', letterSpacing: -0.1, lineHeight: 19 }}>{b.text}</Text>
+                    </View>
+                  );
+                })}
               </View>
 
-              {/* Toggle Mensuel / Annuel : 2 pilules glass côte-à-côte */}
+              {/* Toggle Mensuel / Annuel — prix barré standard à droite,
+                  pill d'éco verte sous le prix annuel.
+                  Note : on affiche le prix RC actuel (qui peut être en
+                  CHF, EUR selon la storefront de l'utilisateur), et on
+                  garde le strikethrough en CHF — c'est le prix
+                  marketing de référence Suisse. */}
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-                {planPill('yearly', annualLabel, annualSub, yearlyDisplay)}
-                {planPill('monthly', monthlyLabel, null, monthlyDisplay)}
+                {planPill('yearly', annualLabel, annualSub, yearlyDisplay, standardYearlyStr, FOUNDER_SAVINGS.yearlyVsStandardPct)}
+                {planPill('monthly', monthlyLabel, null, monthlyDisplay, standardMonthlyStr, null)}
+              </View>
+
+              {/* Ligne comparative douce : positionnement vs marché.
+                  Pas de bashing — on cite Speir factuel + nous, c'est tout. */}
+              <View style={{ marginBottom: 14, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)' }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+                  {tr.paywall_founder_compare_title || (isFr ? 'Comparé au marché' : 'Compared to the market')}
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.colors.textSecondary, lineHeight: 18 }}>
+                  {tr.paywall_founder_compare_speir || 'Speir · CHF 26.67/mois — Mat uniquement'}
+                </Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.accentText, lineHeight: 18, marginTop: 2 }}>
+                  {tr.paywall_founder_compare_us || 'FluidBody+ Fondateur · CHF 12.90/mois — 9 piliers + IA'}
+                </Text>
               </View>
 
               {/* CTA principal */}
@@ -731,10 +824,15 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 {ctaLabel}
               </GlassButton>
               <Text style={{ fontSize: 12, fontWeight: '500', color: theme.colors.textSecondary, textAlign: 'center', marginTop: 10 }}>{selectedPrice}</Text>
-              {/* Guarantee pill — discreet, sits under the CTA so the user
-                  sees the safety net just before tapping. */}
+              {/* Urgency soft + guarantee — la rareté reste un message
+                  posé (cap 500), pas un compte à rebours agressif. */}
+              <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 8, letterSpacing: 0.2 }}>
+                {tr.paywall_founder_urgency || (isFr
+                  ? ('Tarif limité aux ' + FOUNDER_MEMBER_CAP + ' premiers membres')
+                  : ('Limited price for the first ' + FOUNDER_MEMBER_CAP + ' members'))}
+              </Text>
               <View style={{
-                marginTop: 14,
+                marginTop: 12,
                 alignSelf: 'center',
                 paddingHorizontal: 12,
                 paddingVertical: 6,
@@ -751,6 +849,11 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                   {tr.paywall_guarantee_pill || 'Annule sans frais dans les 7 premiers jours'}
                 </Text>
               </View>
+              <Text style={{ fontSize: 10, fontWeight: '500', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 8, lineHeight: 14 }}>
+                {tr.paywall_founder_legal || (isFr
+                  ? 'Aucun engagement, annulable à tout moment depuis tes Réglages Apple'
+                  : 'No commitment, cancel anytime from your Apple Settings')}
+              </Text>
             </GlassCard>
 
             {disabled && (
