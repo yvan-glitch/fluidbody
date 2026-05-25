@@ -1423,6 +1423,37 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           // eslint-disable-next-line no-unused-vars
           var _favTick = favVersion;
           var seancesByKey = getSeances(lang);
+
+          // Métadonnées catalogue pour la card CTA "Le Pilates conscient,
+          // au quotidien" : X séances · Y min/h · Avec Sabrina. Compté
+          // depuis seancesByKey une fois par rendu (catalogue ~140 entrées
+          // au total — négligeable).
+          var catCount = 0;
+          var catMin = 0;
+          piliers.forEach(function(p) {
+            var arr = (seancesByKey && seancesByKey[p.key]) || [];
+            arr.forEach(function(ss) {
+              if (!ss) return;
+              var eet = ss[2];
+              if (eet === 'Comprendre' || eet === 'Ressentir') return;
+              if (!ss[3]) return;
+              catCount += 1;
+              var mm = String(ss[1] || '').match(/\d+/);
+              if (mm) catMin += parseInt(mm[0], 10);
+            });
+          });
+          var heroMetaIPhone = (function() {
+            var dur;
+            if (catMin >= 120) {
+              var h = Math.floor(catMin / 60);
+              var rest = catMin - h * 60;
+              dur = h + ' h' + (rest ? ' ' + rest : '') + (lang === 'fr' ? ' de pratique' : ' of practice');
+            } else {
+              dur = catMin + (lang === 'fr' ? ' min de pratique' : ' min of practice');
+            }
+            var left = catCount + (lang === 'fr' ? ' séances' : ' sessions');
+            return left + ' · ' + dur + ' · ' + (lang === 'fr' ? 'Avec Sabrina' : 'With Sabrina');
+          })();
           var favItems = [];
           var favIds = getCachedFavorites() || [];
           for (var i = 0; i < favIds.length; i++) {
@@ -1490,7 +1521,9 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               ) : null}
               <LinearGradient colors={["rgba(28,28,30,0.3)", "rgba(28,28,30,0.88)", "rgba(28,28,30,0.95)"]} locations={[0, 0.4, 1]} style={{ borderRadius: 16, marginTop: 14, paddingTop: 60, paddingBottom: 24, paddingHorizontal: 20, alignItems: "center" }}>
                 <Text style={{ fontSize: 23, fontWeight: "700", color: "#ffffff", textAlign: "center", marginBottom: 6 }}>{tr.paywall_title}</Text>
-                <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.65)", textAlign: "center", lineHeight: 19, marginBottom: 16 }}>{tr.paywall_sub}</Text>
+                <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.65)", textAlign: "center", lineHeight: 19, marginBottom: 8 }}>{tr.paywall_sub}</Text>
+                {/* Métadata catalogue (Lot 3) — X séances · Y min/h · Avec Sabrina */}
+                <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.78)', textAlign: 'center', letterSpacing: 0.2, marginBottom: 18 }}>{heroMetaIPhone}</Text>
                 <View style={{ alignSelf: "stretch", marginBottom: 12 }}>
                   <GlassButton
                     onPress={function() { onActivateSubscription && onActivateSubscription(); }}
