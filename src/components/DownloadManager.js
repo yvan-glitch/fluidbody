@@ -95,15 +95,27 @@ async function downloadVideo(pilierKey, seanceIndex, onProgress) {
     const result = await downloadResumable.downloadAsync();
     if (!result || !result.uri) throw new Error('Download failed');
 
-    // Read file as base64, encrypt, write
+    // Read file as base64, encrypt, write.
+    //
+    // FORMAT v2 — `"v2|" + verification(16 hex) + "|" + hex(xor(base64))`.
+    // L'ancienne v1 écrivait l'XOR brut comme UTF-8 — mais l'XOR peut produire
+    // les octets \0, \r, \n, etc. qui ne round-trippent PAS via UTF-8 write/read
+    // (NULL truncation, normalisation CRLF). Conséquence : MP4 décrypté
+    // corrompu → AVErrorFileFormatNotRecognized -11829.
+    //
+    // v2 encode l'XOR en hex (chars 0-9, a-f uniquement → 100% UTF-8 safe).
+    // Doublement de taille acceptable (~2.7 MB vidéo → ~7 MB fichier chiffré).
     const key = await getEncryptionKey();
     const base64 = await FileSystem.readAsStringAsync(tempPath, { encoding: FileSystem.EncodingType.Base64 });
 
-    // Simple encryption: prepend key hash to verify on decrypt, XOR the base64 string
     const verification = key.substring(0, 16);
-    const encrypted = verification + '|' + base64.split('').map(function(c, i) {
-      return String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length));
-    }).join('');
+    const hexChars = '0123456789abcdef';
+    let hex = '';
+    for (let i = 0; i < base64.length; i++) {
+      const b = (base64.charCodeAt(i) ^ key.charCodeAt(i % key.length)) & 0xFF;
+      hex += hexChars[(b >> 4) & 0xF] + hexChars[b & 0xF];
+    }
+    const encrypted = 'v2|' + verification + '|' + hex;
 
     await FileSystem.writeAsStringAsync(encPath, encrypted, { encoding: FileSystem.EncodingType.UTF8 });
 
@@ -136,15 +148,11 @@ async function isDownloaded(pilierKey, seanceIndex) {
 
 // Get local video URI (decrypt to temp file for playback).
 //
-// IMPORTANT — bug fix : on splittait au caractère `|` (séparateur entre la
-// verification key et le cipher). Mais le cipher XOR'd peut contenir des
-// octets `|` (codepoint 124) — à peu près certain dans un fichier de
-// plusieurs Mo. `split('|')` tronquait alors le cipher à la première
-// occurrence accidentelle → fichier MP4 corrompu → vidéo ne se charge pas.
-// Fix : utiliser `indexOf('|')` pour ne prendre QUE le 1er séparateur, le
-// reste de la chaîne (y compris les futures occurrences de `|`) appartient
-// au cipher. Récupère aussi les fichiers déjà téléchargés (pas besoin de
-// re-télécharger).
+// Format v2 only : `"v2|" + verification(16 hex) + "|" + hex_cipher`.
+// Les fichiers v1 (XOR brut écrit en UTF-8) sont irrécupérables — l'écriture
+// en UTF-8 mangeait les octets \0 / \r / etc. produits par l'XOR. On les
+// auto-purge (delete .enc + clean cache + remove de la map downloads) pour
+// que l'UI reflète le besoin de re-télécharger.
 async function getLocalVideoUri(pilierKey, seanceIndex) {
   const encPath = getEncPath(pilierKey, seanceIndex);
   const info = await FileSystem.getInfoAsync(encPath);
@@ -153,21 +161,43 @@ async function getLocalVideoUri(pilierKey, seanceIndex) {
   const key = await getEncryptionKey();
   const encrypted = await FileSystem.readAsStringAsync(encPath, { encoding: FileSystem.EncodingType.UTF8 });
 
-  // Verify key + extract cipher (split only on the FIRST '|').
-  const sepIdx = encrypted.indexOf('|');
+  // Détection v2 vs v1. v2 commence toujours par "v2|".
+  if (encrypted.slice(0, 3) !== 'v2|') {
+    // Format v1 (legacy broken) — purge et signale invalide.
+    try { await FileSystem.deleteAsync(encPath, { idempotent: true }); } catch (e) {}
+    try {
+      const all = await getDownloads();
+      delete all[pilierKey + '_' + seanceIndex];
+      await saveDownloads(all);
+    } catch (e) {}
+    return null;
+  }
+
+  // Parse v2 : skip "v2|", indexOf premier '|' suivant = fin de la verification.
+  const rest = encrypted.slice(3);
+  const sepIdx = rest.indexOf('|');
   if (sepIdx < 0) return null;
-  const verification = encrypted.slice(0, sepIdx);
-  const cipher = encrypted.slice(sepIdx + 1);
+  const verification = rest.slice(0, sepIdx);
+  const hex = rest.slice(sepIdx + 1);
   if (verification !== key.substring(0, 16)) return null;
 
-  // Decrypt
-  const decrypted = cipher.split('').map(function(c, i) {
-    return String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length));
-  }).join('');
+  // Hex → byte array, XOR back avec la même séquence key pour reconstruire
+  // les charcodes de la string base64 originale.
+  const len = hex.length >> 1;
+  let base64 = '';
+  for (let i = 0; i < len; i++) {
+    const high = parseInt(hex.charAt(i * 2), 16);
+    const low = parseInt(hex.charAt(i * 2 + 1), 16);
+    if (Number.isNaN(high) || Number.isNaN(low)) return null;
+    const b = ((high << 4) | low) & 0xFF;
+    base64 += String.fromCharCode(b ^ key.charCodeAt(i % key.length));
+  }
 
-  // Write decrypted temp file
+  // Cache invalidation : si un play_X.mp4 existe (vestige d'une ancienne
+  // décryption ratée), on le purge avant d'écrire le frais.
   const tempPath = FileSystem.cacheDirectory + 'play_' + pilierKey + '_' + seanceIndex + '.mp4';
-  await FileSystem.writeAsStringAsync(tempPath, decrypted, { encoding: FileSystem.EncodingType.Base64 });
+  try { await FileSystem.deleteAsync(tempPath, { idempotent: true }); } catch (e) {}
+  await FileSystem.writeAsStringAsync(tempPath, base64, { encoding: FileSystem.EncodingType.Base64 });
 
   return tempPath;
 }
