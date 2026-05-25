@@ -26,7 +26,11 @@ try { Notifications = require('expo-notifications'); } catch (e) {}
 try { Device = require('expo-device'); } catch (e) {}
 
 const HOURS_KEY = 'fluid_session_hours_v1';
-const DEFAULT_HOUR = 18;
+// Default daily reminder hour. Sabrina recommande la pratique matinale
+// (clarté, mise en mouvement avant la journée), donc on défaute à 7h.
+// Si l'utilisateur a fait ≥3 séances et qu'on a un médian fiable,
+// getPreferredHour bascule sur la médiane réelle (cf. logique plus bas).
+const DEFAULT_HOUR = 7;
 const STREAK_PROT_ID_KEY = 'fluid_streak_prot_notif_id';
 const ONBOARDING_NUDGE_KEY = 'fluid_post_onboarding_nudge_scheduled';
 const ONBOARDING_FIRST_OPEN_KEY = 'fluid_first_open_ts';

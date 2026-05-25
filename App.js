@@ -1312,9 +1312,20 @@ async function setupNotifications(lang = 'fr') {
     var pauseEnabled = (await AsyncStorage.getItem('fluid_notif_pause_enabled')) !== 'false';
     var quoteEnabled = (await AsyncStorage.getItem('fluid_quote_enabled')) !== 'false';
     var quoteHour = parseInt(await AsyncStorage.getItem('fluid_quote_hour')) || 8;
-    await safeNativeCall('notif.schedule.dailyMain', function() {
-      return Notifications.scheduleNotificationAsync({ content: { title: tr.notif_title, body: tr.notif_body, sound: true }, trigger: _trigDaily(savedHour, 0) });
-    }, null);
+    // Master toggle pour le rappel quotidien (default ON).
+    var dailyEnabled = (await AsyncStorage.getItem('fluid_notif_daily_enabled')) !== 'false';
+    if (dailyEnabled) {
+      await safeNativeCall('notif.schedule.dailyMain', function() {
+        return Notifications.scheduleNotificationAsync({
+          content: {
+            title: tr.notif_daily_title || tr.notif_title || ('FluidBody ' + U_JELLY),
+            body: tr.notif_daily_body || tr.notif_body || "Sabrina t'attend pour ta pratique du jour " + U_JELLY,
+            sound: true,
+          },
+          trigger: _trigDaily(savedHour, 0),
+        });
+      }, null);
+    }
     // Phrase du jour — Sabrina : rotation quotidienne, re-schedulée à chaque ouverture
     if (quoteEnabled) {
       var quotes = SABRINA_QUOTES[lang] || SABRINA_QUOTES['fr'];

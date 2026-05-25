@@ -86,7 +86,8 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     }
     setShowPairTv(true);
   }
-  var [notifHour, setNotifHour] = useState(9);
+  var [notifHour, setNotifHour] = useState(7);
+  var [dailyEnabled, setDailyEnabled] = useState(true);
   var [pauseEnabled, setPauseEnabled] = useState(true);
   var [quoteEnabled, setQuoteEnabled] = useState(true);
   var [quoteHour, setQuoteHour] = useState(8);
@@ -254,7 +255,8 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   }
 
   useEffect(function() {
-    AsyncStorage.getItem('fluid_notif_hour').then(function(v) { if (v) setNotifHour(parseInt(v) || 9); });
+    AsyncStorage.getItem('fluid_notif_hour').then(function(v) { if (v) setNotifHour(parseInt(v) || 7); });
+    AsyncStorage.getItem('fluid_notif_daily_enabled').then(function(v) { setDailyEnabled(v !== 'false'); });
     AsyncStorage.getItem('fluid_notif_pause_enabled').then(function(v) { setPauseEnabled(v !== 'false'); });
     AsyncStorage.getItem('fluid_quote_enabled').then(function(v) { setQuoteEnabled(v !== 'false'); });
     AsyncStorage.getItem('fluid_quote_hour').then(function(v) { if (v) setQuoteHour(parseInt(v) || 8); });
@@ -831,10 +833,30 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.notif_section || 'Rappels'}</Text>
 
+          {/* Rappel quotidien \u2014 master toggle */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.notif_daily_label || 'Rappel quotidien'}</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 2 }}>{tr.notif_daily_sub || "Sabrina t'attend pour ta pratique du jour"}</Text>
+            </View>
+            <TouchableOpacity
+              accessibilityRole="switch"
+              accessibilityState={{ checked: dailyEnabled }}
+              onPress={function() {
+                var next = !dailyEnabled;
+                setDailyEnabled(next);
+                AsyncStorage.setItem('fluid_notif_daily_enabled', String(next));
+              }}
+              style={{ width: 50, height: 28, borderRadius: 14, backgroundColor: dailyEnabled ? '#AEEF4D' : 'rgba(255,255,255,0.15)', justifyContent: 'center', paddingHorizontal: 2 }}
+            >
+              <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#ffffff', alignSelf: dailyEnabled ? 'flex-end' : 'flex-start' }} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, opacity: dailyEnabled ? 1 : 0.4 }}>
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.notif_hour_label || 'Heure du rappel'}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <TouchableOpacity onPress={function() {
+              <TouchableOpacity disabled={!dailyEnabled} onPress={function() {
                 var h = Math.max(5, notifHour - 1);
                 setNotifHour(h);
                 AsyncStorage.setItem('fluid_notif_hour', String(h));
@@ -842,7 +864,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 <Text style={{ fontSize: 18, color: '#AEEF4D', fontWeight: '700' }}>{'\u2212'}</Text>
               </TouchableOpacity>
               <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text, minWidth: 50, textAlign: 'center' }}>{notifHour}h00</Text>
-              <TouchableOpacity onPress={function() {
+              <TouchableOpacity disabled={!dailyEnabled} onPress={function() {
                 var h = Math.min(22, notifHour + 1);
                 setNotifHour(h);
                 AsyncStorage.setItem('fluid_notif_hour', String(h));
