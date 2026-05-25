@@ -1454,6 +1454,22 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             var left = catCount + (lang === 'fr' ? ' séances' : ' sessions');
             return left + ' · ' + dur + ' · ' + (lang === 'fr' ? 'Avec Sabrina' : 'With Sabrina');
           })();
+
+          // Rangée "Cette semaine" iPhone (Lot 4) — 7 séances suggérées sur
+          // les 7 prochains jours. Biais intention si l'utilisateur a une
+          // intention du jour. Cards avec badge LUN/MAR/... en top-left.
+          var weekSchedule = getThisWeekSchedule(piliers, seancesByKey, { intentionKey: todayIntention, lang: lang });
+          var weekItems = weekSchedule.map(function(e) {
+            return {
+              key: 'wk_' + e.dayIdx + '_' + e.pilier.key + '_' + e.idx,
+              title: e.seance[0],
+              subtitle: e.seance[1] + ' · ' + e.pilier.label,
+              image: pickSessionImage(e.pilier.key, e.idx),
+              badge: { label: e.dayLabel, tone: 'white' },
+              pilier: e.pilier,
+              idx: e.idx,
+            };
+          });
           var favItems = [];
           var favIds = getCachedFavorites() || [];
           for (var i = 0; i < favIds.length; i++) {
@@ -1516,6 +1532,15 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 <SeanceCarouselRow
                   title={lang === 'fr' ? 'Mes favoris' : 'My favorites'}
                   items={favItems}
+                  onItemPress={function(it) { setOpenInitialIdx(it.idx); setOpenPilier(it.pilier); }}
+                />
+              ) : null}
+              {/* Rangée "Cette semaine" iPhone (Lot 4) — planification 7 jours
+                  biaisée par l'intention du jour. Badge LUN/MAR/... blanc. */}
+              {weekItems.length > 0 ? (
+                <SeanceCarouselRow
+                  title={lang === 'fr' ? 'Cette semaine' : 'This week'}
+                  items={weekItems}
                   onItemPress={function(it) { setOpenInitialIdx(it.idx); setOpenPilier(it.pilier); }}
                 />
               ) : null}
