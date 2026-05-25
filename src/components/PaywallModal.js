@@ -46,22 +46,6 @@ function withPeriod(s, suffix) {
   return `${s}${suffix}`;
 }
 
-// Bénéfices listés sur le paywall. Petites icônes inline pour éviter
-// d'ajouter une dep d'icônes ici — on reste cohérents avec le reste du repo.
-function BulletCheck() {
-  return (
-    <View style={{
-      width: 22, height: 22, borderRadius: 11,
-      backgroundColor: 'rgba(174,239,77,0.18)',
-      borderWidth: 1, borderColor: 'rgba(174,239,77,0.45)',
-      alignItems: 'center', justifyContent: 'center',
-      marginRight: 12,
-    }}>
-      <Text style={{ color: '#AEEF4D', fontWeight: '800', fontSize: 12, marginTop: -1 }}>✓</Text>
-    </View>
-  );
-}
-
 function localeFromLang(lang) {
   const l = (lang || 'fr').toLowerCase();
   if (l.indexOf('fr') === 0) return 'fr-FR';
@@ -592,38 +576,43 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
         style={{ flex: 1 }}
       >
         <GlassView
-          intensity={60}
+          intensity={28}
+          tint="dark"
+          forceDark
           borderRadius={GLASS_RADII.card}
-          substrateColor={active ? theme.glass.substrateAccent : theme.glass.substrate}
+          substrateColor={active ? 'rgba(174,239,77,0.10)' : 'rgba(0,0,0,0.35)'}
           contentStyle={{
-            paddingVertical: 16,
-            paddingHorizontal: 16,
+            paddingVertical: 18,
+            paddingHorizontal: 18,
             alignItems: 'flex-start',
             justifyContent: 'center',
-            minHeight: 132,
+            minHeight: 134,
+            borderWidth: active ? 1.5 : 1,
+            borderColor: active ? 'rgba(174,239,77,0.65)' : 'rgba(255,255,255,0.15)',
+            borderRadius: GLASS_RADII.card,
           }}
         >
           {/* Ligne 1 — label de plan + radio à droite */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', marginBottom: 6 }}>
-            <Text style={{ flex: 1, fontSize: 14, fontWeight: '700', color: active ? theme.colors.accentText : theme.colors.text, letterSpacing: -0.1 }}>{label}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', marginBottom: 8 }}>
+            <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.78)', letterSpacing: 0.2, textTransform: 'uppercase' }}>{label}</Text>
             <View style={{
               width: 18, height: 18, borderRadius: 9,
               borderWidth: 1.5,
-              borderColor: active ? theme.colors.accent : 'rgba(255,255,255,0.45)',
+              borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.4)',
               alignItems: 'center', justifyContent: 'center',
             }}>
-              {active && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.accent }} />}
+              {active && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#AEEF4D' }} />}
             </View>
           </View>
-          {/* Ligne 2 — grand prix d'introduction */}
-          <Text style={{ fontSize: 22, fontWeight: '800', color: theme.colors.text, letterSpacing: -0.6 }}>{priceText}</Text>
+          {/* Ligne 2 — grand prix d'introduction (Apple SF Pro feel) */}
+          <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.7 }}>{priceText}</Text>
           {/* Ligne 3 — sous-titre "Tarif fondateur · 3 premiers mois / 1re année" */}
           {introSub ? (
-            <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.accentText, letterSpacing: 0.1, marginTop: 4 }}>{introSub}</Text>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: '#AEEF4D', letterSpacing: 0.2, marginTop: 4 }}>{introSub}</Text>
           ) : null}
           {/* Ligne 4 — small print "Puis 24.90 CHF/mois" / "Puis 199 CHF/an" */}
           {thenText ? (
-            <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.textTertiary, marginTop: 6 }}>{thenText}</Text>
+            <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.5)', marginTop: 8, letterSpacing: 0.1 }}>{thenText}</Text>
           ) : null}
           {/* Pill éco — uniquement annuel, outline lime sobre */}
           {savingsLabel ? (
@@ -697,8 +686,8 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 <Text style={{ fontSize: 18, fontWeight: '900', color: '#AEEF4D', letterSpacing: 3 }}>FLUIDBODY</Text>
                 <AnimatedPlus style={{ fontSize: 18, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
               </View>
-              <Text style={{ fontSize: 30, fontWeight: '800', color: '#ffffff', lineHeight: 34, letterSpacing: -0.4 }}>{heroTitle}</Text>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.86)', lineHeight: 20, marginTop: 10 }}>{heroSub}</Text>
+              <Text style={{ fontSize: 32, fontWeight: '800', color: '#ffffff', lineHeight: 38, letterSpacing: -0.6 }}>{heroTitle}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '400', color: 'rgba(255,255,255,0.78)', lineHeight: 22, letterSpacing: -0.1, marginTop: 12 }}>{heroSub}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#AEEF4D' }} />
                 <AnimatedCount to={liveMembers} lang={lang} style={{ fontSize: 14, fontWeight: '800', color: '#ffffff' }} />
@@ -709,12 +698,13 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
             </View>
           </View>
 
-          {/* Carte centrale — c'est l'élément qui doit "respirer" Liquid Glass */}
-          <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
+          {/* Carte centrale — Apple Music style : surface frostée sobre,
+              généreusement aérée. Le contenu respire entre les blocs. */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 28 }}>
             <GlassCard
               intensity={75}
               borderRadius={GLASS_RADII.cardLg}
-              padding={20}
+              padding={24}
               elevated
             >
               {/* Bandeau "OFFRE FONDATEUR" — frosted (BlurView via GlassView),
@@ -770,16 +760,16 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 </View>
               ) : null}
               {/* Bénéfices founder — pas d'emoji, pas de check coloré.
-                  Bullet `•` blanc sobre + texte aéré. Le ton reste calme. */}
-              <View style={{ marginBottom: 22, marginTop: 4 }}>
+                  Bullet `•` sobre + texte aéré. Le ton reste calme. */}
+              <View style={{ marginBottom: 24, marginTop: 4 }}>
                 {founderBullets.map(function (b, i) {
                   const text = typeof b === 'string' ? b : (b && b.text) || '';
                   return (
                     <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: i === founderBullets.length - 1 ? 0 : 12 }}>
                       <View style={{ width: 14, alignItems: 'center', marginRight: 10, marginTop: 2 }}>
-                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.55)' }} />
+                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: theme.colors.textTertiary }} />
                       </View>
-                      <Text style={{ flex: 1, fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: '400', letterSpacing: -0.1, lineHeight: 20 }}>{text}</Text>
+                      <Text style={{ flex: 1, fontSize: 14, color: theme.colors.text, fontWeight: '400', letterSpacing: -0.1, lineHeight: 20 }}>{text}</Text>
                     </View>
                   );
                 })}
@@ -810,43 +800,43 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 )}
               </View>
 
-              {/* CTA principal */}
+              {/* CTA principal — capsule frostée Apple Music style. Lime
+                  semi-transparent dessous + voile blanc, texte blanc.
+                  GlassButton 'accent' gère déjà le press scale + haptique. */}
               <GlassButton
                 variant="accent"
                 size="lg"
                 onPress={onCta}
                 disabled={disabled || loadingPrices}
                 loading={loadingPrices}
-                textStyle={{ fontSize: 16, fontWeight: '800', letterSpacing: -0.2 }}
+                textStyle={{ fontSize: 17, fontWeight: '700', letterSpacing: -0.3 }}
                 accessibilityLabel={`${ctaLabel} ${selectedPrice}`}
               >
                 {ctaLabel}
               </GlassButton>
-              <Text style={{ fontSize: 12, fontWeight: '500', color: theme.colors.textSecondary, textAlign: 'center', marginTop: 10 }}>{selectedPrice}</Text>
-              {/* Urgency soft + guarantee — la rareté reste un message
-                  posé (cap 500), pas un compte à rebours agressif. */}
-              <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 8, letterSpacing: 0.2 }}>
-                {tr.paywall_founder_urgency || (isFr
-                  ? ('Tarif limité aux ' + FOUNDER_MEMBER_CAP + ' premiers membres')
-                  : ('Limited price for the first ' + FOUNDER_MEMBER_CAP + ' members'))}
-              </Text>
-              {/* Pill garantie 7 jours — sans emoji, bordure lime sobre,
-                  centré. Outline plutôt que remplissage saturé. */}
+              <Text style={{ fontSize: 12, fontWeight: '500', color: theme.colors.textSecondary, textAlign: 'center', marginTop: 14, letterSpacing: 0.1 }}>{selectedPrice}</Text>
+              {/* Urgency soft + guarantee — outline lime sobre. Tout est
+                  centré et aéré, on évite l'effet "wall of pills". */}
               <View style={{
-                marginTop: 14,
+                marginTop: 18,
                 alignSelf: 'center',
                 paddingHorizontal: 14,
                 paddingVertical: 7,
                 borderRadius: 999,
-                backgroundColor: 'rgba(255,255,255,0.04)',
+                backgroundColor: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)',
                 borderWidth: 1,
                 borderColor: 'rgba(174,239,77,0.5)',
               }}>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: '#AEEF4D', letterSpacing: 0.3 }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.accentText, letterSpacing: 0.3 }}>
                   {tr.paywall_guarantee_pill || 'Annule sans frais dans les 7 premiers jours'}
                 </Text>
               </View>
-              <Text style={{ fontSize: 10, fontWeight: '500', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 8, lineHeight: 14 }}>
+              <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 14, letterSpacing: 0.2 }}>
+                {tr.paywall_founder_urgency || (isFr
+                  ? ('Tarif limité aux ' + FOUNDER_MEMBER_CAP + ' premiers membres')
+                  : ('Limited price for the first ' + FOUNDER_MEMBER_CAP + ' members'))}
+              </Text>
+              <Text style={{ fontSize: 11, fontWeight: '400', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 6, lineHeight: 16, letterSpacing: 0.1 }}>
                 {tr.paywall_founder_legal || (isFr
                   ? 'Aucun engagement, annulable à tout moment depuis tes Réglages Apple'
                   : 'No commitment, cancel anytime from your Apple Settings')}
