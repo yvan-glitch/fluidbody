@@ -1,4 +1,12 @@
-import * as FileSystem from 'expo-file-system';
+// Expo SDK 54 : les méthodes async (`getInfoAsync`, `downloadAsync`,
+// `readAsStringAsync`, `writeAsStringAsync`, `makeDirectoryAsync`,
+// `deleteAsync`, `createDownloadResumable`, …) ont été dépréciées du
+// module principal et déplacées vers `expo-file-system/legacy`. La nouvelle
+// API (`File` / `Directory` classes) sera adoptée quand on aura le temps
+// de réécrire DownloadManager autour. Pour l'instant on garde le path
+// migration officiel — comportement identique, zéro changement au reste
+// du code de ce fichier.
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Crypto from 'expo-crypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
