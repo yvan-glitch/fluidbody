@@ -536,33 +536,33 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   const testimonials = Array.isArray(tr.paywall_testimonials) ? tr.paywall_testimonials : null;
   const compareFeatures = Array.isArray(tr.paywall_compare_features) ? tr.paywall_compare_features : null;
 
-  // Founder copy : nouveau titre/sous-titre + bullets enrichis (icône + texte).
+  // Founder copy — offre d'introduction (3 mois mensuel, 1re année annuel).
+  // Aucun emoji, ton posé, pas de comparaison concurrence.
   const heroTitle = tr.paywall_founder_hero_title || (isFr ? 'Rejoins les fondateurs FluidBody+' : 'Join the FluidBody+ founders');
   const heroSub = tr.paywall_founder_hero_sub || (isFr
-    ? 'Le Pilates conscient de Sabrina, sur tous tes écrans. Pour la moitié du prix, à vie.'
-    : "Sabrina's conscious Pilates, on every screen. For half the price, for life.");
+    ? 'Le Pilates conscient de Sabrina, sur tous tes écrans. Tarif fondateur pour les premiers membres.'
+    : "Sabrina's conscious Pilates, on every screen. Founder pricing for the first members.");
   const annualLabel = isFr ? 'Annuel' : 'Annual';
-  const annualSub = isFr ? '12 mois pour le prix de 8' : '12 months for the price of 8';
   const monthlyLabel = isFr ? 'Mensuel' : 'Monthly';
   const ctaLabel = tr.paywall_founder_cta || (isFr ? 'Commencer 7 jours gratuits' : 'Start 7 free days');
 
   const founderBullets = Array.isArray(tr.paywall_founder_bullets) && tr.paywall_founder_bullets.length > 0
     ? tr.paywall_founder_bullets
     : (isFr ? [
-        { icon: '✨', text: '9 piliers de Pilates conscient' },
-        { icon: '🎬', text: 'iPhone + Apple TV inclus' },
-        { icon: '👩‍🏫', text: 'Guidé par Sabrina, 30 ans de pratique' },
-        { icon: '🌍', text: 'Disponible en 4 langues' },
-        { icon: '🪼', text: 'Sabrina IA personnalisée (à venir)' },
+        '9 piliers de Pilates conscient',
+        'iPhone et Apple TV inclus',
+        'Guidé par Sabrina, 30 ans de pratique',
+        'Disponible en quatre langues',
+        'Sabrina IA personnalisée — à venir',
       ] : [
-        { icon: '✨', text: '9 pillars of conscious Pilates' },
-        { icon: '🎬', text: 'iPhone + Apple TV included' },
-        { icon: '👩‍🏫', text: 'Guided by Sabrina, 30 years of practice' },
-        { icon: '🌍', text: 'Available in 4 languages' },
-        { icon: '🪼', text: 'Personalised Sabrina AI (coming soon)' },
+        '9 pillars of conscious Pilates',
+        'iPhone and Apple TV included',
+        'Guided by Sabrina, 30 years of practice',
+        'Available in four languages',
+        'Personalised Sabrina AI — coming soon',
       ]);
 
-  // Prix de référence (standard) affichés barrés à côté du prix founder.
+  // Prix de référence (standard) affichés barrés à côté du prix d'introduction.
   const standardMonthlyStr = formatPriceCHF(STANDARD_PRICES.monthly, isFr ? 'fr' : 'en');
   const standardYearlyStr  = formatPriceCHF(STANDARD_PRICES.yearly,  isFr ? 'fr' : 'en');
 
@@ -716,29 +716,28 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               padding={20}
               elevated
             >
-              {/* Bandeau "PRIX FONDATEUR" — gradient lime → vert, animé
-                  via AnimatedPlus déjà importé. Source d'info : iap.js
-                  (FOUNDER_SAVINGS.annualVsMonthlyStandardCHF = 200 CHF/an). */}
-              <View style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(174,239,77,0.55)' }}>
-                <LinearGradient
-                  colors={['rgba(174,239,77,0.32)', 'rgba(60,200,90,0.28)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{ paddingVertical: 12, paddingHorizontal: 14 }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                    <Text style={{ fontSize: 16, marginRight: 8 }}>🎯</Text>
-                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#AEEF4D', letterSpacing: 1.4 }}>
-                      {tr.paywall_founder_tag || (isFr ? 'PRIX FONDATEUR' : 'FOUNDER PRICE')}
-                    </Text>
-                  </View>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#ffffff', lineHeight: 18 }}>
-                    {tr.paywall_founder_banner_sub || (isFr
-                      ? ('Économise ' + FOUNDER_SAVINGS.annualVsMonthlyStandardCHF + ' CHF/an à vie en rejoignant les premiers membres')
-                      : ('Save ' + FOUNDER_SAVINGS.annualVsMonthlyStandardCHF + ' CHF/year for life by joining the first members'))}
-                  </Text>
-                </LinearGradient>
-              </View>
+              {/* Bandeau "OFFRE FONDATEUR" — frosted (BlurView via GlassView),
+                  sobre, sans emoji. Le texte explique la structure
+                  (3 mois / 1re année) sans promesse "à vie". Bordure
+                  lime fine pour signaler l'accent sans crier. */}
+              <GlassView
+                intensity={30}
+                tint="dark"
+                forceDark
+                borderRadius={16}
+                substrateColor="rgba(255,255,255,0.05)"
+                contentStyle={{ paddingVertical: 16, paddingHorizontal: 18, borderWidth: 1.5, borderColor: 'rgba(174,239,77,0.55)', borderRadius: 16 }}
+                style={{ marginBottom: 18 }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '900', color: '#AEEF4D', letterSpacing: 1.8, marginBottom: 8 }}>
+                  {tr.paywall_founder_tag || (isFr ? 'OFFRE FONDATEUR' : 'FOUNDER OFFER')}
+                </Text>
+                <Text style={{ fontSize: 13, fontWeight: '500', color: '#ffffff', lineHeight: 20, letterSpacing: -0.1 }}>
+                  {isFr
+                    ? 'Mensuel — 12.90 CHF/mois les 3 premiers mois, puis 24.90.\nAnnuel — 99 CHF la première année, puis 199.'
+                    : 'Monthly — 12.90 CHF/mo for the first 3 months, then 24.90.\nYearly — 99 CHF the first year, then 199.'}
+                </Text>
+              </GlassView>
               {/* Bandeau bonus parrainage — uniquement si l'utilisateur a
                   des mois gratuits en attente (filleule qui a un parrain,
                   ou parrain dont une amie vient de s'abonner). Visuel
@@ -757,7 +756,6 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                   flexDirection: 'row',
                   alignItems: 'center',
                 }}>
-                  <Text style={{ fontSize: 22, marginRight: 10 }}>🎁</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.accentText, letterSpacing: -0.1, marginBottom: 2 }}>
                       {tr.paywall_referral_bonus_title || 'Tu as un bonus en attente'}
@@ -770,17 +768,17 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                   </View>
                 </View>
               ) : null}
-              {/* Bénéfices founder : icône (emoji) + texte. Un poil plus
-                  riche que des checks ; le ton reste posé (la conversion
-                  vient du bandeau d'éco + du prix barré, pas du push). */}
-              <View style={{ marginBottom: 18 }}>
+              {/* Bénéfices founder — pas d'emoji, pas de check coloré.
+                  Bullet `•` blanc sobre + texte aéré. Le ton reste calme. */}
+              <View style={{ marginBottom: 22, marginTop: 4 }}>
                 {founderBullets.map(function (b, i) {
+                  const text = typeof b === 'string' ? b : (b && b.text) || '';
                   return (
-                    <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: i === founderBullets.length - 1 ? 0 : 10 }}>
-                      <View style={{ width: 28, alignItems: 'center', marginRight: 10, marginTop: 1 }}>
-                        <Text style={{ fontSize: 18 }}>{b.icon || '•'}</Text>
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: i === founderBullets.length - 1 ? 0 : 12 }}>
+                      <View style={{ width: 14, alignItems: 'center', marginRight: 10, marginTop: 2 }}>
+                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.55)' }} />
                       </View>
-                      <Text style={{ flex: 1, fontSize: 14, color: theme.colors.text, fontWeight: '500', letterSpacing: -0.1, lineHeight: 19 }}>{b.text}</Text>
+                      <Text style={{ flex: 1, fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: '400', letterSpacing: -0.1, lineHeight: 20 }}>{text}</Text>
                     </View>
                   );
                 })}
@@ -795,20 +793,6 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
                 {planPill('yearly', annualLabel, annualSub, yearlyDisplay, standardYearlyStr, FOUNDER_SAVINGS.yearlyVsStandardPct)}
                 {planPill('monthly', monthlyLabel, null, monthlyDisplay, standardMonthlyStr, null)}
-              </View>
-
-              {/* Ligne comparative douce : positionnement vs marché.
-                  Pas de bashing — on cite Speir factuel + nous, c'est tout. */}
-              <View style={{ marginBottom: 14, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)' }}>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
-                  {tr.paywall_founder_compare_title || (isFr ? 'Comparé au marché' : 'Compared to the market')}
-                </Text>
-                <Text style={{ fontSize: 12, color: theme.colors.textSecondary, lineHeight: 18 }}>
-                  {tr.paywall_founder_compare_speir || 'Speir · CHF 26.67/mois — Mat uniquement'}
-                </Text>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.accentText, lineHeight: 18, marginTop: 2 }}>
-                  {tr.paywall_founder_compare_us || 'FluidBody+ Fondateur · CHF 12.90/mois — 9 piliers + IA'}
-                </Text>
               </View>
 
               {/* CTA principal */}
@@ -831,21 +815,19 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                   ? ('Tarif limité aux ' + FOUNDER_MEMBER_CAP + ' premiers membres')
                   : ('Limited price for the first ' + FOUNDER_MEMBER_CAP + ' members'))}
               </Text>
+              {/* Pill garantie 7 jours — sans emoji, bordure lime sobre,
+                  centré. Outline plutôt que remplissage saturé. */}
               <View style={{
-                marginTop: 12,
+                marginTop: 14,
                 alignSelf: 'center',
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 14,
-                backgroundColor: 'rgba(174,239,77,0.14)',
+                paddingHorizontal: 14,
+                paddingVertical: 7,
+                borderRadius: 999,
+                backgroundColor: 'rgba(255,255,255,0.04)',
                 borderWidth: 1,
-                borderColor: 'rgba(174,239,77,0.4)',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
+                borderColor: 'rgba(174,239,77,0.5)',
               }}>
-                <Text style={{ fontSize: 12, color: '#AEEF4D' }}>🛡</Text>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.accentText, letterSpacing: 0.2 }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: '#AEEF4D', letterSpacing: 0.3 }}>
                   {tr.paywall_guarantee_pill || 'Annule sans frais dans les 7 premiers jours'}
                 </Text>
               </View>
