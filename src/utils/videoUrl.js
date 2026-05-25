@@ -21,15 +21,20 @@ export function buildSessionId(pilierKey, seanceIndex) {
   return `${pilierKey}_${seanceIndex}`;
 }
 
-function cacheKey(sessionId, kind, lang) {
-  return lang ? `${sessionId}|${kind}|${lang}` : `${sessionId}|${kind}`;
+function cacheKey(sessionId, kind, lang, quality) {
+  const base = lang ? `${sessionId}|${kind}|${lang}` : `${sessionId}|${kind}`;
+  return quality ? `${base}|${quality}` : base;
 }
 
-export async function getSignedVideoUrl(sessionId, kind = 'mp4', lang) {
+// `quality` (optionnel) : 'eco' | 'standard' | 'hd'. L'edge function
+// sign-video-url peut adapter le bunny_path (variant 480p/720p/1080p) si
+// les variants sont publiés ; sinon elle renvoie l'URL standard pour
+// toutes les qualités (l'UI marche, le backend suivra).
+export async function getSignedVideoUrl(sessionId, kind = 'mp4', lang, quality) {
   if (!sessionId) throw new Error('sessionId required');
   if (!supabase) throw new Error('Supabase non configuré');
 
-  const key = cacheKey(sessionId, kind, lang);
+  const key = cacheKey(sessionId, kind, lang, quality);
   const now = Date.now();
   const cached = cache.get(key);
   if (cached && cached.expiresAt - SAFETY_MARGIN_MS > now) return cached.url;
@@ -43,8 +48,10 @@ export async function getSignedVideoUrl(sessionId, kind = 'mp4', lang) {
     if (!session) throw new Error('not-signed-in');
 
     function callSign(accessToken) {
+      const body = { session_id: sessionId, kind, lang };
+      if (quality) body.quality = quality;
       return supabase.functions.invoke('sign-video-url', {
-        body: { session_id: sessionId, kind, lang },
+        body: body,
         headers: { Authorization: `Bearer ${accessToken}` },
       });
     }

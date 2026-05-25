@@ -127,7 +127,14 @@ export default function TheorieDetailScreen({ pilier, items, lang, isSubscriber,
                     le parent. Position absolue à droite, centré verticalement. */}
                 {!IS_TV && !noVideo ? (
                   <View style={{ position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' }}>
-                    <DownloadButton pilierKey={pilier.key} idx={idx} lang={lang} size={32} disabled={locked} />
+                    <DownloadButton
+                      pilierKey={pilier.key}
+                      idx={idx}
+                      lang={lang}
+                      size={32}
+                      disabled={locked}
+                      durationMin={(function() { var m = String(duree || '').match(/\d+/); return m ? parseInt(m[0], 10) : null; })()}
+                    />
                   </View>
                 ) : null}
               </View>

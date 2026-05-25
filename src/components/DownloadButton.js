@@ -11,7 +11,7 @@
 // iPhone-only — la TV passe directement au stream signé (pas de download).
 
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, Animated, Easing } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Animated, Easing, Platform, ActionSheetIOS } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import {
@@ -34,7 +34,58 @@ function useDownloadState(pilierKey, idx) {
   return getDownloadEntry(pilierKey, idx) || null;
 }
 
-export default function DownloadButton({ pilierKey, idx, lang, disabled, size = 30, style }) {
+// Estimation taille MP4 par minute (heuristique, indicative). Servira au
+// menu de qualité quand on n'a pas de download précédent à observer.
+// - Eco (480p) : ~3 MB/min
+// - Standard (720p) : ~6 MB/min
+// - HD (1080p) : ~12 MB/min
+function estimateSizeMB(quality, minutes) {
+  const perMin = quality === 'eco' ? 3 : quality === 'hd' ? 12 : 6;
+  return Math.round(perMin * (minutes || 12));
+}
+
+function showQualityPicker(opts) {
+  // opts : { isFr, durationMin, onPick(quality: 'eco'|'standard'|'hd') }
+  const isFr = !!opts.isFr;
+  const dur = opts.durationMin || 12;
+  const optionEco = (isFr ? 'Économique' : 'Economy') + ' (~' + estimateSizeMB('eco', dur) + ' MB)';
+  const optionStd = (isFr ? 'Standard' : 'Standard') + ' (~' + estimateSizeMB('standard', dur) + ' MB)';
+  const optionHd  = (isFr ? 'HD' : 'HD') + ' (~' + estimateSizeMB('hd', dur) + ' MB)';
+  const optionCancel = isFr ? 'Annuler' : 'Cancel';
+  const title = isFr ? 'Qualité du téléchargement' : 'Download quality';
+  const message = isFr
+    ? 'Choisis la qualité. Eco économise de l\'espace, HD garde la meilleure définition.'
+    : 'Pick a quality. Eco saves space, HD keeps the best definition.';
+
+  if (Platform.OS === 'ios' && ActionSheetIOS && ActionSheetIOS.showActionSheetWithOptions) {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        title: title,
+        message: message,
+        options: [optionEco, optionStd, optionHd, optionCancel],
+        cancelButtonIndex: 3,
+        userInterfaceStyle: 'dark',
+      },
+      function (i) {
+        if (i === 0) opts.onPick('eco');
+        else if (i === 1) opts.onPick('standard');
+        else if (i === 2) opts.onPick('hd');
+      }
+    );
+    return;
+  }
+  // Fallback Android / web — Alert.alert.
+  Alert.alert(title, message, [
+    { text: optionEco, onPress: function () { opts.onPick('eco'); } },
+    { text: optionStd, onPress: function () { opts.onPick('standard'); } },
+    { text: optionHd,  onPress: function () { opts.onPick('hd'); } },
+    { text: optionCancel, style: 'cancel' },
+  ]);
+}
+
+// `durationMin` (optionnel) : minutes de la séance, utilisé pour
+// l'estimation de taille affichée dans l'ActionSheet de qualité.
+export default function DownloadButton({ pilierKey, idx, lang, disabled, size = 30, style, durationMin }) {
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   const state = useDownloadState(pilierKey, idx);
   const status = state && state.status;
@@ -78,8 +129,13 @@ export default function DownloadButton({ pilierKey, idx, lang, disabled, size = 
       );
       return;
     }
-    // idle / error → relance un download.
-    startDownload(pilierKey, idx);
+    // idle / error → ActionSheet de qualité, puis startDownload avec le
+    // choix. L'utilisateur peut annuler (rien ne se passe).
+    showQualityPicker({
+      isFr: isFr,
+      durationMin: durationMin,
+      onPick: function (quality) { startDownload(pilierKey, idx, quality); },
+    });
   }
 
   const accent = '#AEEF4D';
