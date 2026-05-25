@@ -201,24 +201,27 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
     return { key: 'pv2_' + p.key, title: p.label, subtitle: '', image: PILIER_IMAGES[p.key], pilier: p };
   });
 
-  // Métadonnées enrichies sous le titre : nombre de séances pratiques avec
-  // vidéo + minutes totales + "Avec Sabrina". On scanne `seancesByKey`
-  // une fois (les piliers/seances ne changent pas au runtime).
+  // Métadonnées enrichies sous le titre : nombre total de séances du
+  // catalogue + minutes totales + "Avec Sabrina". On compte TOUT (pas de
+  // filtre vidéo — sinon on affichait "0 séances" tant que peu de vidéos
+  // étaient tournées). Parser de durée gère "12 min" et "1'59''" :
+  // X'YY'' → X + YY/60 minutes.
   const heroMeta = (function () {
     let count = 0;
-    let totalMin = 0;
+    let totalMinDecimal = 0;
     (piliers || []).forEach(function (p) {
       const arr = (seancesByKey && seancesByKey[p.key]) || [];
       arr.forEach(function (s) {
         if (!s) return;
-        const etape = s[2];
-        if (etape === 'Comprendre' || etape === 'Ressentir') return; // pratiques uniquement
-        if (!s[3]) return; // vidéo dispo seulement
         count += 1;
-        const m = String(s[1] || '').match(/\d+/);
-        if (m) totalMin += parseInt(m[0], 10);
+        const raw = String(s[1] || '');
+        const ap = raw.match(/(\d+)\s*'\s*(\d+)/);
+        if (ap) { totalMinDecimal += parseInt(ap[1], 10) + parseInt(ap[2], 10) / 60; return; }
+        const m = raw.match(/(\d+)/);
+        if (m) totalMinDecimal += parseInt(m[1], 10);
       });
     });
+    const totalMin = Math.round(totalMinDecimal);
     const hours = Math.round(totalMin / 60);
     const minLabel = hours >= 2
       ? (hours + (isFr ? ' h de pratique' : ' h of practice'))
