@@ -1444,12 +1444,11 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   });
   const [streak, setStreak] = useState(0);
   const [isSubscriber, setIsSubscriber] = useState(false);
-  const ADMIN_EMAILS = [
-    'qcrm6vkbnx@privaterelay.appleid.com',
-    'xvan06@gmail.com',
-    'yvan.tissot@icloud.com',
-    'sabrina.tissot@icloud.com',
-  ];
+  // Allowlist d'emails qui bypass IAP. Réduit à un seul email dédié
+  // (utilisé pour la review Apple + admin officiel). À sortir en env var
+  // / Supabase row à terme — pour l'instant hardcodé pour ne pas bloquer
+  // la submission.
+  const ADMIN_EMAILS = ['admin@fluidbody.ch'];
   const isAdmin = !!(supaUser && supaUser.email && ADMIN_EMAILS.indexOf(supaUser.email.toLowerCase()) !== -1);
   const effectiveIsSubscriber = isSubscriber || isAdmin;
   const [paywallVisible, setPaywallVisible] = useState(false);
