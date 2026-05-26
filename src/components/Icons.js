@@ -81,14 +81,38 @@ export function IconStar(props) {
 }
 
 export function IconJellyfish(props) {
-  // count_10 / brand méduse — dome + 3 tentacles.
-  const s = stroke(props);
+  // count_10 / brand méduse — minimalist silhouette logo.
+  // Organic dome closed with five gentle scallops along its rim; from each
+  // scallop apex a Bézier tentacle descends with a soft undulation, center
+  // tentacle longest, sides progressively shorter. Three thin radial canals
+  // suggest the mantle anatomy without adding noise at row-icon sizes.
+  // Bell carries a translucent accent fill so the silhouette reads as a
+  // glassy dome while staying outline-coherent with the rest of the family.
+  const c = props.color || LIME;
+  const size = props.size || 24;
+  const sw = props.strokeWidth || 1.7;
   return (
-    <Svg {...base(props)}>
-      <Path {...s} d="M4 11 C 4 6, 8 3, 12 3 C 16 3, 20 6, 20 11 H 4 Z" />
-      <Path {...s} d="M7 14 C 7 17, 9 18, 9 21" />
-      <Path {...s} d="M12 14 V 21" />
-      <Path {...s} d="M17 14 C 17 17, 15 18, 15 21" />
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Bell — dome + 5-scallop rim, translucent accent fill. */}
+      <Path
+        d="M4 12 C 4 6 8 3 12 3 C 16 3 20 6 20 12 Q 18.4 13 16.8 12 Q 15.2 13 13.6 12 Q 12 13 10.4 12 Q 8.8 13 7.2 12 Q 5.6 13 4 12 Z"
+        stroke={c}
+        strokeWidth={sw}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={c}
+        fillOpacity={0.15}
+      />
+      {/* Radial canals — thin, half-opacity. */}
+      <Path d="M9 5 C 8.5 7 8.5 9 9 11" stroke={c} strokeWidth={1} strokeOpacity={0.5} strokeLinecap="round" fill="none" />
+      <Path d="M12 4 V 11" stroke={c} strokeWidth={1} strokeOpacity={0.5} strokeLinecap="round" fill="none" />
+      <Path d="M15 5 C 15.5 7 15.5 9 15 11" stroke={c} strokeWidth={1} strokeOpacity={0.5} strokeLinecap="round" fill="none" />
+      {/* Tentacles — five flowing curves, varied lengths (center longest). */}
+      <Path d="M5.6 13 C 5.6 15 4.8 16 5.2 17.5 C 5.6 18.5 5 19 5.4 19.5" stroke={c} strokeWidth={1.4} strokeLinecap="round" fill="none" />
+      <Path d="M8.8 13 C 8.8 15 9.4 16.5 8.6 18 C 8 19.5 9 20.5 8.4 21" stroke={c} strokeWidth={1.4} strokeLinecap="round" fill="none" />
+      <Path d="M12 13 C 12 15 11.2 16.5 12 18.5 C 12.8 20 12 21 12 22" stroke={c} strokeWidth={1.4} strokeLinecap="round" fill="none" />
+      <Path d="M15.2 13 C 15.2 15 14.6 16.5 15.4 18 C 16 19.5 15 20.5 15.6 21" stroke={c} strokeWidth={1.4} strokeLinecap="round" fill="none" />
+      <Path d="M18.4 13 C 18.4 15 19.2 16 18.8 17.5 C 18.4 18.5 19 19 18.6 19.5" stroke={c} strokeWidth={1.4} strokeLinecap="round" fill="none" />
     </Svg>
   );
 }
