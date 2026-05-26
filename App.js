@@ -659,6 +659,7 @@ function Progresser({ done, lang, tensionIdxs }) {
 import ProfilScreen from './src/screens/Profil';
 import MesTelechargements from './src/screens/MesTelechargements';
 import PreferencesScreen from './src/screens/Preferences';
+import AchievementsScreen from './src/screens/Achievements';
 import { primePreferencesCache } from './src/utils/userPreferences';
 
 
@@ -1511,6 +1512,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [showSabrinaProfile, setShowSabrinaProfile] = useState(false);
   const [showDownloads, setShowDownloads] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
   const [pendingDownloadOpen, setPendingDownloadOpen] = useState(null); // { pilier, idx } pour ouvrir VideoPlayer depuis MesTelechargements
 
   // Précharge le cache des préférences au mount pour que les composants
@@ -2085,7 +2087,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
               } catch (e) {
                 Alert.alert('FluidBody+', e?.message || 'Erreur de déconnexion.');
               }
-            }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onOpenSabrina={() => setShowSabrinaProfile(true)} onOpenDownloads={() => setShowDownloads(true)} onOpenPreferences={() => setShowPreferences(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
+            }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onOpenSabrina={() => setShowSabrinaProfile(true)} onOpenAchievements={() => setShowAchievements(true)} onOpenDownloads={() => setShowDownloads(true)} onOpenPreferences={() => setShowPreferences(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
           </Tab.Navigator>
         </NavigationContainer>
       )}
@@ -2099,6 +2101,13 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           visible={showPreferences}
           lang={lang}
           onClose={function() { setShowPreferences(false); }}
+        />
+      </Modal>
+      <Modal visible={showAchievements} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setShowAchievements(false); }}>
+        <AchievementsScreen
+          visible={showAchievements}
+          lang={lang}
+          onClose={function() { setShowAchievements(false); }}
         />
       </Modal>
       <Modal visible={showDownloads} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setShowDownloads(false); }}>

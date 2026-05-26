@@ -22,6 +22,7 @@ import { getPiliers } from '../utils';
 import { getMyReferralCode, getReferralStats } from '../utils/referrals';
 import calendarUtil from '../utils/calendar';
 import { deleteMyAccount } from '../utils/accountDeletion';
+import { ACHIEVEMENTS, getUnlockedSync, subscribe as subscribeAchievements } from '../utils/achievements';
 
 // Safe-require expo-clipboard pour le tap-to-copy. Si le module n'est
 // pas dispo (Expo Go ou ancien build), on retombe sur Share.share — qui
@@ -65,7 +66,7 @@ function StatsBarsIcon({ color, size }) {
 // ne demande pas explicitement le pairage).
 let _PairAppleTV = null;
 
-function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onOpenStatistics, onOpenSabrina, onOpenDownloads, onOpenPreferences, onEditProfile, profileRefreshKey, onAccountDeleted }) {
+function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onOpenStatistics, onOpenSabrina, onOpenDownloads, onOpenPreferences, onOpenAchievements, onEditProfile, profileRefreshKey, onAccountDeleted }) {
   var tr = T[lang] || T['fr'];
   var themeCtx = useTheme();
   var theme = themeCtx.theme;
@@ -93,6 +94,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var [quoteHour, setQuoteHour] = useState(8);
   var [showHrEnabled, setShowHrEnabled] = useState(true);
   var [storageUsed, setStorageUsed] = useState('0 B');
+  var [achievementsUnlockedCount, setAchievementsUnlockedCount] = useState(function () { return getUnlockedSync().length; });
   var [hkAuthorized, setHkAuthorized] = useState(false);
   // Apple Calendar — auto-schedule sessions in iOS Calendar.
   var [calSyncEnabled, setCalSyncEnabled] = useState(false);
@@ -285,6 +287,17 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         }
       }).catch(function(){});
     }
+  }, []);
+
+  // Achievements live count for the "Mes accomplissements" row subtitle.
+  // The pub/sub fires whenever detectNewUnlocks persists a new badge — keeps
+  // the badge count in Profil in sync without forcing a manual refresh.
+  useEffect(function () {
+    setAchievementsUnlockedCount(getUnlockedSync().length);
+    var unsub = subscribeAchievements(function (ids) {
+      setAchievementsUnlockedCount((ids && ids.length) || 0);
+    });
+    return unsub;
   }, []);
 
   async function handleCalendarToggle() {
@@ -842,6 +855,35 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.stats_title || 'Statistiques'}</Text>
               <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.stats_subtitle || 'Ta progression dans le temps'}</Text>
+            </View>
+            <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Mes accomplissements — accès direct vers la vue dédiée 2-col
+            des 15 badges (catalogue dans utils/achievements.js). Le compteur
+            se met à jour live via le pub/sub achievements. */}
+        {onOpenAchievements && (
+          <TouchableOpacity
+            onPress={onOpenAchievements}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={tr.profile_my_achievements_title || 'Mes accomplissements'}
+            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
+          >
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+              <Text style={{ fontSize: 22 }}>{'🏆'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.profile_my_achievements_title || (lang === 'fr' ? 'Mes accomplissements' : 'My achievements')}</Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>
+                {(function () {
+                  if (typeof tr.profile_my_achievements_sub === 'function') return tr.profile_my_achievements_sub(achievementsUnlockedCount);
+                  return achievementsUnlockedCount + (lang === 'fr'
+                    ? (achievementsUnlockedCount > 1 ? ' badges débloqués' : ' badge débloqué')
+                    : (achievementsUnlockedCount === 1 ? ' badge unlocked' : ' badges unlocked'));
+                })()}
+              </Text>
             </View>
             <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
           </TouchableOpacity>

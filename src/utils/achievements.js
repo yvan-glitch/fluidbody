@@ -17,6 +17,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORE_KEY = 'fluid_achievements_v1';
+// Sibling store: { [id]: ISO date string } captured at first unlock.
+// Backfilled on best-effort basis — IDs unlocked before this store existed
+// simply have no date and the UI degrades to "Débloqué" without a date.
+const DATES_KEY = 'fluid_achievement_dates_v1';
 
 // Catalogue de 15 badges. Ordre = ordre d'affichage dans la grille.
 // Mapping pilier : p1 Épaules, p2 Dos, p3 Mobilité, p4 Posture,
@@ -154,6 +158,7 @@ export function getAchievementById(id) {
 // Préchargé par prime() au boot pour permettre un rendu instantané.
 
 let _cache = [];
+let _dates = {};
 let _primed = false;
 const _subs = new Set();
 
@@ -163,6 +168,14 @@ export function getUnlockedSync() {
 
 export function isUnlockedSync(id) {
   return _cache.indexOf(id) !== -1;
+}
+
+export function getUnlockDateSync(id) {
+  return (id && _dates[id]) || null;
+}
+
+export function getUnlockDatesSync() {
+  return Object.assign({}, _dates);
 }
 
 export function subscribe(fn) {
@@ -184,6 +197,15 @@ export async function prime() {
       if (Array.isArray(parsed)) _cache = parsed.filter(function (id) { return typeof id === 'string'; });
     }
   } catch (e) {}
+  try {
+    const rawDates = await AsyncStorage.getItem(DATES_KEY);
+    if (rawDates) {
+      const parsedDates = JSON.parse(rawDates);
+      if (parsedDates && typeof parsedDates === 'object' && !Array.isArray(parsedDates)) {
+        _dates = parsedDates;
+      }
+    }
+  } catch (e) {}
   _primed = true;
   _notify();
   return _cache.slice();
@@ -193,6 +215,10 @@ async function _persist(ids) {
   _cache = ids.slice();
   try { await AsyncStorage.setItem(STORE_KEY, JSON.stringify(_cache)); } catch (e) {}
   _notify();
+}
+
+async function _persistDates() {
+  try { await AsyncStorage.setItem(DATES_KEY, JSON.stringify(_dates)); } catch (e) {}
 }
 
 // ─────── Évaluation ───────
@@ -263,15 +289,22 @@ export async function detectNewUnlocks(ctx) {
   const fresh = current.filter(function (id) { return !known_set.has(id); });
   if (fresh.length === 0) return [];
   const merged = known.slice();
-  fresh.forEach(function (id) { merged.push(id); });
+  const nowIso = new Date().toISOString();
+  fresh.forEach(function (id) {
+    merged.push(id);
+    if (!_dates[id]) _dates[id] = nowIso;
+  });
   await _persist(merged);
+  await _persistDates();
   return fresh;
 }
 
 // Reset (sign-out / reset complet).
 export async function clearAchievements() {
   try { await AsyncStorage.removeItem(STORE_KEY); } catch (e) {}
+  try { await AsyncStorage.removeItem(DATES_KEY); } catch (e) {}
   _cache = [];
+  _dates = {};
   _primed = true;
   _notify();
 }

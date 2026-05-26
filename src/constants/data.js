@@ -571,6 +571,15 @@ export const T = {
     pilier_education_sabrina_label: 'Sabrina',
     pilier_education_open_a11y: 'Comprendre',
     // ── Statistiques avancées ─────────────────────────────────────────
+    // ── Mes accomplissements (badges screen) ──────────────────────────
+    achievements_screen_title: 'Mes accomplissements',
+    profile_my_achievements_title: 'Mes accomplissements',
+    profile_my_achievements_sub: (n) => n + (n > 1 ? ' badges débloqués' : ' badge débloqué'),
+    achievements_unlocked_count: (n, total) => n + ' / ' + total + ' débloqués',
+    achievements_unlocked_on: (date) => 'Débloqué le ' + date,
+    achievements_unlocked_label: 'Débloqué',
+    achievements_locked_label: 'À débloquer',
+    achievements_back: '← Retour',
     stats_title: 'Statistiques',
     stats_subtitle: 'Ta progression dans le temps',
     stats_open_btn: 'Voir mes statistiques avancées',
@@ -1237,6 +1246,15 @@ export const T = {
     pilier_education_sabrina_label: 'Sabrina',
     pilier_education_open_a11y: 'Understand',
     // ── Advanced statistics ───────────────────────────────────────────
+    // ── My achievements (badges screen) ───────────────────────────────
+    achievements_screen_title: 'My achievements',
+    profile_my_achievements_title: 'My achievements',
+    profile_my_achievements_sub: (n) => n + (n === 1 ? ' badge unlocked' : ' badges unlocked'),
+    achievements_unlocked_count: (n, total) => n + ' / ' + total + ' unlocked',
+    achievements_unlocked_on: (date) => 'Unlocked on ' + date,
+    achievements_unlocked_label: 'Unlocked',
+    achievements_locked_label: 'Locked',
+    achievements_back: '← Back',
     stats_title: 'Statistics',
     stats_subtitle: 'Your progress over time',
     stats_open_btn: 'See my advanced statistics',
