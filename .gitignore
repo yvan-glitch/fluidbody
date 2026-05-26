@@ -55,3 +55,7 @@ assets/fluidbody-wallpaper-*.jpg
 # EAS credentials (contains cert password - never commit)
 credentials.json
 credentials/
+
+# Privacy policy site — sub-project tracked separately
+# (repo: yvan-glitch/fluidbody-privacy)
+fluidbody-privacy/
