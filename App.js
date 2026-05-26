@@ -660,6 +660,7 @@ import ProfilScreen from './src/screens/Profil';
 import MesTelechargements from './src/screens/MesTelechargements';
 import PreferencesScreen from './src/screens/Preferences';
 import AchievementsScreen from './src/screens/Achievements';
+import { Icon } from './src/components/Icons';
 import { primePreferencesCache } from './src/utils/userPreferences';
 
 
@@ -2183,7 +2184,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
                 <Text style={{ fontSize: 14, fontWeight: '800', color: '#AEEF4D', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 18 }}>
                   {isFrLang ? 'Badge débloqué' : 'Badge unlocked'}
                 </Text>
-                <Text style={{ fontSize: 72, marginBottom: 18 }}>{meta.icon}</Text>
+                <View style={{ width: 96, height: 96, marginBottom: 18, alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name={meta.iconKey} size={84} color="#AEEF4D" />
+                </View>
                 <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', textAlign: 'center', marginBottom: 10, letterSpacing: -0.3 }}>
                   {isFrLang ? meta.titleFr : meta.titleEn}
                 </Text>

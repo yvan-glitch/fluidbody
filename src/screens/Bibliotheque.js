@@ -6,6 +6,7 @@ import Svg, { Path, Circle, Ellipse, Line, Rect } from 'react-native-svg';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, Rayon, FloatingMedusas, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
+import { Icon } from '../components/Icons';
 import VideoPlayer from '../components/VideoPlayer';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import LivingBackground from '../components/LivingBackground';
@@ -912,9 +913,12 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         {favoriteSessions.length > 0 && !showResults ? (
           <View style={{ marginBottom: 28 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 12 }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', color: '#ffffff' }}>
-                {tr.biblio_favorites_header || (lang === 'en' ? '❤️ My favorites' : '❤️ Mes favoris')}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Icon name="heart_filled" size={18} color="#FF4D6D" />
+                <Text style={{ fontSize: 18, fontWeight: '600', color: '#ffffff' }}>
+                  {tr.biblio_favorites_header || (lang === 'en' ? 'My favorites' : 'Mes favoris')}
+                </Text>
+              </View>
               {favoriteSessions.length > 6 ? (
                 <TouchableOpacity onPress={() => setSortMode('favorites_first')} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
                   <Text style={{ fontSize: 13, color: '#AEEF4D', fontWeight: '500' }}>
@@ -1204,9 +1208,11 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         {/* Discreet onboarding hint when the favorites collection is empty. */}
         {favoriteSessions.length === 0 ? (
           <View style={{ paddingHorizontal: 20, marginTop: 28 }}>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontStyle: 'italic' }}>
-              {tr.biblio_favorites_empty_hint || (lang === 'en' ? 'Tap the ♡ on a session to save it.' : 'Tap sur le ♡ d\'une séance pour la sauvegarder.')}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontStyle: 'italic' }}>
+                {tr.biblio_favorites_empty_hint || (lang === 'en' ? 'Tap the heart on a session to save it.' : 'Touche le cœur d\'une séance pour la sauvegarder.')}
+              </Text>
+            </View>
           </View>
         ) : null}
           </>

@@ -11,6 +11,7 @@
 import { View, Text } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
+import { Icon } from '../Icons';
 
 const TWO_PI = Math.PI * 2;
 
@@ -73,7 +74,9 @@ export default function BadgeGrid({ badges, columns = 4 }) {
               }}
             >
               <ProgressRing size={cellSize} pct={pct} color={cellColor} trackColor={trackColor} />
-              <Text style={{ fontSize: 26, opacity: b.unlocked ? 1 : 0.35 }}>{b.emoji}</Text>
+              <View style={{ opacity: b.unlocked ? 1 : 0.4 }}>
+                <Icon name={b.iconKey || 'star'} size={26} color={b.unlocked ? theme.colors.accent : theme.colors.textSecondary} />
+              </View>
             </View>
             <Text
               style={{

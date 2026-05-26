@@ -11,6 +11,7 @@ import AnimatedPlus from './AnimatedPlus';
 import { Audio } from 'expo-av';
 import { T } from '../constants/data';
 import { Bulle, FloatingMedusas, BULLES } from './Meduse';
+import { Icon } from './Icons';
 
 // ── Optional native modules ──
 var HapticsMod = null;
@@ -157,7 +158,7 @@ function StretchTimerModal({ visible, onClose, lang }) {
 
         <View style={{ paddingTop: 58, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 }}>
           <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 30 }}>+</AnimatedPlus></Text>
-          <TouchableOpacity onPress={function() { resetTimer(); onClose(); }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)' }}>✕</Text></TouchableOpacity>
+          <TouchableOpacity onPress={function() { resetTimer(); onClose(); }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}><Icon name="close" size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} /></TouchableOpacity>
         </View>
 
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 30, zIndex: 2, paddingHorizontal: 20 }}>
@@ -226,7 +227,7 @@ function StretchTimerModal({ visible, onClose, lang }) {
                   <Text style={{ fontSize: 18, fontWeight: '800', color: '#000000', letterSpacing: 0.5 }}>REPRENDRE</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={resetTimer} activeOpacity={0.85} style={{ height: 56, width: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.5)' }}>↺</Text>
+                  <Icon name="rotate" size={20} color="rgba(255,255,255,0.6)" strokeWidth={1.8} />
                 </TouchableOpacity>
               </>
             )}
@@ -343,7 +344,7 @@ function StretchTimerInline({ lang }) {
         <View style={{ flexDirection: 'row', gap: 10, alignSelf: 'stretch' }}>
           {phase === 'idle' && <TouchableOpacity onPress={startTimer} activeOpacity={0.85} style={{ flex: 1, height: 50, borderRadius: 25, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 16, fontWeight: '800', color: '#000000' }}>START</Text></TouchableOpacity>}
           {phase === 'running' && !paused && <TouchableOpacity onPress={pauseTimer} activeOpacity={0.85} style={{ flex: 1, height: 48, borderRadius: 24, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>PAUSE</Text></TouchableOpacity>}
-          {phase === 'running' && paused && <><TouchableOpacity onPress={resumeTimer} activeOpacity={0.85} style={{ flex: 1, height: 50, borderRadius: 25, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 16, fontWeight: '800', color: '#000000' }}>REPRENDRE</Text></TouchableOpacity><TouchableOpacity onPress={resetTimer} activeOpacity={0.85} style={{ height: 50, width: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>↺</Text></TouchableOpacity></>}
+          {phase === 'running' && paused && <><TouchableOpacity onPress={resumeTimer} activeOpacity={0.85} style={{ flex: 1, height: 50, borderRadius: 25, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 16, fontWeight: '800', color: '#000000' }}>REPRENDRE</Text></TouchableOpacity><TouchableOpacity onPress={resetTimer} activeOpacity={0.85} style={{ height: 50, width: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}><Icon name="rotate" size={18} color="rgba(255,255,255,0.6)" strokeWidth={1.8} /></TouchableOpacity></>}
           {(phase === 'done' || phase === 'rest') && <TouchableOpacity onPress={resetTimer} activeOpacity={0.85} style={{ flex: 1, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 16, fontWeight: '800', color: '#ffffff' }}>RESET</Text></TouchableOpacity>}
         </View>
       </View>

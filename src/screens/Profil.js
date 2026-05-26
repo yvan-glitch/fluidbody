@@ -23,6 +23,7 @@ import { getMyReferralCode, getReferralStats } from '../utils/referrals';
 import calendarUtil from '../utils/calendar';
 import { deleteMyAccount } from '../utils/accountDeletion';
 import { ACHIEVEMENTS, getUnlockedSync, subscribe as subscribeAchievements } from '../utils/achievements';
+import { Icon } from '../components/Icons';
 
 // Safe-require expo-clipboard pour le tap-to-copy. Si le module n'est
 // pas dispo (Expo Go ou ancien build), on retombe sur Share.share — qui
@@ -554,36 +555,52 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     Share.share({ message: (tr.partage_share_msg || 'FluidBody+ Pilates') + '\n' + pctVal + '% · ' + totalDoneVal + ' ' + (tr.m_seances || 'séances') + ' · 🔥' + (streak || 0) + '\nhttps://apps.apple.com/app/fluidbody/id6761364962' }).catch(function() {});
   }
   // Section labels for the regrouped iPhone Profile (Coach / Activité /
-  // Réglages / Compte / À propos). Inline map to avoid touching T.
+  // Réglages / Compte / À propos). Each row pairs a localized label with
+  // the icon key from src/components/Icons.js — emoji-free.
   var SECTION_LABELS = {
-    coach:    { fr: '🧑 Votre coach',    en: '🧑 Your coach',    es: '🧑 Tu coach',     it: '🧑 La tua coach' },
-    activity: { fr: '📊 Mon activité',  en: '📊 My activity',   es: '📊 Mi actividad', it: '📊 La mia attività' },
-    settings: { fr: '⚙️ Réglages',       en: '⚙️ Settings',       es: '⚙️ Ajustes',      it: '⚙️ Impostazioni' },
-    account:  { fr: '💳 Compte',         en: '💳 Account',        es: '💳 Cuenta',       it: '💳 Account' },
-    about:    { fr: 'ℹ️ À propos',        en: 'ℹ️ About',          es: 'ℹ️ Acerca de',    it: 'ℹ️ Informazioni' },
+    coach:    { iconKey: 'user',        fr: 'Votre coach', en: 'Your coach', es: 'Tu coach',     it: 'La tua coach' },
+    activity: { iconKey: 'bar_chart',   fr: 'Mon activité', en: 'My activity', es: 'Mi actividad', it: 'La mia attività' },
+    settings: { iconKey: 'gear',        fr: 'Réglages',     en: 'Settings',    es: 'Ajustes',      it: 'Impostazioni' },
+    account:  { iconKey: 'credit_card', fr: 'Compte',       en: 'Account',     es: 'Cuenta',       it: 'Account' },
+    about:    { iconKey: 'info',        fr: 'À propos',     en: 'About',       es: 'Acerca de',    it: 'Informazioni' },
   };
   function sectionLabel(key) {
     var row = SECTION_LABELS[key];
     if (!row) return '';
     return row[lang] || row.fr;
   }
+  function sectionIconKey(key) {
+    var row = SECTION_LABELS[key];
+    return row ? row.iconKey : null;
+  }
   function SectionHeader(props) {
     return (
-      <Text
+      <View
         accessibilityRole="header"
         style={{
-          fontSize: 11,
-          fontWeight: '800',
-          color: '#AEEF4D',
-          letterSpacing: 2.5,
-          textTransform: 'uppercase',
+          flexDirection: 'row',
+          alignItems: 'center',
           marginHorizontal: 24,
           marginTop: 8,
           marginBottom: 12,
+          gap: 8,
         }}
       >
-        {props.label}
-      </Text>
+        {props.sectionKey ? (
+          <Icon name={sectionIconKey(props.sectionKey)} size={14} color="#AEEF4D" strokeWidth={2} />
+        ) : null}
+        <Text
+          style={{
+            fontSize: 11,
+            fontWeight: '800',
+            color: '#AEEF4D',
+            letterSpacing: 2.5,
+            textTransform: 'uppercase',
+          }}
+        >
+          {props.label}
+        </Text>
+      </View>
     );
   }
   return (
@@ -797,7 +814,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </View>
         )}
 
-        <SectionHeader label={sectionLabel('coach')} />
+        <SectionHeader sectionKey="coach" label={sectionLabel('coach')} />
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={60} padding={20} borderRadius={GLASS_RADII.card} substrateColor={theme.glass.substrateAccent}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
             <View style={{ width: 70, height: 70, borderRadius: 35, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginRight: 14 }}>
@@ -840,7 +857,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </View>
         </Modal>
 
-        <SectionHeader label={sectionLabel('activity')} />
+        <SectionHeader sectionKey="activity" label={sectionLabel('activity')} />
         {onOpenStatistics && (
           <TouchableOpacity
             onPress={onOpenStatistics}
@@ -872,7 +889,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
           >
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-              <Text style={{ fontSize: 22 }}>{'🏆'}</Text>
+              <Icon name="trophy" size={22} color="#AEEF4D" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.profile_my_achievements_title || (lang === 'fr' ? 'Mes accomplissements' : 'My achievements')}</Text>
@@ -899,7 +916,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
           >
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-              <Text style={{ fontSize: 22, color: '#AEEF4D', fontWeight: '300' }}>{'↓'}</Text>
+              <Icon name="download" size={22} color="#AEEF4D" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.downloads_title || (lang === 'fr' ? 'Mes téléchargements' : 'My downloads')}</Text>
@@ -926,7 +943,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </TouchableOpacity>
         )}
 
-        <SectionHeader label={sectionLabel('settings')} />
+        <SectionHeader sectionKey="settings" label={sectionLabel('settings')} />
 
         {/* Apple TV pairing — visible uniquement si loggué (sinon
             le redeem côté edge function échouera). Section discrète :
@@ -984,7 +1001,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
           >
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-              <Text style={{ fontSize: 22, color: '#AEEF4D', fontWeight: '300' }}>{'⚙'}</Text>
+              <Icon name="gear" size={22} color="#AEEF4D" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.prefs_title || (lang === 'fr' ? 'Préférences' : 'Preferences')}</Text>
@@ -1208,7 +1225,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                             return (c && c.title) || (tr.calendar_default_calendar || 'Par défaut');
                           })()}
                         </Text>
-                        <Text style={{ fontSize: 11, color: '#AEEF4D' }}>{calPickerOpen ? '▲' : '▼'}</Text>
+                        <Icon name={calPickerOpen ? 'chevron_up' : 'chevron_down'} size={12} color="#AEEF4D" strokeWidth={2} />
                       </TouchableOpacity>
                     </View>
                     {calPickerOpen && (
@@ -1257,7 +1274,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                   : m === 'light' ? (tr.appearance_light || 'Clair')
                   : (tr.appearance_dark || 'Sombre')
                 );
-                var icon = m === 'auto' ? '◐' : m === 'light' ? '☀' : '☾';
+                var iconKey = m === 'auto' ? 'auto_theme' : m === 'light' ? 'sun' : 'moon';
                 return (
                   <TouchableOpacity
                     key={m}
@@ -1279,7 +1296,9 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                       borderColor: active ? theme.colors.accent : 'transparent',
                     }}
                   >
-                    <Text style={{ fontSize: 14, color: active ? theme.colors.accentText : theme.colors.textSecondary, marginBottom: 2 }}>{icon}</Text>
+                    <View style={{ marginBottom: 4 }}>
+                      <Icon name={iconKey} size={16} color={active ? theme.colors.accentText : theme.colors.textSecondary} strokeWidth={1.8} />
+                    </View>
                     <Text style={{ fontSize: 12, fontWeight: active ? '700' : '500', color: active ? theme.colors.accentText : theme.colors.textSecondary }}>{label}</Text>
                   </TouchableOpacity>
                 );
@@ -1313,7 +1332,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </TouchableOpacity>
         </GlassCard></View>
 
-        <SectionHeader label={sectionLabel('account')} />
+        <SectionHeader sectionKey="account" label={sectionLabel('account')} />
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
           <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
             <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text, marginBottom: 12, letterSpacing: -0.2 }}>{tr.subscription_status_label}</Text>
@@ -1548,7 +1567,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </View>
         )}
 
-        <SectionHeader label={sectionLabel('about')} />
+        <SectionHeader sectionKey="about" label={sectionLabel('about')} />
 
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
           <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
@@ -1575,15 +1594,15 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           <Text style={{ fontSize: 13, color: theme.colors.textSecondary, lineHeight: 20, marginBottom: 14 }}>{tr.profil_donnees_desc || 'Vos données restent sur votre appareil. Aucune donnée personnelle n\'est envoyée à des serveurs tiers. Les séances, la progression et les préférences sont stockées localement via AsyncStorage. Si vous vous connectez, seul votre email est synchronisé via Supabase pour sauvegarder votre profil.'}</Text>
           <View style={{ borderTopWidth: 0.5, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 12, gap: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 14 }}>🔒</Text>
+              <Icon name="lock" size={14} color="rgba(174,239,77,0.7)" />
               <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.7)', flex: 1 }}>{tr.profil_donnees_local || 'Données stockées localement sur votre appareil'}</Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 14 }}>🚫</Text>
+              <Icon name="no_tracking" size={14} color="rgba(174,239,77,0.7)" />
               <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.7)', flex: 1 }}>{tr.profil_donnees_no_tracking || 'Aucun tracking publicitaire'}</Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 14 }}>🍎</Text>
+              <Icon name="apple" size={14} color="rgba(174,239,77,0.7)" />
               <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.7)', flex: 1 }}>{tr.profil_donnees_healthkit || 'HealthKit : données lues uniquement, jamais partagées'}</Text>
             </View>
           </View>
@@ -1749,7 +1768,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.85)', letterSpacing: 3, fontWeight: '700' }}>COACH MODE</Text>
                 <TouchableOpacity onPress={function() { setCoachModeVisible(false); }} hitSlop={10}>
-                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>{'✕'}</Text>
+                  <Icon name="close" size={16} color="rgba(255,255,255,0.7)" strokeWidth={2} />
                 </TouchableOpacity>
               </View>
               <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', marginBottom: 4, letterSpacing: -0.3 }}>Outils admin</Text>

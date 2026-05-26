@@ -33,6 +33,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import supabase from '../lib/supabase';
 import { parsePairingPayload, redeemPairing } from '../utils/tvPair';
+import { Icon } from '../components/Icons';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -206,7 +207,9 @@ export default function PairAppleTV({ onClose, lang, supaUser }) {
 
         {phase === 'scanning' && (!CameraView || !cameraStatus?.granted) && (
           <View style={styles.permArea}>
-            <Text style={styles.permIcon}>📷</Text>
+            <View style={{ marginBottom: 12 }}>
+              <Icon name="camera" size={56} color="#AEEF4D" />
+            </View>
             <Text style={styles.permTitle}>
               {isFr ? 'Caméra requise pour scanner' : 'Camera needed to scan'}
             </Text>
@@ -273,7 +276,9 @@ export default function PairAppleTV({ onClose, lang, supaUser }) {
 
         {phase === 'done' && (
           <View style={styles.centerArea}>
-            <Text style={{ fontSize: 64, marginBottom: 12 }}>✅</Text>
+            <View style={{ marginBottom: 12 }}>
+              <Icon name="check_circle" size={64} color="#AEEF4D" strokeWidth={2} />
+            </View>
             <Text style={styles.centerTitle}>
               {isFr ? 'Apple TV connectée' : 'Apple TV signed in'}
             </Text>
@@ -285,7 +290,9 @@ export default function PairAppleTV({ onClose, lang, supaUser }) {
 
         {phase === 'error' && (
           <View style={styles.centerArea}>
-            <Text style={{ fontSize: 48, marginBottom: 12 }}>⚠</Text>
+            <View style={{ marginBottom: 12 }}>
+              <Icon name="warning" size={48} color="#F5A623" strokeWidth={2} />
+            </View>
             <Text style={styles.centerTitle}>
               {isFr ? 'Pairage impossible' : 'Pairing failed'}
             </Text>
