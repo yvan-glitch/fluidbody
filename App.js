@@ -1676,6 +1676,42 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     await setSubscriptionActive(active);
   }
 
+  // Apple TV : RevenueCat n'est pas dispo sur tvOS — on doit se reposer
+  // sur `profiles.is_subscriber` côté Supabase (alimenté par le user qui
+  // a payé sur iPhone). Sans ça, un user payé qui paire sa TV verrait le
+  // paywall s'ouvrir — interdit par la règle « jamais de paywall TV ».
+  // Le fetch est aussi exposé via `tvRefreshSubscriber` pour le bouton
+  // Refresh du fallback paywall.
+  const [tvSubFetchCount, setTvSubFetchCount] = useState(0);
+  const tvRefreshSubscriber = useRef(null);
+  useEffect(function() {
+    if (!IS_TV) return;
+    if (!supabase || !supaUser?.id) return;
+    let cancelled = false;
+    async function fetchTvSub() {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('is_subscriber')
+          .eq('id', supaUser.id)
+          .single();
+        if (error) {
+          if (__DEV__) devWarn('[TV] profile fetch failed', error.message);
+          return;
+        }
+        if (!cancelled && data && data.is_subscriber === true) {
+          setIsSubscriber(true);
+          try { await AsyncStorage.setItem(FLUID_SUB_KEY, 'true'); } catch (e) {}
+        }
+      } catch (e) {
+        if (__DEV__) devWarn('[TV] profile fetch threw', e && e.message);
+      }
+    }
+    tvRefreshSubscriber.current = function() { setTvSubFetchCount(function(n) { return n + 1; }); };
+    fetchTvSub();
+    return function() { cancelled = true; };
+  }, [supaUser?.id, tvSubFetchCount]);
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -1994,6 +2030,8 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         onTryFree={() => { setPaywallVisible(false); setFreeDetailVisible(true); }}
         coachImage={COACH_IMAGE}
         freeMonthsAvailable={freeMonthsAvailable}
+        isSubscriber={effectiveIsSubscriber}
+        onTvRefreshSubscriber={() => { if (tvRefreshSubscriber.current) tvRefreshSubscriber.current(); }}
       />
       <SeanceDetailModal
         visible={freeDetailVisible}

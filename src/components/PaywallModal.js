@@ -480,24 +480,94 @@ function TVPaywallView({
   );
 }
 
-export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore, freeMonthsAvailable }) {
-  // Apple TV : on bascule sur un render dédié, layout horizontal,
-  // focus engine et CTA accent. Le reste du fichier (iPhone/iPad) reste
-  // strictement identique.
+// Apple TV : safety net. Si le paywall s'ouvre sur tvOS et que l'utilisateur
+// n'est PAS abonné, on n'affiche jamais le TVPaywallView (achat tvOS pas
+// supporté pour FluidBody+). À la place on rend un overlay simple qui dit
+// d'aller souscrire sur l'iPhone, avec un bouton Refresh qui relance la
+// lecture de `profiles.is_subscriber` côté MainApp. Règle métier :
+// « jamais de paywall TV ». Le rendu TVPaywallView en dessous est gardé
+// (non supprimé) au cas où la règle évoluerait.
+function TVPaywallFallback({ onClose, onRefresh, lang }) {
+  const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+  const [focusedKey, setFocusedKey] = useState(null);
+  const understandLabel = isFr ? 'Comprendre' : 'Got it';
+  const refreshLabel = isFr ? 'Actualiser' : 'Refresh';
+  const title = isFr ? 'Activer FluidBody+ sur Apple TV' : 'Activate FluidBody+ on Apple TV';
+  const body = isFr
+    ? "Pour activer FluidBody+ sur Apple TV, abonne-toi depuis l'app iPhone.\nLa TV se synchronisera automatiquement."
+    : 'To activate FluidBody+ on Apple TV, subscribe from the iPhone app.\nYour TV will sync automatically.';
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000a1a', alignItems: 'center', justifyContent: 'center', padding: 80 }}>
+      <AquaticBackground density="low" contentOpacity={0.4} />
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 28 }}>
+        <Text style={{ fontSize: 22, fontWeight: '900', color: '#AEEF4D', letterSpacing: 5 }}>FLUIDBODY</Text>
+        <AnimatedPlus style={{ fontSize: 22, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
+      </View>
+      <Text style={{ fontSize: 44, fontWeight: '300', color: '#ffffff', textAlign: 'center', letterSpacing: -0.8, marginBottom: 26, maxWidth: 900 }}>{title}</Text>
+      <Text style={{ fontSize: 20, color: 'rgba(255,255,255,0.78)', textAlign: 'center', lineHeight: 30, marginBottom: 56, maxWidth: 820 }}>{body}</Text>
+
+      <View style={{ flexDirection: 'row' }}>
+        <TouchableOpacity
+          {...tvFocusProps(true)}
+          onPress={onClose}
+          onFocus={function() { setFocusedKey('understand'); }}
+          onBlur={function() { setFocusedKey(null); }}
+          activeOpacity={0.88}
+          style={[
+            {
+              paddingHorizontal: 44,
+              paddingVertical: 22,
+              borderRadius: 18,
+              backgroundColor: '#AEEF4D',
+              marginRight: 18,
+              shadowColor: '#AEEF4D',
+              shadowOpacity: focusedKey === 'understand' ? 0.6 : 0.3,
+              shadowRadius: focusedKey === 'understand' ? 22 : 14,
+              shadowOffset: { width: 0, height: 8 },
+            },
+            focusedKey === 'understand' ? { transform: [{ scale: 1.05 }] } : null,
+          ]}
+        >
+          <Text style={{ fontSize: 20, fontWeight: '800', color: '#001a2e', letterSpacing: 0.4 }}>{understandLabel} →</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          {...tvFocusProps(false)}
+          onPress={function() { if (onRefresh) onRefresh(); }}
+          onFocus={function() { setFocusedKey('refresh'); }}
+          onBlur={function() { setFocusedKey(null); }}
+          activeOpacity={0.7}
+          style={[
+            {
+              paddingHorizontal: 36,
+              paddingVertical: 22,
+              borderRadius: 18,
+              borderWidth: 1.5,
+              borderColor: 'rgba(255,255,255,0.3)',
+              backgroundColor: 'rgba(8,24,40,0.6)',
+            },
+            focusedKey === 'refresh' ? TV_FOCUS_RING : null,
+          ]}
+        >
+          <Text style={{ fontSize: 18, fontWeight: '600', color: '#ffffff', letterSpacing: 0.3 }}>{refreshLabel}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore, freeMonthsAvailable, isSubscriber, onTvRefreshSubscriber }) {
+  // Apple TV : court-circuit safety. Règle « jamais de paywall TV » —
+  // un user payé sur iPhone qui paire sa TV doit voir l'app, pas le
+  // paywall. Si jamais le paywall s'ouvre (CTA mal câblé, race condition
+  // sur le fetch is_subscriber, etc.), on tombe sur TVPaywallFallback au
+  // lieu du TVPaywallView qui propose un achat impossible sur tvOS.
+  // Le TVPaywallView est conservé dans ce fichier pour usage futur.
   if (IS_TV) {
     return (
       <Modal visible={!!visible} animationType="fade" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
-        <TVPaywallView
-          onClose={onClose}
-          lang={lang}
-          packagesByProductId={packagesByProductId}
-          loadingPrices={loadingPrices}
-          disabled={disabled}
-          onBuyMonthly={onBuyMonthly}
-          onBuyYearly={onBuyYearly}
-          onRestore={onRestore}
-          freeMonthsAvailable={freeMonthsAvailable}
-        />
+        <TVPaywallFallback onClose={onClose} onRefresh={onTvRefreshSubscriber} lang={lang} />
       </Modal>
     );
   }
