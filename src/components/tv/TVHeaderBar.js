@@ -166,7 +166,7 @@ export default function TVHeaderBar({
 }) {
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   const breathLabel = breathDone
-    ? (isFr ? 'Respiration ✓' : 'Breathing ✓')
+    ? (isFr ? 'Respiration faite' : 'Breathing done')
     : (isFr ? 'Respirer 60s' : 'Breathe 60s');
   const bonjourPrefix = isFr ? 'Bonjour' : 'Hello';
 

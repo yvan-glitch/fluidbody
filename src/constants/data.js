@@ -2,8 +2,12 @@
 // Extracted constants & translations
 // ══════════════════════════════════
 
-export const U_JELLY = '🪼';
-export const U_WAVE = '🌊';
+// Legacy unicode glyph constants — kept for back-compat with quote strings
+// that interpolate them. After the emoji→SVG migration their value is now
+// an empty string so notifications/share messages no longer carry a
+// rendered emoji.
+export const U_JELLY = '';
+export const U_WAVE = '';
 
 export const FREE_SEANCE_INDEX = 0;
 
@@ -113,7 +117,7 @@ export const T = {
     reprise_badge: 'Reprise',
     video_load_error: `La vidéo n'a pas pu être chargée.`,
     video_retry: 'Réessayer',
-    seance_done: '✓  Séance terminée',
+    seance_done: 'Séance terminée',
     biblio_titre: 'Bibliothèque',
     biblio_sub: 'Comprendre pour mieux ressentir',
     tab_piliers: 'Les 9 piliers',
@@ -175,9 +179,9 @@ export const T = {
     biblio_sort_duration_asc: 'Durée croissante',
     biblio_sort_favorites_first: 'Mes favoris d\'abord',
     biblio_clear_filters: 'Effacer les filtres',
-    biblio_favorites_header: '❤️ Mes favoris',
+    biblio_favorites_header: 'Mes favoris',
     biblio_favorites_see_all: 'Voir tout',
-    biblio_favorites_empty_hint: 'Tap sur le ♡ d\'une séance pour la sauvegarder.',
+    biblio_favorites_empty_hint: 'Touche le cœur d\'une séance pour la sauvegarder.',
     biblio_search_results_count: (n) => n <= 1 ? `${n} séance correspond` : `${n} séances correspondent`,
     biblio_empty_state_search: 'Aucune séance trouvée. Modifie ta recherche ou tes filtres.',
     biblio_results_title: 'Résultats',
@@ -199,7 +203,7 @@ export const T = {
     seance_gratuite: 'Séance gratuite',
     seance_du_jour_sub: "Recommandée pour toi aujourd'hui",
     commencer_seance: 'Commencer →',
-    deja_faite: "✓ Déjà faite aujourd'hui",
+    deja_faite: "Déjà faite aujourd'hui",
     notif_section: 'Rappels',
     theorie_section: 'Théorie',
     notif_hour_label: 'Heure du rappel',
@@ -211,17 +215,17 @@ export const T = {
     notif_daily_body: `Sabrina t'attend pour ta pratique du jour ${U_JELLY}`,
     notif_daily_label: 'Rappel quotidien',
     notif_daily_sub: "Sabrina t'attend pour ta pratique du jour",
-    notif_pause_title: 'Pause Active 🪑', notif_pause_body: "C'est le moment de bouger ! 5 min d'étirements au bureau.",
+    notif_pause_title: 'Pause active', notif_pause_body: "C'est le moment de bouger ! 5 min d'étirements au bureau.",
     notif_welcome_title: `Bienvenue dans FluidBody ${U_JELLY}`,
     notif_welcome_body: (p) => p ? `Hello ${p}, ta première séance t'attend !` : 'Ta première séance t\'attend !',
     notif_quote_title: 'Phrase du jour — Sabrina',
     notif_quote_label: 'Phrase du jour de Sabrina',
     notif_quote_hour_label: 'Heure de la phrase',
-    notif_streak_prot_title: 'Garde ta série 🔥',
+    notif_streak_prot_title: 'Garde ta série',
     notif_streak_prot_body: (n) => `Tu en es à ${n} jours. Une mini-séance de 5 min suffit pour la prolonger.`,
     notif_nudge_title: 'Sabrina t\'attend',
     notif_nudge_body: '10 minutes suffisent pour découvrir ta première séance.',
-    notif_milestone_title: (n, p) => p ? `${p}, ${n} séances 🌟` : `${n} séances 🌟`,
+    notif_milestone_title: (n, p) => p ? `${p}, ${n} séances` : `${n} séances`,
     notif_milestone_body: (n) => n >= 100
       ? 'Tu as franchi le centième. Tu inspires.'
       : n >= 30 ? 'Un programme avancé t\'attend dans Bibliothèque.'
@@ -247,10 +251,10 @@ export const T = {
     share_card_max_bpm: 'Max',
     share_card_share_btn: 'Partager',
     share_card_continue: 'Continuer',
-    share_card_message: 'Séance terminée avec FLUIDBODY+ 🪼',
+    share_card_message: 'Séance terminée avec FLUIDBODY+',
     breath_title: 'Respiration du jour',
     breath_pill: 'Respirer 60s',
-    breath_pill_done: 'Respiration faite ✓',
+    breath_pill_done: 'Respiration faite',
     breath_inhale: 'Inspire',
     breath_hold: 'Retiens',
     breath_exhale: 'Expire',
@@ -533,7 +537,7 @@ export const T = {
     referral_code_tap_to_copy: 'Appuie pour copier',
     referral_code_copied: 'Code copié !',
     referral_share_btn: 'Partager mon code',
-    referral_share_message: (code) => `Rejoins-moi sur Fluidbody ! 💧\nUtilise mon code ${code} à l'inscription : tu reçois 1 mois gratuit, et moi aussi.\nhttps://apps.apple.com/app/fluidbody/id6761364962`,
+    referral_share_message: (code) => `Rejoins-moi sur Fluidbody !\nUtilise mon code ${code} à l'inscription : tu reçois 1 mois gratuit, et moi aussi.\nhttps://apps.apple.com/app/fluidbody/id6761364962`,
     referral_stat_friends: 'amies parrainées',
     referral_stat_friends_singular: 'amie parrainée',
     referral_stat_months_earned: 'mois gratuits gagnés',
@@ -545,7 +549,7 @@ export const T = {
     onb_referral_placeholder: 'Ex : SOPHIE-A1B2',
     onb_referral_validate: 'Valider le code',
     onb_referral_skip: 'Passer',
-    onb_referral_ok: 'Code activé ! 🎁',
+    onb_referral_ok: 'Code activé !',
     onb_referral_err_not_found: 'Ce code n\'existe pas.',
     onb_referral_err_self: 'Tu ne peux pas utiliser ton propre code.',
     onb_referral_err_already: 'Tu as déjà utilisé un code.',
@@ -792,7 +796,7 @@ export const T = {
     reprise_badge: 'Resume',
     video_load_error: `Couldn't load the video.`,
     video_retry: 'Try again',
-    seance_done: '✓  Session complete',
+    seance_done: 'Session complete',
     biblio_titre: 'Library',
     biblio_sub: 'Understand to feel better',
     tab_piliers: 'The 9 pillars',
@@ -854,9 +858,9 @@ export const T = {
     biblio_sort_duration_asc: 'Shortest first',
     biblio_sort_favorites_first: 'Favorites first',
     biblio_clear_filters: 'Clear filters',
-    biblio_favorites_header: '❤️ My favorites',
+    biblio_favorites_header: 'My favorites',
     biblio_favorites_see_all: 'See all',
-    biblio_favorites_empty_hint: 'Tap the ♡ on a session to save it.',
+    biblio_favorites_empty_hint: 'Tap the heart on a session to save it.',
     biblio_search_results_count: (n) => n <= 1 ? `${n} session matches` : `${n} sessions match`,
     biblio_empty_state_search: 'No session found. Refine your search or filters.',
     biblio_results_title: 'Results',
@@ -878,7 +882,7 @@ export const T = {
     seance_gratuite: 'Free session',
     seance_du_jour_sub: 'Recommended for you today',
     commencer_seance: 'Start →',
-    deja_faite: '✓ Already done today',
+    deja_faite: 'Already done today',
     notif_section: 'Reminders',
     theorie_section: 'Theory',
     notif_hour_label: 'Reminder time',
@@ -890,17 +894,17 @@ export const T = {
     notif_daily_body: `Sabrina is waiting for your practice today ${U_JELLY}`,
     notif_daily_label: 'Daily reminder',
     notif_daily_sub: 'Sabrina is waiting for your practice today',
-    notif_pause_title: 'Active Break 🪑', notif_pause_body: 'Time to move! 5 min desk stretches.',
+    notif_pause_title: 'Active break', notif_pause_body: 'Time to move! 5 min desk stretches.',
     notif_welcome_title: `Welcome to FluidBody ${U_JELLY}`,
     notif_welcome_body: (p) => p ? `Hi ${p}, your first session awaits!` : 'Your first session awaits!',
     notif_quote_title: 'Daily quote — Sabrina',
     notif_quote_label: "Sabrina's daily quote",
     notif_quote_hour_label: 'Quote time',
-    notif_streak_prot_title: 'Keep your streak 🔥',
+    notif_streak_prot_title: 'Keep your streak',
     notif_streak_prot_body: (n) => `You're on a ${n}-day streak. A 5-min session is enough to keep it alive.`,
     notif_nudge_title: 'Sabrina is waiting',
     notif_nudge_body: '10 minutes is all you need for your first session.',
-    notif_milestone_title: (n, p) => p ? `${p}, ${n} sessions 🌟` : `${n} sessions 🌟`,
+    notif_milestone_title: (n, p) => p ? `${p}, ${n} sessions` : `${n} sessions`,
     notif_milestone_body: (n) => n >= 100
       ? 'You crossed the hundredth. You inspire.'
       : n >= 30 ? 'An advanced programme is waiting for you in Library.'
@@ -926,10 +930,10 @@ export const T = {
     share_card_max_bpm: 'Max',
     share_card_share_btn: 'Share',
     share_card_continue: 'Continue',
-    share_card_message: 'Session done with FLUIDBODY+ 🪼',
+    share_card_message: 'Session done with FLUIDBODY+',
     breath_title: 'Daily breath',
     breath_pill: 'Breathe 60s',
-    breath_pill_done: 'Breath done ✓',
+    breath_pill_done: 'Breath done',
     breath_inhale: 'Inhale',
     breath_hold: 'Hold',
     breath_exhale: 'Exhale',
@@ -1208,7 +1212,7 @@ export const T = {
     referral_code_tap_to_copy: 'Tap to copy',
     referral_code_copied: 'Code copied!',
     referral_share_btn: 'Share my code',
-    referral_share_message: (code) => `Join me on Fluidbody! 💧\nUse my code ${code} when you sign up: you get 1 free month, and so do I.\nhttps://apps.apple.com/app/fluidbody/id6761364962`,
+    referral_share_message: (code) => `Join me on Fluidbody!\nUse my code ${code} when you sign up: you get 1 free month, and so do I.\nhttps://apps.apple.com/app/fluidbody/id6761364962`,
     referral_stat_friends: 'friends referred',
     referral_stat_friends_singular: 'friend referred',
     referral_stat_months_earned: 'free months earned',
@@ -1220,7 +1224,7 @@ export const T = {
     onb_referral_placeholder: 'E.g. SOPHIE-A1B2',
     onb_referral_validate: 'Apply code',
     onb_referral_skip: 'Skip',
-    onb_referral_ok: 'Code applied! 🎁',
+    onb_referral_ok: 'Code applied!',
     onb_referral_err_not_found: 'This code doesn\'t exist.',
     onb_referral_err_self: 'You can\'t use your own code.',
     onb_referral_err_already: 'You\'ve already used a code.',

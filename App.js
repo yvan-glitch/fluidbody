@@ -945,7 +945,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
               alignItems: 'center', justifyContent: 'center',
               marginRight: 10, marginTop: 1,
             }}>
-              {termsAccepted ? <Text style={{ color: '#AEEF4D', fontSize: 13, fontWeight: '900', marginTop: -2 }}>✓</Text> : null}
+              {termsAccepted ? <Icon name="check" size={13} color="#AEEF4D" strokeWidth={2.4} /> : null}
             </View>
             <Text style={{ flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.78)', lineHeight: 17 }}>
               {tr.ob_auth_terms_prefix || "En créant un compte, j'accepte les "}
@@ -2026,7 +2026,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 }}>
             <View style={{ backgroundColor: '#001828', borderRadius: 24, padding: 28, alignItems: 'center', borderWidth: 1, borderColor: '#AEEF4D', width: '100%', maxWidth: 340 }}>
               <MeduseCornerIcon size={80} breathCycleMs={2500} tint="rgba(255,215,0,1)" />
-              <Text style={{ fontSize: 32, marginTop: 12 }}>🎉</Text>
+              <View style={{ marginTop: 12 }}>
+                <Icon name="confetti" size={36} color="#AEEF4D" />
+              </View>
               <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', textAlign: 'center', marginTop: 12 }}>{tr.first_seance_title || 'Bravo !'}</Text>
               <Text style={{ fontSize: 15, fontWeight: '300', color: 'rgba(255,255,255,0.7)', textAlign: 'center', lineHeight: 22, marginTop: 10, marginBottom: 24 }}>{tr.first_seance_sub || 'Première séance terminée !\nCrée un compte gratuit pour sauvegarder ta progression.'}</Text>
               <GlassButton
@@ -2157,7 +2159,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         <Modal visible={true} transparent animationType="fade" statusBarTranslucent>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.92)', justifyContent: 'center', alignItems: 'center' }}>
             <View style={{ alignItems: 'center', padding: 40 }}>
-              <Text style={{ fontSize: 60, marginBottom: 16 }}>🏆</Text>
+              <View style={{ marginBottom: 16 }}>
+                <Icon name="trophy" size={72} color="#AEEF4D" />
+              </View>
               <Text style={{ fontSize: 48, fontWeight: '900', color: '#AEEF4D', marginBottom: 8 }}>{milestoneNum}</Text>
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#ffffff', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 12 }}>séances</Text>
               <Text style={{ fontSize: 18, fontWeight: '400', color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginBottom: 32 }}>{tr['milestone_' + milestoneNum] || 'Bravo !'}</Text>

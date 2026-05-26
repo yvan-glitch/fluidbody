@@ -552,7 +552,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         return;
       } catch(e) {}
     }
-    Share.share({ message: (tr.partage_share_msg || 'FluidBody+ Pilates') + '\n' + pctVal + '% · ' + totalDoneVal + ' ' + (tr.m_seances || 'séances') + ' · 🔥' + (streak || 0) + '\nhttps://apps.apple.com/app/fluidbody/id6761364962' }).catch(function() {});
+    Share.share({ message: (tr.partage_share_msg || 'FluidBody+ Pilates') + '\n' + pctVal + '% · ' + totalDoneVal + ' ' + (tr.m_seances || 'séances') + ' · streak ' + (streak || 0) + '\nhttps://apps.apple.com/app/fluidbody/id6761364962' }).catch(function() {});
   }
   // Section labels for the regrouped iPhone Profile (Coach / Activité /
   // Réglages / Compte / À propos). Each row pairs a localized label with
@@ -692,7 +692,10 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                   <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>{tr.resume_global || 'Global'}</Text>
                 </View>
                 <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff' }}>{'🔥'}{streak || 0}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Icon name="flame" size={22} color="#ffffff" />
+                    <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff' }}>{streak || 0}</Text>
+                  </View>
                   <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>Streak</Text>
                 </View>
                 <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, alignItems: 'center' }}>
@@ -1246,7 +1249,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                                   <Text style={{ fontSize: 11, color: theme.colors.textTertiary }} numberOfLines={1}>{c.source}</Text>
                                 ) : null}
                               </View>
-                              {active ? <Text style={{ fontSize: 14, color: '#AEEF4D', marginLeft: 8 }}>✓</Text> : null}
+                              {active ? <View style={{ marginLeft: 8 }}><Icon name="check" size={14} color="#AEEF4D" strokeWidth={2.2} /></View> : null}
                             </TouchableOpacity>
                           );
                         })}

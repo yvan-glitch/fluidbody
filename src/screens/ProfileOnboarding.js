@@ -34,6 +34,7 @@ import { GlassCard, GlassButton, GlassView, GLASS_RADII } from '../components/ui
 import { useTheme } from '../theme/ThemeProvider';
 import LivingBackground from '../components/LivingBackground';
 import { Bulle, BULLES_ONBOARDING, MeduseCornerIcon } from '../components/Meduse';
+import { Icon } from '../components/Icons';
 import healthkit from '../utils/healthkit';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
 import supabase from '../lib/supabase';
@@ -762,9 +763,12 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
                 {/* Feedback */}
                 <View style={{ minHeight: 22, marginBottom: 14 }}>
                   {referralStatus === 'ok' ? (
-                    <Text style={{ fontSize: 13, color: colors.accentText, textAlign: 'center', fontWeight: '600' }}>
-                      {tr.onb_referral_ok || 'Code applied! 🎁'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <Icon name="gift" size={14} color={colors.accentText} />
+                      <Text style={{ fontSize: 13, color: colors.accentText, textAlign: 'center', fontWeight: '600' }}>
+                        {tr.onb_referral_ok || 'Code applied!'}
+                      </Text>
+                    </View>
                   ) : null}
                   {referralStatus === 'validating' ? (
                     <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>…</Text>
@@ -831,7 +835,12 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
             <View style={{ flex: 1 }} />
             {savingState === 'saving' ? <Text style={{ fontSize: 11, color: colors.textSecondary }}>{tr.onb_saving || 'Saving…'}</Text> : null}
-            {savingState === 'saved' ? <Text style={{ fontSize: 11, color: colors.accentText }}>✓ {tr.onb_saved || 'Saved'}</Text> : null}
+            {savingState === 'saved' ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Icon name="check" size={11} color={colors.accentText} strokeWidth={2.4} />
+                <Text style={{ fontSize: 11, color: colors.accentText }}>{tr.onb_saved || 'Saved'}</Text>
+              </View>
+            ) : null}
           </View>
           <GlassButton
             variant="accent"

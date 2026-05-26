@@ -1367,7 +1367,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               <Circle cx="12" cy="12" r="4.5" stroke={breathDoneToday ? '#AEEF4D' : 'rgba(255,255,255,0.78)'} strokeWidth={1.2} opacity={0.6} />
             </Svg>
             <Text style={{ fontSize: 12, fontWeight: '700', color: breathDoneToday ? '#AEEF4D' : 'rgba(255,255,255,0.86)', letterSpacing: 0.3 }}>
-              {breathDoneToday ? (tr.breath_pill_done || 'Respiration ✓') : (tr.breath_pill || 'Respirer 60s')}
+              {breathDoneToday ? (tr.breath_pill_done || 'Respiration faite') : (tr.breath_pill || 'Respirer 60s')}
             </Text>
           </TouchableOpacity>
               );

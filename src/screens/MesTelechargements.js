@@ -27,6 +27,7 @@ import {
   removeAllDownloads,
   formatBytes,
 } from '../utils/downloadsCache';
+import { Icon } from '../components/Icons';
 
 function ArrowDownIcon({ size, color }) {
   return (
@@ -39,7 +40,7 @@ function ArrowDownIcon({ size, color }) {
 function TrashIcon({ size, color }) {
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: size * 0.65, color: color, fontWeight: '400' }}>✕</Text>
+      <Icon name="close" size={Math.round(size * 0.7)} color={color} strokeWidth={2} />
     </View>
   );
 }

@@ -22,6 +22,7 @@ import { tvFocusProps } from '../../utils/platformTV';
 import { T, PILIER_IMAGES } from '../../constants/data';
 import { getProgramStats } from '../../utils/programs';
 import { pickSessionImage } from './tvImagePool';
+import { Icon } from '../Icons';
 import { pickBadge } from '../../utils/sessionBadges';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -164,8 +165,9 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
                   {activeHero.stats.percent + '% · ' + (tr.program_next_label || 'Prochaine séance') + ' : ' + activeHero.pilier.label}
                 </Text>
                 <FocusableSurface focusPreferred={heroFocus} height={56} glowColor={FITNESS_GREEN} radius={30} onPress={function () { onOpenPilier(activeHero.pilier); }}>
-                  <View style={{ backgroundColor: FITNESS_GREEN, flex: 1, paddingHorizontal: 40, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 20, fontWeight: '700', color: '#001B10' }}>{'▶  ' + (isFr ? 'Continuer' : 'Continue')}</Text>
+                  <View style={{ backgroundColor: FITNESS_GREEN, flex: 1, paddingHorizontal: 40, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }}>
+                    <Icon name="play" size={16} color="#001B10" />
+                    <Text style={{ fontSize: 20, fontWeight: '700', color: '#001B10' }}>{isFr ? 'Continuer' : 'Continue'}</Text>
                   </View>
                 </FocusableSurface>
               </View>

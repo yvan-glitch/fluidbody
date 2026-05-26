@@ -15,6 +15,7 @@ import GlassView from './GlassView';
 import GlassPressable from './GlassPressable';
 import { GLASS_RADII } from './glassTokens';
 import { useTheme } from '../../theme/ThemeProvider';
+import { Icon } from '../Icons';
 
 export default function GlassSheet({
   children,
@@ -103,7 +104,7 @@ export default function GlassSheet({
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>✕</Text>
+              <Icon name="close" size={14} color={theme.colors.text} strokeWidth={2.2} />
             </View>
           </GlassPressable>
         ) : null}
