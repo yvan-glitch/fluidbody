@@ -375,16 +375,39 @@ function TabIconResume({ color, size }) {
   );
 }
 
-function TabIconMonCorps({ color, size }) {
-  // Tab-bar bottom méduse — delegates to the refined IconJellyfish so the
-  // tab bar shares the same logo silhouette as every other surface in the
-  // app (achievements badge, share card, etc.). The tint colour from the
-  // navigator's focused/unfocused state is passed straight through.
+function TabIconMonCorps({ color, size, focused }) {
+  // Tab-bar bottom méduse — the MonCorps tab is label-less (the only one),
+  // so the silhouette is sized up and floats in place. We delegate to the
+  // refined IconJellyfish so the tab bar shares the same logo silhouette as
+  // every other surface (achievements badge, share card, etc.) and wrap it
+  // in an Animated.View for a slow vertical drift that loops indefinitely.
+  // Amplitude is slightly more pronounced when the tab is focused so the
+  // medusa feels alive at the active state, calmer when inactive.
   const c = tabBarIconTint(color);
-  const s = size ?? 22;
+  // Bumping the visual size from 22→30 because there is no label underneath
+  // anymore — the icon needs to hold the slot on its own. The outer View
+  // keeps the original tab-bar footprint (size) so neighbouring icons stay
+  // aligned; the bigger jellyfish renders inside it.
+  const slot = size ?? 22;
+  const iconSize = 30;
+  const drift = useRef(new Animated.Value(0)).current;
+  const amplitude = focused ? 2.5 : 1.5;
+  useEffect(function () {
+    const cycle = Animated.loop(
+      Animated.sequence([
+        Animated.timing(drift, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(drift, { toValue: 0, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    );
+    cycle.start();
+    return function () { cycle.stop(); };
+  }, [drift]);
+  const translateY = drift.interpolate({ inputRange: [0, 1], outputRange: [amplitude, -amplitude] });
   return (
-    <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
-      <IconJellyfish size={s} color={c} strokeWidth={1.5} />
+    <View style={{ width: slot, height: slot, alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
+      <Animated.View style={{ transform: [{ translateY }] }}>
+        <IconJellyfish size={iconSize} color={c} strokeWidth={1.5} />
+      </Animated.View>
     </View>
   );
 }
@@ -2061,7 +2084,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       ) : (
         <NavigationContainer>
             <Tab.Navigator tabBar={function(props) { return <CustomTabBar {...props} />; }} screenOptions={{ headerShown: false }}>
-            <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} /> }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} onTensionChange={onTensionChange} streak={streak} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} saveHealthKitWorkout={saveHealthKitWorkout} supabase={supabase} supaUser={supaUser} />}</Tab.Screen>
+            <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: (props) => <TabIconMonCorps {...props} />, tabBarLabel: () => null, tabBarAccessibilityLabel: tr.tabs[0] }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} onTensionChange={onTensionChange} streak={streak} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} saveHealthKitWorkout={saveHealthKitWorkout} supabase={supabase} supaUser={supaUser} />}</Tab.Screen>
             <Tab.Screen name={tr.activity_tab || 'Activité'} options={{ tabBarIcon: (props) => <TabIconActivity {...props} /> }}>{() => <ActivityScreen lang={lang} supabase={supabase} supaUser={supaUser} done={done} />}</Tab.Screen>
             <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={function() { setShowAuthScreen(true); }} onOpenStatistics={function() { setShowStatistics(true); }} />}</Tab.Screen>
             <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
