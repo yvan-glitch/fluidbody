@@ -235,14 +235,14 @@ function computeBadges(totalSessions, streakCurrent, activeMonths, tr) {
   // 8 badges total — 4 about volume, 2 about consistency, 2 about depth.
   // `target` is what's needed; `current` is what the user has now.
   const defs = [
-    { key: 'first',      label: tr.stats_badge_first       || 'Première séance',    emoji: '🌱', target: 1,   current: totalSessions },
-    { key: 'ten',        label: tr.stats_badge_ten         || '10 séances',         emoji: '🪷', target: 10,  current: totalSessions },
-    { key: 'thirty',     label: tr.stats_badge_thirty      || '30 séances',         emoji: '🪼', target: 30,  current: totalSessions },
-    { key: 'hundred',    label: tr.stats_badge_hundred     || '100 séances',        emoji: '🏆', target: 100, current: totalSessions },
-    { key: 'streak3',    label: tr.stats_badge_streak3     || 'Streak 3 jours',     emoji: '🔥', target: 3,   current: streakCurrent },
-    { key: 'streak30',   label: tr.stats_badge_streak30    || 'Streak 30 jours',    emoji: '⚡', target: 30,  current: streakCurrent },
-    { key: 'months3',    label: tr.stats_badge_months3     || '3 mois actifs',      emoji: '🌊', target: 3,   current: activeMonths },
-    { key: 'months12',   label: tr.stats_badge_months12    || '12 mois actifs',     emoji: '⭐', target: 12,  current: activeMonths },
+    { key: 'first',      label: tr.stats_badge_first       || 'Première séance',    iconKey: 'seedling',  target: 1,   current: totalSessions },
+    { key: 'ten',        label: tr.stats_badge_ten         || '10 séances',         iconKey: 'lotus',     target: 10,  current: totalSessions },
+    { key: 'thirty',     label: tr.stats_badge_thirty      || '30 séances',         iconKey: 'jellyfish', target: 30,  current: totalSessions },
+    { key: 'hundred',    label: tr.stats_badge_hundred     || '100 séances',        iconKey: 'trophy',    target: 100, current: totalSessions },
+    { key: 'streak3',    label: tr.stats_badge_streak3     || 'Streak 3 jours',     iconKey: 'flame',     target: 3,   current: streakCurrent },
+    { key: 'streak30',   label: tr.stats_badge_streak30    || 'Streak 30 jours',    iconKey: 'lightning', target: 30,  current: streakCurrent },
+    { key: 'months3',    label: tr.stats_badge_months3     || '3 mois actifs',      iconKey: 'wave',      target: 3,   current: activeMonths },
+    { key: 'months12',   label: tr.stats_badge_months12    || '12 mois actifs',     iconKey: 'star',      target: 12,  current: activeMonths },
   ];
   let unlocked = 0;
   const list = defs.map(function (d) {

@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { GlassView, GlassPressable, GLASS_RADII } from './ui';
+import { Icon } from './Icons';
 
 const { width: SW } = Dimensions.get('window');
 const CARD_W = Math.floor((SW - 48) / 2);
@@ -73,10 +74,12 @@ export default function PilierCard({ pilier, doneCount, onPress, recommended, la
                     paddingVertical: 3,
                     flexDirection: 'row',
                     alignItems: 'center',
+                    gap: 4,
                   }}
                 >
+                  <Icon name="star" size={10} color="rgba(0,225,255,0.95)" strokeWidth={2} />
                   <Text style={{ fontSize: 9, color: 'rgba(0,225,255,0.95)', fontWeight: '700', letterSpacing: 0.5 }}>
-                    {"★"} {tr.recommande_pour_toi}
+                    {tr.recommande_pour_toi}
                   </Text>
                 </GlassView>
               </View>

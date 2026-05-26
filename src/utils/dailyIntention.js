@@ -7,11 +7,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const INTENTIONS = [
-  { key: 'calme',     emoji: '🌊', labelFr: 'Calme',     labelEn: 'Calm' },
-  { key: 'energique', emoji: '🔥', labelFr: 'Énergique', labelEn: 'Energized' },
-  { key: 'ancre',     emoji: '🌳', labelFr: 'Ancré',     labelEn: 'Grounded' },
-  { key: 'souple',    emoji: '💧', labelFr: 'Souple',    labelEn: 'Supple' },
-  { key: 'leger',     emoji: '✨', labelFr: 'Léger',     labelEn: 'Light' },
+  { key: 'calme',     iconKey: 'zen',     labelFr: 'Calme',     labelEn: 'Calm' },
+  { key: 'energique', iconKey: 'flame',   labelFr: 'Énergique', labelEn: 'Energized' },
+  { key: 'ancre',     iconKey: 'tree',    labelFr: 'Ancré',     labelEn: 'Grounded' },
+  { key: 'souple',    iconKey: 'droplet', labelFr: 'Souple',    labelEn: 'Supple' },
+  { key: 'leger',     iconKey: 'sparkle', labelFr: 'Léger',     labelEn: 'Light' },
 ];
 
 // Pilier recommandé par intention. Fallback sur p7 (Mat) si la clé est inconnue.

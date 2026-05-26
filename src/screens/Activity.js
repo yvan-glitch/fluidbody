@@ -38,6 +38,7 @@ import ActivityRings, { MiniActivityRings, RING_COLORS } from '../components/Act
 import healthkit from '../utils/healthkit';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
 import { ACHIEVEMENTS, getUnlockedSync, subscribe as subscribeAchievements, prime as primeAchievements } from '../utils/achievements';
+import { Icon } from '../components/Icons';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -772,7 +773,9 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
                       opacity: unlocked ? 1 : 0.5,
                     }}
                   >
-                    <Text style={{ fontSize: 28, marginBottom: 6 }}>{unlocked ? a.icon : '🔒'}</Text>
+                    <View style={{ height: 32, marginBottom: 6, alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name={unlocked ? a.iconKey : 'lock'} size={28} color={unlocked ? '#AEEF4D' : 'rgba(255,255,255,0.55)'} />
+                    </View>
                     <Text numberOfLines={2} style={{ fontSize: 10, fontWeight: '700', color: colors.text, textAlign: 'center', lineHeight: 13 }}>
                       {isFrLang ? a.titleFr : a.titleEn}
                     </Text>

@@ -51,6 +51,7 @@ import { pickSessionImage } from '../components/tv/tvImagePool';
 import { primeFavoritesCache } from '../utils/favorites';
 import { getDailyQuote } from '../constants/sabrinaQuotes';
 import { PILIER_CONTENT } from '../constants/pilierContent';
+import { Icon } from '../components/Icons';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
@@ -1608,7 +1609,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   accessibilityLabel={(tr.intention_aujourdhui || "Intention du jour") + " : " + (lang === 'fr' ? intent.labelFr : intent.labelEn) + " → " + intentPilier.label}
                   style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.42)', marginBottom: 12 }}
                 >
-                  <Text style={{ fontSize: 16 }}>{intent.emoji}</Text>
+                  <Icon name={intent.iconKey || 'sparkle'} size={16} color="#AEEF4D" />
                   <Text style={{ fontSize: 11, color: '#AEEF4D', fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' }}>{tr.intention_aujourdhui || 'Intention'}</Text>
                   <Text style={{ fontSize: 13, color: '#ffffff', fontWeight: '600' }}>{lang === 'fr' ? intent.labelFr : intent.labelEn}</Text>
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>{'·'}</Text>
@@ -2152,7 +2153,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                           <Text style={{ fontSize: 13, fontWeight: '700', color: '#001226' }}>{tr.live_join || 'Rejoindre'}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={{ height: 38, width: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ fontSize: 14 }}>🔔</Text>
+                          <Icon name="bell" size={14} color="#AEEF4D" />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -2188,7 +2189,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               {/* Search bar — Liquid Glass capsule */}
               <View style={{ marginBottom: 14 }}>
                 <LiquidGlassCapsule tint="light" radius={16} paddingH={14} paddingV={8} gap={8}>
-                  <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.45)' }}>🔍</Text>
+                  <Icon name="search" size={16} color="rgba(255,255,255,0.45)" />
                   <TextInput
                     value={searchQuery}
                     onChangeText={setSearchQuery}

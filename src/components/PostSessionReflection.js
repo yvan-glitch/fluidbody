@@ -8,13 +8,14 @@ import { Modal, View, Text, TouchableOpacity, Platform, StyleSheet } from 'react
 import { BlurView } from 'expo-blur';
 
 import { saveReflection } from '../utils/reflections';
+import { Icon } from './Icons';
 
 const OPTIONS = [
-  { emoji: '😴', label: 'Fatigué', labelEn: 'Tired' },
-  { emoji: '😊', label: 'Détendu', labelEn: 'Relaxed' },
-  { emoji: '🔥', label: 'Énergique', labelEn: 'Energized' },
-  { emoji: '🌊', label: 'Ancré', labelEn: 'Grounded' },
-  { emoji: '✨', label: 'Léger', labelEn: 'Light' },
+  { id: 'tired',     iconKey: 'sleep',    label: 'Fatigué',   labelEn: 'Tired' },
+  { id: 'relaxed',   iconKey: 'smile',    label: 'Détendu',   labelEn: 'Relaxed' },
+  { id: 'energized', iconKey: 'flame',    label: 'Énergique', labelEn: 'Energized' },
+  { id: 'grounded',  iconKey: 'mountain', label: 'Ancré',     labelEn: 'Grounded' },
+  { id: 'light',     iconKey: 'sparkle',  label: 'Léger',     labelEn: 'Light' },
 ];
 
 export default function PostSessionReflection({ visible, sessionId, lang, onClose }) {
@@ -23,8 +24,8 @@ export default function PostSessionReflection({ visible, sessionId, lang, onClos
   if (!visible) return null;
   function choose(opt) {
     if (picked) return;
-    setPicked(opt.emoji);
-    saveReflection(sessionId, opt.emoji);
+    setPicked(opt.id);
+    saveReflection(sessionId, opt.id);
     setTimeout(function () { if (onClose) onClose(); setPicked(null); }, 700);
   }
   return (
@@ -39,10 +40,10 @@ export default function PostSessionReflection({ visible, sessionId, lang, onClos
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 14, marginBottom: 28, maxWidth: 600 }}>
           {OPTIONS.map(function (o) {
-            const active = picked === o.emoji;
+            const active = picked === o.id;
             return (
               <TouchableOpacity
-                key={o.emoji}
+                key={o.id}
                 onPress={function () { choose(o); }}
                 activeOpacity={0.85}
                 accessibilityLabel={isFr ? o.label : o.labelEn}
@@ -59,7 +60,9 @@ export default function PostSessionReflection({ visible, sessionId, lang, onClos
                   transform: [{ scale: active ? 1.05 : 1 }],
                 }}
               >
-                <Text style={{ fontSize: 44, marginBottom: 4 }}>{o.emoji}</Text>
+                <View style={{ width: 48, height: 48, marginBottom: 6, alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name={o.iconKey} size={40} color={active ? '#AEEF4D' : 'rgba(255,255,255,0.85)'} strokeWidth={1.6} />
+                </View>
                 <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.78)', letterSpacing: 0.3 }}>
                   {isFr ? o.label : o.labelEn}
                 </Text>

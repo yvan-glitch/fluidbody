@@ -14,6 +14,7 @@ import { T } from '../constants/data';
 import { VideoPlaceholderMeduse } from './Meduse';
 import Skeleton from './Skeleton';
 import LiquidGlassCapsule from './LiquidGlassCapsule';
+import { Icon } from './Icons';
 import HeartRatePill from './HeartRatePill';
 import { GlassView, GlassButton, GLASS_RADII, GLASS_EASING, GLASS_DURATIONS } from './ui';
 import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
@@ -822,7 +823,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
               return (
                 <TouchableOpacity key={sl.code} onPress={function() { setCcLang(sl.code); setShowCcPicker(false); bumpTimer(); }} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, backgroundColor: active ? 'rgba(174,239,77,0.15)' : 'transparent' }}>
                   <Text style={{ fontSize: 14, color: active ? '#AEEF4D' : '#ffffff' }}>{sl.label}</Text>
-                  {active && <Text style={{ fontSize: 12, color: '#AEEF4D' }}>{'✓'}</Text>}
+                  {active ? <Icon name="check" size={14} color="#AEEF4D" strokeWidth={2.2} /> : null}
                 </TouchableOpacity>
               );
             })}
@@ -869,7 +870,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             <View pointerEvents="box-none" style={{ position: 'absolute', top: 50, left: 16 }}>
               <LiquidGlassCapsule tint="light" paddingH={10} paddingV={6} gap={12}>
                 <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={10} {...tvFocusProps(true)} style={{ width: IS_TV ? 56 : 28, height: IS_TV ? 56 : 28, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: IS_TV ? 28 : 16, color: '#FFFFFF', fontWeight: '500' }}>{'✕'}</Text>
+                  <Icon name="close" size={IS_TV ? 28 : 18} color="#FFFFFF" strokeWidth={2} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => { bumpTimer(); }} hitSlop={10} style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}>
                   <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">

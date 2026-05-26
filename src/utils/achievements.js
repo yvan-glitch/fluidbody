@@ -28,7 +28,7 @@ const DATES_KEY = 'fluid_achievement_dates_v1';
 export const ACHIEVEMENTS = [
   {
     id: 'first_seance',
-    icon: '🌱',
+    iconKey: 'seedling',
     titleFr: 'Première séance',
     titleEn: 'First session',
     descFr: 'Bienvenue dans la pratique.',
@@ -36,7 +36,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'streak_3',
-    icon: '🔥',
+    iconKey: 'flame',
     titleFr: '3 jours d\'affilée',
     titleEn: '3-day streak',
     descFr: 'Trois jours consécutifs de pratique.',
@@ -44,7 +44,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'streak_7',
-    icon: '⚡',
+    iconKey: 'lightning',
     titleFr: 'Une semaine !',
     titleEn: 'One full week!',
     descFr: '7 jours consécutifs — l\'habitude prend.',
@@ -52,7 +52,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'streak_30',
-    icon: '🌟',
+    iconKey: 'star',
     titleFr: '30 jours rituel',
     titleEn: '30-day ritual',
     descFr: 'Un mois de pratique continue. Sabrina est fière.',
@@ -60,7 +60,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'count_10',
-    icon: '🪼',
+    iconKey: 'jellyfish',
     titleFr: '10 séances',
     titleEn: '10 sessions',
     descFr: 'Tu as posé les fondations.',
@@ -68,7 +68,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'count_50',
-    icon: '🏔️',
+    iconKey: 'mountain',
     titleFr: '50 séances',
     titleEn: '50 sessions',
     descFr: 'La pratique devient ton terrain.',
@@ -76,7 +76,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'count_100',
-    icon: '👑',
+    iconKey: 'crown',
     titleFr: '100 séances',
     titleEn: '100 sessions',
     descFr: 'Tu fais partie du cercle des fidèles.',
@@ -84,7 +84,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'pilier_tour',
-    icon: '🌍',
+    iconKey: 'globe',
     titleFr: 'Tour des piliers',
     titleEn: 'Pillar tour',
     descFr: 'Au moins une séance dans chaque pilier.',
@@ -92,7 +92,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'specialist_mat',
-    icon: '🧘‍♀️',
+    iconKey: 'meditation',
     titleFr: 'Spécialiste Mat Pilates',
     titleEn: 'Mat Pilates specialist',
     descFr: '5 séances de Mat Pilates complétées.',
@@ -100,7 +100,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'specialist_back',
-    icon: '🦴',
+    iconKey: 'spine',
     titleFr: 'Spécialiste Dos',
     titleEn: 'Back specialist',
     descFr: '5 séances de Dos complétées.',
@@ -108,7 +108,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'specialist_mobility',
-    icon: '💧',
+    iconKey: 'droplet',
     titleFr: 'Spécialiste Mobilité',
     titleEn: 'Mobility specialist',
     descFr: '5 séances de Mobilité complétées.',
@@ -116,7 +116,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'specialist_posture',
-    icon: '🌿',
+    iconKey: 'leaf',
     titleFr: 'Spécialiste Posture',
     titleEn: 'Posture specialist',
     descFr: '5 séances de Posture complétées.',
@@ -124,7 +124,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'early_bird',
-    icon: '🌅',
+    iconKey: 'sunrise',
     titleFr: 'Lève-tôt',
     titleEn: 'Early bird',
     descFr: 'Une séance avant 8h du matin.',
@@ -132,7 +132,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'night_owl',
-    icon: '🌙',
+    iconKey: 'moon',
     titleFr: 'Couche-tard',
     titleEn: 'Night owl',
     descFr: 'Une séance après 21h.',
@@ -140,7 +140,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'explorer',
-    icon: '🧭',
+    iconKey: 'compass',
     titleFr: 'Exploratrice',
     titleEn: 'Explorer',
     descFr: '3 piliers différents en une semaine.',

@@ -17,6 +17,7 @@ import {
   GlassPressable,
   GLASS_RADII,
 } from './ui';
+import { Icon } from './Icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
 import { AquaticBackground, GlassCardTV } from './tv';
@@ -181,12 +182,12 @@ function CompareTable({ features, theme, title, appLabel, studioLabel }) {
             </Text>
             <View style={{ width: 64, alignItems: 'center' }}>
               {f.app
-                ? <Text style={{ color: '#AEEF4D', fontWeight: '800' }}>✓</Text>
+                ? <Icon name="check" size={16} color="#AEEF4D" strokeWidth={2.4} />
                 : <Text style={{ color: theme.colors.textTertiary, fontWeight: '700' }}>—</Text>}
             </View>
             <View style={{ width: 80, alignItems: 'center' }}>
               {f.studio
-                ? <Text style={{ color: theme.colors.accent, fontWeight: '800' }}>✓</Text>
+                ? <Icon name="check" size={16} color={theme.colors.accent} strokeWidth={2.4} />
                 : <Text style={{ color: theme.colors.textTertiary, fontWeight: '700' }}>—</Text>}
             </View>
           </View>
@@ -344,7 +345,9 @@ function TVPaywallView({
               borderWidth: 1, borderColor: 'rgba(174,239,77,0.45)',
               flexDirection: 'row', alignItems: 'center',
             }}>
-              <Text style={{ fontSize: 28, marginRight: 14 }}>🎁</Text>
+              <View style={{ marginRight: 14 }}>
+                <Icon name="gift" size={28} color="#AEEF4D" />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 18, fontWeight: '800', color: '#AEEF4D', marginBottom: 4 }}>
                   {tr.paywall_referral_bonus_title || (isFr ? 'Tu as un bonus en attente' : 'You have a bonus waiting')}
@@ -370,7 +373,7 @@ function TVPaywallView({
                     alignItems: 'center', justifyContent: 'center',
                     marginRight: 16,
                   }}>
-                    <Text style={{ color: '#AEEF4D', fontWeight: '800', fontSize: 16 }}>✓</Text>
+                    <Icon name="check" size={16} color="#AEEF4D" strokeWidth={2.4} />
                   </View>
                   <Text style={{ flex: 1, fontSize: 18, color: '#ffffff', fontWeight: '500', letterSpacing: -0.1 }}>{b}</Text>
                 </View>
@@ -677,7 +680,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 borderRadius={17}
                 contentStyle={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }}
               >
-                <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '600' }}>✕</Text>
+                <Icon name="close" size={18} color="#ffffff" strokeWidth={2} />
               </GlassView>
             </GlassPressable>
             <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>

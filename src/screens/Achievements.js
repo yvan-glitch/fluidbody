@@ -22,6 +22,7 @@ import {
   getUnlockDatesSync,
   subscribe as subscribeAchievements,
 } from '../utils/achievements';
+import { Icon } from '../components/Icons';
 
 const MONTHS_FR = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -121,7 +122,9 @@ export default function AchievementsScreen({ visible, lang, onClose }) {
                   opacity: unlocked ? 1 : 0.65,
                 }}
               >
-                <Text style={{ fontSize: 40, marginBottom: 10, opacity: unlocked ? 1 : 0.5 }}>{unlocked ? a.icon : '🔒'}</Text>
+                <View style={{ height: 44, marginBottom: 10, alignItems: 'center', justifyContent: 'center', opacity: unlocked ? 1 : 0.5 }}>
+                  <Icon name={unlocked ? a.iconKey : 'lock'} size={40} color={unlocked ? '#AEEF4D' : 'rgba(255,255,255,0.55)'} />
+                </View>
                 <Text numberOfLines={2} style={{ fontSize: 13, fontWeight: '700', color: '#ffffff', textAlign: 'center', lineHeight: 17, letterSpacing: -0.1 }}>
                   {title}
                 </Text>
