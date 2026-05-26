@@ -540,6 +540,39 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     }
     Share.share({ message: (tr.partage_share_msg || 'FluidBody+ Pilates') + '\n' + pctVal + '% · ' + totalDoneVal + ' ' + (tr.m_seances || 'séances') + ' · 🔥' + (streak || 0) + '\nhttps://apps.apple.com/app/fluidbody/id6761364962' }).catch(function() {});
   }
+  // Section labels for the regrouped iPhone Profile (Coach / Activité /
+  // Réglages / Compte / À propos). Inline map to avoid touching T.
+  var SECTION_LABELS = {
+    coach:    { fr: '🧑 Votre coach',    en: '🧑 Your coach',    es: '🧑 Tu coach',     it: '🧑 La tua coach' },
+    activity: { fr: '📊 Mon activité',  en: '📊 My activity',   es: '📊 Mi actividad', it: '📊 La mia attività' },
+    settings: { fr: '⚙️ Réglages',       en: '⚙️ Settings',       es: '⚙️ Ajustes',      it: '⚙️ Impostazioni' },
+    account:  { fr: '💳 Compte',         en: '💳 Account',        es: '💳 Cuenta',       it: '💳 Account' },
+    about:    { fr: 'ℹ️ À propos',        en: 'ℹ️ About',          es: 'ℹ️ Acerca de',    it: 'ℹ️ Informazioni' },
+  };
+  function sectionLabel(key) {
+    var row = SECTION_LABELS[key];
+    if (!row) return '';
+    return row[lang] || row.fr;
+  }
+  function SectionHeader(props) {
+    return (
+      <Text
+        accessibilityRole="header"
+        style={{
+          fontSize: 11,
+          fontWeight: '800',
+          color: '#AEEF4D',
+          letterSpacing: 2.5,
+          textTransform: 'uppercase',
+          marginHorizontal: 24,
+          marginTop: 8,
+          marginBottom: 12,
+        }}
+      >
+        {props.label}
+      </Text>
+    );
+  }
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient pointerEvents="none" colors={theme.colors.bgGradient} locations={theme.colors.bgGradientStops} style={StyleSheet.absoluteFill} />
@@ -751,8 +784,8 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </View>
         )}
 
+        <SectionHeader label={sectionLabel('coach')} />
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={60} padding={20} borderRadius={GLASS_RADII.card} substrateColor={theme.glass.substrateAccent}>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.coach_title || 'Votre Coach'}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
             <View style={{ width: 70, height: 70, borderRadius: 35, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginRight: 14 }}>
               <ExpoImage source={COACH_IMAGE} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
@@ -794,6 +827,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </View>
         </Modal>
 
+        <SectionHeader label={sectionLabel('activity')} />
         {onOpenStatistics && (
           <TouchableOpacity
             onPress={onOpenStatistics}
@@ -808,6 +842,26 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.stats_title || 'Statistiques'}</Text>
               <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.stats_subtitle || 'Ta progression dans le temps'}</Text>
+            </View>
+            <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Mes téléchargements — accessible aux iPhone abonnés. La gestion
+            réelle des fichiers (cache, suppression, espace) vit dans le
+            screen dédié MesTelechargements. */}
+        {onOpenDownloads && (
+          <TouchableOpacity
+            onPress={onOpenDownloads}
+            activeOpacity={0.85}
+            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
+          >
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+              <Text style={{ fontSize: 22, color: '#AEEF4D', fontWeight: '300' }}>{'↓'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.downloads_title || (lang === 'fr' ? 'Mes téléchargements' : 'My downloads')}</Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.downloads_sub || (lang === 'fr' ? 'Séances disponibles hors-ligne' : 'Sessions available offline')}</Text>
             </View>
             <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
           </TouchableOpacity>
@@ -830,6 +884,55 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </TouchableOpacity>
         )}
 
+        <SectionHeader label={sectionLabel('settings')} />
+
+        {/* Apple TV pairing — visible uniquement si loggué (sinon
+            le redeem côté edge function échouera). Section discrète :
+            une ligne avec icône + label + chevron. */}
+        {supaUser && (
+          <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
+            <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+              <TouchableOpacity
+                onPress={openPairAppleTV}
+                accessibilityRole="button"
+                accessibilityLabel={tr.tv_pair_btn || 'Pairer une Apple TV'}
+                activeOpacity={0.7}
+                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }}
+              >
+                {/* Icône Apple TV minimaliste — écran + stand, monochrome
+                    accent vert pour rester cohérent avec le design system. */}
+                <View style={{ width: 28, height: 28, marginRight: 12, alignItems: 'center', justifyContent: 'center' }}>
+                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Path
+                      d="M4 5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 15.5v-9A1.5 1.5 0 0 1 4 5z"
+                      stroke="#AEEF4D"
+                      strokeWidth={1.6}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <Path
+                      d="M9 20.5h6M12 17v3.5"
+                      stroke="#AEEF4D"
+                      strokeWidth={1.6}
+                      strokeLinecap="round"
+                    />
+                    <Circle cx={6.5} cy={10.5} r={1} fill="#AEEF4D" />
+                  </Svg>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.text, letterSpacing: -0.1 }}>
+                    {tr.tv_pair_btn || 'Pairer une Apple TV'}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>
+                    {tr.tv_pair_sub || 'Scanne le QR code affiché sur ta TV'}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 18, color: theme.colors.textTertiary || theme.colors.textSecondary }}>›</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          </View>
+        )}
+
         {/* Préférences — qualité streaming, audio background, HD systématique,
             Wi-Fi only download. Écran dédié, état persistant via AsyncStorage. */}
         {onOpenPreferences && (
@@ -844,26 +947,6 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.prefs_title || (lang === 'fr' ? 'Préférences' : 'Preferences')}</Text>
               <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.prefs_row_sub || (lang === 'fr' ? 'Qualité, audio, téléchargements' : 'Quality, audio, downloads')}</Text>
-            </View>
-            <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Mes téléchargements — accessible aux iPhone abonnés. La gestion
-            réelle des fichiers (cache, suppression, espace) vit dans le
-            screen dédié MesTelechargements. */}
-        {onOpenDownloads && (
-          <TouchableOpacity
-            onPress={onOpenDownloads}
-            activeOpacity={0.85}
-            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
-          >
-            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-              <Text style={{ fontSize: 22, color: '#AEEF4D', fontWeight: '300' }}>{'↓'}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.downloads_title || (lang === 'fr' ? 'Mes téléchargements' : 'My downloads')}</Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.downloads_sub || (lang === 'fr' ? 'Séances disponibles hors-ligne' : 'Sessions available offline')}</Text>
             </View>
             <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
           </TouchableOpacity>
@@ -1188,6 +1271,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </TouchableOpacity>
         </GlassCard></View>
 
+        <SectionHeader label={sectionLabel('account')} />
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
           <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
             <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text, marginBottom: 12, letterSpacing: -0.2 }}>{tr.subscription_status_label}</Text>
@@ -1197,73 +1281,6 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             </TouchableOpacity>
           </GlassCard>
         </View>
-
-        <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
-          <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text, marginBottom: 14, letterSpacing: -0.2 }}>{tr.mon_compte}</Text>
-            {supaUser && (
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
-                <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Email</Text>
-                <Text style={{ fontSize: 14, color: '#AEEF4D' }} numberOfLines={1}>{supaUser.email}</Text>
-              </View>
-            )}
-            {tr.compte_info.map(function(item, i) {
-              return (
-                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: i < tr.compte_info.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
-                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{item[0]}</Text>
-                  <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{item[1]}</Text>
-                </View>
-              );
-            })}
-          </GlassCard>
-        </View>
-
-        {/* Apple TV pairing — visible uniquement si loggué (sinon
-            le redeem côté edge function échouera). Section discrète :
-            une ligne avec icône + label + chevron. */}
-        {supaUser && (
-          <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
-            <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
-              <TouchableOpacity
-                onPress={openPairAppleTV}
-                accessibilityRole="button"
-                accessibilityLabel={tr.tv_pair_btn || 'Pairer une Apple TV'}
-                activeOpacity={0.7}
-                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }}
-              >
-                {/* Icône Apple TV minimaliste — écran + stand, monochrome
-                    accent vert pour rester cohérent avec le design system. */}
-                <View style={{ width: 28, height: 28, marginRight: 12, alignItems: 'center', justifyContent: 'center' }}>
-                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      d="M4 5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 15.5v-9A1.5 1.5 0 0 1 4 5z"
-                      stroke="#AEEF4D"
-                      strokeWidth={1.6}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <Path
-                      d="M9 20.5h6M12 17v3.5"
-                      stroke="#AEEF4D"
-                      strokeWidth={1.6}
-                      strokeLinecap="round"
-                    />
-                    <Circle cx={6.5} cy={10.5} r={1} fill="#AEEF4D" />
-                  </Svg>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.text, letterSpacing: -0.1 }}>
-                    {tr.tv_pair_btn || 'Pairer une Apple TV'}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>
-                    {tr.tv_pair_sub || 'Scanne le QR code affiché sur ta TV'}
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 18, color: theme.colors.textTertiary || theme.colors.textSecondary }}>›</Text>
-              </TouchableOpacity>
-            </GlassCard>
-          </View>
-        )}
 
         {supaUser && (
           <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
@@ -1408,45 +1425,6 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </GlassCard></View>
         )}
 
-        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dev_title || 'Développeur'}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
-            <View style={{ width: 70, height: 70, borderRadius: 35, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginRight: 14 }}>
-              <ExpoImage source={DEV_IMAGE} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text }}>{tr.dev_name || 'Yvan'}</Text>
-              <Text style={{ fontSize: 12, color: '#AEEF4D', marginTop: 2 }}>{tr.dev_subtitle || 'Fondateur · Ingénieur & Spécialiste Pilates'}</Text>
-            </View>
-          </View>
-          <TouchableOpacity activeOpacity={0.85} onPress={function() { setShowDevBio(true); }} style={{ paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center' }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.dev_more || 'En savoir plus'}</Text>
-          </TouchableOpacity>
-        </GlassCard></View>
-
-        <Modal visible={showDevBio} animationType="slide" transparent statusBarTranslucent>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.6)', justifyContent: 'center' }}>
-            <View style={{ marginHorizontal: 20, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', maxHeight: Dimensions.get('window').height * 0.8, shadowColor: '#ffffff', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
-              <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ backgroundColor: 'rgba(10,20,35,0.6)', padding: 24 }}>
-                <LinearGradient colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '30%' }} pointerEvents="none" />
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                  <View style={{ width: 90, height: 90, borderRadius: 45, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginBottom: 12 }}>
-                    <ExpoImage source={DEV_IMAGE} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
-                  </View>
-                  <Text style={{ fontSize: 22, fontWeight: '800', color: theme.colors.text }}>{tr.dev_name || 'Yvan'}</Text>
-                  <Text style={{ fontSize: 13, color: '#AEEF4D', marginTop: 4 }}>{tr.dev_subtitle || 'Fondateur · Ingénieur & Spécialiste Pilates'}</Text>
-                </View>
-                <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(255,255,255,0.8)', lineHeight: 22 }}>{tr.dev_full_bio || ''}</Text>
-              </ScrollView>
-              <TouchableOpacity onPress={function() { setShowDevBio(false); }} style={{ marginTop: 18, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.15)', alignItems: 'center' }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>Fermer</Text>
-              </TouchableOpacity>
-              </BlurView>
-            </View>
-          </View>
-        </Modal>
-
         {!supaUser && (
           <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
             <TouchableOpacity onPress={function() {
@@ -1463,25 +1441,6 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             </TouchableOpacity>
           </View>
         )}
-
-        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text, marginBottom: 12 }}>{tr.profil_donnees_title || 'Confidentialité'}</Text>
-          <Text style={{ fontSize: 13, color: theme.colors.textSecondary, lineHeight: 20, marginBottom: 14 }}>{tr.profil_donnees_desc || 'Vos données restent sur votre appareil. Aucune donnée personnelle n\'est envoyée à des serveurs tiers. Les séances, la progression et les préférences sont stockées localement via AsyncStorage. Si vous vous connectez, seul votre email est synchronisé via Supabase pour sauvegarder votre profil.'}</Text>
-          <View style={{ borderTopWidth: 0.5, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 12, gap: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 14 }}>🔒</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.7)', flex: 1 }}>{tr.profil_donnees_local || 'Données stockées localement sur votre appareil'}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 14 }}>🚫</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.7)', flex: 1 }}>{tr.profil_donnees_no_tracking || 'Aucun tracking publicitaire'}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 14 }}>🍎</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.7)', flex: 1 }}>{tr.profil_donnees_healthkit || 'HealthKit : données lues uniquement, jamais partagées'}</Text>
-            </View>
-          </View>
-        </GlassCard></View>
 
         {supaUser && onLogout && (
           <View style={{ marginHorizontal: 20, marginTop: 40, marginBottom: 16 }}>
@@ -1546,6 +1505,87 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             </View>
           </View>
         )}
+
+        <SectionHeader label={sectionLabel('about')} />
+
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
+          <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text, marginBottom: 14, letterSpacing: -0.2 }}>{tr.mon_compte}</Text>
+            {supaUser && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+                <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Email</Text>
+                <Text style={{ fontSize: 14, color: '#AEEF4D' }} numberOfLines={1}>{supaUser.email}</Text>
+              </View>
+            )}
+            {tr.compte_info.map(function(item, i) {
+              return (
+                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: i < tr.compte_info.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{item[0]}</Text>
+                  <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{item[1]}</Text>
+                </View>
+              );
+            })}
+          </GlassCard>
+        </View>
+
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text, marginBottom: 12 }}>{tr.profil_donnees_title || 'Confidentialité'}</Text>
+          <Text style={{ fontSize: 13, color: theme.colors.textSecondary, lineHeight: 20, marginBottom: 14 }}>{tr.profil_donnees_desc || 'Vos données restent sur votre appareil. Aucune donnée personnelle n\'est envoyée à des serveurs tiers. Les séances, la progression et les préférences sont stockées localement via AsyncStorage. Si vous vous connectez, seul votre email est synchronisé via Supabase pour sauvegarder votre profil.'}</Text>
+          <View style={{ borderTopWidth: 0.5, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 12, gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: 14 }}>🔒</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.7)', flex: 1 }}>{tr.profil_donnees_local || 'Données stockées localement sur votre appareil'}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: 14 }}>🚫</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.7)', flex: 1 }}>{tr.profil_donnees_no_tracking || 'Aucun tracking publicitaire'}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: 14 }}>🍎</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.7)', flex: 1 }}>{tr.profil_donnees_healthkit || 'HealthKit : données lues uniquement, jamais partagées'}</Text>
+            </View>
+          </View>
+        </GlassCard></View>
+
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dev_title || 'Développeur'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+            <View style={{ width: 70, height: 70, borderRadius: 35, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginRight: 14 }}>
+              <ExpoImage source={DEV_IMAGE} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text }}>{tr.dev_name || 'Yvan'}</Text>
+              <Text style={{ fontSize: 12, color: '#AEEF4D', marginTop: 2 }}>{tr.dev_subtitle || 'Fondateur · Ingénieur & Spécialiste Pilates'}</Text>
+            </View>
+          </View>
+          <TouchableOpacity activeOpacity={0.85} onPress={function() { setShowDevBio(true); }} style={{ paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center' }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.dev_more || 'En savoir plus'}</Text>
+          </TouchableOpacity>
+        </GlassCard></View>
+
+        <Modal visible={showDevBio} animationType="slide" transparent statusBarTranslucent>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.6)', justifyContent: 'center' }}>
+            <View style={{ marginHorizontal: 20, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', maxHeight: Dimensions.get('window').height * 0.8, shadowColor: '#ffffff', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
+              <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ backgroundColor: 'rgba(10,20,35,0.6)', padding: 24 }}>
+                <LinearGradient colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '30%' }} pointerEvents="none" />
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                  <View style={{ width: 90, height: 90, borderRadius: 45, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginBottom: 12 }}>
+                    <ExpoImage source={DEV_IMAGE} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
+                  </View>
+                  <Text style={{ fontSize: 22, fontWeight: '800', color: theme.colors.text }}>{tr.dev_name || 'Yvan'}</Text>
+                  <Text style={{ fontSize: 13, color: '#AEEF4D', marginTop: 4 }}>{tr.dev_subtitle || 'Fondateur · Ingénieur & Spécialiste Pilates'}</Text>
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(255,255,255,0.8)', lineHeight: 22 }}>{tr.dev_full_bio || ''}</Text>
+              </ScrollView>
+              <TouchableOpacity onPress={function() { setShowDevBio(false); }} style={{ marginTop: 18, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.15)', alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>Fermer</Text>
+              </TouchableOpacity>
+              </BlurView>
+            </View>
+          </View>
+        </Modal>
+
         {__DEV__ && (
           <View style={{ marginHorizontal: 20, marginBottom: 48, padding: 16, borderWidth: 1, borderColor: 'rgba(255,200,0,0.4)', borderRadius: 12 }}>
             <Text style={{ color: '#FFCC00', fontSize: 12, marginBottom: 8, fontWeight: '700', letterSpacing: 1 }}>DEV ONLY</Text>
