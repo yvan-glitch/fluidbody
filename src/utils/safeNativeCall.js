@@ -22,7 +22,11 @@ import { Platform } from 'react-native';
 // Flip to `false` once the crash is identified to silence the breadcrumbs.
 // Kept hard-coded (not env-driven) so it ships in the TestFlight build
 // without needing a rebuild dance.
-export const DIAGNOSTIC_NATIVE_CALLS = true;
+// 2026-05 — désactivé pour la soumission App Store (audit pré-prod) :
+// les console.log à chaque appel natif polluent les logs Apple Console et
+// dégradent légèrement la perf. Re-flip à `true` en cas de retour d'un
+// crash difficile à reproduire.
+export const DIAGNOSTIC_NATIVE_CALLS = false;
 
 let _Sentry = null;
 try { _Sentry = require('@sentry/react-native'); } catch (e) {}

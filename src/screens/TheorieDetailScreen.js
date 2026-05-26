@@ -7,6 +7,8 @@ import { isComingSoon } from '../utils';
 import { Bulle, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import LivingBackground from '../components/LivingBackground';
+import DownloadButton from '../components/DownloadButton';
+import { IS_TV } from '../utils/platformTV';
 
 function LockIcon({ size = 14, color = 'rgba(255,255,255,0.5)' }) {
   return (
@@ -70,50 +72,72 @@ export default function TheorieDetailScreen({ pilier, items, lang, isSubscriber,
               }
               onPlay(seance, idx);
             };
+            // On lift le DownloadButton HORS de la TouchableOpacity parente :
+            //   - parent : TouchableOpacity row (tap → play)
+            //   - sibling : DownloadButton positionné en absolute à droite
+            // Cette structure évite les soucis de nested touchables (parents
+            // qui interceptent le tap silencieusement). Le bouton et la row
+            // sont enfants d'un même View flex relative.
             return (
-              <TouchableOpacity
-                key={pilier.key + '-' + idx}
-                onPress={handlePress}
-                disabled={noVideo}
-                activeOpacity={0.85}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  borderRadius: 14,
-                  backgroundColor: 'rgba(255,255,255,0.04)',
-                  borderWidth: 1,
-                  borderColor: locked ? 'rgba(255,255,255,0.08)' : (isFree ? 'rgba(174,239,77,0.35)' : 'rgba(255,255,255,0.08)'),
-                  marginBottom: 8,
-                  opacity: noVideo ? 0.45 : (locked ? 0.55 : 1),
-                }}
-              >
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(174,239,77,0.10)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                  {locked ? <LockIcon size={14} color="#AEEF4D" /> : <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{noVideo ? '·' : '▶'}</Text>}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#ffffff' }} numberOfLines={1}>{titre}</Text>
-                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 4, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 10, color: '#AEEF4D', letterSpacing: 0.6, textTransform: 'uppercase', fontWeight: '700' }}>{etapeLabel}</Text>
-                    <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>{duree}</Text>
+              <View key={pilier.key + '-' + idx} style={{ marginBottom: 8, position: 'relative' }}>
+                <TouchableOpacity
+                  onPress={handlePress}
+                  disabled={noVideo}
+                  activeOpacity={0.85}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    paddingRight: !IS_TV && !noVideo ? 56 : 14,
+                    borderRadius: 14,
+                    backgroundColor: 'rgba(255,255,255,0.04)',
+                    borderWidth: 1,
+                    borderColor: locked ? 'rgba(255,255,255,0.08)' : (isFree ? 'rgba(174,239,77,0.35)' : 'rgba(255,255,255,0.08)'),
+                    opacity: noVideo ? 0.45 : (locked ? 0.55 : 1),
+                  }}
+                >
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(174,239,77,0.10)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    {locked ? <LockIcon size={14} color="#AEEF4D" /> : <Text style={{ fontSize: 14, color: '#AEEF4D' }}>{noVideo ? '·' : '▶'}</Text>}
                   </View>
-                </View>
-                {isComingSoon(pilier.key, idx) ? (
-                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(210,140,190,0.18)', borderWidth: 1, borderColor: 'rgba(210,140,190,0.5)' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#E1A8C8', letterSpacing: 0.6, textTransform: 'uppercase' }}>{tr.coming_soon_badge || 'Bientôt'}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#ffffff' }} numberOfLines={1}>{titre}</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 4, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 10, color: '#AEEF4D', letterSpacing: 0.6, textTransform: 'uppercase', fontWeight: '700' }}>{etapeLabel}</Text>
+                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>{duree}</Text>
+                    </View>
                   </View>
-                ) : isFree ? (
-                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: '#AEEF4D' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#AEEF4D', letterSpacing: 0.6, textTransform: 'uppercase' }}>{freeBadge}</Text>
-                  </View>
-                ) : locked ? (
-                  <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <LockIcon size={11} color="rgba(255,255,255,0.65)" />
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.4, textTransform: 'uppercase' }}>{premiumBadge}</Text>
+                  {isComingSoon(pilier.key, idx) ? (
+                    <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(210,140,190,0.18)', borderWidth: 1, borderColor: 'rgba(210,140,190,0.5)' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#E1A8C8', letterSpacing: 0.6, textTransform: 'uppercase' }}>{tr.coming_soon_badge || 'Bientôt'}</Text>
+                    </View>
+                  ) : isFree ? (
+                    <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: '#AEEF4D' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#AEEF4D', letterSpacing: 0.6, textTransform: 'uppercase' }}>{freeBadge}</Text>
+                    </View>
+                  ) : locked ? (
+                    <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <LockIcon size={11} color="rgba(255,255,255,0.65)" />
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.4, textTransform: 'uppercase' }}>{premiumBadge}</Text>
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
+                {/* DownloadButton lifted out of the TouchableOpacity — son
+                    propre TouchableOpacity ne risque plus l'interception par
+                    le parent. Position absolue à droite, centré verticalement. */}
+                {!IS_TV && !noVideo ? (
+                  <View style={{ position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' }}>
+                    <DownloadButton
+                      pilierKey={pilier.key}
+                      idx={idx}
+                      lang={lang}
+                      size={32}
+                      disabled={locked}
+                      durationMin={(function() { var m = String(duree || '').match(/\d+/); return m ? parseInt(m[0], 10) : null; })()}
+                    />
                   </View>
                 ) : null}
-              </TouchableOpacity>
+              </View>
             );
           })}
         </View>

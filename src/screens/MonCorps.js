@@ -26,6 +26,11 @@ import { useTheme } from '../theme/ThemeProvider';
 import LivingBackground from '../components/LivingBackground';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
+import PostSessionReflection from '../components/PostSessionReflection';
+import DailyIntentionPrompt from '../components/DailyIntentionPrompt';
+import StreakCelebration from '../components/StreakCelebration';
+import { getTodayIntention, getPilierKeyForIntention, findIntention } from '../utils/dailyIntention';
+import { shouldCelebrate, markCelebrated } from '../utils/streakMilestones';
 import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
@@ -35,7 +40,17 @@ import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
-import { SeanceCompleteTV } from '../components/tv';
+import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVHeaderBar, TVHeaderSearchIcon, TVHeaderBreathIcon, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground, RechercheTV, SessionBadge } from '../components/tv';
+import { pickBadge } from '../utils/sessionBadges';
+import { getCachedFavorites, subscribeFavorites } from '../utils/favorites';
+import { getThisWeekSchedule } from '../utils/weeklySchedule';
+import SeanceCarouselRow from '../components/SeanceCarouselRow';
+import DownloadButton from '../components/DownloadButton';
+import { primeDownloadsCache, subscribeDownloads, getCachedDownloads, getCachedStorageBytes, formatBytes, removeDownload, removeAllDownloads, isDownloadedCached } from '../utils/downloadsCache';
+import { pickSessionImage } from '../components/tv/tvImagePool';
+import { primeFavoritesCache } from '../utils/favorites';
+import { getDailyQuote } from '../constants/sabrinaQuotes';
+import { PILIER_CONTENT } from '../constants/pilierContent';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
@@ -72,6 +87,10 @@ const PROG_IMAGES = {
   core: require('../../assets/programs/core-plancher.jpg'),
   souplesse: require('../../assets/programs/souplesse.jpg'),
 };
+
+// Photos coach Sabrina (studio Espace Pilates) — TV uniquement.
+const SABRINA_HERO = require('../../assets/coach/sabrina_1.jpg');   // signature hero
+const SABRINA_BEACH = require('../../assets/coach/sabrina_3.jpg');  // backdrop "monde"
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
@@ -422,6 +441,8 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
   // Remember the seance that just finished so the share card has its data
   // even after `activeVideo` resets to null.
   const [celebratedSeance, setCelebratedSeance] = useState(null);
+  const [celebratedIdx, setCelebratedIdx] = useState(null);
+  const [showReflection, setShowReflection] = useState(false);
   const [showDemoLimit, setShowDemoLimit] = useState(false);
   const [resumeIndices, setResumeIndices] = useState(() => new Set());
 
@@ -505,7 +526,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
           seanceIndex={activeVideo}
           isDemo={activeVideo === sdjIndex && !isSubscriber}
           onClose={() => { setShowDemoLimit(false); setActiveVideo(null); }}
-          onComplete={() => { setCelebratedSeance(seances[activeVideo]); onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
+          onComplete={() => { setCelebratedSeance(seances[activeVideo]); setCelebratedIdx(activeVideo); onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
           onDemoLimit={() => setShowDemoLimit(true)}
           saveHealthKitWorkout={saveHealthKitWorkout}
         />
@@ -613,6 +634,28 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
               accent={isDone ? 'green' : 'cyan'}
               style={{ borderRadius: IS_TV ? 20 : 16, overflow: 'hidden', marginBottom: IS_TV ? 22 : 12, height: IS_TV ? 200 : 110, opacity: noVideo ? 0.45 : (locked ? 0.4 : 1) }}
             >
+              {(function() {
+                // Badge top-left (REPRENDRE / NOUVEAU / FAVORI). On désactive
+                // "PROGRAMME" à l'intérieur d'un pilier (redondant : toutes
+                // les séances du pilier le porteraient).
+                var b = pickBadge({ pilierKey: pilier.key, idx: i, lang: lang, isResume: resumeIndices.has(i), isProgram: false });
+                return b && !noVideo ? (
+                  <View style={{ position: 'absolute', top: IS_TV ? 14 : 8, left: IS_TV ? 14 : 8, zIndex: 4 }}>
+                    <SessionBadge label={b.label} tone={b.tone} />
+                  </View>
+                ) : null;
+              })()}
+              {/* Bouton télécharger (iPhone uniquement). En top-right pour
+                  ne pas chevaucher le badge top-left ni les chips bas-gauche
+                  (Gratuit / Reprise / Bientôt). Peut chevaucher légèrement
+                  le watermark "FLUIDBODY+" décoratif — le bouton est
+                  fonctionnel, prioritaire. Désactivé si pas vidéo ou pas
+                  abonné (le DL nécessite l'abonnement comme le stream). */}
+              {!IS_TV && !noVideo && !locked ? (
+                <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 4 }}>
+                  <DownloadButton pilierKey={pilier.key} idx={i} lang={lang} disabled={!isSubscriber} />
+                </View>
+              ) : null}
               <View style={{ flex: 1 }}>
                 <Image source={PILIER_IMAGES[pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pil-bg-' + pilier.key} style={StyleSheet.absoluteFill} />
                 <LinearGradient
@@ -671,14 +714,20 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
               durationLabel={celebratedSeance ? celebratedSeance[1] : null}
               seanceTitle={celebratedSeance ? celebratedSeance[0] : null}
               pilierLabel={pilier.label}
-              onContinue={() => setShowCelebration(false)}
-              onClose={() => { setShowCelebration(false); onClose && onClose(); }}
+              onContinue={() => { setShowCelebration(false); setShowReflection(true); }}
+              onClose={() => { setShowCelebration(false); setShowReflection(true); onClose && onClose(); }}
             />
           </View>
         )
       ) : (
-        <CelebrationOverlay visible={showCelebration} onDone={() => setShowCelebration(false)} pilier={pilier} lang={lang} seance={celebratedSeance} />
+        <CelebrationOverlay visible={showCelebration} onDone={() => { setShowCelebration(false); setShowReflection(true); }} pilier={pilier} lang={lang} seance={celebratedSeance} />
       )}
+      <PostSessionReflection
+        visible={showReflection}
+        sessionId={celebratedIdx != null ? pilier.key + '_' + celebratedIdx : null}
+        lang={lang}
+        onClose={() => setShowReflection(false)}
+      />
     </View>
   );
 }
@@ -972,8 +1021,15 @@ function ZoneIcon({ idx, color, size }) {
   }
 }
 
-function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout, supabase, supaUser }) {
+function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout, supabase, supaUser, onOpenProfile }) {
   var tr = T[lang] || T["fr"];
+  // Précharge le cache favoris : cœurs visibles (Bibliothèque TV, badges
+  // iPhone) + rangée "Mes favoris" (TV + iPhone Pour vous).
+  useEffect(function() { primeFavoritesCache(); }, []);
+  // Précharge le cache des téléchargements (iPhone) pour que les boutons
+  // download dans PilierPanel et la section Hors-ligne reflètent l'état
+  // dès le premier rendu.
+  useEffect(function() { if (!IS_TV) primeDownloadsCache(); }, []);
   var theme = useTheme().theme;
   var navigation = useSafeNavigation();
   var [openPilier, setOpenPilier] = useState(null);
@@ -1067,8 +1123,59 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   var [showMyPrograms, setShowMyPrograms] = useState(false);
   var [showProgramBuilder, setShowProgramBuilder] = useState(false);
   var [programRefreshTick, setProgramRefreshTick] = useState(0);
+  // F1 — intention du jour (cold-start prompt + recommandation pilier).
+  var [todayIntention, setTodayIntentionState] = useState(null);
+  var [showIntentionPrompt, setShowIntentionPrompt] = useState(false);
+  // F3 — milestone de streak fêtée (3/7/14/21/30/50/100).
+  var [celebratedStreakN, setCelebratedStreakN] = useState(null);
+  // Speir-inspired Lots iPhone — favoris live-updatable pour les rangées
+  // "Mes favoris" + badges sur les cards. `favVersion` force un rerender
+  // de la branche Pour vous quand un cœur est toggle ailleurs.
+  var [favVersion, setFavVersion] = useState(0);
+  // Section Hors-ligne iPhone : version cache téléchargements pour
+  // rerender quand une séance est téléchargée/supprimée.
+  var [dlVersion, setDlVersion] = useState(0);
 
   useEffect(function() { diag('MonCorps.mount', 'start'); loadSavedPrograms(); diag('MonCorps.mount', 'done'); }, []);
+
+  useEffect(function() {
+    if (IS_TV) return undefined; // TV : déjà câblé via TwoColLandingTV.
+    var unsub = subscribeFavorites(function() { setFavVersion(function(v) { return v + 1; }); });
+    return function() { try { if (unsub) unsub(); } catch (e) {} };
+  }, []);
+
+  useEffect(function() {
+    if (IS_TV) return undefined; // TV : pas de downloads.
+    var unsub = subscribeDownloads(function() { setDlVersion(function(v) { return v + 1; }); });
+    return function() { try { if (unsub) unsub(); } catch (e) {} };
+  }, []);
+
+  useEffect(function() {
+    var cancelled = false;
+    getTodayIntention().then(function(intent) {
+      if (cancelled) return;
+      if (intent) { setTodayIntentionState(intent); return; }
+      // Pas d'intention pour aujourd'hui — petit délai pour ne pas afficher
+      // par-dessus l'éventuel onboarding/auth qui se monte juste après.
+      setTimeout(function() { if (!cancelled) setShowIntentionPrompt(true); }, 900);
+    }).catch(function() {});
+    return function() { cancelled = true; };
+  }, []);
+
+  // F3 — détecte la transition vers une milestone (3/7/14/21/30/50/100).
+  // On regarde si la milestone N n'a pas encore été célébrée (storage). Si
+  // c'est le cas, on l'affiche puis on marque comme célébrée pour ne pas
+  // re-afficher à chaque ouverture du même nombre.
+  useEffect(function() {
+    var cancelled = false;
+    if (!streak) return undefined;
+    shouldCelebrate(streak).then(function(go) {
+      if (cancelled || !go) return;
+      setCelebratedStreakN(streak);
+      markCelebrated(streak);
+    }).catch(function() {});
+    return function() { cancelled = true; };
+  }, [streak]);
 
   useEffect(function() {
     var cancelled = false;
@@ -1224,6 +1331,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad1-" + i} delay={b.delay + 2000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.35))} size={b.size} duration={b.duration} />; })}
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad2-" + i} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />; })}
       </View>
+      {!IS_TV && (<Fragment>
       <View style={[localStyles.logoRow, { justifyContent: "space-between", paddingLeft: 20, paddingRight: 20, paddingTop: 10, marginBottom: 20, flexDirection: 'row', alignItems: 'center' }]} pointerEvents="box-none">
         <Text style={localStyles.logoWordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
           FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: "900", color: "#AEEF4D", fontSize: 34 }}>+</AnimatedPlus>
@@ -1306,6 +1414,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           </LiquidGlassCapsule>
         </ScrollView>
       </View>
+      </Fragment>)}
       <ScrollView
         key={mcTab}
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 3 }}
@@ -1376,6 +1485,13 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           </TouchableOpacity>
         )}
         {mcTab === 'pour_vous' && (function() {
+          if (IS_TV) {
+            // Apple TV : "Pour vous" est rendu en plein écran style Fitness+
+            // par un overlay haut-zIndex en fin de composant (cf. plus bas) —
+            // pas ici dans le scroll. On ne rend donc rien dans la branche
+            // tab pour éviter un double rendu / des focusables fantômes.
+            return null;
+          }
           var gridGap = 6;
           var fullW = SW - 32;
           var halfW = Math.floor((fullW - gridGap) / 2);
@@ -1395,8 +1511,112 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               </View>
             );
           };
+          var intent = todayIntention ? findIntention(todayIntention) : null;
+          var intentPilierKey = todayIntention ? getPilierKeyForIntention(todayIntention) : null;
+          var intentPilier = intentPilierKey ? piliers.find(function(p) { return p.key === intentPilierKey; }) : null;
+
+          // (La section "Hors-ligne" a déménagé dans Profil > Mes téléchargements
+          // pour ne pas surcharger Pour vous.)
+
+          // Rangée "Mes favoris" iPhone — items dérivés du cache synchrone.
+          // Hidden si 0 favori. favVersion (dans une useEffect ailleurs) force
+          // un rerender quand un cœur est toggle.
+          // eslint-disable-next-line no-unused-vars
+          var _favTick = favVersion;
+          var seancesByKey = getSeances(lang);
+
+          // Métadonnées catalogue pour la card CTA "Le Pilates conscient,
+          // au quotidien" : X séances · Y min/h · Avec Sabrina. Compte
+          // TOUTES les séances du catalogue (pas de filtre vidéo — sinon
+          // on affichait "0 séances" tant que peu de vidéos étaient
+          // tournées). Parser de durée gère "12 min" et "1'59''".
+          var catCount = 0;
+          var catMinDecimal = 0;
+          piliers.forEach(function(p) {
+            var arr = (seancesByKey && seancesByKey[p.key]) || [];
+            arr.forEach(function(ss) {
+              if (!ss) return;
+              catCount += 1;
+              var raw = String(ss[1] || '');
+              // "X'YY''" → X minutes + YY secondes (ex. "1'59''" → 1.98 min)
+              var ap = raw.match(/(\d+)\s*'\s*(\d+)/);
+              if (ap) { catMinDecimal += parseInt(ap[1], 10) + parseInt(ap[2], 10) / 60; return; }
+              // "X min" ou juste "X"
+              var m = raw.match(/(\d+)/);
+              if (m) catMinDecimal += parseInt(m[1], 10);
+            });
+          });
+          var catMin = Math.round(catMinDecimal);
+          var heroMetaIPhone = (function() {
+            var dur;
+            if (catMin >= 120) {
+              var h = Math.floor(catMin / 60);
+              var rest = catMin - h * 60;
+              dur = h + ' h' + (rest ? ' ' + rest : '') + (lang === 'fr' ? ' de pratique' : ' of practice');
+            } else {
+              dur = catMin + (lang === 'fr' ? ' min de pratique' : ' min of practice');
+            }
+            var left = catCount + (lang === 'fr' ? ' séances' : ' sessions');
+            return left + ' · ' + dur + ' · ' + (lang === 'fr' ? 'Avec Sabrina' : 'With Sabrina');
+          })();
+
+          // Rangée "Cette semaine" iPhone (Lot 4) — 7 séances suggérées sur
+          // les 7 prochains jours. Biais intention si l'utilisateur a une
+          // intention du jour. Cards avec badge LUN/MAR/... en top-left.
+          var weekSchedule = getThisWeekSchedule(piliers, seancesByKey, { intentionKey: todayIntention, lang: lang });
+          var weekItems = weekSchedule.map(function(e) {
+            return {
+              key: 'wk_' + e.dayIdx + '_' + e.pilier.key + '_' + e.idx,
+              title: e.seance[0],
+              subtitle: e.seance[1] + ' · ' + e.pilier.label,
+              image: pickSessionImage(e.pilier.key, e.idx),
+              badge: { label: e.dayLabel, tone: 'white' },
+              pilier: e.pilier,
+              idx: e.idx,
+            };
+          });
+          var favItems = [];
+          var favIds = getCachedFavorites() || [];
+          for (var i = 0; i < favIds.length; i++) {
+            var id = favIds[i];
+            var us = id.lastIndexOf('_');
+            if (us < 1) continue;
+            var pk = id.slice(0, us);
+            var sIdx = parseInt(id.slice(us + 1), 10);
+            if (Number.isNaN(sIdx)) continue;
+            var pil = piliers.find(function(p) { return p.key === pk; });
+            var s = pil && seancesByKey[pk] && seancesByKey[pk][sIdx];
+            if (!pil || !s) continue;
+            favItems.push({
+              key: 'fav_' + id,
+              title: s[0],
+              subtitle: s[1] + ' · ' + pil.label,
+              image: pickSessionImage(pk, sIdx),
+              badge: pickBadge({ pilierKey: pk, idx: sIdx, lang: lang, isFavorite: true }),
+              pilier: pil,
+              idx: sIdx,
+            });
+            if (favItems.length >= 12) break;
+          }
           return (
             <View key="pour-vous">
+              {intent && intentPilier ? (
+                <TouchableOpacity
+                  onPress={function() { setOpenPilier(intentPilier); }}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel={(tr.intention_aujourdhui || "Intention du jour") + " : " + (lang === 'fr' ? intent.labelFr : intent.labelEn) + " → " + intentPilier.label}
+                  style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.42)', marginBottom: 12 }}
+                >
+                  <Text style={{ fontSize: 16 }}>{intent.emoji}</Text>
+                  <Text style={{ fontSize: 11, color: '#AEEF4D', fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' }}>{tr.intention_aujourdhui || 'Intention'}</Text>
+                  <Text style={{ fontSize: 13, color: '#ffffff', fontWeight: '600' }}>{lang === 'fr' ? intent.labelFr : intent.labelEn}</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>{'·'}</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', fontWeight: '500' }}>{intentPilier.label}</Text>
+                  <Text style={{ fontSize: 14, color: '#AEEF4D', fontWeight: '300', marginLeft: 2 }}>{'›'}</Text>
+                </TouchableOpacity>
+              ) : null}
+              <Text style={{ fontSize: 13, fontWeight: '500', fontStyle: 'italic', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.1, marginBottom: 14, paddingHorizontal: 4 }}>« {getDailyQuote()} »</Text>
               <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
                 {glassCell(mosaicImages[0], halfW, rowH1, 'm0')}
                 {glassCell(mosaicImages[1], halfW, rowH1, 'm1')}
@@ -1410,9 +1630,30 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 {glassCell(mosaicImages[5], halfW, rowH1, 'm5')}
                 {glassCell(mosaicImages[6], halfW, rowH1, 'm6')}
               </View>
+              {/* Rangée "Mes favoris" iPhone (Lot 2 Speir-inspired) — hidden
+                  si l'utilisateur n'a aucun cœur. Tap → ouvre la séance
+                  directement via setOpenInitialIdx + setOpenPilier. */}
+              {favItems.length > 0 ? (
+                <SeanceCarouselRow
+                  title={lang === 'fr' ? 'Mes favoris' : 'My favorites'}
+                  items={favItems}
+                  onItemPress={function(it) { setOpenInitialIdx(it.idx); setOpenPilier(it.pilier); }}
+                />
+              ) : null}
+              {/* Rangée "Cette semaine" iPhone (Lot 4) — planification 7 jours
+                  biaisée par l'intention du jour. Badge LUN/MAR/... blanc. */}
+              {weekItems.length > 0 ? (
+                <SeanceCarouselRow
+                  title={lang === 'fr' ? 'Cette semaine' : 'This week'}
+                  items={weekItems}
+                  onItemPress={function(it) { setOpenInitialIdx(it.idx); setOpenPilier(it.pilier); }}
+                />
+              ) : null}
               <LinearGradient colors={["rgba(28,28,30,0.3)", "rgba(28,28,30,0.88)", "rgba(28,28,30,0.95)"]} locations={[0, 0.4, 1]} style={{ borderRadius: 16, marginTop: 14, paddingTop: 60, paddingBottom: 24, paddingHorizontal: 20, alignItems: "center" }}>
                 <Text style={{ fontSize: 23, fontWeight: "700", color: "#ffffff", textAlign: "center", marginBottom: 6 }}>{tr.paywall_title}</Text>
-                <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.65)", textAlign: "center", lineHeight: 19, marginBottom: 16 }}>{tr.paywall_sub}</Text>
+                <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.65)", textAlign: "center", lineHeight: 19, marginBottom: 8 }}>{tr.paywall_sub}</Text>
+                {/* Métadata catalogue (Lot 3) — X séances · Y min/h · Avec Sabrina */}
+                <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.78)', textAlign: 'center', letterSpacing: 0.2, marginBottom: 18 }}>{heroMetaIPhone}</Text>
                 <View style={{ alignSelf: "stretch", marginBottom: 12 }}>
                   <GlassButton
                     onPress={function() { onActivateSubscription && onActivateSubscription(); }}
@@ -2010,9 +2251,11 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           );
         })()}
       </ScrollView>
-      {openPilier && (
+      {openPilier && (IS_TV ? (
+        <PilierPanelTV pilier={openPilier} done={done[openPilier.key] || Array(20).fill(false)} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); setOpenInitialIdx(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} saveHealthKitWorkout={saveHealthKitWorkout} initialSeanceIdx={openInitialIdx} />
+      ) : (
         <PilierPanel pilier={openPilier} done={done[openPilier.key] || Array(20).fill(false)} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); setOpenInitialIdx(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} saveHealthKitWorkout={saveHealthKitWorkout} initialSeanceIdx={openInitialIdx} />
-      )}
+      ))}
       <PilierEducation
         visible={!!openEducationPilier}
         pilier={openEducationPilier}
@@ -2033,6 +2276,95 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         try { return <BreathingCheckIn visible={showBreathing} onClose={function() { setShowBreathing(false); }} lang={lang} />; }
         catch (e) { if (__DEV__) console.warn('[breath-modal] render throw:', e); return null; }
       })()}
+
+      {/* ───────── Apple TV — backdrop "monde" ─────────
+          Sur "Pour vous" : le vrai fond animé Fluidbody (dégradé turquoise →
+          esthétique splash iPhone (navy → teal + 1-2 méduses à halo + qq
+          bulles), via AquaticBackground. MÊME fond sur TOUS les onglets TV
+          pour la cohérence (Yvan : "ce fond sur toutes les pages").
+          Persistant derrière tous les overlays TV (z50). */}
+      {IS_TV && !openPilier ? (
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}>
+          <AquaticBackground density="rich" contentOpacity={0.9} />
+        </View>
+      ) : null}
+
+      {/* ───────── Apple TV — "Pour vous" plein écran style Fitness+ ─────────
+          Overlay haut-zIndex qui recouvre tout le chrome iPhone (logoRow +
+          tabs masqués sur TV). Le PilierPanel est un Modal → s'affiche au
+          dessus quand une séance s'ouvre. */}
+      {IS_TV && !openPilier && mcTab === 'pour_vous' ? (
+        <TwoColLandingTV
+          piliers={piliers}
+          lang={lang}
+          seancesByKey={getSeances(lang)}
+          onPrimary={function() { var f = (sdj && sdj.pilier) || piliers[0]; if (f) setOpenPilier(f); }}
+          onOpenPilier={setOpenPilier}
+          onOpenSeance={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }}
+          onResume={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }}
+        />
+      ) : null}
+      {IS_TV && !openPilier && mcTab === 'explorer' ? (
+        <ExplorerTV piliers={piliers} seancesByKey={getSeances(lang)} onOpenPilier={setOpenPilier} onActivateSubscription={onActivateSubscription} lang={lang} />
+      ) : null}
+      {IS_TV && !openPilier && mcTab === 'programmes' ? (
+        <ProgrammesTV piliers={piliers} lang={lang} activeProgram={activeProgram} seancesByKey={getSeances(lang)} onOpenPilier={setOpenPilier} onOpenSeance={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }} />
+      ) : null}
+      {IS_TV && !openPilier && mcTab === 'activite' ? (
+        <StatsTV mode="activity" done={done} streak={streak} piliers={piliers} lang={lang} />
+      ) : null}
+      {IS_TV && !openPilier && mcTab === 'resume' ? (
+        <StatsTV mode="resume" done={done} streak={streak} piliers={piliers} lang={lang} />
+      ) : null}
+      {IS_TV && !openPilier && mcTab === 'biblio' ? (
+        <BibliothequeTV piliers={piliers} seancesByKey={getSeances(lang)} done={done} onOpenPilier={setOpenPilier} onOpenSeance={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }} lang={lang} />
+      ) : null}
+      {IS_TV && !openPilier && mcTab === 'recherche' ? (
+        <RechercheTV piliers={piliers} seancesByKey={getSeances(lang)} onOpenPilier={setOpenPilier} onOpenSeance={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }} lang={lang} />
+      ) : null}
+      {/* (Ancien : `mcTab === 'respire'` rendait BreathingCheckIn. Le nouveau
+          header utilise une pill modale → cette branche n'a plus de sens.) */}
+      {IS_TV && !openPilier ? (
+        <TVHeaderBar
+          tabs={[
+            { key: 'pour_vous', label: tr.tab_pour_vous || 'Pour vous' },
+            { key: 'explorer', label: tr.tab_explorer || 'Explorer' },
+            { key: 'programmes', label: tr.tab_programmes || 'Programmes' },
+            // Le tab "Respiration" n'agit pas comme une section navigable —
+            // au tap il déclenche la modal BreathingCheckIn (raccourci redondant
+            // avec la pill centrale, par demande Yvan). Mêmes méduses + bulles
+            // que sur iPhone, ajoutées en foreground dans BreathingCheckIn.
+            { key: 'respiration', label: tr.tab_respiration || 'Respiration', icon: TVHeaderBreathIcon, modal: true },
+            { key: 'recherche', icon: TVHeaderSearchIcon },
+          ]}
+          activeKey={mcTab}
+          onSelectTab={function(k) {
+            if (k === 'respiration') { setShowBreathing(true); return; }
+            setMcTab(k);
+          }}
+          prenom={prenom}
+          onOpenProfile={onOpenProfile}
+          onOpenBreathing={function() { setShowBreathing(true); }}
+          breathDone={breathDoneToday}
+          lang={lang}
+        />
+      ) : null}
+      {/* BreathingCheckIn modal — déclenché par la pill Respirer du header TV. */}
+      {IS_TV && showBreathing ? (
+        <BreathingCheckIn visible onClose={function() { setShowBreathing(false); }} lang={lang} />
+      ) : null}
+      <DailyIntentionPrompt
+        visible={showIntentionPrompt}
+        lang={lang}
+        onPicked={function(key) { setTodayIntentionState(key); setShowIntentionPrompt(false); }}
+        onClose={function() { setShowIntentionPrompt(false); }}
+      />
+      <StreakCelebration
+        visible={celebratedStreakN != null}
+        streak={celebratedStreakN || 0}
+        lang={lang}
+        onClose={function() { setCelebratedStreakN(null); }}
+      />
     </View>
   );
 }

@@ -44,6 +44,7 @@ function sentryCapture(error, ctx) {
     else Sentry.captureException(error);
   } catch (e) {}
 }
+import { withTimeout } from './src/utils/withTimeout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 // RevenueCat (achats Apple) — indisponible dans Expo Go, donc import "safe"
@@ -656,6 +657,9 @@ function Progresser({ done, lang, tensionIdxs }) {
 
 // ProfilScreen moved to src/screens/Profil.js
 import ProfilScreen from './src/screens/Profil';
+import MesTelechargements from './src/screens/MesTelechargements';
+import PreferencesScreen from './src/screens/Preferences';
+import { primePreferencesCache } from './src/utils/userPreferences';
 
 
 // ══════════════════════════════════
@@ -673,7 +677,7 @@ function SeanceDetailModal({ visible, onClose, sdj, lang, onPlay }) {
         <View style={{ height: SH * 0.42, width: "100%" }}>
           <ExpoImage source={PILIER_IMAGES[sdj.pilier.key]} contentFit="cover" cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
           <LinearGradient colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.7)"]} style={{ flex: 1 }}>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={{ position: "absolute", top: 56, left: 20, width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
+            <TouchableOpacity onPress={onClose} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Retour" style={{ position: "absolute", top: 56, left: 20, width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
               <Text style={{ fontSize: 18, color: "#ffffff" }}>{"\u2190"}</Text>
             </TouchableOpacity>
           </LinearGradient>
@@ -757,16 +761,16 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
     setLoading(true); setError('');
     try {
       if (mode === 'up') {
-        const { data, error: err } = await supabase.auth.signUp({
+        const { data, error: err } = await withTimeout(supabase.auth.signUp({
           email: em,
           password,
           options: { data: { prenom: String(prenomHint || '').trim().slice(0, 50).replace(/[<>]/g, '') } },
-        });
+        }), 15000, 'signUp');
         if (err) { setError(err.message); setLoading(false); return; }
         if (!data.session) { setError(tr.ob_auth_confirm); setLoading(false); return; }
         AsyncStorage.setItem(TERMS_ACCEPTED_STORAGE_KEY, String(LEGAL.termsVersion || '1.0')).catch(() => {});
       } else {
-        const { error: err } = await supabase.auth.signInWithPassword({ email: em, password });
+        const { error: err } = await withTimeout(supabase.auth.signInWithPassword({ email: em, password }), 15000, 'signIn');
         if (err) { setError(err.message); setLoading(false); return; }
       }
       setLoading(false);
@@ -792,21 +796,21 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
     }
     setLoading(true); setError('');
     try {
-      const credential = await AppleAuth.signInAsync({
+      const credential = await withTimeout(AppleAuth.signInAsync({
         requestedScopes: [
           AppleAuth.AppleAuthenticationScope.FULL_NAME,
           AppleAuth.AppleAuthenticationScope.EMAIL,
         ],
-      });
+      }), 45000, 'appleSheet');
       if (!credential.identityToken) {
         const msg = 'Apple identity token manquant.';
         setError(msg); Alert.alert('Apple Sign In', msg);
         setLoading(false); return;
       }
-      const { error: err } = await supabase.auth.signInWithIdToken({
+      const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken,
-      });
+      }), 15000, 'appleSignIn');
       if (err) {
         setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || 'Erreur Supabase');
         setLoading(false); return;
@@ -818,7 +822,9 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
       postAuthProfileSync(applePrenom).catch(function(e) { devWarn('postAuthProfileSync apple (background)', e); });
       return;
     } catch (e) {
-      if (e?.code !== 'ERR_REQUEST_CANCELED') {
+      if (e?.message && e.message.indexOf('timeout') !== -1) {
+        setError(tr.ob_auth_err_apple_timeout || "L'identification Apple a pris trop de temps. Vérifie ta connexion.");
+      } else if (e?.code !== 'ERR_REQUEST_CANCELED') {
         const msg = e?.message || tr.ob_auth_err_net || 'Erreur Apple Sign In';
         setError(msg);
         Alert.alert('Apple Sign In — erreur', `${msg}\n\nCode: ${e?.code || 'n/a'}`);
@@ -1054,7 +1060,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
     setLoading(true); setError(''); setEmailExistsErr(false);
     try {
       if (mode === 'up') {
-        const { data, error: err } = await supabase.auth.signUp({ email: em, password });
+        const { data, error: err } = await withTimeout(supabase.auth.signUp({ email: em, password }), 15000, 'signUp');
         if (err) {
           const msg = (err.message || '').toLowerCase();
           if (msg.includes('already') || msg.includes('exists') || msg.includes('registered') || msg.includes('déjà')) {
@@ -1067,7 +1073,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
         }
         if (!data.session) { setError(tr.ob_auth_confirm); setLoading(false); return; }
       } else {
-        const { error: err } = await supabase.auth.signInWithPassword({ email: em, password });
+        const { error: err } = await withTimeout(supabase.auth.signInWithPassword({ email: em, password }), 15000, 'signIn');
         if (err) { setError(err.message); setLoading(false); return; }
       }
       setLoading(false);
@@ -1084,15 +1090,15 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
     if (!appleAvailable) { Alert.alert('FluidBody+', 'Sign in with Apple disponible sur iOS uniquement.'); return; }
     setLoading(true); setError('');
     try {
-      const credential = await AppleAuth.signInAsync({
+      const credential = await withTimeout(AppleAuth.signInAsync({
         requestedScopes: [AppleAuth.AppleAuthenticationScope.FULL_NAME, AppleAuth.AppleAuthenticationScope.EMAIL],
-      });
+      }), 45000, 'appleSheet');
       if (!credential.identityToken) {
         const msg = 'Apple identity token manquant.';
         setError(msg); Alert.alert('Apple Sign In', msg);
         setLoading(false); return;
       }
-      const { error: err } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken });
+      const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken }), 15000, 'appleSignIn');
       if (err) {
         setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || 'Erreur Supabase');
         setLoading(false); return;
@@ -1110,7 +1116,9 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
       setLoading(false);
       finish();
     } catch (e) {
-      if (e?.code !== 'ERR_REQUEST_CANCELED') {
+      if (e?.message && e.message.indexOf('timeout') !== -1) {
+        setError(tr.ob_auth_err_apple_timeout || "L'identification Apple a pris trop de temps. Vérifie ta connexion.");
+      } else if (e?.code !== 'ERR_REQUEST_CANCELED') {
         const msg = e?.message || tr.ob_auth_err_net || 'Erreur Apple Sign In';
         setError(msg);
         Alert.alert('Apple Sign In — erreur', `${msg}\n\nCode: ${e?.code || 'n/a'}`);
@@ -1420,30 +1428,10 @@ function TVMainView({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChan
         isSubscriber={isSubscriber}
         onActivateSubscription={openPaywall}
         saveHealthKitWorkout={saveHealthKitWorkout}
+        onOpenProfile={function() { setProfileOpen(true); }}
       />
-      {/* Bouton Profil discret en haut à droite. Focusable Siri Remote
-          — par défaut, le focus initial est sur la première card de
-          MonCorps (cf. tvFocusProps preferred=true là-bas) ; on doit
-          flèche-droite-haut pour atteindre celui-ci. */}
-      <TouchableOpacity
-        hasTVPreferredFocus={false}
-        onPress={function() { setProfileOpen(true); }}
-        onFocus={function() { setProfileBtnFocused(true); }}
-        onBlur={function() { setProfileBtnFocused(false); }}
-        activeOpacity={0.85}
-        style={{
-          position: 'absolute',
-          top: 56, right: 80,
-          paddingHorizontal: 22, paddingVertical: 12,
-          borderRadius: 14,
-          backgroundColor: profileBtnFocused ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.08)',
-          borderWidth: 2,
-          borderColor: profileBtnFocused ? '#AEEF4D' : 'rgba(255,255,255,0.15)',
-          zIndex: 50,
-        }}
-      >
-        <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '600', letterSpacing: 0.3 }}>👤 {(T[lang] || T.fr).mon_compte || 'Mon compte'}</Text>
-      </TouchableOpacity>
+      {/* Le point d'entrée Profil vit désormais dans la TVTopBar (avatar en
+          haut à droite, rendu par MonCorps) → onOpenProfile ci-dessus. */}
 
       <Modal visible={profileOpen} animationType="fade" presentationStyle="fullScreen" onRequestClose={function() { setProfileOpen(false); }}>
         <ProfilTV
@@ -1504,12 +1492,11 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   });
   const [streak, setStreak] = useState(0);
   const [isSubscriber, setIsSubscriber] = useState(false);
-  const ADMIN_EMAILS = [
-    'qcrm6vkbnx@privaterelay.appleid.com',
-    'xvan06@gmail.com',
-    'yvan.tissot@icloud.com',
-    'sabrina.tissot@icloud.com',
-  ];
+  // Allowlist d'emails qui bypass IAP. Réduit à un seul email dédié
+  // (utilisé pour la review Apple + admin officiel). À sortir en env var
+  // / Supabase row à terme — pour l'instant hardcodé pour ne pas bloquer
+  // la submission.
+  const ADMIN_EMAILS = ['admin@fluidbody.ch'];
   const isAdmin = !!(supaUser && supaUser.email && ADMIN_EMAILS.indexOf(supaUser.email.toLowerCase()) !== -1);
   const effectiveIsSubscriber = isSubscriber || isAdmin;
   const [paywallVisible, setPaywallVisible] = useState(false);
@@ -1522,6 +1509,14 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [showStretchTimer, setShowStretchTimer] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
   const [showSabrinaProfile, setShowSabrinaProfile] = useState(false);
+  const [showDownloads, setShowDownloads] = useState(false);
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [pendingDownloadOpen, setPendingDownloadOpen] = useState(null); // { pilier, idx } pour ouvrir VideoPlayer depuis MesTelechargements
+
+  // Précharge le cache des préférences au mount pour que les composants
+  // critiques (VideoPlayer audio mode, getSignedVideoUrl quality, DownloadButton)
+  // puissent lire en sync dès le 1er rendu.
+  useEffect(function() { primePreferencesCache(); }, []);
   const [editingProfile, setEditingProfile] = useState(false);
   const [editingProfileInitial, setEditingProfileInitial] = useState(null);
   const [profileRefreshKey, setProfileRefreshKey] = useState(0);
@@ -1553,7 +1548,11 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   useEffect(function() {
     let cancelled = false;
     isCoachWelcomeSeen().then(function(seen) {
-      if (cancelled || seen) return;
+      // tvOS : on n'affiche jamais l'overlay coach. Le press de dismiss
+      // (« Je commence ») laissait fuiter le focus vers le bouton « Mon
+      // compte » → ProfilTV s'ouvrait tout seul. Copie iPhone-centrée en
+      // plus. On le coupe purement sur TV.
+      if (cancelled || seen || IS_TV) return;
       setTimeout(function() { if (!cancelled) setCoachWelcomeVisible(true); }, 700);
     });
     return function() { cancelled = true; };
@@ -2086,7 +2085,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
               } catch (e) {
                 Alert.alert('FluidBody+', e?.message || 'Erreur de déconnexion.');
               }
-            }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onOpenSabrina={() => setShowSabrinaProfile(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
+            }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onOpenSabrina={() => setShowSabrinaProfile(true)} onOpenDownloads={() => setShowDownloads(true)} onOpenPreferences={() => setShowPreferences(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
           </Tab.Navigator>
         </NavigationContainer>
       )}
@@ -2095,6 +2094,41 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       <Modal visible={showStatistics} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setShowStatistics(false); }}>
         <StatisticsScreen lang={lang} done={done} streak={streak} supaUser={supaUser} onClose={function() { setShowStatistics(false); }} />
       </Modal>
+      <Modal visible={showPreferences} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setShowPreferences(false); }}>
+        <PreferencesScreen
+          visible={showPreferences}
+          lang={lang}
+          onClose={function() { setShowPreferences(false); }}
+        />
+      </Modal>
+      <Modal visible={showDownloads} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setShowDownloads(false); }}>
+        <MesTelechargements
+          visible={showDownloads}
+          lang={lang}
+          onClose={function() { setShowDownloads(false); }}
+          onOpenSeance={function(pilier, idx) {
+            // Au tap d'un download, on ferme la modal et on ouvre le
+            // VideoPlayer (qui auto-detect le local file via DownloadManager).
+            setShowDownloads(false);
+            setTimeout(function() { setPendingDownloadOpen({ pilier: pilier, idx: idx }); }, 220);
+          }}
+        />
+      </Modal>
+      {pendingDownloadOpen ? (
+        <Modal visible animationType="fade" presentationStyle="fullScreen" statusBarTranslucent supportedOrientations={['portrait', 'landscape-left', 'landscape-right']} onRequestClose={function() { setPendingDownloadOpen(null); }}>
+          <VideoPlayer
+            key={'dl-' + pendingDownloadOpen.pilier.key + '-' + pendingDownloadOpen.idx}
+            seance={(getSeances(lang)[pendingDownloadOpen.pilier.key] || [])[pendingDownloadOpen.idx]}
+            pilier={pendingDownloadOpen.pilier}
+            lang={lang}
+            seanceIndex={pendingDownloadOpen.idx}
+            isDemo={false}
+            onClose={function() { setPendingDownloadOpen(null); }}
+            onComplete={function() { setPendingDownloadOpen(null); }}
+            saveHealthKitWorkout={saveHealthKitWorkout}
+          />
+        </Modal>
+      ) : null}
       <Modal visible={editingProfile} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { setEditingProfile(false); }}>
         <ProfileOnboardingScreen
           lang={lang}
@@ -2864,6 +2898,11 @@ function App() {
           await withTimeout(fetchAndMergeProfile(session.user), 5000, 'fetchProfile');
           setShowAuth(false);
           setOnboardingDone(true);
+          // Session restaurée → l'utilisateur a déjà passé l'intro/sign-in.
+          // Sans ce flag, le gate `!introShown` (renderActiveScreen) afficherait
+          // l'OnboardingScreen à chaque cold-start malgré la session valide,
+          // donnant l'impression qu'il faut "se reconnecter".
+          setIntroShown(true);
         }
       } catch (e) { devWarn('Session / profil', e); }
       finishLoading();
@@ -2877,6 +2916,9 @@ function App() {
           await fetchAndMergeProfile(session.user);
           setShowAuth(false);
           setOnboardingDone(true);
+          // Idem : si le SIGNED_IN ou TOKEN_REFRESHED arrive après le bootstrap
+          // (rare mais possible), on s'assure aussi de passer l'intro.
+          setIntroShown(true);
         } catch (e) { devWarn('Profil après connexion', e); }
       }
     });

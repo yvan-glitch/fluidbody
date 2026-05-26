@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, Pressable, Animated,
-  Dimensions, Platform, StyleSheet, AppState,
+  Dimensions, Platform, StyleSheet, AppState, Alert,
 } from 'react-native';
 import { Video, ResizeMode, Audio } from 'expo-av';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { T } from '../constants/data';
 import { VideoPlaceholderMeduse } from './Meduse';
+import Skeleton from './Skeleton';
 import LiquidGlassCapsule from './LiquidGlassCapsule';
 import HeartRatePill from './HeartRatePill';
 import { GlassView, GlassButton, GLASS_RADII, GLASS_EASING, GLASS_DURATIONS } from './ui';
@@ -19,6 +20,8 @@ import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import useLiveHeartRate from '../hooks/useLiveHeartRate';
 import { recordSessionHour, cancelPauseActiveNotifications } from '../utils/notifications';
 import { IS_TV, tvFocusProps } from '../utils/platformTV';
+import { isDownloaded, getLocalVideoUri, cleanupTempVideo } from './DownloadManager';
+import { getCachedPref } from '../utils/userPreferences';
 
 // ── Small utilities (local copies to avoid circular deps) ──
 // Haptics are fired by GlassButton (FAIT) via `haptic="success"`, so
@@ -269,6 +272,9 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   // animated separately so we can fade rather than hard-toggle.
   const controlsOpacity = useRef(new Animated.Value(0)).current;
   const [videoLoadFailed, setVideoLoadFailed] = useState(false);
+  // Ref pour ne tirer qu'un seul Alert.alert diagnostic si la lecture échoue
+  // (expo-av peut spammer onPlaybackStatusUpdate avec l'erreur).
+  const alertedOnceRef = useRef(false);
   const [videoResetKey, setVideoResetKey] = useState(0);
   const [titre, duree, etape, videoFlag] = seance;
   const isTheory = etape === 'Comprendre' || etape === 'Ressentir';
@@ -288,22 +294,80 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   var [playbackRate, setPlaybackRate] = useState(1.0);
 
   // Fetch a fresh signed MP4 URL whenever we need one (initial mount or after
-  // a forced reset). The token is short-lived, so we always re-resolve through
-  // the cache instead of caching the URL in component state long-term.
+  // a forced reset). If the session is downloaded locally, decrypt-to-temp
+  // first and play from disk — no Bunny round-trip, works offline.
+  // Sinon : signed Bunny URL via l'edge function (token court).
+  //
+  // INSTRUMENTATION (diagnostic round) — Alert.alert visible en cas
+  // d'échec offline ; à retirer une fois le bug confirmé/fixé.
   useEffect(function() {
-    if (!hasRealVideo || !sessionId) return;
+    if (!hasRealVideo || !sessionId || !pilier?.key || typeof seanceIndex !== 'number') return;
     let cancelled = false;
     setUri('');
     hasRestoredRef.current = false;
-    getSignedVideoUrl(sessionId, 'mp4')
-      .then(function(signed) { if (!cancelled) setUri(signed); })
-      .catch(function(err) {
+    alertedOnceRef.current = false;
+
+    (async function() {
+      const trace = []; // accumulator pour Alert si erreur
+      try {
+        // Étape 1 — fichier local (iPhone download). Sur TV `isDownloaded`
+        // renvoie false (rien n'est jamais téléchargé sur tvOS).
+        if (!IS_TV) {
+          trace.push('check local p=' + pilier.key + ' i=' + seanceIndex);
+          let local = false;
+          try {
+            local = await isDownloaded(pilier.key, seanceIndex);
+          } catch (e) {
+            trace.push('isDownloaded threw: ' + (e?.message || e));
+          }
+          trace.push('isDownloaded=' + local);
+          if (local) {
+            let localUri = null;
+            try {
+              localUri = await getLocalVideoUri(pilier.key, seanceIndex);
+            } catch (e) {
+              trace.push('getLocalVideoUri threw: ' + (e?.message || e));
+            }
+            trace.push('localUri=' + (localUri || 'null'));
+            if (!cancelled && localUri) { setUri(localUri); return; }
+            // Marqué "downloaded" mais le décrypte fail → erreur explicite
+            // plutôt que fallback Bunny (qui ne marchera pas offline non plus).
+            if (!cancelled && !localUri) {
+              Alert.alert(
+                'Téléchargement corrompu',
+                'Le fichier hors-ligne est illisible. Re-téléchargez la séance.\n\nDébug : ' + trace.join(' | ')
+              );
+              setVideoLoadFailed(true);
+              return;
+            }
+          }
+        }
+        // Étape 2 — fallback Bunny signé.
+        trace.push('try Bunny');
+        const signed = await getSignedVideoUrl(sessionId, 'mp4');
+        trace.push('Bunny=' + (signed ? 'ok' : 'empty'));
+        if (!cancelled) setUri(signed);
+      } catch (err) {
         if (cancelled) return;
-        if (__DEV__) devWarn('getSignedVideoUrl', err?.message || err);
+        const msg = err?.message || String(err);
+        trace.push('CATCH: ' + msg);
+        if (__DEV__) devWarn('VideoPlayer.urlResolve.ERR', msg);
+        Alert.alert(
+          'Vidéo indisponible',
+          'Impossible de charger la séance.\n\nDébug : ' + trace.join(' | ')
+        );
         setVideoLoadFailed(true);
-      });
-    return function() { cancelled = true; };
-  }, [hasRealVideo, sessionId, videoResetKey]);
+      }
+    })();
+
+    return function() {
+      cancelled = true;
+      // NOTE — on NE supprime PAS le fichier décrypté au unmount. expo-av
+      // peut être en train de le lire encore et le delete race avec la
+      // lecture. Le cache OS le nettoie de toute façon, et la place est
+      // négligeable (taille du MP4 décrypté).
+    };
+  }, [hasRealVideo, sessionId, pilier?.key, seanceIndex, videoResetKey]);
 
   useEffect(function() {
     if (!ccEnabled || !hasRealVideo || !sessionId) { setCcCues([]); return; }
@@ -399,9 +463,13 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
 
   useEffect(() => {
     (async () => {
+      // staysActiveInBackground piloté par la préférence utilisateur
+      // (Profil > Préférences > "Lecture audio en arrière-plan").
+      // Default false — l'utilisateur doit explicitement opt-in.
+      const bgAudio = !!getCachedPref('backgroundAudio');
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
-        staysActiveInBackground: false,
+        staysActiveInBackground: bgAudio,
         playsInSilentModeIOS: true,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
@@ -458,6 +526,20 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
       if (__DEV__) console.log('Video playback error:', { uri: uriRef.current, error: s.error });
       if (__DEV__) devWarn('Video playback error', s.error);
       setVideoLoadFailed(true);
+      // Diagnostic round (à retirer une fois confirmé) : remonter l'erreur
+      // expo-av à l'utilisateur. Useful pour distinguer "fichier local
+      // corrompu" vs "URL Bunny inaccessible".
+      const u = uriRef.current || '';
+      const isLocal = u.indexOf('file://') === 0 || u.indexOf('/var/') === 0 || u.indexOf('Caches') !== -1;
+      if (!alertedOnceRef.current) {
+        alertedOnceRef.current = true;
+        Alert.alert(
+          isLocal ? 'Lecture locale échouée' : 'Lecture distante échouée',
+          (isLocal ? 'Fichier hors-ligne illisible.' : 'Connexion ou URL Bunny indisponible.')
+          + '\n\nURI : ' + (u ? u.slice(0, 120) : '(vide)')
+          + '\nErreur : ' + (s.error || 'inconnue')
+        );
+      }
       return;
     }
     if (s.isLoaded) setVideoLoadFailed(false);
@@ -620,6 +702,9 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
 
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, backgroundColor: '#000', width: dims.width, height: dims.height }}>
+      {hasRealVideo && !uri && !videoLoadFailed ? (
+        <Skeleton style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} radius={0} />
+      ) : null}
       {hasRealVideo && uri ? (
         <Video
           key={videoResetKey}

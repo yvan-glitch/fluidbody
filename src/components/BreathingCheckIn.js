@@ -25,10 +25,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Defs, RadialGradient, Stop, Circle, Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LivingBackground from './LivingBackground';
-import { Bulle, BULLES_ONBOARDING } from './Meduse';
+import { Bulle, BULLES_ONBOARDING, FloatingMedusas } from './Meduse';
 import GlassButton from './ui/GlassButton';
 import { T } from '../constants/data';
 import { safeNativeFire } from '../utils/safeNativeCall';
+import { IS_TV } from '../utils/platformTV';
+import { AquaticDrifters } from './tv/AquaticBackground';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -217,7 +219,28 @@ export default function BreathingCheckIn({ visible, onClose, lang, pattern }) {
         <LivingBackground />
         <View pointerEvents="none" style={StyleSheet.absoluteFill}>
           {BULLES_ONBOARDING.map((b, i) => <Bulle key={`br-${i}`} {...b} />)}
+          {/* Une 2e vague de bulles décalée pour densifier l'iPhone (effet
+              méditation : on veut le sentiment d'un vrai banc). */}
+          {BULLES_ONBOARDING.map((b, i) => (
+            <Bulle key={`br2-${i}`} delay={(b.delay || 0) + 4500} x={(b.x || 0) + 24} size={b.size} duration={b.duration} />
+          ))}
         </View>
+        {/* Couche aquatique foreground "high" — méduses + bulles denses pour
+            l'ambiance méditation. TV uniquement (les drifters TV sont
+            dimensionnés 1920×1080) ; sur iPhone la 2e vague de bulles
+            ci-dessus suffit visuellement.
+            pointerEvents="none" CRITIQUE → ne bloque jamais l'interaction. */}
+        {IS_TV ? (
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 50, opacity: 0.5 }]}>
+            <AquaticDrifters density="high" contentOpacity={1} />
+          </View>
+        ) : null}
+        {/* Une seule méduse iconique iPhone, douce et lente, en foreground. */}
+        {!IS_TV ? (
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 50, opacity: 0.42 }]}>
+            <FloatingMedusas topInset={120} bottomInset={120} />
+          </View>
+        ) : null}
 
         {/* Top bar */}
         <View style={styles.topBar}>

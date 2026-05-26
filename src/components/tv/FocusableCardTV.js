@@ -21,14 +21,18 @@ export default function FocusableCardTV({ children, focusPreferred, style, accen
   const [focused, setFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
   const ring = useRef(new Animated.Value(0)).current;
-  const ringColor = accent === 'green' ? '#AEEF4D' : '#00DCEC';
+  // Ring blanc opaque par défaut (feedback "border 3px rgba(255,255,255,0.8)").
+  // L'accent green/cyan reste disponible pour les cas spécifiques.
+  const ringColor = accent === 'green'
+    ? '#AEEF4D'
+    : (accent === 'cyan' ? '#00DCEC' : 'rgba(255,255,255,0.85)');
 
   useEffect(function() {
     if (!IS_TV) return;
     Animated.parallel([
       Animated.timing(scale, {
-        toValue: focused ? 1.06 : 1,
-        duration: 220,
+        toValue: focused ? 1.10 : 1,
+        duration: 200,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
@@ -74,9 +78,9 @@ export default function FocusableCardTV({ children, focusPreferred, style, accen
             borderWidth: 3,
             borderColor: ringColor,
             opacity: ring,
-            shadowColor: ringColor,
-            shadowOpacity: 0.8,
-            shadowRadius: 14,
+            shadowColor: accent === 'green' || accent === 'cyan' ? ringColor : '#FFFFFF',
+            shadowOpacity: 0.78,
+            shadowRadius: 40,
             shadowOffset: { width: 0, height: 0 },
           }}
         />
