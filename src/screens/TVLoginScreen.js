@@ -25,6 +25,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
 import { initPairing, pollPairing } from '../utils/tvPair';
 import { AquaticBackground, MeduseTV } from '../components/tv';
+import { Icon } from '../components/Icons';
 import supabase from '../lib/supabase';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -206,7 +207,9 @@ export default function TVLoginScreen({ lang, onSignedIn }) {
 
         {(status === 'error' || status === 'expired') && (
           <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-            <Text style={styles.errorIcon}>{status === 'expired' ? '⏱' : '⚠'}</Text>
+            <View style={{ marginBottom: 12 }}>
+              <Icon name={status === 'expired' ? 'rotate' : 'warning'} size={48} color="#F5A623" strokeWidth={2} />
+            </View>
             <Text style={styles.errorTitle}>
               {status === 'expired'
                 ? (isFr ? 'Code expiré' : 'Code expired')

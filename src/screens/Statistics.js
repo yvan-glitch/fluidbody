@@ -209,7 +209,7 @@ export default function StatisticsScreen({ lang, done, streak, supaUser, onClose
             <HeaderKpiCard
               label={tr.stats_streak || 'Streak'}
               value={header.streakCurrent}
-              formatter={function (n) { return '🔥 ' + n; }}
+              formatter={function (n) { return String(n); }}
               delay={200}
             />
             <HeaderKpiCard

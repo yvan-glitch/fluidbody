@@ -31,6 +31,7 @@ import SeanceCompleteTV from './SeanceCompleteTV';
 import AquaticBackground from './AquaticBackground';
 import { pickSessionImage } from './tvImagePool';
 import { isFavoriteCached, subscribeFavorites, toggleFavoriteLocal } from '../../utils/favorites';
+import { Icon } from '../Icons';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const FITNESS_GREEN = '#00DB7D';
@@ -80,7 +81,10 @@ function HeroPillButton({ label, variant, onPress, focusPreferred }) {
             ) : null}
             <View style={[StyleSheet.absoluteFill, { backgroundColor: focused ? 'rgba(0,240,138,0.92)' : 'rgba(0,219,125,0.88)' }]} pointerEvents="none" />
             <View style={[StyleSheet.absoluteFill, { borderRadius: 32, borderWidth: 1, borderColor: 'rgba(255,255,255,0.42)' }]} pointerEvents="none" />
-            <Text style={{ fontSize: 22, fontWeight: '700', color: '#001B10', letterSpacing: 0.2 }}>{'▶  ' + label}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Icon name="play" size={18} color="#001B10" />
+              <Text style={{ fontSize: 22, fontWeight: '700', color: '#001B10', letterSpacing: 0.2 }}>{label}</Text>
+            </View>
           </View>
         ) : (
           <View style={{ paddingVertical: 14, paddingHorizontal: 28, position: 'relative', overflow: 'hidden' }}>
@@ -138,12 +142,12 @@ function SeanceCardTV({ width, title, duree, etape, etapeLabel, done, locked, co
           </View>
           {/* coin haut-droit : état */}
           <View style={{ position: 'absolute', top: 12, right: 12, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? 'rgba(174,239,77,0.22)' : 'rgba(0,0,0,0.45)', borderWidth: done ? 1.5 : 0, borderColor: 'rgba(174,239,77,0.6)' }}>
-            <Text style={{ fontSize: 18, color: done ? '#AEEF4D' : '#ffffff' }}>{locked ? '🔒' : (done ? '✓' : '▶')}</Text>
+            <Icon name={locked ? 'lock' : (done ? 'check' : 'play')} size={18} color={done ? '#AEEF4D' : '#ffffff'} strokeWidth={2} />
           </View>
           {/* coin haut-gauche : cœur favori (maintenir OK 1 s pour toggler) */}
           {sessionId ? (
             <View style={{ position: 'absolute', top: 12, left: 12, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-              <Text style={{ fontSize: 17, color: fav ? '#FF4D6D' : 'rgba(255,255,255,0.92)' }}>{fav ? '♥' : '♡'}</Text>
+              <Icon name={fav ? 'heart_filled' : 'heart_outline'} size={17} color={fav ? '#FF4D6D' : 'rgba(255,255,255,0.92)'} strokeWidth={1.8} />
             </View>
           ) : null}
           {/* Voile blanc subtile au focus pour sortir la card du fond. */}
@@ -275,8 +279,9 @@ export default function PilierPanelTV({ pilier, done, onToggle, onClose, lang, i
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 10 }}>
               <Text numberOfLines={1} style={{ fontSize: 72, fontWeight: '800', color: '#ffffff', letterSpacing: -1.5 }}>{pilier.label}</Text>
               {isRecommended ? (
-                <View style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14, backgroundColor: 'rgba(0,215,255,0.2)', borderWidth: 1, borderColor: 'rgba(0,215,255,0.7)' }}>
-                  <Text style={{ fontSize: 14, color: 'rgba(0,220,255,0.95)', letterSpacing: 1 }}>★ {tr.recommande_pour_toi || 'Pour toi'}</Text>
+                <View style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14, backgroundColor: 'rgba(0,215,255,0.2)', borderWidth: 1, borderColor: 'rgba(0,215,255,0.7)', flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Icon name="star" size={14} color="rgba(0,220,255,0.95)" strokeWidth={2} />
+                  <Text style={{ fontSize: 14, color: 'rgba(0,220,255,0.95)', letterSpacing: 1 }}>{tr.recommande_pour_toi || 'Pour toi'}</Text>
                 </View>
               ) : null}
             </View>

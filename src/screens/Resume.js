@@ -15,6 +15,7 @@ import { Bulle, BULLES, LivingMedusa, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMedu
 import AnimatedPlus from '../components/AnimatedPlus';
 import LivingBackground from '../components/LivingBackground';
 import { getPiliers, getSeances } from '../utils';
+import { Icon } from '../components/Icons';
 
 // Activité HK (anneaux Move/Exercise/Stand, détails journaliers,
 // tendances, streak rings-closed) → écran "Activité" dédié. Le présent
@@ -595,7 +596,10 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
             <Text style={[localStyles.statLbl, { color: 'rgba(174,239,77,0.6)' }]}>{tr.m_seances}</Text>
           </View>
           <View style={[localStyles.statCard, { flex: 1 }]}>
-            <Text style={{ fontSize: 28, fontWeight: '200', color: '#AEEF4D' }}>{'🔥'} {streak > 0 ? streak : 0}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Icon name="flame" size={22} color="#AEEF4D" />
+              <Text style={{ fontSize: 28, fontWeight: '200', color: '#AEEF4D' }}>{streak > 0 ? streak : 0}</Text>
+            </View>
             <Text style={[localStyles.statLbl, { color: 'rgba(174,239,77,0.6)' }]}>{tr.resume_streak || 'Streak'}</Text>
           </View>
           <View style={[localStyles.statCard, { flex: 1 }]}>
@@ -617,7 +621,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
           var atRisk = streak > 0 && totalDone > 0;
           return atRisk && streak >= 2 ? (
             <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(255,150,0,0.08)', borderWidth: 1, borderColor: 'rgba(255,180,60,0.4)', borderRadius: 12, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Text style={{ fontSize: 24 }}>🔥</Text>
+              <Icon name="flame" size={24} color="#FFB43C" />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFB43C' }}>{tr.streak_protect_title || 'Protège ton streak !'}</Text>
                 <Text style={{ fontSize: 11, color: 'rgba(255,180,60,0.6)', marginTop: 2 }}>{tr.streak_protect_sub || 'Fais une micro-séance de 2 min pour ne pas perdre tes ' + streak + ' jours'}</Text>
@@ -675,7 +679,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
                   <Text style={{ fontSize: 14, fontWeight: '500', color: '#ffffff' }}>{s.pilier.label}</Text>
                   <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.4)' }}>{'Séance ' + (s.idx + 1)}</Text>
                 </View>
-                <Text style={{ fontSize: 13, color: '#AEEF4D' }}>✓</Text>
+                <Icon name="check" size={14} color="#AEEF4D" strokeWidth={2.2} />
               </View>
             );
           })}

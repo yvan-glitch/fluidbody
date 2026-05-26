@@ -125,7 +125,7 @@ export async function scheduleStreakProtectionToday({ streak, lang }) {
       if (stillThere) return false;
     }
     const tr = T[lang] || T.fr;
-    const title = tr.notif_streak_prot_title || 'Garde ta série 🔥';
+    const title = tr.notif_streak_prot_title || 'Garde ta série';
     const body = (tr.notif_streak_prot_body
       ? (typeof tr.notif_streak_prot_body === 'function' ? tr.notif_streak_prot_body(streak) : tr.notif_streak_prot_body)
       : `Tu en es à ${streak} jours. Une mini-séance de 5 min suffit pour la prolonger.`);
@@ -196,7 +196,7 @@ export async function scheduleMilestoneReward({ milestoneNum, lang, prenom }) {
     const tr = T[lang] || T.fr;
     const titleFn = tr.notif_milestone_title;
     const bodyFn = tr.notif_milestone_body;
-    const title = typeof titleFn === 'function' ? titleFn(milestoneNum, prenom) : (titleFn || `${milestoneNum} séances 🌟`);
+    const title = typeof titleFn === 'function' ? titleFn(milestoneNum, prenom) : (titleFn || `${milestoneNum} séances`);
     const body = typeof bodyFn === 'function' ? bodyFn(milestoneNum, prenom) : (bodyFn || 'Tu construis quelque chose de durable. Continue.');
     await safeNativeCall('notif.schedule.milestone', function() {
       return Notifications.scheduleNotificationAsync({
