@@ -31,8 +31,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { IS_TV, tvFocusProps } from '../../utils/platformTV';
 
 // Couleur du ring focus — bioluminescent cyan, signature Fluidbody.
-const FOCUS_RING_COLOR = '#00DCEC';
+// Ring blanc par défaut pour cohérence avec le pass focus du polish round 2.
+// Les caller peuvent demander l'accent vert via accent="green".
+const FOCUS_RING_COLOR = 'rgba(255,255,255,0.85)';
 const FOCUS_ACCENT_GREEN = '#AEEF4D';
+const FOCUS_GLOW_WHITE = '#FFFFFF';
 
 export default function GlassCardTV({
   children,
@@ -96,7 +99,7 @@ export default function GlassCardTV({
     setFocused(true);
     if (onFocus) onFocus();
     Animated.parallel([
-      Animated.timing(scale, { toValue: 1.06, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1.10, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(ringOpacity, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       tiltOnFocus
         ? Animated.timing(tilt, { toValue: 1, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: false })
@@ -149,16 +152,25 @@ export default function GlassCardTV({
           shadowOpacity: 0.32,
           shadowRadius: 30,
           shadowOffset: { width: 0, height: 14 },
-          transform: [
-            { scale: scale },
-            { perspective: 800 },
-            { rotateX: rotX },
-            { rotateY: rotY },
-          ],
+          // Scale only — piloté par le native driver.
+          transform: [{ scale: scale }],
         },
         style,
       ]}
     >
+      {/* Tilt parallax sur un node séparé — rotateX/rotateY sont JS-driven
+          et ne doivent pas cohabiter avec le scale natif sur le même node
+          (tvOS crashe : "JS driven animation on node moved to native"). */}
+      <Animated.View
+        style={{
+          borderRadius: radius,
+          transform: [
+            { perspective: 800 },
+            { rotateX: rotX },
+            { rotateY: rotY },
+          ],
+        }}
+      >
       <Wrapper
         {...wrapperProps}
         style={{ borderRadius: radius }}
@@ -213,13 +225,14 @@ export default function GlassCardTV({
             borderWidth: 3,
             borderColor: ringColor,
             opacity: ringOpacity,
-            shadowColor: ringColor,
-            shadowOpacity: 0.95,
-            shadowRadius: 18,
+            shadowColor: accent === 'green' ? ringColor : FOCUS_GLOW_WHITE,
+            shadowOpacity: 0.78,
+            shadowRadius: 40,
             shadowOffset: { width: 0, height: 0 },
           }}
         />
       </Wrapper>
+      </Animated.View>
     </Animated.View>
   );
 }

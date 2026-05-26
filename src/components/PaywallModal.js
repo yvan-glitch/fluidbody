@@ -8,6 +8,9 @@ import { Bulle, FloatingMedusas, BULLES_ONBOARDING } from './Meduse';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { LEGAL, getTermsUrl } from '../constants/legal';
 import {
+  FOUNDER_INTRO_SAVINGS_CHF,
+} from '../constants/iap';
+import {
   GlassView,
   GlassButton,
   GlassCard,
@@ -40,22 +43,6 @@ function withPeriod(s, suffix) {
   if (!s) return '';
   if (s.includes('/')) return s;
   return `${s}${suffix}`;
-}
-
-// Bénéfices listés sur le paywall. Petites icônes inline pour éviter
-// d'ajouter une dep d'icônes ici — on reste cohérents avec le reste du repo.
-function BulletCheck() {
-  return (
-    <View style={{
-      width: 22, height: 22, borderRadius: 11,
-      backgroundColor: 'rgba(174,239,77,0.18)',
-      borderWidth: 1, borderColor: 'rgba(174,239,77,0.45)',
-      alignItems: 'center', justifyContent: 'center',
-      marginRight: 12,
-    }}>
-      <Text style={{ color: '#AEEF4D', fontWeight: '800', fontSize: 12, marginTop: -1 }}>✓</Text>
-    </View>
-  );
 }
 
 function localeFromLang(lang) {
@@ -529,23 +516,35 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   const testimonials = Array.isArray(tr.paywall_testimonials) ? tr.paywall_testimonials : null;
   const compareFeatures = Array.isArray(tr.paywall_compare_features) ? tr.paywall_compare_features : null;
 
-  const heroTitle = isFr ? 'Le Pilates conscient, au quotidien' : 'Conscious Pilates, every day';
+  // Founder copy — offre d'introduction (3 mois mensuel, 1re année annuel).
+  // Aucun emoji, ton posé, pas de comparaison concurrence.
+  const heroTitle = tr.paywall_founder_hero_title || (isFr ? 'Rejoins les fondateurs FluidBody+' : 'Join the FluidBody+ founders');
+  const heroSub = tr.paywall_founder_hero_sub || (isFr
+    ? 'Le Pilates conscient de Sabrina, sur tous tes écrans. Tarif fondateur pour les premiers membres.'
+    : "Sabrina's conscious Pilates, on every screen. Founder pricing for the first members.");
   const annualLabel = isFr ? 'Annuel' : 'Annual';
-  const annualSub = isFr ? '12 mois pour le prix de 8' : '12 months for the price of 8';
   const monthlyLabel = isFr ? 'Mensuel' : 'Monthly';
-  const ctaLabel = isFr ? 'Commencer' : 'Start';
+  const ctaLabel = tr.paywall_founder_cta || (isFr ? 'S\'abonner' : 'Subscribe');
 
-  const benefits = isFr ? [
-    'Toutes les séances vidéo en HD',
-    'Téléchargements hors-ligne',
-    'Programmes personnalisés selon ton corps',
-    'Sans engagement, résiliable à tout moment',
-  ] : [
-    'All video sessions in HD',
-    'Offline downloads',
-    'Personalised programs for your body',
-    'Cancel anytime, no commitment',
-  ];
+  const founderBullets = Array.isArray(tr.paywall_founder_bullets) && tr.paywall_founder_bullets.length > 0
+    ? tr.paywall_founder_bullets
+    : (isFr ? [
+        '9 piliers de Pilates conscient',
+        'iPhone et Apple TV inclus',
+        'Guidé par Sabrina, 30 ans de pratique',
+        'Disponible en quatre langues',
+        'Sabrina IA personnalisée — à venir',
+      ] : [
+        '9 pillars of conscious Pilates',
+        'iPhone and Apple TV included',
+        'Guided by Sabrina, 30 years of practice',
+        'Available in four languages',
+        'Personalised Sabrina AI — coming soon',
+      ]);
+
+  // (Le tarif standard ne s'affiche plus barré sur les cards : on a
+  // remplacé par "Puis 24.90 / Puis 199" en small print sous le prix
+  // d'introduction. Cf. planPill ci-dessus.)
 
   function onCta() {
     if (loadingPrices) return;
@@ -557,8 +556,13 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
     Alert.alert('FluidBody+', isFr ? 'Abonnement disponible dans la version App Store.' : 'Subscription available in the App Store version.');
   }
 
-  // Pilule segmentée Mensuel / Annuel (toggle Liquid Glass).
-  function planPill(key, label, sub, priceText) {
+  // Plan card founder — grand prix d'introduction au centre, sous-titre
+  // "Tarif fondateur · 3 premiers mois" / "1re année", small print "Puis
+  // 24.90 CHF/mois" / "Puis 199 CHF/an" en bas. Pill éco "Économise 100
+  // CHF la 1re année" uniquement sur l'annuel.
+  //
+  // Signature : (key, label, introSub, priceText, thenText, savingsLabel).
+  function planPill(key, label, introSub, priceText, thenText, savingsLabel) {
     var active = selected === key;
     return (
       <GlassPressable
@@ -566,37 +570,66 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
         onPress={function() { setSelected(key); }}
         accessibilityRole="radio"
         accessibilityState={{ selected: active }}
-        accessibilityLabel={`${label} ${priceText}`}
-        accessibilityHint={sub || undefined}
+        accessibilityLabel={`${label} ${priceText} ${thenText || ''}`}
+        accessibilityHint={introSub || undefined}
         style={{ flex: 1 }}
       >
         <GlassView
-          intensity={60}
+          intensity={28}
+          tint="dark"
+          forceDark
           borderRadius={GLASS_RADII.card}
-          substrateColor={active ? theme.glass.substrateAccent : theme.glass.substrate}
+          substrateColor={active ? 'rgba(174,239,77,0.10)' : 'rgba(0,0,0,0.35)'}
           contentStyle={{
-            paddingVertical: 14,
-            paddingHorizontal: 16,
+            paddingVertical: 18,
+            paddingHorizontal: 18,
             alignItems: 'flex-start',
             justifyContent: 'center',
-            minHeight: 78,
+            minHeight: 134,
+            borderWidth: active ? 1.5 : 1,
+            borderColor: active ? 'rgba(174,239,77,0.65)' : 'rgba(255,255,255,0.15)',
+            borderRadius: GLASS_RADII.card,
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: active ? theme.colors.accentText : theme.colors.text, letterSpacing: -0.2 }}>{label}</Text>
-              {sub ? <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.accentText, opacity: 0.85, marginTop: 4 }}>{sub}</Text> : null}
-            </View>
+          {/* Ligne 1 — label de plan + radio à droite */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', marginBottom: 8 }}>
+            <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.78)', letterSpacing: 0.2, textTransform: 'uppercase' }}>{label}</Text>
             <View style={{
               width: 18, height: 18, borderRadius: 9,
-              borderWidth: 2,
-              borderColor: active ? theme.colors.accent : theme.colors.textTertiary,
+              borderWidth: 1.5,
+              borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.4)',
               alignItems: 'center', justifyContent: 'center',
             }}>
-              {active && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.accent }} />}
+              {active && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#AEEF4D' }} />}
             </View>
           </View>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.text, marginTop: 6 }}>{priceText}</Text>
+          {/* Ligne 2 — grand prix d'introduction (Apple SF Pro feel) */}
+          <Text style={{ fontSize: 24, fontWeight: '800', color: '#ffffff', letterSpacing: -0.7 }}>{priceText}</Text>
+          {/* Ligne 3 — sous-titre "Tarif fondateur · 3 premiers mois / 1re année" */}
+          {introSub ? (
+            <Text style={{ fontSize: 11, fontWeight: '600', color: '#AEEF4D', letterSpacing: 0.2, marginTop: 4 }}>{introSub}</Text>
+          ) : null}
+          {/* Ligne 4 — small print "Puis 24.90 CHF/mois" / "Puis 199 CHF/an" */}
+          {thenText ? (
+            <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.5)', marginTop: 8, letterSpacing: 0.1 }}>{thenText}</Text>
+          ) : null}
+          {/* Pill éco — uniquement annuel, outline lime sobre */}
+          {savingsLabel ? (
+            <View style={{
+              alignSelf: 'flex-start',
+              marginTop: 10,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 999,
+              backgroundColor: 'rgba(255,255,255,0.04)',
+              borderWidth: 1,
+              borderColor: 'rgba(174,239,77,0.55)',
+            }}>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#AEEF4D', letterSpacing: 0.4 }}>
+                {savingsLabel}
+              </Text>
+            </View>
+          ) : null}
         </GlassView>
       </GlassPressable>
     );
@@ -652,7 +685,8 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 <Text style={{ fontSize: 18, fontWeight: '900', color: '#AEEF4D', letterSpacing: 3 }}>FLUIDBODY</Text>
                 <AnimatedPlus style={{ fontSize: 18, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
               </View>
-              <Text style={{ fontSize: 32, fontWeight: '800', color: '#ffffff', lineHeight: 36, letterSpacing: -0.4 }}>{heroTitle}</Text>
+              <Text style={{ fontSize: 32, fontWeight: '800', color: '#ffffff', lineHeight: 38, letterSpacing: -0.6 }}>{heroTitle}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '400', color: 'rgba(255,255,255,0.78)', lineHeight: 22, letterSpacing: -0.1, marginTop: 12 }}>{heroSub}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#AEEF4D' }} />
                 <AnimatedCount to={liveMembers} lang={lang} style={{ fontSize: 14, fontWeight: '800', color: '#ffffff' }} />
@@ -663,14 +697,37 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
             </View>
           </View>
 
-          {/* Carte centrale — c'est l'élément qui doit "respirer" Liquid Glass */}
-          <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
+          {/* Carte centrale — Apple Music style : surface frostée sobre,
+              généreusement aérée. Le contenu respire entre les blocs. */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 28 }}>
             <GlassCard
               intensity={75}
               borderRadius={GLASS_RADII.cardLg}
-              padding={20}
+              padding={24}
               elevated
             >
+              {/* Bandeau "OFFRE FONDATEUR" — frosted (BlurView via GlassView),
+                  sobre, sans emoji. Le texte explique la structure
+                  (3 mois / 1re année) sans promesse "à vie". Bordure
+                  lime fine pour signaler l'accent sans crier. */}
+              <GlassView
+                intensity={30}
+                tint="dark"
+                forceDark
+                borderRadius={16}
+                substrateColor="rgba(255,255,255,0.05)"
+                contentStyle={{ paddingVertical: 16, paddingHorizontal: 18, borderWidth: 1.5, borderColor: 'rgba(174,239,77,0.55)', borderRadius: 16 }}
+                style={{ marginBottom: 18 }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '900', color: '#AEEF4D', letterSpacing: 1.8, marginBottom: 8 }}>
+                  {tr.paywall_founder_tag || (isFr ? 'OFFRE FONDATEUR' : 'FOUNDER OFFER')}
+                </Text>
+                <Text style={{ fontSize: 13, fontWeight: '500', color: '#ffffff', lineHeight: 20, letterSpacing: -0.1 }}>
+                  {isFr
+                    ? 'Mensuel — 12.90 CHF/mois les 3 premiers mois, puis 24.90.\nAnnuel — 99 CHF la première année, puis 199.'
+                    : 'Monthly — 12.90 CHF/mo for the first 3 months, then 24.90.\nYearly — 99 CHF the first year, then 199.'}
+                </Text>
+              </GlassView>
               {/* Bandeau bonus parrainage — uniquement si l'utilisateur a
                   des mois gratuits en attente (filleule qui a un parrain,
                   ou parrain dont une amie vient de s'abonner). Visuel
@@ -689,7 +746,6 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                   flexDirection: 'row',
                   alignItems: 'center',
                 }}>
-                  <Text style={{ fontSize: 22, marginRight: 10 }}>🎁</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.accentText, letterSpacing: -0.1, marginBottom: 2 }}>
                       {tr.paywall_referral_bonus_title || 'Tu as un bonus en attente'}
@@ -702,55 +758,88 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                   </View>
                 </View>
               ) : null}
-              {/* Bénéfices */}
-              <View style={{ marginBottom: 18 }}>
-                {benefits.map((b, i) => (
-                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: i === benefits.length - 1 ? 0 : 10 }}>
-                    <BulletCheck />
-                    <Text style={{ flex: 1, fontSize: 14, color: theme.colors.text, fontWeight: '500', letterSpacing: -0.1 }}>{b}</Text>
-                  </View>
-                ))}
+              {/* Bénéfices founder — pas d'emoji, pas de check coloré.
+                  Bullet `•` sobre + texte aéré. Le ton reste calme. */}
+              <View style={{ marginBottom: 24, marginTop: 4 }}>
+                {founderBullets.map(function (b, i) {
+                  const text = typeof b === 'string' ? b : (b && b.text) || '';
+                  return (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: i === founderBullets.length - 1 ? 0 : 12 }}>
+                      <View style={{ width: 14, alignItems: 'center', marginRight: 10, marginTop: 2 }}>
+                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: theme.colors.textTertiary }} />
+                      </View>
+                      <Text style={{ flex: 1, fontSize: 14, color: theme.colors.text, fontWeight: '400', letterSpacing: -0.1, lineHeight: 20 }}>{text}</Text>
+                    </View>
+                  );
+                })}
               </View>
 
-              {/* Toggle Mensuel / Annuel : 2 pilules glass côte-à-côte */}
-              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-                {planPill('yearly', annualLabel, annualSub, yearlyDisplay)}
-                {planPill('monthly', monthlyLabel, null, monthlyDisplay)}
+              {/* Toggle Mensuel / Annuel — structure d'intro :
+                  - Mensuel : 12.90 CHF/mois pendant 3 mois, puis 24.90.
+                  - Annuel : 99 CHF la 1re année, puis 199. Pill éco "Économise
+                    100 CHF la 1re année" sur l'annuel uniquement. */}
+              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+                {planPill(
+                  'yearly',
+                  annualLabel,
+                  tr.paywall_founder_intro_yearly_sub || (isFr ? 'Tarif fondateur · 1re année' : 'Founder pricing · first year'),
+                  yearlyDisplay,
+                  tr.paywall_founder_then_yearly || (isFr ? 'Puis 199 CHF/an' : 'Then 199 CHF/year'),
+                  tr.paywall_founder_save_intro_yearly || (isFr
+                    ? ('Économise ' + FOUNDER_INTRO_SAVINGS_CHF + ' CHF la 1re année')
+                    : ('Save ' + FOUNDER_INTRO_SAVINGS_CHF + ' CHF on year one'))
+                )}
+                {planPill(
+                  'monthly',
+                  monthlyLabel,
+                  tr.paywall_founder_intro_monthly_sub || (isFr ? 'Tarif fondateur · 3 premiers mois' : 'Founder pricing · first 3 months'),
+                  monthlyDisplay,
+                  tr.paywall_founder_then_monthly || (isFr ? 'Puis 24.90 CHF/mois' : 'Then 24.90 CHF/month'),
+                  null
+                )}
               </View>
 
-              {/* CTA principal */}
+              {/* CTA principal — capsule frostée Apple Music style. Lime
+                  semi-transparent dessous + voile blanc, texte blanc.
+                  GlassButton 'accent' gère déjà le press scale + haptique. */}
               <GlassButton
                 variant="accent"
                 size="lg"
                 onPress={onCta}
                 disabled={disabled || loadingPrices}
                 loading={loadingPrices}
-                textStyle={{ fontSize: 16, fontWeight: '800', letterSpacing: -0.2 }}
+                textStyle={{ fontSize: 17, fontWeight: '700', letterSpacing: -0.3 }}
                 accessibilityLabel={`${ctaLabel} ${selectedPrice}`}
               >
                 {ctaLabel}
               </GlassButton>
-              <Text style={{ fontSize: 12, fontWeight: '500', color: theme.colors.textSecondary, textAlign: 'center', marginTop: 10 }}>{selectedPrice}</Text>
-              {/* Guarantee pill — discreet, sits under the CTA so the user
-                  sees the safety net just before tapping. */}
+              <Text style={{ fontSize: 12, fontWeight: '500', color: theme.colors.textSecondary, textAlign: 'center', marginTop: 14, letterSpacing: 0.1 }}>{selectedPrice}</Text>
+              {/* Urgency soft + guarantee — outline lime sobre. Tout est
+                  centré et aéré, on évite l'effet "wall of pills". */}
               <View style={{
-                marginTop: 14,
+                marginTop: 18,
                 alignSelf: 'center',
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 14,
-                backgroundColor: 'rgba(174,239,77,0.14)',
+                paddingHorizontal: 14,
+                paddingVertical: 7,
+                borderRadius: 999,
+                backgroundColor: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)',
                 borderWidth: 1,
-                borderColor: 'rgba(174,239,77,0.4)',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
+                borderColor: 'rgba(174,239,77,0.5)',
               }}>
-                <Text style={{ fontSize: 12, color: '#AEEF4D' }}>🛡</Text>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.accentText, letterSpacing: 0.2 }}>
-                  {tr.paywall_guarantee_pill || 'Annule sans frais dans les 7 premiers jours'}
+                <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.accentText, letterSpacing: 0.3 }}>
+                  {tr.paywall_guarantee_pill || (isFr ? 'Annulable depuis Réglages Apple' : 'Cancel anytime in Apple Settings')}
                 </Text>
               </View>
+              <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 14, letterSpacing: 0.2 }}>
+                {tr.paywall_founder_urgency || (isFr
+                  ? 'Offre fondateur — pour les premiers membres'
+                  : 'Founder offer — for early members')}
+              </Text>
+              <Text style={{ fontSize: 11, fontWeight: '400', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 6, lineHeight: 16, letterSpacing: 0.1 }}>
+                {tr.paywall_founder_legal || (isFr
+                  ? 'Aucun engagement, annulable à tout moment depuis tes Réglages Apple'
+                  : 'No commitment, cancel anytime from your Apple Settings')}
+              </Text>
             </GlassCard>
 
             {disabled && (

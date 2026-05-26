@@ -7,6 +7,7 @@ import { Bulle, Meduse, MeduseCornerIcon, BULLES_ONBOARDING } from '../component
 import AnimatedPlus from '../components/AnimatedPlus';
 import GlassButton from '../components/GlassButton';
 import LivingBackground from '../components/LivingBackground';
+import { withTimeout } from '../utils/withTimeout';
 
 let AppleAuth = null;
 try { AppleAuth = require('expo-apple-authentication'); } catch(e) {}
@@ -65,7 +66,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
     if (!validPass) { setError(tr.ob_auth_err_short || 'Mot de passe trop court.'); return; }
     setLoading(true); setError('');
     try {
-      const { error: err } = await supabase.auth.signInWithPassword({ email: em, password });
+      const { error: err } = await withTimeout(supabase.auth.signInWithPassword({ email: em, password }), 15000, 'signIn');
       if (err) { setError(err.message); setLoading(false); return; }
       setLoading(false);
       onSuccess && onSuccess();
@@ -81,15 +82,15 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
     if (!appleAvailable) { Alert.alert('FluidBody+', 'Sign in with Apple disponible sur iOS uniquement.'); return; }
     setLoading(true); setError('');
     try {
-      const credential = await AppleAuth.signInAsync({
+      const credential = await withTimeout(AppleAuth.signInAsync({
         requestedScopes: [AppleAuth.AppleAuthenticationScope.FULL_NAME, AppleAuth.AppleAuthenticationScope.EMAIL],
-      });
+      }), 45000, 'appleSheet');
       if (!credential.identityToken) {
         const msg = 'Apple identity token manquant.';
         setError(msg); Alert.alert('Apple Sign In', msg);
         setLoading(false); return;
       }
-      const { error: err } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken });
+      const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken }), 15000, 'appleSignIn');
       if (err) {
         setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || 'Erreur Supabase');
         setLoading(false); return;
@@ -107,7 +108,9 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
       setLoading(false);
       onSuccess && onSuccess();
     } catch (e) {
-      if (e?.code !== 'ERR_REQUEST_CANCELED') {
+      if (e?.message && e.message.indexOf('timeout') !== -1) {
+        setError(tr.ob_auth_err_apple_timeout || "L'identification Apple a pris trop de temps. Vérifie ta connexion.");
+      } else if (e?.code !== 'ERR_REQUEST_CANCELED') {
         const msg = e?.message || tr.ob_auth_err_net || 'Erreur.';
         setError(msg);
         Alert.alert('Apple Sign In — erreur', `${msg}\n\nCode: ${e?.code || 'n/a'}`);

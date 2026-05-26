@@ -7,6 +7,7 @@
 // in the `video_assets` table — never in the bundled JS.
 
 import supabase from '../lib/supabase';
+import { getCachedPref } from './userPreferences';
 
 const SAFETY_MARGIN_MS = 60_000; // re-sign 1 min before the token expires
 const cache = new Map();
@@ -21,15 +22,32 @@ export function buildSessionId(pilierKey, seanceIndex) {
   return `${pilierKey}_${seanceIndex}`;
 }
 
-function cacheKey(sessionId, kind, lang) {
-  return lang ? `${sessionId}|${kind}|${lang}` : `${sessionId}|${kind}`;
+function cacheKey(sessionId, kind, lang, quality) {
+  const base = lang ? `${sessionId}|${kind}|${lang}` : `${sessionId}|${kind}`;
+  return quality ? `${base}|${quality}` : base;
 }
 
-export async function getSignedVideoUrl(sessionId, kind = 'mp4', lang) {
+// `quality` (optionnel) : 'eco' | 'standard' | 'hd'. L'edge function
+// sign-video-url peut adapter le bunny_path (variant 480p/720p/1080p) si
+// les variants sont publiés ; sinon elle renvoie l'URL standard pour
+// toutes les qualités (l'UI marche, le backend suivra).
+//
+// Si `quality` n'est pas fourni, on consulte la préférence utilisateur
+// `streamQuality` (Profil > Préférences). 'auto' = laisser le serveur
+// choisir (param non envoyé). Les downloads passent toujours une qualité
+// explicite (cf. DownloadManager.downloadVideo) donc cette logique
+// auto-pick ne s'applique qu'au streaming temps réel.
+export async function getSignedVideoUrl(sessionId, kind = 'mp4', lang, quality) {
   if (!sessionId) throw new Error('sessionId required');
   if (!supabase) throw new Error('Supabase non configuré');
 
-  const key = cacheKey(sessionId, kind, lang);
+  let effectiveQuality = quality;
+  if (!effectiveQuality) {
+    const pref = getCachedPref('streamQuality');
+    if (pref && pref !== 'auto') effectiveQuality = pref;
+  }
+
+  const key = cacheKey(sessionId, kind, lang, effectiveQuality);
   const now = Date.now();
   const cached = cache.get(key);
   if (cached && cached.expiresAt - SAFETY_MARGIN_MS > now) return cached.url;
@@ -42,10 +60,32 @@ export async function getSignedVideoUrl(sessionId, kind = 'mp4', lang) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('not-signed-in');
 
-    const { data, error } = await supabase.functions.invoke('sign-video-url', {
-      body: { session_id: sessionId, kind, lang },
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    });
+    function callSign(accessToken) {
+      const body = { session_id: sessionId, kind, lang };
+      if (effectiveQuality) body.quality = effectiveQuality;
+      return supabase.functions.invoke('sign-video-url', {
+        body: body,
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+    }
+
+    let { data, error } = await callSign(session.access_token);
+
+    // JWT expiré (fréquent sur Apple TV restée idle : autoRefresh ne tourne
+    // pas toujours). On rafraîchit la session une fois puis on retente.
+    const status = error && (error.context?.status || error.status);
+    const looksAuth = error && (status === 401 || /jwt|expired|unauthor|unauthenticated/i.test(error.message || ''));
+    if (looksAuth) {
+      try {
+        const refreshed = await supabase.auth.refreshSession();
+        const newToken = refreshed && refreshed.data && refreshed.data.session && refreshed.data.session.access_token;
+        if (newToken) {
+          const retry = await callSign(newToken);
+          data = retry.data;
+          error = retry.error;
+        }
+      } catch (e) { /* on garde l'erreur d'origine */ }
+    }
 
     if (error) {
       const err = new Error(error.message || 'sign-video-url-failed');
