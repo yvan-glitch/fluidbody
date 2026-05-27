@@ -13,7 +13,7 @@ import {
   View, Text, Animated, Easing, StyleSheet, Dimensions, Pressable, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import LiquidGlass from './LiquidGlass';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MeduseCornerIcon, Bulle, BULLES_ONBOARDING } from './Meduse';
 import Confetti from './Confetti';
@@ -117,7 +117,7 @@ export default function AnniversaryOverlay({ visible, lang, prenom, onDismiss })
 
           <Animated.View style={{ transform: [{ scale: cardAnim }], width: '100%', maxWidth: 360 }}>
             <View style={{ borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
-              <BlurView intensity={Platform.OS === 'ios' ? 80 : 0} tint="dark" style={{ padding: 24, backgroundColor: 'rgba(8,18,32,0.55)' }}>
+              <LiquidGlass intensity={Platform.OS === 'ios' ? 80 : 0} tint="dark" style={{ padding: 24, backgroundColor: 'rgba(8,18,32,0.55)' }}>
                 <Text style={{ fontSize: 10, fontWeight: '800', color: '#AEEF4D', letterSpacing: 2, textAlign: 'center', marginBottom: 12 }}>
                   {eyebrow}
                 </Text>
@@ -137,7 +137,7 @@ export default function AnniversaryOverlay({ visible, lang, prenom, onDismiss })
                 >
                   {cta}
                 </GlassButton>
-              </BlurView>
+              </LiquidGlass>
             </View>
           </Animated.View>
         </View>

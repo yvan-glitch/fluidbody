@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, Platform, StyleSheet } from 'react-native';
-import { BlurView } from 'expo-blur';
+import LiquidGlass from './LiquidGlass';
 
 import { saveReflection } from '../utils/reflections';
 import { Icon } from './Icons';
@@ -32,7 +32,7 @@ export default function PostSessionReflection({ visible, sessionId, lang, onClos
     <Modal visible animationType="fade" transparent statusBarTranslucent onRequestClose={onClose}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         {Platform.OS === 'ios' ? (
-          <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
+          <LiquidGlass intensity={70} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
         ) : null}
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)' }]} pointerEvents="none" />
         <Text style={{ fontSize: 26, fontWeight: '700', color: '#ffffff', marginBottom: 24, textAlign: 'center', letterSpacing: -0.3 }}>

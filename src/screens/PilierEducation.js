@@ -33,7 +33,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import LiquidGlass from '../components/LiquidGlass';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import { PILIER_IMAGES } from '../constants/data';
 import { getPilierContent } from '../constants/pilierContent';
@@ -328,7 +328,7 @@ export default function PilierEducation({ visible, pilier, lang, onClose, onOpen
           style={StyleSheet.absoluteFill}
         />
         <LivingBackground />
-        <BlurView
+        <LiquidGlass
           intensity={Platform.OS === 'ios' ? 60 : 0}
           tint={isLight ? 'light' : 'dark'}
           style={[StyleSheet.absoluteFill, { backgroundColor: isLight ? 'rgba(255,255,255,0.18)' : 'rgba(10,20,35,0.35)' }]}

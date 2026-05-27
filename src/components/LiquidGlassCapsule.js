@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
+import LiquidGlass, { HAS_LIQUID_GLASS } from './LiquidGlass';
 import { LinearGradient } from 'expo-linear-gradient';
 
 /**
@@ -26,33 +26,39 @@ export default function LiquidGlassCapsule({
   const isLight = tint === 'light';
   return (
     <View style={[styles.wrap, { borderRadius: radius }, style]}>
-      <BlurView
+      <LiquidGlass
         intensity={Platform.OS === 'ios' ? 70 : 100}
         tint={isLight ? 'light' : 'dark'}
+        borderStyle={HAS_LIQUID_GLASS ? 'bright' : 'subtle'}
+        borderRadius={radius}
         style={StyleSheet.absoluteFillObject}
       />
       <View style={[
         StyleSheet.absoluteFillObject,
         { backgroundColor: isLight ? 'rgba(255,255,255,0.22)' : 'rgba(20,20,28,0.30)' },
       ]} />
-      <LinearGradient
-        colors={
-          isLight
-            ? ['rgba(255,255,255,0.45)', 'rgba(255,255,255,0)']
-            : ['rgba(255,255,255,0.18)', 'rgba(255,255,255,0)']
-        }
-        locations={[0, 0.55]}
-        style={styles.specHighlight}
-        pointerEvents="none"
-      />
-      <View style={[
-        StyleSheet.absoluteFillObject,
-        {
-          borderRadius: radius,
-          borderWidth: StyleSheet.hairlineWidth * 2,
-          borderColor: isLight ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.18)',
-        },
-      ]} pointerEvents="none" />
+      {!HAS_LIQUID_GLASS ? (
+        <LinearGradient
+          colors={
+            isLight
+              ? ['rgba(255,255,255,0.45)', 'rgba(255,255,255,0)']
+              : ['rgba(255,255,255,0.18)', 'rgba(255,255,255,0)']
+          }
+          locations={[0, 0.55]}
+          style={styles.specHighlight}
+          pointerEvents="none"
+        />
+      ) : null}
+      {!HAS_LIQUID_GLASS ? (
+        <View style={[
+          StyleSheet.absoluteFillObject,
+          {
+            borderRadius: radius,
+            borderWidth: StyleSheet.hairlineWidth * 2,
+            borderColor: isLight ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.18)',
+          },
+        ]} pointerEvents="none" />
+      ) : null}
       <View style={[
         styles.content,
         { paddingHorizontal: paddingH, paddingVertical: paddingV, gap },

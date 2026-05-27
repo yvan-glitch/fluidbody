@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Modal, View, Text, Animated, Easing, TouchableOpacity, Platform, StyleSheet, Dimensions, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import LiquidGlass from './LiquidGlass';
 import Svg, { Path, Circle } from 'react-native-svg';
 
 import { INTENTIONS, setTodayIntention } from '../utils/dailyIntention';
@@ -193,7 +193,7 @@ export default function DailyIntentionPrompt({ visible, lang, onPicked, onClose 
       <Animated.View style={{ flex: 1, opacity: fade }}>
         {/* Fond très brouillé pour effacer toute l'app derrière */}
         {Platform.OS === 'ios' ? (
-          <BlurView intensity={Platform.OS === 'ios' ? 95 : 0} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
+          <LiquidGlass intensity={Platform.OS === 'ios' ? 95 : 0} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
         ) : null}
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(2,12,24,0.78)' }]} pointerEvents="none" />
 
