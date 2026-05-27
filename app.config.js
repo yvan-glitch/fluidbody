@@ -27,6 +27,12 @@ const PLUGINS_INCOMPATIBLE_WITH_TVOS = [
   // bundle — l'import statique sera juste remplacé par un dynamic
   // require inside un `if (!IS_TV)` block (cf. src/screens/PairAppleTV.js).
   'expo-camera',
+  // withLiquidGlass : module Swift custom qui appelle UIGlassEffect()
+  // (iOS 26 uniquement). tvOS n'a pas cette API ; côté JS, le composant
+  // LiquidGlass fait `Platform.isTV → fallback BlurView` donc le natif
+  // ne serait jamais instancié, mais on exclut la compilation pour ne
+  // pas embarquer de code mort dans le binaire tvOS.
+  './plugins/withLiquidGlass.js',
 ]
 
 module.exports = ({ config }) => {

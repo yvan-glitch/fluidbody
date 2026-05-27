@@ -8,7 +8,7 @@ import { THEME_MODES } from '../theme';
 import LivingBackground from '../components/LivingBackground';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import LiquidGlass from '../components/LiquidGlass';
 import Svg, { Path, Circle } from 'react-native-svg';
 // react-native-view-shot: native module manquant sur tvOS, lazy require avec fallback
 let ViewShot = null;
@@ -840,7 +840,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         <Modal visible={showCoachBio} animationType="slide" transparent statusBarTranslucent>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.6)', justifyContent: 'center' }}>
             <View style={{ marginHorizontal: 20, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', maxHeight: Dimensions.get('window').height * 0.8, shadowColor: '#ffffff', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
-              <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ backgroundColor: 'rgba(10,20,35,0.6)', padding: 24 }}>
+              <LiquidGlass intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ backgroundColor: 'rgba(10,20,35,0.6)', padding: 24 }}>
                 <LinearGradient colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '30%' }} pointerEvents="none" />
               <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={{ alignItems: 'center', marginBottom: 20 }}>
@@ -855,7 +855,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <TouchableOpacity onPress={function() { setShowCoachBio(false); }} style={{ marginTop: 18, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.15)', alignItems: 'center' }}>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>Fermer</Text>
               </TouchableOpacity>
-              </BlurView>
+              </LiquidGlass>
             </View>
           </View>
         </Modal>
@@ -1630,7 +1630,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         <Modal visible={showDevBio} animationType="slide" transparent statusBarTranslucent>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.6)', justifyContent: 'center' }}>
             <View style={{ marginHorizontal: 20, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', maxHeight: Dimensions.get('window').height * 0.8, shadowColor: '#ffffff', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
-              <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ backgroundColor: 'rgba(10,20,35,0.6)', padding: 24 }}>
+              <LiquidGlass intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ backgroundColor: 'rgba(10,20,35,0.6)', padding: 24 }}>
                 <LinearGradient colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '30%' }} pointerEvents="none" />
               <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={{ alignItems: 'center', marginBottom: 20 }}>
@@ -1645,7 +1645,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <TouchableOpacity onPress={function() { setShowDevBio(false); }} style={{ marginTop: 18, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.15)', alignItems: 'center' }}>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D' }}>Fermer</Text>
               </TouchableOpacity>
-              </BlurView>
+              </LiquidGlass>
             </View>
           </View>
         </Modal>
@@ -1682,7 +1682,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,8,18,0.85)', justifyContent: 'center', paddingHorizontal: 20 }}>
           <View style={{ borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,80,80,0.35)' }}>
-            <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ padding: 24, backgroundColor: 'rgba(20,8,12,0.78)' }}>
+            <LiquidGlass intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ padding: 24, backgroundColor: 'rgba(20,8,12,0.78)' }}>
               <Text style={{ fontSize: 12, color: 'rgba(255,120,120,0.95)', letterSpacing: 3, fontWeight: '700', marginBottom: 8 }}>
                 {(tr.delete_account_section_title || 'ZONE DANGEREUSE').toUpperCase()}
               </Text>
@@ -1759,7 +1759,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                   </Text>
                 </TouchableOpacity>
               </View>
-            </BlurView>
+            </LiquidGlass>
           </View>
         </View>
       </Modal>
@@ -1767,7 +1767,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
       <Modal visible={coachModeVisible} transparent animationType="fade" statusBarTranslucent onRequestClose={function() { setCoachModeVisible(false); }}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,8,18,0.85)', justifyContent: 'center', paddingHorizontal: 20 }}>
           <View style={{ borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}>
-            <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ padding: 24, backgroundColor: 'rgba(10,20,35,0.7)' }}>
+            <LiquidGlass intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ padding: 24, backgroundColor: 'rgba(10,20,35,0.7)' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.85)', letterSpacing: 3, fontWeight: '700' }}>COACH MODE</Text>
                 <TouchableOpacity onPress={function() { setCoachModeVisible(false); }} hitSlop={10}>
@@ -1813,7 +1813,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 18, textAlign: 'center', letterSpacing: 1 }}>
                 Easter egg admin · 5 taps sur le pavé prénom
               </Text>
-            </BlurView>
+            </LiquidGlass>
           </View>
         </View>
       </Modal>
