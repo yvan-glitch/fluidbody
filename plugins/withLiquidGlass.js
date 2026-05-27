@@ -5,19 +5,31 @@
 //   1. Copies the Swift / Obj-C source files from plugins/LiquidGlass/
 //      into ios/<projectName>/LiquidGlass/.
 //   2. Registers those files in the Xcode project so the target actually
-//      compiles them (without this, the files sit on disk and Xcode
-//      silently ignores them — the JS bridge then resolves to a fake
-//      component and we fall back to BlurView at runtime).
+//      compiles them. We bypass xcodeProject.addSourceFile because its
+//      internal addToPluginsPbxGroup() crashes on Expo-generated projects
+//      that lack a "Plugins" PBXGroup; we assemble the entries by hand.
 //
-// The matching React Native component lives at src/components/LiquidGlass.js
-// and feature-detects iOS 26 at runtime, falling back to expo-blur for
-// older OS versions (and tvOS / Android).
+// PATH RESOLUTION (the part that bit us once already):
 //
-// Implementation note: we bypass xcodeProject.addSourceFile because its
-// internal addToPluginsPbxGroup() crashes on Expo-generated projects that
-// don't ship a "Plugins" PBXGroup. We assemble PbxFile entries manually
-// and wire them into the file reference / build file / sources build phase
-// / target group sections directly.
+//   Xcode resolves a file's on-disk location by concatenating
+//   <parent group path> + <file path>. Each PBXGroup contributes ITS
+//   own `path` (relative to whichever group is above it).
+//
+//   So we keep the file's `path` to the BARE FILENAME, and put the
+//   directory chain on the group:
+//     - If the existing project group (e.g. "FluidBody") is found:
+//         LiquidGlass group  → path = 'LiquidGlass'    (under FluidBody)
+//         Files              → path = '<filename>'     (under LiquidGlass)
+//         Resolved:  FluidBody / LiquidGlass / <file>     ✓
+//     - Fallback (FluidBody group not found):
+//         LiquidGlass group  → path = 'FluidBody/LiquidGlass'  (under main)
+//         Files              → path = '<filename>'
+//         Resolved:  FluidBody / LiquidGlass / <file>     ✓
+//
+//   The previous version set path on BOTH the group and the files, which
+//   doubled the prefix and produced `LiquidGlass/FluidBody/LiquidGlass/<file>`
+//   in the pbxproj — Xcode then couldn't locate the sources and the
+//   compile step failed (EAS iPhone build #84).
 
 const { withDangerousMod, withXcodeProject } = require('@expo/config-plugins');
 const PbxFile = require('xcode/lib/pbxFile');
@@ -61,33 +73,41 @@ function copySources(config) {
   ]);
 }
 
-// Find an existing child PBXGroup by name under the given parent, or create
-// one. Returns the group's UUID. Looks up by name so reruns are idempotent.
-function ensureChildGroup(xcodeProject, parentGroupKey, name) {
-  const parent = xcodeProject.getPBXGroupByKey(parentGroupKey);
-  if (parent && parent.children) {
-    for (const child of parent.children) {
-      const candidate = xcodeProject.getPBXGroupByKey(child.value);
-      if (candidate && (candidate.name === name || candidate.path === name)) {
-        return child.value;
-      }
+// Strip surrounding double quotes the xcode lib sometimes leaves on string
+// values when round-tripping the pbxproj.
+function unquote(s) {
+  if (typeof s !== 'string') return s;
+  return s.replace(/^"(.*)"$/, '$1');
+}
+
+// Walk the entire PBXGroup section to find a group whose name OR path
+// matches the target. More robust than navigating from mainGroup.children
+// because PBXGroup entries can live anywhere in the dictionary.
+function findGroupKeyByNameOrPath(xcodeProject, target) {
+  const groups = xcodeProject.hash.project.objects['PBXGroup'];
+  if (!groups) return null;
+  for (const key of Object.keys(groups)) {
+    if (key.endsWith('_comment')) continue;
+    const group = groups[key];
+    if (!group || typeof group !== 'object') continue;
+    if (unquote(group.name) === target || unquote(group.path) === target) {
+      return key;
     }
   }
-  const newGroup = xcodeProject.addPbxGroup([], name, name);
-  if (parent && parent.children) {
-    parent.children.push({ value: newGroup.uuid, comment: name });
-  }
-  return newGroup.uuid;
+  return null;
 }
 
 // Manually attach a source file to the project — bypasses addSourceFile()
 // which calls addToPluginsPbxGroup() and crashes on Expo projects that
-// lack a "Plugins" group.
-function attachSourceFile(xcodeProject, relPath, groupKey, targetUuid) {
-  if (xcodeProject.hasFile && xcodeProject.hasFile(relPath)) {
+// lack a "Plugins" group. The file's `path` is the bare basename; the
+// parent group's `path` carries the on-disk prefix.
+function attachSourceFile(xcodeProject, basename, groupKey, targetUuid) {
+  if (xcodeProject.hasFile && xcodeProject.hasFile(basename)) {
+    // hasFile matches on the basename inside the file reference section;
+    // because we always store path=basename, this is enough to dedupe.
     return;
   }
-  const pbxFile = new PbxFile(relPath, { target: targetUuid });
+  const pbxFile = new PbxFile(basename, { target: targetUuid });
   pbxFile.uuid = xcodeProject.generateUuid();
   pbxFile.fileRef = xcodeProject.generateUuid();
   pbxFile.target = targetUuid;
@@ -111,38 +131,60 @@ function registerInXcode(config) {
     }
     const targetUuid = target.uuid;
 
-    // Walk down: project root → main group → projectName group → LiquidGlass group.
-    // The Swift sources sit on disk at ios/<projectName>/LiquidGlass/, so the
-    // Xcode group tree should mirror that.
-    const firstProject = xcodeProject.getFirstProject().firstProject;
-    const mainGroupKey = firstProject.mainGroup;
-    const mainGroup = xcodeProject.getPBXGroupByKey(mainGroupKey);
+    // Try to find the existing project source group. Expo names it after
+    // projectName, with either `name` or `path` set to that string.
+    const projectGroupKey = findGroupKeyByNameOrPath(xcodeProject, projectName);
 
-    // Locate the project's source group (named after projectName). It contains
-    // AppDelegate.swift, Info.plist, etc.
-    let projectGroupKey = null;
-    if (mainGroup && mainGroup.children) {
-      for (const child of mainGroup.children) {
-        const candidate = xcodeProject.getPBXGroupByKey(child.value);
-        if (candidate && (candidate.name === projectName || candidate.path === projectName)) {
-          projectGroupKey = child.value;
-          break;
+    // Build (or reuse) the LiquidGlass group. The on-disk target directory
+    // is ios/<projectName>/<GROUP_NAME>/, so the resolved Xcode path needs
+    // to land at `<projectName>/<GROUP_NAME>` from the iOS project root.
+    //
+    // Xcode resolves each group as <parent.path>/<my.path>. We figure out
+    // what `my.path` has to be by inspecting how much of the target prefix
+    // the parent already contributes. The Expo-generated FluidBody group
+    // is a LOGICAL group (name only, no path) — so files inside it carry
+    // their own full prefix. That means we usually keep the full
+    // `FluidBody/LiquidGlass` on our own group's path.
+    let liquidGlassGroupKey = findGroupKeyByNameOrPath(xcodeProject, GROUP_NAME);
+    if (!liquidGlassGroupKey) {
+      const mainGroupKey = xcodeProject.getFirstProject().firstProject.mainGroup;
+      const parentKey = projectGroupKey || mainGroupKey;
+      const parent = xcodeProject.getPBXGroupByKey(parentKey);
+      const parentPath = parent ? unquote(parent.path) : null;
+      const targetDirPath = `${projectName}/${GROUP_NAME}`;
+
+      let groupPath = targetDirPath;
+      if (parentPath && parentPath !== '' && parentPath !== '.') {
+        const prefix = parentPath.replace(/\/$/, '') + '/';
+        if (targetDirPath === parentPath) {
+          groupPath = '.';
+        } else if (targetDirPath.startsWith(prefix)) {
+          groupPath = targetDirPath.slice(prefix.length);
+        }
+        // else: parent path doesn't match our target — fall back to full
+        // path, which is technically wrong but at least observable.
+      }
+
+      const newGroup = xcodeProject.addPbxGroup([], GROUP_NAME, groupPath);
+      liquidGlassGroupKey = newGroup.uuid;
+
+      if (parent) {
+        if (!Array.isArray(parent.children)) parent.children = [];
+        if (!parent.children.some((c) => c.value === liquidGlassGroupKey)) {
+          parent.children.push({ value: liquidGlassGroupKey, comment: GROUP_NAME });
         }
       }
-    }
-    if (!projectGroupKey) {
-      // eslint-disable-next-line no-console
-      console.warn(`[withLiquidGlass] could not find ${projectName} PBXGroup, falling back to main group`);
-      projectGroupKey = mainGroupKey;
-    }
 
-    const liquidGlassGroupKey = ensureChildGroup(xcodeProject, projectGroupKey, GROUP_NAME);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[withLiquidGlass] created PBXGroup "${GROUP_NAME}" (path="${groupPath}", ` +
+          `parent="${projectGroupKey ? projectName : 'mainGroup'}", ` +
+          `parentPath="${parentPath || ''}") → resolves to ${targetDirPath}`,
+      );
+    }
 
     for (const file of SOURCE_FILES) {
-      // Path relative to the .xcodeproj — Xcode resolves group sources
-      // against the group's path, but PbxFile stores the path as given.
-      const relPath = `${projectName}/${GROUP_NAME}/${file}`;
-      attachSourceFile(xcodeProject, relPath, liquidGlassGroupKey, targetUuid);
+      attachSourceFile(xcodeProject, file, liquidGlassGroupKey, targetUuid);
     }
 
     // eslint-disable-next-line no-console
