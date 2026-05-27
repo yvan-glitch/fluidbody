@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import LiquidGlass from '../components/LiquidGlass';
 
 import { T, SABRINA_QUOTES } from '../constants/data';
 import { IS_TV, tvFocusProps } from '../utils/platformTV';
@@ -148,7 +148,7 @@ export default function SabrinaProfile({ lang, onClose }) {
                 borderColor: 'rgba(174,239,77,0.22)',
               }}
             >
-              <BlurView
+              <LiquidGlass
                 intensity={Platform.OS === 'ios' ? 60 : 0}
                 tint="dark"
                 style={{ backgroundColor: 'rgba(10,20,35,0.55)', padding: IS_TV ? 36 : 22 }}
@@ -176,7 +176,7 @@ export default function SabrinaProfile({ lang, onClose }) {
                 >
                   {'« ' + quote + ' »'}
                 </Text>
-              </BlurView>
+              </LiquidGlass>
             </View>
           </View>
         ) : null}

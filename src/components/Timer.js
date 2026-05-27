@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, Animated, Easing, StyleSheet, Dimensions, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import LiquidGlass from './LiquidGlass';
 import Svg, { Circle } from 'react-native-svg';
 import AnimatedPlus from './AnimatedPlus';
 import { Audio } from 'expo-av';
@@ -149,7 +149,7 @@ function StretchTimerModal({ visible, onClose, lang }) {
     <Modal visible animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={function() { resetTimer(); onClose(); }}>
       <View style={{ flex: 1 }}>
         <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
-        <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} pointerEvents="none" />
+        <LiquidGlass intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} pointerEvents="none" />
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible', opacity: 0.3 }} pointerEvents="none">
           {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
         </View>
