@@ -12,7 +12,7 @@ function useSafeNavigation() {
 import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, TextInput, Share, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import LiquidGlass from '../components/LiquidGlass';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES, FREE_MONTHLY_SELECTION } from '../constants/data';
@@ -533,7 +533,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
         />
         {showDemoLimit && (
           <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 50, overflow: 'hidden', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.25)' }}>
-            <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ paddingVertical: 24, paddingHorizontal: 28, alignItems: 'center', backgroundColor: 'rgba(10,20,35,0.6)' }}>
+            <LiquidGlass intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ paddingVertical: 24, paddingHorizontal: 28, alignItems: 'center', backgroundColor: 'rgba(10,20,35,0.6)' }}>
               <LinearGradient colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0)']} locations={[0, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }} pointerEvents="none" />
               <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', textAlign: 'center', marginBottom: 12 }}>{tr.demo_limit}</Text>
               <GlassButton
@@ -544,7 +544,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
               >
                 {tr.paywall_start}
               </GlassButton>
-            </BlurView>
+            </LiquidGlass>
           </View>
         )}
       </Modal>
@@ -873,7 +873,7 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
         <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
         <LivingBackground />
       <LivingBackground />
-        <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} pointerEvents="none" />
+        <LiquidGlass intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} pointerEvents="none" />
         <ScrollView contentContainerStyle={{ paddingTop: 60, paddingHorizontal: 24, paddingBottom: 40 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
             <TouchableOpacity onPress={onClose} style={{ paddingVertical: 8 }}>

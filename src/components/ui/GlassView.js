@@ -1,10 +1,15 @@
 // GlassView — the substrate every other Liquid Glass surface layers on top of.
 //
 // Three stacked effects (bottom → top):
-//   1. BlurView           : the actual frosted-glass blur
-//   2. Substrate fill     : a translucent tint over the blur (per tint)
-//   3. Specular highlight : a soft top-left → bottom-right white gradient (~135°)
-//   4. Bevel              : 1px bright top/left + 1px dark bottom/right (inset)
+//   1. LiquidGlass         : real iOS 26 UIGlassEffect when available, otherwise
+//                             falls back to expo-blur's BlurView (same API).
+//   2. Substrate fill      : a translucent tint over the blur (per tint).
+//   3. Specular highlight  : soft top-left → bottom-right white gradient (~135°).
+//                             Skipped on iOS 26 because UIGlassEffect already
+//                             renders a refractive specular as part of the material.
+//   4. Bevel               : 1px bright top/left + 1px dark bottom/right (inset).
+//                             Also skipped on iOS 26 since LiquidGlass paints
+//                             its own gradient ring on the native side.
 //
 // Children are rendered above all of that. The outer wrapper carries the drop
 // shadow (it must sit outside `overflow: hidden`, otherwise iOS clips it).
@@ -20,7 +25,7 @@
 // since it always renders against pitch-black video.
 
 import { View, StyleSheet, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
+import LiquidGlass, { HAS_LIQUID_GLASS } from '../LiquidGlass';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   GLASS_HIGHLIGHT_START,
@@ -76,9 +81,11 @@ export default function GlassView({
       accessibilityLabel={accessibilityLabel}
     >
       <View style={{ borderRadius, overflow: 'hidden' }}>
-        <BlurView
+        <LiquidGlass
           intensity={iosIntensity}
           tint={resolvedTint === 'default' ? 'default' : resolvedTint}
+          borderStyle={HAS_LIQUID_GLASS ? (highlight ? 'subtle' : 'off') : 'subtle'}
+          borderRadius={borderRadius}
           style={StyleSheet.absoluteFill}
         />
 
@@ -96,7 +103,7 @@ export default function GlassView({
           ]}
         />
 
-        {highlight ? (
+        {highlight && !HAS_LIQUID_GLASS ? (
           <LinearGradient
             pointerEvents="none"
             colors={g.highlightColors}
@@ -106,7 +113,7 @@ export default function GlassView({
           />
         ) : null}
 
-        {bevel ? (
+        {bevel && !HAS_LIQUID_GLASS ? (
           <>
             <View
               pointerEvents="none"

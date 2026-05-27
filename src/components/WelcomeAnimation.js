@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Animated, Easing, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import LiquidGlass from './LiquidGlass';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MeduseCornerIcon } from './Meduse';
 
@@ -88,7 +88,7 @@ export default function WelcomeAnimation({ visible, lang, prenom, tr, onDone }) 
         locations={[0, 0.55, 1]}
         style={StyleSheet.absoluteFill}
       />
-      <BlurView intensity={Platform.OS === 'ios' ? 18 : 0} tint="dark" style={StyleSheet.absoluteFill} />
+      <LiquidGlass intensity={Platform.OS === 'ios' ? 18 : 0} tint="dark" style={StyleSheet.absoluteFill} />
       <View style={{ alignItems: 'center', paddingHorizontal: 32 }}>
         <Text
           style={{

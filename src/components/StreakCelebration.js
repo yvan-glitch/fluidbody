@@ -5,7 +5,7 @@
 
 import { useEffect, useRef } from 'react';
 import { Modal, View, Text, Animated, Easing, TouchableOpacity, Platform, StyleSheet, Dimensions } from 'react-native';
-import { BlurView } from 'expo-blur';
+import LiquidGlass from './LiquidGlass';
 
 import { MeduseCornerIcon } from './Meduse';
 
@@ -70,7 +70,7 @@ export default function StreakCelebration({ visible, streak, lang, onClose }) {
       <Animated.View style={{ flex: 1, opacity: fade }}>
         <TouchableOpacity activeOpacity={1} onPress={onClose} style={{ flex: 1 }} accessibilityRole="button" accessibilityLabel={isFr ? 'Fermer' : 'Close'}>
           {Platform.OS === 'ios' ? (
-            <BlurView intensity={75} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
+            <LiquidGlass intensity={75} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
           ) : null}
           <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(2,18,34,0.85)' }]} pointerEvents="none" />
           {medusas.map(function (m, i) { return <RisingMeduse key={'rm' + i} {...m} />; })}

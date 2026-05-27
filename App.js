@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState, KeyboardAvoidingView, PanResponder, Share } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import LiquidGlass from './src/components/LiquidGlass';
 import { Image as ExpoImage } from 'expo-image';
 // ─── SENTRY ───────────────────────────────────────────────────────────────────
 // Init AVANT tout import qui pourrait throw. Safe-require pour Expo Go.
@@ -851,7 +851,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} pointerEvents="none">
         <FloatingMedusas />
       </View>
-      <BlurView intensity={Platform.OS === 'ios' ? 30 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.4)' }} pointerEvents="none" />
+      <LiquidGlass intensity={Platform.OS === 'ios' ? 30 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.4)' }} pointerEvents="none" />
 
       <View style={{ paddingTop: 58, paddingHorizontal: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 }}>
         <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</AnimatedPlus></Text>
@@ -2614,7 +2614,7 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
           <Pressable style={{ flex: 1 }} onPress={function() { setEditing(null); }} />
           <View style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', borderBottomWidth: 0 }}>
-            <BlurView intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ backgroundColor: 'rgba(10,20,35,0.85)', paddingTop: 12, paddingBottom: 32, paddingHorizontal: 24 }}>
+            <LiquidGlass intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ backgroundColor: 'rgba(10,20,35,0.85)', paddingTop: 12, paddingBottom: 32, paddingHorizontal: 24 }}>
               <View style={{ alignItems: 'center', marginBottom: 4 }}>
                 <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.25)' }} />
               </View>
@@ -2688,7 +2688,7 @@ function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
                   </Text>
                 </View>
               )}
-            </BlurView>
+            </LiquidGlass>
           </View>
         </KeyboardAvoidingView>
       </Modal>
