@@ -97,6 +97,7 @@ export default function GlassButton({
   fullWidth = true,
   haptic = 'light',           // 'light' | 'success' | 'none'
   forceDark = false,          // force the dark palette (VideoPlayer overlay)
+  enhanced = false,           // amplified Liquid Glass v2 overlays (main CTAs)
   leftIcon,
   rightIcon,
   textColor,
@@ -140,6 +141,7 @@ export default function GlassButton({
         forceDark={forceDark || !!v.forceDark}
         borderRadius={GLASS_RADII.button}
         substrateColor={v.substrate}
+        enhanced={enhanced}
         style={style}
         contentStyle={{
           height: h,

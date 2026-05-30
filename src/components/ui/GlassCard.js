@@ -21,6 +21,7 @@ export default function GlassCard({
   bevel = true,
   elevated = true,
   substrateColor,
+  enhanced = false,
   style,
   accessibilityLabel,
   accessibilityHint,
@@ -35,6 +36,7 @@ export default function GlassCard({
       bevel={bevel}
       elevated={elevated}
       substrateColor={substrateColor}
+      enhanced={enhanced}
       style={style}
       contentStyle={{ padding: resolvedPadding }}
     >

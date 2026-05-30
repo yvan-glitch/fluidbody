@@ -275,6 +275,7 @@ function TVPaywallView({
         shape="card"
         padding={0}
         tiltOnFocus={false}
+        enhanced
         style={{ marginBottom: 20 }}
         contentStyle={{ paddingVertical: 24, paddingHorizontal: 26 }}
         accessibilityLabel={label + ' ' + priceText}
@@ -441,6 +442,7 @@ function TVPaywallView({
             shape="card"
             padding={0}
             tiltOnFocus={false}
+            enhanced
             style={{ marginTop: 18 }}
             contentStyle={{ paddingVertical: 18, alignItems: 'center' }}
             accessibilityLabel={pairLabel}
@@ -778,6 +780,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               borderRadius={GLASS_RADII.cardLg}
               padding={24}
               elevated
+              enhanced
             >
               {/* Bandeau "OFFRE FONDATEUR" — frosted (BlurView via GlassView),
                   sobre, sans emoji. Le texte explique la structure
@@ -878,6 +881,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               <GlassButton
                 variant="accent"
                 size="lg"
+                enhanced
                 onPress={onCta}
                 disabled={disabled || loadingPrices}
                 loading={loadingPrices}

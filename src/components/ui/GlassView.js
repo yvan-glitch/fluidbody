@@ -26,6 +26,7 @@
 
 import { View, StyleSheet, Platform } from 'react-native';
 import LiquidGlass, { HAS_LIQUID_GLASS } from '../LiquidGlass';
+import { GlassEnhanceOverlays } from '../LiquidGlassEnhanced';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   GLASS_HIGHLIGHT_START,
@@ -44,6 +45,8 @@ export default function GlassView({
   elevated = true,
   substrateColor,        // override for accent/branded glass (e.g. green CTA)
   forceDark = false,     // bypass theme — always render as dark glass (videoplayer overlay)
+  enhanced = false,      // opt-in: amplified Liquid Glass v2 overlays (breathing + specular + lime ring)
+  focused = false,       // tvOS focus state — intensifies the enhanced overlays
   style,
   contentStyle,
   pointerEvents,
@@ -150,6 +153,17 @@ export default function GlassView({
               ]}
             />
           </>
+        ) : null}
+
+        {/* Liquid Glass v2 amplification — sits above the substrate/bevel so
+            the bloom and specular sweep read against the blurred backdrop,
+            but below the content. OTA-only, fully JS. */}
+        {enhanced ? (
+          <GlassEnhanceOverlays
+            borderRadius={borderRadius}
+            focused={focused}
+            intensity={intensity}
+          />
         ) : null}
 
         <View style={contentStyle}>
