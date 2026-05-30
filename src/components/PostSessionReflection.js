@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, Platform, StyleSheet } from 'react-native';
 import LiquidGlass from './LiquidGlass';
+import { GlassEnhanceOverlays } from './LiquidGlassEnhanced';
 
 import { saveReflection } from '../utils/reflections';
 import { Icon } from './Icons';
@@ -35,6 +36,11 @@ export default function PostSessionReflection({ visible, sessionId, lang, onClos
           <LiquidGlass intensity={70} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
         ) : null}
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)' }]} pointerEvents="none" />
+        {/* Liquid Glass v2 amplification — breathing bloom + specular sweep
+            over the frosted backdrop. Above the dark tint so it stays visible. */}
+        {Platform.OS === 'ios' ? (
+          <GlassEnhanceOverlays borderRadius={28} intensity={60} />
+        ) : null}
         <Text style={{ fontSize: 26, fontWeight: '700', color: '#ffffff', marginBottom: 24, textAlign: 'center', letterSpacing: -0.3 }}>
           {isFr ? 'Comment tu te sens ?' : 'How do you feel?'}
         </Text>

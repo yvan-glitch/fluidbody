@@ -29,6 +29,11 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { IS_TV, tvFocusProps } from '../../utils/platformTV';
+import { GlassEnhanceOverlays } from '../LiquidGlassEnhanced';
+
+// Lime brand accent in the "r, g, b" form GlassEnhanceOverlays expects.
+const LIME_RGB = '184, 230, 46';
+const CYAN_RGB = '120, 220, 255';
 
 // Couleur du ring focus — bioluminescent cyan, signature Fluidbody.
 // Ring blanc par défaut pour cohérence avec le pass focus du polish round 2.
@@ -58,6 +63,10 @@ export default function GlassCardTV({
   // pour les tiles dans une scroll list horizontale, le tilt peut faire
   // confondre avec un dragging.
   tiltOnFocus = true,
+  // enhanced : superpose les couches Liquid Glass v2 (breathing bloom +
+  // specular sweep + lime ring) par-dessus le BlurView. Le focus tvOS
+  // intensifie le bloom et le ring — câblé sur le state `focused` interne.
+  enhanced = false,
   // Style supplémentaire sur le wrapper extérieur (utile pour width/height
   // explicites).
   style,
@@ -207,6 +216,16 @@ export default function GlassCardTV({
               },
             ]}
           />
+          {/* Liquid Glass v2 — couches amplifiées au-dessus du blur+bevel,
+              sous le contenu. Le focus tvOS booste le bloom + le ring. */}
+          {enhanced ? (
+            <GlassEnhanceOverlays
+              borderRadius={radius}
+              focused={focused}
+              accent={accent === 'green' ? LIME_RGB : CYAN_RGB}
+              intensity={75}
+            />
+          ) : null}
           <View style={[{ padding: padded }, contentStyle]}>
             {children}
           </View>

@@ -23,6 +23,7 @@ export default function GlassSheet({
   tint,                    // override theme.glass.tint
   highlight = true,
   bevel = true,
+  enhanced = false,
   showHandle = true,
   onClose,
   closeLabel,
@@ -53,6 +54,7 @@ export default function GlassSheet({
         borderRadius={topRadius}
         highlight={highlight}
         bevel={bevel}
+        enhanced={enhanced}
         elevated
         style={{
           borderBottomLeftRadius: 0,

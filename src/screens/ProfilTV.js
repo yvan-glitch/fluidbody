@@ -32,6 +32,7 @@ function Card({ label, value, focusPreferred, onPress, accent, danger }) {
       shape="card"
       padding={0}
       tiltOnFocus={false}
+      enhanced
       style={styles.card}
       contentStyle={styles.cardContent}
       accessibilityLabel={label + ' ' + value}
