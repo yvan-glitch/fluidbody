@@ -28,14 +28,27 @@
 import { requireNativeComponent, UIManager, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 
-const NATIVE_VIEW_NAME = 'LiquidGlassView';
+// iPhone/iPad → 'LiquidGlassView' (iOS 26.x UIGlassEffect, full v2 API).
+// Apple TV     → 'LiquidGlassTVView' (UIGlassEffect on tvOS 26 + a
+//                focus-responsive specular sheen; see
+//                plugins/LiquidGlass/LiquidGlassTVView.swift).
+// react-native-tvos reports Platform.OS === 'ios' on tvOS, so we branch on
+// Platform.isTV to pick the right view-manager name.
+const IOS_VIEW_NAME = 'LiquidGlassView';
+const TV_VIEW_NAME = 'LiquidGlassTVView';
+const NATIVE_VIEW_NAME = Platform.isTV ? TV_VIEW_NAME : IOS_VIEW_NAME;
+
+// True when we're routing to the tvOS module — call sites (GlassCardTV) use
+// this to forward the extra focused/accent props the TV view understands.
+export const IS_TV_GLASS = Platform.isTV === true;
 
 // Probe whether the native view is actually registered in this binary.
 // requireNativeComponent itself doesn't throw for missing views — it returns
 // a stub — so we use UIManager as the source of truth.
 function hasNativeLiquidGlass() {
   if (Platform.OS !== 'ios') return false;
-  if (Platform.isTV) return false;
+  // tvOS 26 and iOS 26 both gained UIGlassEffect; gate on version 26+ and
+  // let the UIManager probe confirm the right view manager is compiled in.
   const version = parseInt(String(Platform.Version), 10);
   if (!Number.isFinite(version) || version < 26) return false;
   try {
@@ -73,6 +86,12 @@ export default function LiquidGlass({
   tintIntensity = 0.18,     // 0-1 strength applied as the tint alpha
   interactive = false,      // system glass expand/highlight on touch + tap burst
   cornerRadius,             // alias for borderRadius (matches the v2 prop name)
+  // tvOS-only extras (consumed by LiquidGlassTVView; ignored elsewhere):
+  //   focused — intensifies the specular sheen + tint when the wrapping
+  //             TouchableOpacity gains Siri-Remote focus
+  //   accent  — 'cyan' (default) | 'green' lime, tints the edge + sheen
+  focused = false,
+  accent = 'cyan',
   ...rest
 }) {
   if (LiquidGlassNative) {
@@ -88,6 +107,17 @@ export default function LiquidGlass({
     // onto the native `glassTint` UIColor prop (real UIGlassEffect.tintColor
     // on iOS 26).
     const resolvedTint = tintColor != null ? tintColor : glassTint;
+    // The tvOS view manager (LiquidGlassTVView) exposes a different prop
+    // surface than the iOS one: focus-driven sheen (glassFocused) + accent,
+    // and NOT glassStyle/tintIntensity/interactive. Forward only the props
+    // each view actually declares so RN doesn't warn on unknown props.
+    const nativeProps = IS_TV_GLASS
+      ? { glassFocused: !!focused, accent }
+      : {
+          glassStyle,
+          tintIntensity: Math.max(0, Math.min(1, tintIntensity)),
+          interactive: !!interactive,
+        };
     return (
       <LiquidGlassNative
         style={[
@@ -97,10 +127,8 @@ export default function LiquidGlass({
         glassIntensity={Math.max(0, Math.min(1, intensity / 100))}
         borderStyle={borderStyle}
         glassTint={resolvedTint}
-        glassStyle={glassStyle}
-        tintIntensity={Math.max(0, Math.min(1, tintIntensity))}
-        interactive={!!interactive}
         glassCornerRadius={resolvedRadius ?? 0}
+        {...nativeProps}
         {...rest}
       >
         {children}
