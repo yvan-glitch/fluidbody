@@ -22,6 +22,10 @@ export default function GlassCard({
   elevated = true,
   substrateColor,
   enhanced = false,
+  glassStyle,
+  tintColor,
+  tintIntensity,
+  interactive,
   style,
   accessibilityLabel,
   accessibilityHint,
@@ -37,6 +41,10 @@ export default function GlassCard({
       elevated={elevated}
       substrateColor={substrateColor}
       enhanced={enhanced}
+      glassStyle={glassStyle}
+      tintColor={tintColor}
+      tintIntensity={tintIntensity}
+      interactive={interactive}
       style={style}
       contentStyle={{ padding: resolvedPadding }}
     >

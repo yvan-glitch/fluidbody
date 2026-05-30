@@ -33,7 +33,15 @@ export default function PostSessionReflection({ visible, sessionId, lang, onClos
     <Modal visible animationType="fade" transparent statusBarTranslucent onRequestClose={onClose}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         {Platform.OS === 'ios' ? (
-          <LiquidGlass intensity={70} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
+          <LiquidGlass
+            intensity={70}
+            tint="dark"
+            glassStyle="prominent"
+            tintColor="#B8E62E"
+            tintIntensity={0.07}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
         ) : null}
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)' }]} pointerEvents="none" />
         {/* Liquid Glass v2 amplification — breathing bloom + specular sweep

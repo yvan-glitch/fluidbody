@@ -98,6 +98,10 @@ export default function GlassButton({
   haptic = 'light',           // 'light' | 'success' | 'none'
   forceDark = false,          // force the dark palette (VideoPlayer overlay)
   enhanced = false,           // amplified Liquid Glass v2 overlays (main CTAs)
+  glassStyle,                 // v2 native UIGlassEffect style override
+  tintColor,                  // v2 native stained-glass tint override
+  tintIntensity,
+  interactive,                // v2 native glass touch interactivity
   leftIcon,
   rightIcon,
   textColor,
@@ -142,6 +146,10 @@ export default function GlassButton({
         borderRadius={GLASS_RADII.button}
         substrateColor={v.substrate}
         enhanced={enhanced}
+        glassStyle={glassStyle}
+        tintColor={tintColor}
+        tintIntensity={tintIntensity}
+        interactive={interactive}
         style={style}
         contentStyle={{
           height: h,
