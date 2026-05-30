@@ -107,12 +107,20 @@ export default function LiquidGlass({
     // onto the native `glassTint` UIColor prop (real UIGlassEffect.tintColor
     // on iOS 26).
     const resolvedTint = tintColor != null ? tintColor : glassTint;
-    // The tvOS view manager (LiquidGlassTVView) exposes a different prop
-    // surface than the iOS one: focus-driven sheen (glassFocused) + accent,
-    // and NOT glassStyle/tintIntensity/interactive. Forward only the props
-    // each view actually declares so RN doesn't warn on unknown props.
+    // The tvOS view manager (LiquidGlassTVView) exposes a focus-driven sheen
+    // (glassFocused) + accent, and ALSO honours glassStyle on tvOS 26 ('clear'
+    // = the most refractive/lens-warp mode). It does NOT declare the iOS-only
+    // tintIntensity/interactive. Forward only the props each view actually
+    // declares so RN doesn't warn on unknown props.
     const nativeProps = IS_TV_GLASS
-      ? { glassFocused: !!focused, accent }
+      ? {
+          glassFocused: !!focused,
+          accent,
+          // tvOS 26 honours glassStyle too — 'clear' is the most refractive
+          // (real lens-warp) mode. The iOS-only tintIntensity/interactive are
+          // not declared on the TV view, so they're left off here.
+          glassStyle,
+        }
       : {
           glassStyle,
           tintIntensity: Math.max(0, Math.min(1, tintIntensity)),

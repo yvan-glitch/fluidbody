@@ -199,6 +199,10 @@ export default function GlassCardTV({
               borderRadius={radius}
               focused={focused}
               accent={accent}
+              // 'clear' = the most refractive UIGlassEffect mode on tvOS 26 —
+              // the backdrop genuinely warps through the pane (lens-warp look)
+              // rather than only blurring. This is the liquid effect Yvan wants.
+              glassStyle="clear"
             />
           ) : (
             <BlurView intensity={78} tint="dark" style={StyleSheet.absoluteFillObject} />
