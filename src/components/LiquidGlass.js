@@ -67,6 +67,12 @@ export default function LiquidGlass({
   borderStyle = 'subtle',
   glassTint,
   borderRadius,
+  // v2 — iOS 26.x UIGlassEffect props (no-ops on the BlurView fallback):
+  glassStyle = 'regular',   // 'automatic'|'regular'|'thin'|'prominent'|'clear'
+  tintColor,                // brand hex (#B8E62E …) → real UIGlassEffect.tintColor
+  tintIntensity = 0.18,     // 0-1 strength applied as the tint alpha
+  interactive = false,      // system glass expand/highlight on touch + tap burst
+  cornerRadius,             // alias for borderRadius (matches the v2 prop name)
   ...rest
 }) {
   if (LiquidGlassNative) {
@@ -74,8 +80,14 @@ export default function LiquidGlass({
     // prop so UIVisualEffectView can clip to the same radius. Without
     // glassCornerRadius the effect view stays square and we'd see a
     // square blur peeking out of a rounded RN container.
+    const radiusInput =
+      typeof cornerRadius === 'number' ? cornerRadius : borderRadius;
     const resolvedRadius =
-      typeof borderRadius === 'number' ? borderRadius : undefined;
+      typeof radiusInput === 'number' ? radiusInput : undefined;
+    // `tintColor` is the v2 name; `glassTint` is the legacy name. Either maps
+    // onto the native `glassTint` UIColor prop (real UIGlassEffect.tintColor
+    // on iOS 26).
+    const resolvedTint = tintColor != null ? tintColor : glassTint;
     return (
       <LiquidGlassNative
         style={[
@@ -84,7 +96,10 @@ export default function LiquidGlass({
         ]}
         glassIntensity={Math.max(0, Math.min(1, intensity / 100))}
         borderStyle={borderStyle}
-        glassTint={glassTint}
+        glassTint={resolvedTint}
+        glassStyle={glassStyle}
+        tintIntensity={Math.max(0, Math.min(1, tintIntensity))}
+        interactive={!!interactive}
         glassCornerRadius={resolvedRadius ?? 0}
         {...rest}
       >
