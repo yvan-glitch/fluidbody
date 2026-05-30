@@ -61,6 +61,21 @@ class LiquidGlassTVView: UIView {
         didSet { updateBorder() }
     }
 
+    // "regular" (default) | "clear" | friendly aliases. On tvOS 26 this picks
+    // the real UIGlassEffect.Style. `.clear` is the MOST translucent /
+    // refractive mode — Apple's true "lens warp" look where the content behind
+    // the pane is genuinely warped, not just blurred — so the JS layer passes
+    // glassStyle="clear" when it wants the strongest liquid effect.
+    //
+    // Only `.regular` and `.clear` exist publicly (no `.thin`/`.prominent`),
+    // exactly like iOS 26; we map friendly aliases the same way the iPhone
+    // module does so call sites can share one vocabulary:
+    //   clear / thin              → .clear
+    //   regular / automatic / prominent → .regular
+    @objc var glassStyle: NSString = "regular" {
+        didSet { rebuildGlassEffect() }
+    }
+
     // Driven by the wrapping TouchableOpacity's focus state in JS.
     @objc var glassFocused: Bool = false {
         didSet { applyFocus(animated: true) }
@@ -134,8 +149,21 @@ class LiquidGlassTVView: UIView {
     }
 
     @available(tvOS 26.0, *)
+    private func glassEffectStyle() -> UIGlassEffect.Style {
+        switch (glassStyle as String).lowercased() {
+        case "clear", "thin":
+            return .clear
+        default:
+            return .regular
+        }
+    }
+
+    @available(tvOS 26.0, *)
     private func makeGlassEffect(focused: Bool) -> UIVisualEffect {
-        let glass = UIGlassEffect()
+        // Building with the requested style is what gives the real refraction:
+        // `.clear` lets the backdrop warp through the pane (the lens-warp look),
+        // `.regular` is the denser frosted default.
+        let glass = UIGlassEffect(style: glassEffectStyle())
         // Subtle accent tint; brighter when focused so the card "lifts" on
         // the Siri Remote. nil tint keeps the pure system look at rest.
         if focused {
@@ -144,6 +172,14 @@ class LiquidGlassTVView: UIView {
         // Interactive glass reacts to the focus/press ripple on tvOS.
         glass.isInteractive = true
         return glass
+    }
+
+    // Reassign the effect when glassStyle changes (tvOS 26 only — the older
+    // UIBlurEffect(.dark) fallback has no style knob, so it's a no-op there).
+    private func rebuildGlassEffect() {
+        if #available(tvOS 26.0, *) {
+            effectView.effect = makeGlassEffect(focused: glassFocused)
+        }
     }
 
     // MARK: - Layout
