@@ -22,8 +22,19 @@ export default function LiquidGlassCapsule({
   paddingV = 8,
   gap = 14,
   style,
+  // v2 — opt into the native iOS 26 UIGlassEffect amplification (used by the
+  // header capsule): prominent glass + subtle lime tint + touch interactivity.
+  premium = false,
+  glassStyle,
+  tintColor,
+  tintIntensity,
+  interactive,
 }) {
   const isLight = tint === 'light';
+  const resolvedGlassStyle = glassStyle != null ? glassStyle : (premium ? 'prominent' : 'regular');
+  const resolvedTintColor = tintColor != null ? tintColor : (premium ? '#B8E62E' : undefined);
+  const resolvedTintIntensity = tintIntensity != null ? tintIntensity : (premium ? 0.10 : 0.18);
+  const resolvedInteractive = interactive != null ? interactive : premium;
   return (
     <View style={[styles.wrap, { borderRadius: radius }, style]}>
       <LiquidGlass
@@ -31,6 +42,10 @@ export default function LiquidGlassCapsule({
         tint={isLight ? 'light' : 'dark'}
         borderStyle={HAS_LIQUID_GLASS ? 'bright' : 'subtle'}
         borderRadius={radius}
+        glassStyle={resolvedGlassStyle}
+        tintColor={resolvedTintColor}
+        tintIntensity={resolvedTintIntensity}
+        interactive={resolvedInteractive}
         style={StyleSheet.absoluteFillObject}
       />
       <View style={[

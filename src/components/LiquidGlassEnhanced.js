@@ -186,10 +186,27 @@ export default function LiquidGlassEnhanced({
   borderRadius = 12,
   focused = false,
   accent = LIME,
+  // v2 native UIGlassEffect knobs. "Premium" defaults: prominent glass,
+  // brand-lime stained-glass tint at 0.10, system interactivity. On iOS 26
+  // these drive the real UIGlassEffect; on the fallback path they're no-ops
+  // and the JS overlays below carry the look. Any can be overridden per call.
+  glassStyle = 'prominent',
+  tintColor = '#B8E62E',     // brand lime (== `LIME` rgb 184,230,46)
+  tintIntensity = 0.10,
+  interactive = true,
   ...rest
 }) {
   return (
-    <LiquidGlass style={style} intensity={intensity} borderRadius={borderRadius} {...rest}>
+    <LiquidGlass
+      style={style}
+      intensity={intensity}
+      borderRadius={borderRadius}
+      glassStyle={glassStyle}
+      tintColor={tintColor}
+      tintIntensity={tintIntensity}
+      interactive={interactive}
+      {...rest}
+    >
       <GlassEnhanceOverlays
         borderRadius={borderRadius}
         focused={focused}

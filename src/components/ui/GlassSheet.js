@@ -24,6 +24,10 @@ export default function GlassSheet({
   highlight = true,
   bevel = true,
   enhanced = false,
+  glassStyle,
+  tintColor,
+  tintIntensity,
+  interactive,
   showHandle = true,
   onClose,
   closeLabel,
@@ -55,6 +59,10 @@ export default function GlassSheet({
         highlight={highlight}
         bevel={bevel}
         enhanced={enhanced}
+        glassStyle={glassStyle}
+        tintColor={tintColor}
+        tintIntensity={tintIntensity}
+        interactive={interactive}
         elevated
         style={{
           borderBottomLeftRadius: 0,

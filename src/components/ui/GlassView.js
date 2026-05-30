@@ -47,6 +47,13 @@ export default function GlassView({
   forceDark = false,     // bypass theme — always render as dark glass (videoplayer overlay)
   enhanced = false,      // opt-in: amplified Liquid Glass v2 overlays (breathing + specular + lime ring)
   focused = false,       // tvOS focus state — intensifies the enhanced overlays
+  // v2 native UIGlassEffect controls (forwarded to LiquidGlass). When
+  // `enhanced` is on and these aren't explicitly set, we apply the premium
+  // defaults: prominent glass, brand-lime tint, system interactivity.
+  glassStyle,
+  tintColor,
+  tintIntensity,
+  interactive,
   style,
   contentStyle,
   pointerEvents,
@@ -69,6 +76,15 @@ export default function GlassView({
   const resolvedTint = tint || g.tint;
   const resolvedSubstrate = substrateColor || g.substrate;
 
+  // v2 native glass controls. `enhanced` surfaces opt into the premium look
+  // (prominent glass + subtle brand-lime stained-glass tint + system
+  // interactivity) unless the caller overrides a given knob explicitly.
+  const BRAND_LIME = '#B8E62E';
+  const resolvedGlassStyle = glassStyle != null ? glassStyle : (enhanced ? 'prominent' : 'regular');
+  const resolvedGlassTintColor = tintColor != null ? tintColor : (enhanced ? BRAND_LIME : undefined);
+  const resolvedTintIntensity = tintIntensity != null ? tintIntensity : (enhanced ? 0.10 : 0.18);
+  const resolvedInteractive = interactive != null ? interactive : enhanced;
+
   const shadowStyle = elevated
     ? Object.assign({}, GLASS_SHADOW_BASE, { shadowOpacity: g.shadowOpacity })
     : null;
@@ -89,6 +105,10 @@ export default function GlassView({
           tint={resolvedTint === 'default' ? 'default' : resolvedTint}
           borderStyle={HAS_LIQUID_GLASS ? (highlight ? 'subtle' : 'off') : 'subtle'}
           borderRadius={borderRadius}
+          glassStyle={resolvedGlassStyle}
+          tintColor={resolvedGlassTintColor}
+          tintIntensity={resolvedTintIntensity}
+          interactive={resolvedInteractive}
           style={StyleSheet.absoluteFill}
         />
 
