@@ -13,7 +13,7 @@
 // a non-TV target.
 //
 // Layers, bottom → top:
-//   1. effectView      — UIGlassEffect (tvOS 26) or .systemUltraThinMaterialDark
+//   1. effectView      — UIGlassEffect (tvOS 26) or UIBlurEffect(.dark) (older)
 //   2. specularLayer   — animated diagonal sheen sweeping L→R (CABasicAnimation)
 //   3. topReflection   — 1pt bright line along the top edge (glass catching light)
 //   4. borderLayer     — luminous edge gradient, lime accent when accent="green"
@@ -95,8 +95,11 @@ class LiquidGlassTVView: UIView {
             effectView.effect = makeGlassEffect(focused: false)
         } else {
             // Native fallback for tvOS < 26 — still a real UIVisualEffectView,
-            // not the JS BlurView.
-            effectView.effect = UIBlurEffect(style: .systemUltraThinMaterialDark)
+            // not the JS BlurView. NOTE: the iOS `.system*Material*` styles
+            // are unavailable on tvOS; tvOS only ships the classic blur styles
+            // (.light/.extraLight/.dark/.regular/.prominent). `.dark` is the
+            // closest match to the dark substrate the app wants.
+            effectView.effect = UIBlurEffect(style: .dark)
         }
         effectView.frame = bounds
         effectView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
