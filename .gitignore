@@ -59,3 +59,7 @@ credentials/
 # Privacy policy site — sub-project tracked separately
 # (repo: yvan-glitch/fluidbody-privacy)
 fluidbody-privacy/
+
+# --- security hardening (added by audit) ---
+.env.production
+.env.*.local
