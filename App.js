@@ -45,6 +45,7 @@ function sentryCapture(error, ctx) {
   } catch (e) {}
 }
 import { withTimeout } from './src/utils/withTimeout';
+import { breadcrumb } from './src/utils/breadcrumb';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 // RevenueCat (achats Apple) — indisponible dans Expo Go, donc import "safe"
@@ -2970,6 +2971,8 @@ function App() {
     checkSession();
     if (!supabase) return undefined;
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (_event === 'SIGNED_IN') breadcrumb('Login', { uid: session?.user?.id }, { category: 'auth' });
+      else if (_event === 'SIGNED_OUT') breadcrumb('Logout', undefined, { category: 'auth' });
       setSupaUser(session?.user || null);
       if (session?.user) {
         try {

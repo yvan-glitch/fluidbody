@@ -20,6 +20,7 @@ import {
 import { Icon } from './Icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
+import { breadcrumb } from '../utils/breadcrumb';
 import { AquaticBackground, GlassCardTV } from './tv';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -623,6 +624,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
 
   function onCta() {
     if (loadingPrices) return;
+    breadcrumb('Subscribe tapped', { plan: selected }, { category: 'purchase' });
     if (selected === 'yearly') {
       if (yearlyPkg) { onBuyYearly && onBuyYearly(yearlyPkg); return; }
     } else {

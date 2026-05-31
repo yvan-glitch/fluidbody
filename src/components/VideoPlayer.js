@@ -18,6 +18,8 @@ import { Icon } from './Icons';
 import HeartRatePill from './HeartRatePill';
 import { GlassView, GlassButton, GLASS_RADII, GLASS_EASING, GLASS_DURATIONS } from './ui';
 import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
+import { breadcrumb } from '../utils/breadcrumb';
+import { hapticLight } from '../utils';
 import useLiveHeartRate from '../hooks/useLiveHeartRate';
 import { recordSessionHour, cancelPauseActiveNotifications } from '../utils/notifications';
 import { IS_TV, tvFocusProps } from '../utils/platformTV';
@@ -303,6 +305,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   // d'échec offline ; à retirer une fois le bug confirmé/fixé.
   useEffect(function() {
     if (!hasRealVideo || !sessionId || !pilier?.key || typeof seanceIndex !== 'number') return;
+    breadcrumb('Started session', { pilier: pilier.key, seanceIndex }, { category: 'video' });
     let cancelled = false;
     setUri('');
     hasRestoredRef.current = false;
@@ -352,6 +355,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         if (cancelled) return;
         const msg = err?.message || String(err);
         trace.push('CATCH: ' + msg);
+        breadcrumb('Bunny URL fetch error', { pilier: pilier?.key, seanceIndex, msg }, { category: 'video', level: 'error' });
         if (__DEV__) devWarn('VideoPlayer.urlResolve.ERR', msg);
         Alert.alert(
           'Vidéo indisponible',
@@ -524,6 +528,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     if (!s.isLoaded && s.error) {
       setStatus(s);
       syncKeepAwake(s);
+      breadcrumb('Video error', { pilier: pilier?.key, seanceIndex, error: String(s.error) }, { category: 'video', level: 'error' });
       if (__DEV__) console.log('Video playback error:', { uri: uriRef.current, error: s.error });
       if (__DEV__) devWarn('Video playback error', s.error);
       setVideoLoadFailed(true);
@@ -568,6 +573,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   }
 
   function togglePlay() {
+    hapticLight();
     Animated.sequence([
       Animated.timing(playScale, { toValue: 0.94, duration: 70, useNativeDriver: true }),
       Animated.spring(playScale, { toValue: 1, friction: 4, tension: 280, useNativeDriver: true }),
@@ -660,6 +666,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
 
   // Save exercise time locally for activity rings
   async function saveExerciseTime(minutes) {
+    breadcrumb('Completed session', { pilier: pilier?.key, seanceIndex, minutes }, { category: 'video' });
     try {
       var key = 'fluid_exercise_' + new Date().toISOString().slice(0, 10);
       var raw = await AsyncStorage.getItem(key);
