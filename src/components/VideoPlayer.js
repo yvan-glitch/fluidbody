@@ -16,6 +16,8 @@ import Skeleton from './Skeleton';
 import LiquidGlassCapsule from './LiquidGlassCapsule';
 import { Icon } from './Icons';
 import HeartRatePill from './HeartRatePill';
+import HeartRateZoneBar from './HeartRateZoneBar';
+import healthkit from '../utils/healthkit';
 import { GlassView, GlassButton, GLASS_RADII, GLASS_EASING, GLASS_DURATIONS } from './ui';
 import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { breadcrumb } from '../utils/breadcrumb';
@@ -279,6 +281,16 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   // (expo-av peut spammer onPlaybackStatusUpdate avec l'erreur).
   const alertedOnceRef = useRef(false);
   const [videoResetKey, setVideoResetKey] = useState(0);
+  // ── Récap de fin de séance ──
+  // recapVisible : overlay affiché après "Terminé". Les données in-app (durée,
+  // streak) s'affichent IMMÉDIATEMENT ; le bloc FC/zones poll buildSessionRecap
+  // jusqu'à ce que l'Apple Watch ait synchronisé (borné), sans jamais bloquer.
+  const [recapVisible, setRecapVisible] = useState(false);
+  const [recapInApp, setRecapInApp] = useState({ durationMin: 0, streak: 0 });
+  const [recapData, setRecapData] = useState(null);   // résultat buildSessionRecap
+  const [recapPhase, setRecapPhase] = useState('idle'); // idle | syncing | ready | timeout
+  const recapTimerRef = useRef(null);
+  const recapActiveRef = useRef(false); // garde : stoppe le poll dès la fermeture
   const [titre, duree, etape, videoFlag] = seance;
   const isTheory = etape === 'Comprendre' || etape === 'Ressentir';
   const hasRealVideo = hasProtectedVideo(videoFlag);
@@ -699,6 +711,63 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     }
   }
 
+  // Ouvre le récap de fin de séance. Données in-app affichées immédiatement ;
+  // le bloc FC/zones poll buildSessionRecap (workout Pilates de la montre) de
+  // façon bornée, le temps que l'Apple Watch synchronise — sans jamais bloquer.
+  function openRecap() {
+    recapActiveRef.current = true;
+    var minutes = getElapsedMinutes();
+    setRecapInApp({ durationMin: minutes, streak: 0 });
+    setRecapData(null);
+    setRecapPhase('syncing');
+    setRecapVisible(true);
+    // Streak in-app (best-effort, non bloquant).
+    AsyncStorage.getItem('fluid_streak_seance_count').then(function (s) {
+      var n = parseInt(s, 10);
+      if (recapActiveRef.current && isFinite(n) && n > 0) {
+        setRecapInApp(function (prev) { return { durationMin: prev.durationMin, streak: n }; });
+      }
+    }).catch(function () {});
+    // Pas de FC sur tvOS / hors iOS → on saute direct au fallback.
+    if (IS_TV || Platform.OS !== 'ios') { setRecapPhase('timeout'); return; }
+    var sessionEnd = new Date();
+    var sessionStart = new Date(sessionEnd.getTime() - Math.max(1, elapsedSec) * 1000);
+    var hrMax = healthkit.defaultHrMax(effectiveBirthDate);
+    var attempts = 0;
+    var MAX_ATTEMPTS = 7; // ~7 × 3 s ≈ 21 s
+    var tick = function () {
+      if (!recapActiveRef.current) return;
+      attempts += 1;
+      healthkit.buildSessionRecap(sessionStart, sessionEnd, hrMax).then(function (recap) {
+        if (!recapActiveRef.current) return;
+        if (recap) { setRecapData(recap); setRecapPhase('ready'); return; }
+        if (attempts >= MAX_ATTEMPTS) { setRecapPhase('timeout'); return; }
+        recapTimerRef.current = setTimeout(tick, 3000);
+      }).catch(function () {
+        if (!recapActiveRef.current) return;
+        if (attempts >= MAX_ATTEMPTS) { setRecapPhase('timeout'); return; }
+        recapTimerRef.current = setTimeout(tick, 3000);
+      });
+    };
+    tick();
+  }
+
+  // Ferme le récap et enchaîne sur onComplete() (qui marque la séance faite et
+  // démonte le player côté parent).
+  function closeRecap() {
+    recapActiveRef.current = false;
+    if (recapTimerRef.current) { clearTimeout(recapTimerRef.current); recapTimerRef.current = null; }
+    setRecapVisible(false);
+    onComplete();
+  }
+
+  useEffect(function () {
+    return function () {
+      recapActiveRef.current = false;
+      if (recapTimerRef.current) { clearTimeout(recapTimerRef.current); recapTimerRef.current = null; }
+    };
+  }, []);
+
   const progress = status.durationMillis ? status.positionMillis / status.durationMillis : 0;
   const barW = Math.max(40, dims.width - 40);
   const thumbSize = 16;
@@ -1073,7 +1142,10 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                       if (shouldCancel) {
                         cancelPauseActiveNotifications('next3h').catch(function() {});
                       }
-                      onComplete();
+                      // Récap de fin de séance ; onComplete() est appelé à sa
+                      // fermeture (closeRecap), pas tout de suite — sinon le
+                      // parent démonte le player et le récap disparaît.
+                      openRecap();
                     }}
                     textStyle={{
                       fontSize: 14,
@@ -1089,6 +1161,76 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             </View>
           </View>
         </Animated.View>
+      )}
+
+      {recapVisible && (
+        <View
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 320, backgroundColor: 'rgba(0,8,16,0.92)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}
+          accessibilityViewIsModal
+        >
+          <View style={{ width: '100%', maxWidth: 360, backgroundColor: '#001828', borderRadius: 24, paddingVertical: 26, paddingHorizontal: 22, borderWidth: 1, borderColor: 'rgba(174,239,77,0.35)' }}>
+            <TouchableOpacity
+              onPress={closeRecap}
+              accessibilityRole="button"
+              accessibilityLabel={tr.close || 'Fermer'}
+              style={{ position: 'absolute', top: 10, right: 10, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
+              {...tvFocusProps}
+            >
+              <Text style={{ color: 'rgba(234,242,248,0.6)', fontSize: 17 }}>✕</Text>
+            </TouchableOpacity>
+
+            {/* Bloc in-app — affiché immédiatement, jamais bloqué sur HealthKit */}
+            <Text style={{ color: '#AEEF4D', fontSize: 12, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', textAlign: 'center' }}>
+              {tr.recap_done || 'Séance validée'}
+            </Text>
+            <Text style={{ color: '#EAF2F8', fontSize: 32, fontWeight: '800', textAlign: 'center', marginTop: 8 }}>
+              {recapInApp.durationMin} {tr.recap_min || 'min'}
+            </Text>
+            {recapInApp.streak > 0 ? (
+              <Text style={{ color: 'rgba(234,242,248,0.75)', fontSize: 14, textAlign: 'center', marginTop: 6 }}>
+                {'🔥 '}{(tr.recap_streak || function (n) { return 'Série · ' + n + ' jours'; })(recapInApp.streak)}
+              </Text>
+            ) : null}
+
+            {/* Bloc FC / zones — dépend de la synchro de l'Apple Watch */}
+            <View style={{ marginTop: 18, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 16 }}>
+              {recapPhase === 'ready' && recapData ? (
+                <View>
+                  {(recapData.avgBpm || recapData.maxBpm) ? (
+                    <Text style={{ color: 'rgba(234,242,248,0.85)', fontSize: 14, textAlign: 'center', marginBottom: 10, fontVariant: ['tabular-nums'] }}>
+                      {recapData.avgBpm ? (tr.recap_avg || 'FC moy') + ' ' + recapData.avgBpm : ''}
+                      {recapData.avgBpm && recapData.maxBpm ? '  ·  ' : ''}
+                      {recapData.maxBpm ? (tr.recap_max || 'max') + ' ' + recapData.maxBpm : ''}
+                      {' ' + (tr.recap_bpm || 'bpm')}
+                    </Text>
+                  ) : null}
+                  <HeartRateZoneBar zones={recapData.zones} />
+                </View>
+              ) : recapPhase === 'syncing' ? (
+                <Text style={{ color: 'rgba(234,242,248,0.6)', fontSize: 13, fontStyle: 'italic', textAlign: 'center' }}>
+                  {'⌚ '}{tr.recap_syncing || 'Synchronisation en cours…'}
+                </Text>
+              ) : (
+                <Text style={{ color: 'rgba(234,242,248,0.6)', fontSize: 13, fontStyle: 'italic', textAlign: 'center' }}>
+                  {tr.recap_fallback || 'Retrouvez vos zones dans l’onglet Activité.'}
+                </Text>
+              )}
+            </View>
+
+            <View style={{ marginTop: 20 }}>
+              <GlassButton
+                variant="accent"
+                forceDark
+                size="lg"
+                haptic="light"
+                onPress={closeRecap}
+                textStyle={{ fontSize: 14, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '700' }}
+              >
+                {tr.recap_continue || 'Continuer'}
+              </GlassButton>
+            </View>
+          </View>
+        </View>
       )}
     </View>
   );
