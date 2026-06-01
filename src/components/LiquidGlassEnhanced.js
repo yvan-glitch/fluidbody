@@ -54,8 +54,13 @@ function useReducedMotion() {
 
 // GlassEnhanceOverlays — the four animated layers, with no blur of their own.
 // Drop on top of any glass/blur substrate. Fills its parent (absolute).
-export function GlassEnhanceOverlays({ borderRadius = 12, focused = false, accent = LIME, intensity = 50 }) {
+// `amplify` (v3, OTA 2026-06): the iOS/GlassView enhanced path passes this to
+// push the breathing bloom stronger (0.3 → 0.7 instead of 0.3 → 0.6) and lift
+// the visible ceiling. tvOS (GlassCardTV) leaves it off so build #88's look is
+// untouched.
+export function GlassEnhanceOverlays({ borderRadius = 12, focused = false, accent = LIME, intensity = 50, amplify = false }) {
   const reducedMotion = useReducedMotion();
+  const breathPeak = amplify ? 0.7 : 0.6;
 
   // Scale the visual energy with `intensity` (0-100) so a quiet card and a
   // hero CTA don't get the same bloom. Clamped to a tasteful ceiling.
@@ -75,7 +80,7 @@ export function GlassEnhanceOverlays({ borderRadius = 12, focused = false, accen
     }
     const breathing = Animated.loop(
       Animated.sequence([
-        Animated.timing(breathOpacity, { toValue: 0.6, duration: 3000, useNativeDriver: true }),
+        Animated.timing(breathOpacity, { toValue: breathPeak, duration: 3000, useNativeDriver: true }),
         Animated.timing(breathOpacity, { toValue: 0.3, duration: 3000, useNativeDriver: true }),
       ])
     );
@@ -103,8 +108,8 @@ export function GlassEnhanceOverlays({ borderRadius = 12, focused = false, accen
   // a second, focus-driven highlight on top rather than re-targeting the loop,
   // so the breathing keeps running underneath.
   const breathFinalOpacity = breathOpacity.interpolate({
-    inputRange: [0.3, 0.6],
-    outputRange: [0.18 + 0.4 * energy, 0.34 + 0.5 * energy],
+    inputRange: [0.3, breathPeak],
+    outputRange: [0.18 + 0.4 * energy, (amplify ? 0.48 : 0.34) + 0.5 * energy],
   });
 
   return (
@@ -186,10 +191,27 @@ export default function LiquidGlassEnhanced({
   borderRadius = 12,
   focused = false,
   accent = LIME,
+  // v2 native UIGlassEffect knobs. "Premium" defaults: prominent glass,
+  // brand-lime stained-glass tint at 0.10, system interactivity. On iOS 26
+  // these drive the real UIGlassEffect; on the fallback path they're no-ops
+  // and the JS overlays below carry the look. Any can be overridden per call.
+  glassStyle = 'prominent',
+  tintColor = '#B8E62E',     // brand lime (== `LIME` rgb 184,230,46)
+  tintIntensity = 0.10,
+  interactive = true,
   ...rest
 }) {
   return (
-    <LiquidGlass style={style} intensity={intensity} borderRadius={borderRadius} {...rest}>
+    <LiquidGlass
+      style={style}
+      intensity={intensity}
+      borderRadius={borderRadius}
+      glassStyle={glassStyle}
+      tintColor={tintColor}
+      tintIntensity={tintIntensity}
+      interactive={interactive}
+      {...rest}
+    >
       <GlassEnhanceOverlays
         borderRadius={borderRadius}
         focused={focused}

@@ -743,6 +743,7 @@ function MetricTile({ children }) {
         borderRadius={GLASS_RADII.card}
         padding={10}
         elevated
+        enhanced
       >
         <View style={{ alignItems: 'center', justifyContent: 'center', minHeight: 64 }}>
           {children}
@@ -1389,7 +1390,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       </View>
       <View style={{ position: "absolute", top: 105, left: 0, right: 0, zIndex: 5, marginTop: 20 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
-          <LiquidGlassCapsule tint="light" paddingH={6} paddingV={6} gap={4}>
+          <LiquidGlassCapsule tint="light" paddingH={6} paddingV={6} gap={4} premium>
             {MC_TABS.map(function(t) {
               var active = mcTab === t;
               return (

@@ -30,6 +30,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { IS_TV, tvFocusProps } from '../../utils/platformTV';
 import { GlassEnhanceOverlays } from '../LiquidGlassEnhanced';
+import LiquidGlass, { HAS_LIQUID_GLASS } from '../LiquidGlass';
 
 // Lime brand accent in the "r, g, b" form GlassEnhanceOverlays expects.
 const LIME_RGB = '184, 230, 46';
@@ -185,7 +186,27 @@ export default function GlassCardTV({
         style={{ borderRadius: radius }}
       >
         <View style={{ borderRadius: radius, overflow: 'hidden' }}>
-          <BlurView intensity={78} tint="dark" style={StyleSheet.absoluteFillObject} />
+          {/* Substrate blur. On tvOS 26 the native LiquidGlassTVView
+              (real UIGlassEffect + focus-responsive sheen) replaces the JS
+              BlurView; everywhere else (older tvOS, Android TV) we keep the
+              BlurView as the last-resort fallback. borderStyle="off" because
+              GlassCardTV draws its own bevel + focus ring on top. */}
+          {HAS_LIQUID_GLASS ? (
+            <LiquidGlass
+              style={StyleSheet.absoluteFillObject}
+              intensity={78}
+              borderStyle="off"
+              borderRadius={radius}
+              focused={focused}
+              accent={accent}
+              // 'clear' = the most refractive UIGlassEffect mode on tvOS 26 —
+              // the backdrop genuinely warps through the pane (lens-warp look)
+              // rather than only blurring. This is the liquid effect Yvan wants.
+              glassStyle="clear"
+            />
+          ) : (
+            <BlurView intensity={78} tint="dark" style={StyleSheet.absoluteFillObject} />
+          )}
           <View
             pointerEvents="none"
             style={[StyleSheet.absoluteFillObject, { backgroundColor: substrate }]}

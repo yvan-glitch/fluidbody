@@ -13,4 +13,9 @@ RCT_EXPORT_VIEW_PROPERTY(glassTint, UIColor)
 RCT_EXPORT_VIEW_PROPERTY(borderStyle, NSString)
 RCT_EXPORT_VIEW_PROPERTY(glassCornerRadius, NSNumber)
 
+// v2 — iOS 26.x UIGlassEffect API surface
+RCT_EXPORT_VIEW_PROPERTY(glassStyle, NSString)
+RCT_EXPORT_VIEW_PROPERTY(tintIntensity, NSNumber)
+RCT_EXPORT_VIEW_PROPERTY(interactive, BOOL)
+
 @end

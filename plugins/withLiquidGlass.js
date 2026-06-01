@@ -36,11 +36,32 @@ const PbxFile = require('xcode/lib/pbxFile');
 const fs = require('fs');
 const path = require('path');
 
-const SOURCE_FILES = [
+// Two parallel source sets share this plugin. The iPhone set exposes the
+// `LiquidGlassView` native component (iOS 26 UIGlassEffect). The tvOS set
+// exposes a distinct `LiquidGlassTVView` component — UIGlassEffect also
+// ships on tvOS 26 (WWDC25), with a focus-responsive specular sheen added
+// for the 2-3 m viewing distance. Keeping them separate means the working
+// iOS binary (build #84/#85) is never recompiled with TV-only code.
+//
+// EXPO_TV=1 is set by the EAS `*-tv` profiles (see eas.json), so the build
+// pipeline alone decides which files get copied + registered. The two sets
+// declare different @objc class names, so they could even coexist, but we
+// only ship the relevant one per target to keep the binary lean.
+const IS_TV_BUILD = process.env.EXPO_TV === '1';
+
+const IOS_SOURCE_FILES = [
   'LiquidGlassView.swift',
   'LiquidGlassViewManager.swift',
   'LiquidGlass.m',
 ];
+
+const TV_SOURCE_FILES = [
+  'LiquidGlassTVView.swift',
+  'LiquidGlassTVViewManager.swift',
+  'LiquidGlassTV.m',
+];
+
+const SOURCE_FILES = IS_TV_BUILD ? TV_SOURCE_FILES : IOS_SOURCE_FILES;
 
 const GROUP_NAME = 'LiquidGlass';
 

@@ -47,6 +47,13 @@ export default function GlassView({
   forceDark = false,     // bypass theme — always render as dark glass (videoplayer overlay)
   enhanced = false,      // opt-in: amplified Liquid Glass v2 overlays (breathing + specular + lime ring)
   focused = false,       // tvOS focus state — intensifies the enhanced overlays
+  // v2 native UIGlassEffect controls (forwarded to LiquidGlass). When
+  // `enhanced` is on and these aren't explicitly set, we apply the premium
+  // defaults: prominent glass, brand-lime tint, system interactivity.
+  glassStyle,
+  tintColor,
+  tintIntensity,
+  interactive,
   style,
   contentStyle,
   pointerEvents,
@@ -69,6 +76,24 @@ export default function GlassView({
   const resolvedTint = tint || g.tint;
   const resolvedSubstrate = substrateColor || g.substrate;
 
+  // v2/v3 native glass controls. `enhanced` surfaces opt into the premium look
+  // (prominent glass + subtle brand-lime stained-glass tint + system
+  // interactivity) unless the caller overrides a given knob explicitly.
+  //
+  // v3 (OTA, 2026-06): on iOS 26+ the real UIGlassEffect supports the `clear`
+  // lens-warp style — noticeably more refractive than `prominent`. We default
+  // enhanced surfaces to `clear` there, and keep `prominent` as the pre-26
+  // fallback (the JS overlays carry the look on older OSes). Tint is bumped
+  // 0.10 → 0.14 so the brand-lime stained-glass reads through the clearer lens.
+  const BRAND_LIME = '#B8E62E';
+  const IS_IOS26 = Platform.OS === 'ios' && parseInt(String(Platform.Version), 10) >= 26;
+  const resolvedGlassStyle = glassStyle != null
+    ? glassStyle
+    : (enhanced ? (IS_IOS26 ? 'clear' : 'prominent') : 'regular');
+  const resolvedGlassTintColor = tintColor != null ? tintColor : (enhanced ? BRAND_LIME : undefined);
+  const resolvedTintIntensity = tintIntensity != null ? tintIntensity : (enhanced ? 0.14 : 0.18);
+  const resolvedInteractive = interactive != null ? interactive : enhanced;
+
   const shadowStyle = elevated
     ? Object.assign({}, GLASS_SHADOW_BASE, { shadowOpacity: g.shadowOpacity })
     : null;
@@ -89,6 +114,10 @@ export default function GlassView({
           tint={resolvedTint === 'default' ? 'default' : resolvedTint}
           borderStyle={HAS_LIQUID_GLASS ? (highlight ? 'subtle' : 'off') : 'subtle'}
           borderRadius={borderRadius}
+          glassStyle={resolvedGlassStyle}
+          tintColor={resolvedGlassTintColor}
+          tintIntensity={resolvedTintIntensity}
+          interactive={resolvedInteractive}
           style={StyleSheet.absoluteFill}
         />
 
@@ -163,6 +192,7 @@ export default function GlassView({
             borderRadius={borderRadius}
             focused={focused}
             intensity={intensity}
+            amplify
           />
         ) : null}
 
