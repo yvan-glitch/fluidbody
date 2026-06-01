@@ -137,7 +137,7 @@ export default function CoachWelcomeOverlay({ visible, onDone, lang, prenom }) {
 
           {/* Card */}
           <Animated.View style={{ transform: [{ scale: cardAnim }], width: '100%', maxWidth: 380 }}>
-            <View style={{ borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
+            <View style={{ borderRadius: 28, overflow: 'hidden' }}>
               <LiquidGlass intensity={Platform.OS === 'ios' ? 80 : 0} tint="dark" style={{ padding: 26, backgroundColor: 'rgba(8,18,32,0.55)' }}>
                 <Animated.Text
                   style={{
