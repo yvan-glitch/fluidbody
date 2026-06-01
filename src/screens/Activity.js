@@ -47,6 +47,32 @@ const DEFAULT_GOALS = { move: 350, exercise: 30, stand: 12 };
 
 const CACHE_TTL_MS = 60 * 1000;
 const dailyCache = new Map(); // key: YYYY-MM-DD → { ts, summary, details, workouts }
+
+// Libellés lisibles des types de workout HealthKit (HKWorkoutActivityType).
+// readDayWorkouts stocke le type sous forme de nombre (ex. Pilates = 66) ; on
+// ne montre jamais le nombre brut — tout type non mappé tombe sur un générique.
+const WORKOUT_TYPE_LABELS = {
+  '66': 'Pilates',
+  '20': 'Renforcement',     // functionalStrengthTraining
+  '50': 'Renforcement',     // traditionalStrengthTraining
+  '29': 'Corps & esprit',   // mindAndBody
+  '57': 'Yoga',
+  '58': 'Barre',
+  '59': 'Gainage',          // coreTraining
+  '62': 'Souplesse',        // flexibility
+  '63': 'Cardio',           // highIntensityIntervalTraining
+  '80': 'Récupération',     // cooldown
+  '13': 'Vélo',
+  '14': 'Danse',
+  '16': 'Elliptique',
+  '37': 'Course',
+  '52': 'Marche',
+  '68': 'Escaliers',
+};
+
+function workoutTypeLabel(activity) {
+  return WORKOUT_TYPE_LABELS[String(activity)] || 'Séance';
+}
 const historyCache = { ts: 0, data: null };
 
 function todayKey() {
@@ -715,7 +741,7 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
-                          {(w.activity || 'Pilates').replace(/([A-Z])/g, ' $1').trim()}
+                          {workoutTypeLabel(w.activity)}
                         </Text>
                         <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
                           {shortTime(w.startDate)} · {w.durationMin || '–'} min{w.energyKcal != null ? ' · ' + w.energyKcal + ' kcal' : ''}
