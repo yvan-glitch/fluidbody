@@ -400,6 +400,10 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
       return;
     }
     try {
+      // Phase 4 — anti-doublon Apple Forme : si l'Apple Watch a synchronisé son
+      // workout Pilates depuis la fin de séance, supprime le nôtre avant de
+      // relire la liste du jour (best-effort, ne bloque pas le chargement).
+      try { await healthkit.cleanupDuplicatePilatesWorkouts(d); } catch (e) {}
       const [s, det, wks] = await Promise.all([
         healthkit.readActivitySummary(d),
         healthkit.readDayDetails(d),

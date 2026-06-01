@@ -235,6 +235,11 @@ function saveHealthKitWorkout(durationMinutes, extras) {
       unit: 'kcal',
     }];
     var totals = { energyBurned: calories };
+    // On écrit notre workout immédiatement (l'Apple Watch peut ne pas avoir
+    // encore synchronisé le sien à cet instant). Le dédoublonnage se fait plus
+    // tard, au chargement de l'écran Activité, via
+    // healthkit.cleanupDuplicatePilatesWorkouts() : si un workout Pilates de la
+    // montre chevauche le nôtre, on supprime le nôtre. Voir Phase 4.
     HK.saveWorkoutSample(WORKOUT_ACTIVITY_PILATES, quantities, startDate, endDate, totals)
       .then(function () {
         if (__DEV__) devLog('HealthKit workout saved:', durationMinutes + 'min, ' + calories + 'cal');

@@ -63,6 +63,21 @@ const WRITE_PERMS = [
   ID.Workout,
 ];
 
+// ── Récap de séance (analyse des zones de FC) ───────────────────────────────
+// HKWorkoutActivityType.pilates = 66. NOTRE app écrit aussi un workout Pilates
+// (66) à la fin d'une vidéo (cf. App.js saveHealthKitWorkout). Pour le récap on
+// veut UNIQUEMENT le workout mesuré par l'Apple Watch (celui qui porte la FC),
+// pas le nôtre — on les distingue donc par SOURCE (bundle id), pas par type.
+const WORKOUT_ACTIVITY_PILATES = 66;
+const OUR_SOURCE_BUNDLE_ID = 'com.ytissot.fluidbody';
+// Le client lance/arrête rarement le workout pile au début/fin de la séance
+// in-app : on élargit la fenêtre de recherche de ±15 min.
+const MATCH_BUFFER_MS = 15 * 60 * 1000;
+// Les samples FC sont quasi instantanés : on attribue à chaque mesure le temps
+// jusqu'à la suivante, plafonné (un trou plus long = capteur perdu, on n'inonde
+// pas une zone).
+const HR_MAX_GAP_S = 15;
+
 let initialised = false;
 let initInFlight = null;
 
@@ -360,6 +375,262 @@ export async function readActivityHistory(days) {
   });
 }
 
+// ── FCmax : réglage explicite ou estimation selon l'âge ─────────────────────
+
+/**
+ * Valide une FCmax saisie par l'utilisateur (réglages). `||` est volontaire en
+ * aval : 0 / NaN / négatif sont des FCmax invalides et doivent retomber sur le
+ * défaut. Retourne un entier 120–220, ou null si hors plage.
+ */
+export function clampHrMax(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 120 && n <= 220 ? Math.round(n) : null;
+}
+
+/**
+ * FCmax estimée par défaut depuis la date de naissance (formule de Tanaka,
+ * 207 − 0.7·âge — plus juste que 220−âge sur un public âgé, ce qui est notre
+ * cas). `birthDate` accepte un Date ou une string 'YYYY-MM-DD'. Fallback 190
+ * si absente/invalide.
+ */
+export function defaultHrMax(birthDate) {
+  const FALLBACK = 190;
+  if (!birthDate) return FALLBACK;
+  const d = birthDate instanceof Date ? birthDate : new Date(birthDate);
+  if (isNaN(d.getTime())) return FALLBACK;
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age -= 1;
+  if (!Number.isFinite(age) || age < 10 || age > 100) return FALLBACK;
+  return Math.round(207 - 0.7 * age);
+}
+
+// ── Zones de fréquence cardiaque ────────────────────────────────────────────
+
+/**
+ * Modèle 3 zones (Récup / Modéré / Intense). Les bornes sont calculées À PARTIR
+ * de `hrMax` (65 % et 80 %), pas en dur, pour pouvoir les exposer plus tard
+ * dans les réglages. Répartit le temps entre mesures consécutives (gap plafonné
+ * à HR_MAX_GAP_S). 0 échantillon → toutes les secondes à zéro (l'UI gère le
+ * vide). Retourne `[{ key, label, seconds }]`.
+ */
+export function computeZones(samples, hrMax) {
+  const max = clampHrMax(hrMax) || 190;
+  const loThreshold = max * 0.65;
+  const hiThreshold = max * 0.80;
+  const acc = { recup: 0, modere: 0, intense: 0 };
+
+  const pts = (Array.isArray(samples) ? samples : [])
+    .map(function (s) {
+      const t = (s.startDate instanceof Date ? s.startDate : new Date(s.startDate)).getTime();
+      return { t: t, bpm: Number(s.quantity) };
+    })
+    .filter(function (p) { return Number.isFinite(p.t) && Number.isFinite(p.bpm) && p.bpm > 0; })
+    .sort(function (a, b) { return a.t - b.t; });
+
+  for (let i = 0; i < pts.length; i++) {
+    const next = pts[i + 1];
+    const dt = next ? Math.min((next.t - pts[i].t) / 1000, HR_MAX_GAP_S) : 5;
+    if (dt <= 0) continue;
+    const bpm = pts[i].bpm;
+    const zone = bpm < loThreshold ? 'recup' : (bpm < hiThreshold ? 'modere' : 'intense');
+    acc[zone] += dt;
+  }
+
+  return [
+    { key: 'recup', label: 'Récupération', seconds: Math.round(acc.recup) },
+    { key: 'modere', label: 'Modéré', seconds: Math.round(acc.modere) },
+    { key: 'intense', label: 'Intense', seconds: Math.round(acc.intense) },
+  ];
+}
+
+/**
+ * Cherche le workout Pilates de la montre qui chevauche le plus la séance
+ * in-app, sur [start−15 min, end+15 min]. Garde uniquement les workouts de type
+ * Pilates (66) qui NE viennent PAS de notre app (on exclut par bundle id, sinon
+ * on matcherait le workout qu'on écrit nous-mêmes). Retourne le WorkoutProxy
+ * @kingstinct, ou null.
+ */
+export async function getPilatesWorkoutForSession(sessionStart, sessionEnd) {
+  const init = await ensureHealthKitInit();
+  if (!init.ok || !sessionStart || !sessionEnd) return null;
+
+  const startDate = new Date(sessionStart.getTime() - MATCH_BUFFER_MS);
+  const endDate = new Date(sessionEnd.getTime() + MATCH_BUFFER_MS);
+  let workouts;
+  try {
+    workouts = await HK.queryWorkoutSamples({
+      limit: 0,
+      ascending: false,
+      filter: { date: { startDate, endDate } },
+    });
+  } catch (e) {
+    return null;
+  }
+  if (!Array.isArray(workouts) || !workouts.length) return null;
+
+  const ss = sessionStart.getTime();
+  const se = sessionEnd.getTime();
+  let best = null;
+  for (let i = 0; i < workouts.length; i++) {
+    const w = workouts[i];
+    if (w.workoutActivityType !== WORKOUT_ACTIVITY_PILATES) continue;
+    const src = w.sourceRevision && w.sourceRevision.source ? w.sourceRevision.source : null;
+    const bundle = src ? src.bundleIdentifier : null;
+    // Exclure le workout écrit par NOTRE app (même type 66) — on ne veut que
+    // celui mesuré par la montre, qui porte les samples de FC.
+    if (bundle && bundle.indexOf(OUR_SOURCE_BUNDLE_ID) === 0) continue;
+    const ws = (w.startDate instanceof Date ? w.startDate : new Date(w.startDate)).getTime();
+    const we = (w.endDate instanceof Date ? w.endDate : new Date(w.endDate)).getTime();
+    const overlap = Math.min(we, se) - Math.max(ws, ss);
+    if (overlap > 0 && (!best || overlap > best.overlap)) best = { w: w, overlap: overlap };
+  }
+  return best ? best.w : null;
+}
+
+/**
+ * Vrai s'il existe déjà un workout Pilates mesuré par la montre (≠ notre app)
+ * chevauchant [start, end]. Utilisé par App.js pour ne PAS écrire notre propre
+ * workout en doublon (sinon double entrée dans l'app Forme / Santé).
+ */
+export async function hasWatchPilatesWorkout(sessionStart, sessionEnd) {
+  const w = await getPilatesWorkoutForSession(sessionStart, sessionEnd);
+  return !!w;
+}
+
+/**
+ * Construit le récap d'une séance à partir du workout Pilates de la montre.
+ * Lit la FC via queryQuantitySamples sur la FENÊTRE PROPRE du workout, scopée à
+ * SA source (même périmètre que getStatistic) → le badge FC moy/max et la barre
+ * de zones restent cohérents. Retourne `{ durationMin, calories, avgBpm,
+ * maxBpm, zones, source }`, ou null si aucun workout Pilates montre trouvé.
+ */
+export async function buildSessionRecap(sessionStart, sessionEnd, hrMax) {
+  const workout = await getPilatesWorkoutForSession(sessionStart, sessionEnd);
+  if (!workout) return null;
+
+  const wStart = workout.startDate instanceof Date ? workout.startDate : new Date(workout.startDate);
+  const wEnd = workout.endDate instanceof Date ? workout.endDate : new Date(workout.endDate);
+  const source = workout.sourceRevision && workout.sourceRevision.source ? workout.sourceRevision.source : null;
+
+  // FC moy/max : statistique scopée au workout lui-même (sa source, sa fenêtre).
+  let avgBpm = null;
+  let maxBpm = null;
+  try {
+    const stat = workout.getStatistic ? await workout.getStatistic(ID.HeartRate, 'count/min') : null;
+    if (stat) {
+      if (stat.averageQuantity && Number.isFinite(stat.averageQuantity.quantity)) avgBpm = Math.round(stat.averageQuantity.quantity);
+      if (stat.maximumQuantity && Number.isFinite(stat.maximumQuantity.quantity)) maxBpm = Math.round(stat.maximumQuantity.quantity);
+    }
+  } catch (e) {}
+
+  // Échantillons FC bruts (même fenêtre + même source) pour le temps-en-zone.
+  let hrSamples = [];
+  try {
+    const opts = {
+      limit: 0,
+      ascending: true,
+      unit: 'count/min',
+      filter: { date: { startDate: wStart, endDate: wEnd } },
+    };
+    if (source) opts.filter.sources = [source];
+    const s = await HK.queryQuantitySamples(ID.HeartRate, opts);
+    hrSamples = Array.isArray(s) ? s : [];
+  } catch (e) {}
+
+  // Secours : si getStatistic n'a rien renvoyé, calcule avg/max depuis les samples.
+  if ((avgBpm == null || maxBpm == null) && hrSamples.length) {
+    let sum = 0;
+    let cnt = 0;
+    let mx = 0;
+    for (let i = 0; i < hrSamples.length; i++) {
+      const v = Math.round(Number(hrSamples[i].quantity) || 0);
+      if (v < 30 || v > 230) continue;
+      sum += v; cnt += 1; if (v > mx) mx = v;
+    }
+    if (cnt) {
+      if (avgBpm == null) avgBpm = Math.round(sum / cnt);
+      if (maxBpm == null) maxBpm = mx;
+    }
+  }
+
+  const durationMin = Math.max(1, Math.round((wEnd.getTime() - wStart.getTime()) / 60000));
+  let calories = null;
+  if (workout.totalEnergyBurned && Number.isFinite(workout.totalEnergyBurned.quantity)) {
+    calories = Math.round(workout.totalEnergyBurned.quantity);
+  }
+
+  return {
+    durationMin: durationMin,
+    calories: calories,
+    avgBpm: avgBpm,
+    maxBpm: maxBpm,
+    zones: computeZones(hrSamples, hrMax),
+    source: source ? source.name : null,
+  };
+}
+
+/**
+ * Anti-doublon Apple Forme (« write now, clean up later »). On écrit notre
+ * workout Pilates dès la fin de séance (App.js), mais l'Apple Watch synchronise
+ * le sien avec un délai. Au chargement de l'écran Activité, on rattrape : pour
+ * `forDate`, si un workout Pilates écrit par NOTRE app chevauche un workout
+ * Pilates mesuré par la montre, on supprime le nôtre (la montre porte la FC, sa
+ * version est canonique). Supprime par uuid via deleteObjects. Retourne le
+ * nombre de workouts supprimés.
+ */
+export async function cleanupDuplicatePilatesWorkouts(forDate) {
+  const init = await ensureHealthKitInit();
+  if (!init.ok) return 0;
+  const { startDate, endDate } = dateBounds(forDate);
+
+  let workouts;
+  try {
+    workouts = await HK.queryWorkoutSamples({
+      limit: 0,
+      ascending: false,
+      filter: { date: { startDate, endDate } },
+    });
+  } catch (e) {
+    return 0;
+  }
+  if (!Array.isArray(workouts) || !workouts.length) return 0;
+
+  const ours = [];
+  const watch = [];
+  for (let i = 0; i < workouts.length; i++) {
+    const w = workouts[i];
+    if (w.workoutActivityType !== WORKOUT_ACTIVITY_PILATES) continue;
+    const bundle = w.sourceRevision && w.sourceRevision.source ? w.sourceRevision.source.bundleIdentifier : null;
+    if (bundle && bundle.indexOf(OUR_SOURCE_BUNDLE_ID) === 0) ours.push(w);
+    else watch.push(w);
+  }
+  if (!ours.length || !watch.length) return 0;
+
+  const span = function (w) {
+    return {
+      s: (w.startDate instanceof Date ? w.startDate : new Date(w.startDate)).getTime(),
+      e: (w.endDate instanceof Date ? w.endDate : new Date(w.endDate)).getTime(),
+    };
+  };
+
+  let removed = 0;
+  for (let i = 0; i < ours.length; i++) {
+    const o = span(ours[i]);
+    const overlapsWatch = watch.some(function (w) {
+      const ws = span(w);
+      return Math.min(o.e, ws.e) - Math.max(o.s, ws.s) > 0;
+    });
+    if (!overlapsWatch || !ours[i].uuid) continue;
+    try {
+      const n = await HK.deleteObjects(ID.Workout, { uuid: ours[i].uuid });
+      removed += typeof n === 'number' ? n : 1;
+    } catch (e) {}
+  }
+  return removed;
+}
+
 export default {
   ensureHealthKitInit,
   isHealthKitReady,
@@ -373,4 +644,11 @@ export default {
   readDayDetails,
   readDayWorkouts,
   readActivityHistory,
+  clampHrMax,
+  defaultHrMax,
+  computeZones,
+  getPilatesWorkoutForSession,
+  hasWatchPilatesWorkout,
+  buildSessionRecap,
+  cleanupDuplicatePilatesWorkouts,
 };
