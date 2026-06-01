@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LiquidGlass from '../components/LiquidGlass';
 
 import { T, SABRINA_QUOTES } from '../constants/data';
@@ -44,7 +45,11 @@ export default function SabrinaProfile({ lang, onClose }) {
   const tr = T[lang] || T.fr;
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   const quote = useMemo(function () { return getQuoteOfDay(lang); }, [lang]);
+  const insets = useSafeAreaInsets();
   const { width: SW, height: SH } = Dimensions.get('window');
+  // iPhone 17 Pro Max : dynamic island ⇒ safe area top ≈ 59-65px. On garde
+  // le hero full-bleed mais on descend le bouton retour sous l'île.
+  const backTop = IS_TV ? 60 : Math.max((insets.top || 0) + 8, 56);
 
   const HERO_H = IS_TV ? Math.round(SH * 0.55) : Math.round(SH * 0.42);
   const PAD_H = IS_TV ? 80 : 22;
@@ -83,7 +88,7 @@ export default function SabrinaProfile({ lang, onClose }) {
               {...tvFocusProps()}
               style={{
                 position: 'absolute',
-                top: IS_TV ? 60 : 56,
+                top: backTop,
                 left: IS_TV ? 60 : 18,
                 paddingHorizontal: IS_TV ? 22 : 14,
                 paddingVertical: IS_TV ? 12 : 8,
