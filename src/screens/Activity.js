@@ -35,6 +35,7 @@ import LivingBackground from '../components/LivingBackground';
 import { FloatingMedusas, Bulle, BULLES, MeduseCornerIcon } from '../components/Meduse';
 import Confetti from '../components/Confetti';
 import ActivityRings, { MiniActivityRings, RING_COLORS } from '../components/ActivityRings';
+import HeartRateZoneBar from '../components/HeartRateZoneBar';
 import healthkit from '../utils/healthkit';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
 import { ACHIEVEMENTS, getUnlockedSync, subscribe as subscribeAchievements, prime as primeAchievements } from '../utils/achievements';
@@ -298,6 +299,9 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
   const [summary, setSummary] = useState({ moveKcal: 0, exerciseMin: 0, standHours: 0 });
   const [details, setDetails] = useState({ steps: 0, distanceKm: 0, flights: 0, totalKcal: 0, avgHr: null, maxHr: null });
   const [workouts, setWorkouts] = useState([]);
+  // Zones de FC par séance Pilates (clé = workout id). Renseigné en async :
+  // readDayWorkouts ne porte pas la FC, on la récupère par séance.
+  const [zonesByWorkout, setZonesByWorkout] = useState({});
   const [history, setHistory] = useState([]); // 30 days for trends + 7 for week strip
   const [refreshing, setRefreshing] = useState(false);
   const [offlineNotice, setOfflineNotice] = useState(null);
@@ -380,6 +384,35 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
     });
     return function () { cancelled = true; };
   }, []);
+
+  // ── Zones de FC par séance Pilates (montre) ──
+  // Les workouts de readDayWorkouts ne portent pas la FC : on récupère le
+  // temps-en-zone par séance via buildSessionRecap sur la fenêtre du workout
+  // (re-matche le workout Pilates de la montre, source-scopé). Les séances
+  // sans données montre renvoient null → pas de barre affichée.
+  useEffect(function () {
+    let cancelled = false;
+    const pilates = (workouts || []).filter(function (w) { return String(w.activity) === '66'; });
+    if (!hkAuthorized || !pilates.length) {
+      setZonesByWorkout({});
+      return function () { cancelled = true; };
+    }
+    (async function () {
+      let birth = null;
+      try { birth = await AsyncStorage.getItem('fluid_birth_date'); } catch (e) {}
+      const hrMax = healthkit.defaultHrMax(birth);
+      const next = {};
+      for (let i = 0; i < pilates.length; i++) {
+        const w = pilates[i];
+        try {
+          const recap = await healthkit.buildSessionRecap(new Date(w.startDate), new Date(w.endDate), hrMax);
+          if (recap && recap.zones) next[w.id] = recap.zones;
+        } catch (e) {}
+      }
+      if (!cancelled) setZonesByWorkout(next);
+    })();
+    return function () { cancelled = true; };
+  }, [workouts, hkAuthorized]);
 
   // ── Data loader (per-day) ──
   async function loadForDate(d, force) {
@@ -673,19 +706,27 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
               </Text>
             ) : (
               workouts.slice(0, 4).map(function (w, i) {
+                const zones = zonesByWorkout[w.id];
                 return (
-                  <View key={w.id || i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: i < Math.min(workouts.length, 4) - 1 ? 1 : 0, borderBottomColor: colors.hairline }}>
-                    <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: theme.glass.substrateAccent, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                      <SmallIcon kind="flame" color={colors.accentText} size={16} />
+                  <View key={w.id || i} style={{ paddingVertical: 10, borderBottomWidth: i < Math.min(workouts.length, 4) - 1 ? 1 : 0, borderBottomColor: colors.hairline }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: theme.glass.substrateAccent, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                        <SmallIcon kind="flame" color={colors.accentText} size={16} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
+                          {(w.activity || 'Pilates').replace(/([A-Z])/g, ' $1').trim()}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+                          {shortTime(w.startDate)} · {w.durationMin || '–'} min{w.energyKcal != null ? ' · ' + w.energyKcal + ' kcal' : ''}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
-                        {(w.activity || 'Pilates').replace(/([A-Z])/g, ' $1').trim()}
-                      </Text>
-                      <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
-                        {shortTime(w.startDate)} · {w.durationMin || '–'} min{w.energyKcal != null ? ' · ' + w.energyKcal + ' kcal' : ''}
-                      </Text>
-                    </View>
+                    {zones ? (
+                      <View style={{ marginTop: 10, paddingLeft: 42 }}>
+                        <HeartRateZoneBar zones={zones} />
+                      </View>
+                    ) : null}
                   </View>
                 );
               })
