@@ -14,12 +14,7 @@ import { View, Text, ScrollView, TouchableOpacity, Switch, Platform, ActionSheet
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { T } from '../constants/data';
-import {
-  getCachedPrefs,
-  setPref,
-  subscribePrefs,
-  STREAM_QUALITY_OPTIONS,
-} from '../utils/userPreferences';
+import { getCachedPrefs, setPref, subscribePrefs } from '../utils/userPreferences';
 
 function qualityLabel(q, isFr) {
   if (q === 'auto') return isFr ? 'Auto' : 'Auto';

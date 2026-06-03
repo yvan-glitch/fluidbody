@@ -34,7 +34,7 @@ import {
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import LiquidGlass from '../components/LiquidGlass';
-import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { PILIER_IMAGES } from '../constants/data';
 import { getPilierContent } from '../constants/pilierContent';
 import { GLASS_RADII } from '../components/ui';

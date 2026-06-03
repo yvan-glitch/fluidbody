@@ -46,9 +46,6 @@ function trigType(name, fallback) {
   return (T_ && T_[name]) || fallback;
 }
 
-function trigDate(date) {
-  return { type: trigType('DATE', 'date'), date: date };
-}
 
 function trigTimeInterval(seconds, repeats) {
   return { type: trigType('TIME_INTERVAL', 'timeInterval'), seconds: seconds, repeats: !!repeats };

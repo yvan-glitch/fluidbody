@@ -19,12 +19,9 @@
 //   stat). Streak is persisted both locally and remotely via profileSync.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View, Text, ScrollView, Pressable, Animated, Easing, RefreshControl,
-  Dimensions, StyleSheet, Platform, Modal, TextInput,
-} from 'react-native';
+import { View, Text, ScrollView, Pressable, Animated, Easing, RefreshControl, Dimensions, StyleSheet, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Circle, Polyline } from 'react-native-svg';
+import Svg, { Path, Polyline } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

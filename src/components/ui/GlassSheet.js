@@ -9,7 +9,7 @@
 // Tint defaults to the theme's glass tint so the sheet feels coherent
 // with the rest of the surface. Pass `tint` explicitly to override.
 
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GlassView from './GlassView';
 import GlassPressable from './GlassPressable';

@@ -1,7 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState, KeyboardAvoidingView, PanResponder, Share } from 'react-native';
+import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, Pressable, ScrollView, TextInput, Dimensions, Alert, Modal, Platform, AppState, KeyboardAvoidingView, PanResponder } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import LiquidGlass from './src/components/LiquidGlass';
 import { Image as ExpoImage } from 'expo-image';
@@ -71,10 +71,8 @@ try {
 } catch (e) {
   if (__DEV__) console.warn('@kingstinct/react-native-healthkit unavailable:', e);
 }
-import { useEffect, useMemo, useRef, useState } from 'react';
-import Svg, { Path, Circle, Ellipse, Line, Rect, Defs, RadialGradient, Stop, G } from 'react-native-svg';
-import { Video, ResizeMode, Audio } from 'expo-av';
-import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { useEffect, useRef, useState } from 'react';
+import Svg, { Path, Circle, Ellipse, G } from 'react-native-svg';
 // expo-screen-orientation: native module manquant sur tvOS, lazy require avec fallback
 let ScreenOrientation = null;
 try { ScreenOrientation = require('expo-screen-orientation'); } catch(e) { if (__DEV__) console.warn('expo-screen-orientation unavailable:', e?.message); }
@@ -83,18 +81,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // react-native-view-shot: native module manquant sur tvOS, lazy require avec fallback
 let ViewShot = null;
 try { ViewShot = require('react-native-view-shot').default; } catch(e) {}
-import { U_JELLY, U_WAVE, FREE_SEANCE_INDEX, ZONE_TO_PILIER, T, SEANCES_FR, SEANCES_EN, PILIERS_BASE, PILIER_IMAGES, SABRINA_QUOTES } from './src/constants/data';
+import { U_JELLY, ZONE_TO_PILIER, T, PILIER_IMAGES, SABRINA_QUOTES } from './src/constants/data';
 import { LEGAL, getTermsUrl, TERMS_ACCEPTED_STORAGE_KEY } from './src/constants/legal';
 import { Linking as RNLinking } from 'react-native';
-import { Bulle, Rayon, Meduse, MeduseCornerIcon, VideoPlaceholderMeduse, BULLES, BULLES_MONCORPS, BULLES_ONBOARDING, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState, LivingMedusa, FloatingMedusas, MeduseRain, PluieBulles } from './src/components/Meduse';
-import VideoPlayer, { VIDEO_RESUME_PREFIX } from './src/components/VideoPlayer';
+import { Bulle, Meduse, MeduseCornerIcon, BULLES, BULLES_ONBOARDING, FloatingMedusas } from './src/components/Meduse';
+import VideoPlayer from './src/components/VideoPlayer';
 import { prefetchSignedVideoUrl, buildSessionId } from './src/utils/videoUrl';
 import supabase from './src/lib/supabase';
 import PaywallModal, { PRODUCT_IDS } from './src/components/PaywallModal';
 import StretchTimerModal from './src/components/Timer';
 import AnimatedPlus from './src/components/AnimatedPlus';
 import GlassButton from './src/components/GlassButton';
-import { GlassView, GlassCard, GlassSheet, GLASS_RADII } from './src/components/ui';
+import { GlassView } from './src/components/ui';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import ThemedStatusBar from './src/theme/ThemedStatusBar';
 import Confetti from './src/components/Confetti';
@@ -105,7 +103,7 @@ import AnniversaryOverlay, { shouldShowAnniversary } from './src/components/Anni
 import WelcomeAnimation, { isWelcomeAnimationShown } from './src/components/WelcomeAnimation';
 import SignInScreen from './src/screens/SignIn';
 import HealthKitConnectScreen from './src/screens/HealthKitConnect';
-import MonCorps, { MetricTile } from './src/screens/MonCorps';
+import MonCorps from './src/screens/MonCorps';
 import TVLoginScreen from './src/screens/TVLoginScreen';
 import ProfilTV from './src/screens/ProfilTV';
 import { IS_TV } from './src/utils/platformTV';
@@ -113,7 +111,7 @@ import ActivityScreen from './src/screens/Activity';
 import ProfileOnboardingScreen from './src/screens/ProfileOnboarding';
 import SabrinaProfileTVScreen, { SabrinaProfileModal } from './src/screens/SabrinaProfile';
 import { detectNewUnlocks, prime as primeAchievements, getAchievementById, recordPilierUsage, getRecentPiliers, clearAchievements } from './src/utils/achievements';
-import { flushPendingProfileSync, syncProfilePatch, refreshFromRemote } from './src/utils/profileSync';
+import { flushPendingProfileSync, refreshFromRemote } from './src/utils/profileSync';
 import {
   getPreferredHour,
   scheduleStreakProtectionToday,
@@ -125,7 +123,6 @@ import { isUserAlreadyActive } from './src/utils/activityCheck';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
 import { creditReferralOnPaid, getReferralStats, parseReferralCodeFromUrl, savePendingReferralCode } from './src/utils/referrals';
 import { safeNativeCall, safeNativeFire, diag } from './src/utils/safeNativeCall';
-import { LogBox } from 'react-native';
 
 // ─── GLOBAL ERROR HANDLER (PROD ONLY) ─────────────────────────────────────────
 // En prod : on envoie l'erreur à Sentry et on affiche un message générique.
@@ -250,15 +247,8 @@ function saveHealthKitWorkout(durationMinutes, extras) {
 }
 
 /** Pictogrammes restants (autres que 🔥🔒✓▶) — chaînes UTF-8. */
-const U_STAR = '\u2B50';
-const U_SEED = '\uD83C\uDF31';
-const U_DROP = '\uD83D\uDCA7';
 
 /** Valeur numérique du streak pour l'affichage à côté de {'🔥'} dans le JSX. */
-function streakCountValue(streak) {
-  const n = Number(streak);
-  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
-}
 
 function devWarn(...args) {
   if (__DEV__) console.warn('[FluidBody]', ...args);
@@ -376,55 +366,7 @@ function TabIconResume({ color, size }) {
   );
 }
 
-function TabIconMonCorps({ color, size, focused }) {
-  // Tab-bar bottom méduse — the MonCorps tab is label-less (the only one),
-  // so the silhouette is sized up and floats in place. We delegate to the
-  // refined IconJellyfish so the tab bar shares the same logo silhouette as
-  // every other surface (achievements badge, share card, etc.) and wrap it
-  // in an Animated.View for a slow vertical drift that loops indefinitely.
-  // Amplitude is slightly more pronounced when the tab is focused so the
-  // medusa feels alive at the active state, calmer when inactive.
-  const c = tabBarIconTint(color);
-  // Bumping the visual size from 22→30 because there is no label underneath
-  // anymore — the icon needs to hold the slot on its own. The outer View
-  // keeps the original tab-bar footprint (size) so neighbouring icons stay
-  // aligned; the bigger jellyfish renders inside it.
-  const slot = size ?? 22;
-  const iconSize = 30;
-  const drift = useRef(new Animated.Value(0)).current;
-  const amplitude = focused ? 2.5 : 1.5;
-  useEffect(function () {
-    const cycle = Animated.loop(
-      Animated.sequence([
-        Animated.timing(drift, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(drift, { toValue: 0, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
-    );
-    cycle.start();
-    return function () { cycle.stop(); };
-  }, [drift]);
-  const translateY = drift.interpolate({ inputRange: [0, 1], outputRange: [amplitude, -amplitude] });
-  return (
-    <View style={{ width: slot, height: slot, alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
-      <Animated.View style={{ transform: [{ translateY }] }}>
-        <IconJellyfish size={iconSize} color={c} strokeWidth={1.5} />
-      </Animated.View>
-    </View>
-  );
-}
 
-function TabIconProgresser({ color, size }) {
-  const c = tabBarIconTint(color);
-  const s = size ?? 22;
-  return (
-    <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-        <Path d="M3 20h18M3 14h12M3 8h8" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
-        <Circle cx={19} cy={8} r={3} stroke={c} strokeWidth={1.6} fill="none" />
-      </Svg>
-    </View>
-  );
-}
 
 function TabIconBiblio({ color, size }) {
   const c = tabBarIconTint(color);
@@ -472,8 +414,7 @@ function TabIconProfil({ color, size }) {
 
 const Tab = createBottomTabNavigator();
 const { width: SW, height: SH } = Dimensions.get('window');
-const IS_IPAD = SW >= 768;
-const SCALE = IS_IPAD ? SW / 390 : 1; // Scale factor relative to iPhone 390px
+ // Scale factor relative to iPhone 390px
 const SUPPORTED_APP_LANGS = ['fr', 'en'];
 
 /** Langue d'interface : locale appareil (expo-localization), sinon français. */
@@ -487,7 +428,6 @@ function getAppLangFromLocale() {
   return 'fr';
 }
 
-const ALL_PRODUCT_IDS = Object.values(PRODUCT_IDS);
 const RC_ENTITLEMENT_ID = 'Fluidbody Pilates Pro';
 const RC_API_KEY_IOS = process.env.EXPO_PUBLIC_RC_API_KEY_IOS || '';
 
@@ -511,153 +451,10 @@ import StatisticsScreen from './src/screens/Statistics';
 // ══════════════════════════════════
 // PROGRESSER
 // ══════════════════════════════════
-function AnimatedBar({ value, max, color, delay = 0 }) {
-  const anim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    setTimeout(() => { Animated.timing(anim, { toValue: value / max, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(); }, delay);
-  }, [value]);
-  return (
-    <View style={{ height: 7, backgroundColor: 'rgba(174,239,77,0.12)', borderRadius: 4, overflow: 'hidden' }}>
-      <Animated.View style={{ height: 7, width: anim.interpolate({ inputRange: [0, 1], outputRange: [0, 300] }), backgroundColor: color, borderRadius: 4, opacity: value === max ? 1 : 0.85 }} />
-    </View>
-  );
-}
-
-var FACE_EXPRESSIONS = [
-  { eyes: 'happy', mouth: 'smile' },
-  { eyes: 'wink', mouth: 'grin' },
-  { eyes: 'happy', mouth: 'open' },
-  { eyes: 'star', mouth: 'smile' },
-  { eyes: 'love', mouth: 'grin' },
-  { eyes: 'happy', mouth: 'tongue' },
-  { eyes: 'wink', mouth: 'smile' },
-];
-
-function AnimatedFaceIcon({ size = 50, breathCycleMs = 3000, expression = 0, tint = 'rgba(174,239,77,1)' }) {
-  var breathAnim = useRef(new Animated.Value(0)).current;
-  var [blinking, setBlinking] = useState(false);
-  useEffect(function() {
-    if (breathCycleMs) {
-      Animated.loop(Animated.sequence([
-        Animated.timing(breathAnim, { toValue: 1, duration: breathCycleMs / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(breathAnim, { toValue: 0, duration: breathCycleMs / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])).start();
-    }
-    function blink() {
-      var delay = 2000 + Math.random() * 4000;
-      setTimeout(function() {
-        setBlinking(true);
-        setTimeout(function() { setBlinking(false); blink(); }, 150);
-      }, delay);
-    }
-    blink();
-  }, []);
-  var scale = breathAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
-  var expr = FACE_EXPRESSIONS[expression % FACE_EXPRESSIONS.length];
-  var c = tint;
-  var eyeL = null; var eyeR = null;
-  if (blinking) {
-    eyeL = <Path d="M35 36h14" stroke={c} strokeWidth={2.5} strokeLinecap="round" />;
-    eyeR = <Path d="M55 36h14" stroke={c} strokeWidth={2.5} strokeLinecap="round" />;
-  } else if (expr.eyes === 'happy') {
-    eyeL = <Path d="M35 38C35 34 38 31 42 31s7 3 7 7" stroke={c} strokeWidth={2.5} strokeLinecap="round" fill="none" />;
-    eyeR = <Path d="M55 38C55 34 58 31 62 31s7 3 7 7" stroke={c} strokeWidth={2.5} strokeLinecap="round" fill="none" />;
-  } else if (expr.eyes === 'wink') {
-    eyeL = <Path d="M35 38C35 34 38 31 42 31s7 3 7 7" stroke={c} strokeWidth={2.5} strokeLinecap="round" fill="none" />;
-    eyeR = <Circle cx="62" cy="35" r="3" fill={c} />;
-  } else if (expr.eyes === 'star') {
-    eyeL = <Path d="M42 30l1.5 4 4-1.5-3 3 3 3-4-1.5L42 42l-1.5-4-4 1.5 3-3-3-3 4 1.5z" fill={c} />;
-    eyeR = <Path d="M62 30l1.5 4 4-1.5-3 3 3 3-4-1.5L62 42l-1.5-4-4 1.5 3-3-3-3 4 1.5z" fill={c} />;
-  } else if (expr.eyes === 'love') {
-    eyeL = <Path d="M38 34c0-2 1.5-4 4-4s4 2 4 4c0 3-4 6-4 6s-4-3-4-6z" fill={c} />;
-    eyeR = <Path d="M58 34c0-2 1.5-4 4-4s4 2 4 4c0 3-4 6-4 6s-4-3-4-6z" fill={c} />;
-  }
-  var mouth = null;
-  if (expr.mouth === 'smile') mouth = <Path d="M40 58Q52 68 64 58" stroke={c} strokeWidth={2.5} strokeLinecap="round" fill="none" />;
-  else if (expr.mouth === 'grin') mouth = <Path d="M38 56Q52 72 66 56" stroke={c} strokeWidth={2.5} strokeLinecap="round" fill="none" />;
-  else if (expr.mouth === 'open') mouth = <Ellipse cx="52" cy="60" rx="7" ry="5" fill={c} opacity={0.25} stroke={c} strokeWidth={2} />;
-  else if (expr.mouth === 'tongue') mouth = <G><Path d="M40 58Q52 68 64 58" stroke={c} strokeWidth={2.5} strokeLinecap="round" fill="none" /><Ellipse cx="52" cy="65" rx="4" ry="3" fill="#FF6B8A" opacity={0.7} /></G>;
-  return (
-    <Animated.View style={{ width: size, height: size, transform: [{ scale: scale }] }}>
-      <Svg width={size} height={size} viewBox="0 0 100 100">
-        <Circle cx="50" cy="50" r="44" fill={tint.replace('1)', '0.1)')} />
-        <Circle cx="50" cy="50" r="44" stroke={c} strokeWidth={2} fill="none" />
-        <Path d="M22 38Q28 20 44 16" stroke={c} strokeWidth={1.5} strokeLinecap="round" fill="none" opacity={0.35} />
-        {eyeL}{eyeR}
-        {mouth}
-        <Circle cx="28" cy="52" r="6" fill={tint.replace('1)', '0.12)')} />
-        <Circle cx="72" cy="52" r="6" fill={tint.replace('1)', '0.12)')} />
-      </Svg>
-    </Animated.View>
-  );
-}
 
 
-function Progresser({ done, lang, tensionIdxs }) {
-  const tr = T[lang] || T['fr'];
-  const totalDone = Math.min(Object.values(done).flat().filter(Boolean).length, 40);
-  const pct = Math.round(totalDone / 40 * 100);
-  const piliers = getPiliers(lang);
-  const recommendedPiliers = tensionIdxs.map(i => ZONE_TO_PILIER[i]);
-  const globalAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(globalAnim, { toValue: pct / 100, duration: 1200, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
-  }, [pct]);
-  const sortedPiliers = [...piliers].sort((a, b) => (recommendedPiliers.includes(a.key) ? 0 : 1) - (recommendedPiliers.includes(b.key) ? 0 : 1));
-  return (
-    <View style={{ flex: 1 }}>
-      <LinearGradient pointerEvents="none" colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
-      <LivingBackground />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
-        {BULLES.map((b, i) => <Bulle key={i} {...b} />)}
-      </View>
-      <FloatingMedusas />
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
-        scrollEventThrottle={16}
-        showsVerticalScrollIndicator={true}
-      >
-        <View style={{ paddingTop: 65, paddingHorizontal: 24, marginBottom: 24 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' }}>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 34 }}>+</AnimatedPlus></Text>
-          </View>
-          <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>{tr.progresser_sub(pct)}</Text>
-          <View style={{ height: 6, backgroundColor: 'rgba(174,239,77,0.15)', borderRadius: 3, marginTop: 14, overflow: 'hidden' }}>
-            <Animated.View style={{ height: 6, width: globalAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 300] }), backgroundColor: '#AEEF4D', borderRadius: 3 }} />
-          </View>
-          <Text style={{ fontSize: 10, color: 'rgba(174,239,77,0.45)', textAlign: 'right', marginTop: 4 }}>{totalDone} / 40</Text>
-        </View>
-        <View style={{ paddingHorizontal: 20, gap: 12 }}>
-          {sortedPiliers.map((p, idx) => {
-            const count = Math.min((done?.[p.key] || []).filter(v => v === true || v === 'true').length, 5);
-            const IconComp = ICONS[p.key];
-            const isRec = recommendedPiliers.includes(p.key);
-            const pct2 = Math.round(count / 5 * 100);
-            return (
-              <View key={p.key} style={{ backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 18 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
-                  <View style={{ width: 50, height: 50, borderRadius: 25, overflow: 'hidden', borderWidth: 1.5, borderColor: '#AEEF4D', marginRight: 14 }}>
-                    <ExpoImage source={PILIER_IMAGES[p.key]} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '300', color: '#ffffff' }}>{p.label}</Text>
-                      {isRec && <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(174,239,77,0.15)', borderWidth: 0.5, borderColor: 'rgba(174,239,77,0.5)' }}><Text style={{ fontSize: 8, color: '#AEEF4D', letterSpacing: 1 }}>{'\u2605'} {tr.recommande_pour_toi}</Text></View>}
-                    </View>
-                    <Text style={{ fontSize: 11, color: '#AEEF4D', letterSpacing: 1, marginTop: 3 }}>{count}/5{count === 5 ? ' \u2713' : ''}</Text>
-                  </View>
-                  <Text style={{ fontSize: 22, fontWeight: '200', color: '#AEEF4D' }}>{pct2 + '%'}</Text>
-                </View>
-                <AnimatedBar value={count} max={5} color={'#AEEF4D'} delay={idx * 100} />
-              </View>
-            );
-          })}
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
+
+
 
 
 
@@ -2394,308 +2191,6 @@ function WelcomeIntroScreen({ onDone, lang }) {
 // ══════════════════════════════════
 // PROFILE SETUP (4th onboarding screen)
 // ══════════════════════════════════
-function ProfileSetupScreen({ onDone, lang, initialData, ctaLabel }) {
-  const tr = T[lang] || T.fr;
-  const init = initialData || {};
-  const initialBirth = init.birth_date && /^\d{4}-\d{2}-\d{2}$/.test(init.birth_date)
-    ? new Date(parseInt(init.birth_date.slice(0, 4), 10), parseInt(init.birth_date.slice(5, 7), 10) - 1, parseInt(init.birth_date.slice(8, 10), 10))
-    : null;
-  const [firstName, setFirstName] = useState(init.prenom || '');
-  const [gender, setGender] = useState(init.gender || null);
-  const [birthDate, setBirthDate] = useState(initialBirth);
-  const [height, setHeight] = useState(init.height_cm != null ? init.height_cm : null);
-  const [weight, setWeight] = useState(init.weight_kg != null ? init.weight_kg : null);
-  const [submitting, setSubmitting] = useState(false);
-  const submittingRef = useRef(false);
-  const [editing, setEditing] = useState(null); // 'date' | 'height' | 'weight' | null
-  const [tempBirth, setTempBirth] = useState(initialBirth || new Date(1990, 0, 1));
-  const [tempValue, setTempValue] = useState('');
-
-  const genders = [
-    { key: 'female', label: tr.profile_gender_female || 'Femme' },
-    { key: 'male', label: tr.profile_gender_male || 'Homme' },
-    { key: 'other', label: tr.profile_gender_other || 'Autre' },
-  ];
-
-  const floatingMedusas = useRef([
-    { baseX: SW - 90, baseY: SH * 0.22, size: 70, breath: 3400, dx: new Animated.Value(0), dy: new Animated.Value(0) },
-    { baseX: 20, baseY: SH * 0.45, size: 58, breath: 3800, dx: new Animated.Value(0), dy: new Animated.Value(0) },
-    { baseX: SW * 0.55, baseY: SH * 0.7, size: 54, breath: 4200, dx: new Animated.Value(0), dy: new Animated.Value(0) },
-    { baseX: SW * 0.78, baseY: SH * 0.85, size: 48, breath: 4000, dx: new Animated.Value(0), dy: new Animated.Value(0) },
-  ]).current;
-
-  useEffect(() => {
-    let mounted = true;
-    const currentDrifts = [];
-    floatingMedusas.forEach(function(m, i) {
-      function drift() {
-        if (!mounted) return;
-        var toX = 10 + Math.random() * (SW - m.size - 20);
-        var toY = 60 + Math.random() * (SH - m.size - 200);
-        var dur = 14000 + Math.random() * 9000;
-        var p = Animated.parallel([
-          Animated.timing(m.dx, { toValue: toX - m.baseX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
-          Animated.timing(m.dy, { toValue: toY - m.baseY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
-        ]);
-        currentDrifts[i] = p;
-        p.start(function() { if (mounted) drift(); });
-      }
-      drift();
-    });
-    return () => {
-      mounted = false;
-      currentDrifts.forEach((d) => { try { d && d.stop && d.stop(); } catch (e) {} });
-    };
-  }, []);
-
-  function formatDate(d) {
-    if (!d) return null;
-    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
-  }
-
-  async function submit() {
-    if (submittingRef.current) {
-      devLog('[ProfileSetupScreen] submit déjà en cours, tap ignoré');
-      return;
-    }
-    submittingRef.current = true;
-    setSubmitting(true);
-    const payload = {
-      prenom: firstName.trim() || null,
-      gender: gender || null,
-      birth_date: birthDate ? birthDate.getFullYear() + '-' + String(birthDate.getMonth() + 1).padStart(2, '0') + '-' + String(birthDate.getDate()).padStart(2, '0') : null,
-      height_cm: height,
-      weight_kg: weight,
-    };
-    devLog('[ProfileSetupScreen] submit tap — payload:', JSON.stringify(payload), 'onDone defined:', typeof onDone === 'function');
-    try {
-      if (typeof onDone === 'function') await onDone(payload);
-    } catch (e) {
-      devLog('[ProfileSetupScreen] onDone threw:', e?.message || String(e));
-    }
-    submittingRef.current = false;
-    setSubmitting(false);
-  }
-
-  function openEdit(field) {
-    if (field === 'date') {
-      setTempBirth(birthDate || new Date(1990, 0, 1));
-    } else if (field === 'height') {
-      setTempValue(height != null ? String(height) : '');
-    } else if (field === 'weight') {
-      setTempValue(weight != null ? String(weight) : '');
-    }
-    setEditing(field);
-  }
-
-  function saveEdit() {
-    if (editing === 'date') {
-      setBirthDate(tempBirth);
-    } else if (editing === 'height') {
-      const n = parseInt(tempValue, 10);
-      setHeight(isFinite(n) && n > 0 ? n : null);
-    } else if (editing === 'weight') {
-      const n = parseInt(tempValue, 10);
-      setWeight(isFinite(n) && n > 0 ? n : null);
-    }
-    setEditing(null);
-  }
-
-  function row(label, value, onPress) {
-    const filled = value != null && value !== '';
-    return (
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.8}
-        style={{
-          height: 56,
-          borderRadius: 16,
-          backgroundColor: 'rgba(255,255,255,0.08)',
-          borderWidth: 1,
-          borderColor: 'rgba(229,255,0,0.3)',
-          paddingHorizontal: 18,
-          marginBottom: 10,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <Text style={{ fontSize: 15, fontWeight: '500', color: '#ffffff' }}>{label}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: filled ? '#ffffff' : 'rgba(255,255,255,0.4)' }}>{value || '—'}</Text>
-          <Text style={{ fontSize: 18, color: 'rgba(229,255,0,0.7)', fontWeight: '300' }}>{'›'}</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  }
-
-  return (
-    <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
-      <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
-      <LivingBackground />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }} pointerEvents="none">
-        {BULLES_ONBOARDING.map((b, i) => <Bulle key={`ps-${i}`} {...b} />)}
-      </View>
-      {floatingMedusas.map(function(m, i) {
-        return (
-          <Animated.View key={'ps-fm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 1, opacity: 0.85, left: m.baseX, top: m.baseY, transform: [{ translateX: m.dx }, { translateY: m.dy }] }}>
-            <MeduseCornerIcon size={m.size} breathCycleMs={m.breath} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
-          </Animated.View>
-        );
-      })}
-      <View style={{ paddingTop: 58, paddingLeft: 22, alignItems: 'flex-start', zIndex: 5 }} pointerEvents="none">
-        <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: '900', color: '#AEEF4D', fontSize: 28 }}>+</AnimatedPlus></Text>
-      </View>
-      <ScrollView style={{ flex: 1, zIndex: 5 }} contentContainerStyle={{ paddingTop: 24, paddingBottom: 32, paddingHorizontal: 24 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <View style={{ alignItems: 'center', marginBottom: 28 }}>
-          <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.4, marginBottom: 8 }}>{tr.profile_title || 'À propos de toi'}</Text>
-          <Text style={{ fontSize: 14, fontWeight: '400', color: 'rgba(255,255,255,0.6)', textAlign: 'center', lineHeight: 20 }}>{tr.profile_sub || 'Pour personnaliser ton programme'}</Text>
-        </View>
-
-        <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(229,255,0,0.7)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>{tr.ob_prenom || 'Prénom'}</Text>
-        <TextInput
-          value={firstName}
-          onChangeText={setFirstName}
-          accessibilityLabel={tr.a11y_first_name_input || 'Prénom'}
-          placeholder={tr.ob_placeholder || 'Ton prénom'}
-          placeholderTextColor="rgba(229,255,0,0.4)"
-          autoCapitalize="words"
-          autoCorrect={false}
-          textContentType="givenName"
-          maxLength={50}
-          style={{ height: 50, borderRadius: 25, backgroundColor: 'rgba(229,255,0,0.06)', borderWidth: 1.5, borderColor: '#E5FF00', color: '#ffffff', fontSize: 16, fontWeight: '500', paddingHorizontal: 18, marginBottom: 24 }}
-        />
-
-        <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(229,255,0,0.7)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>{tr.profile_gender_label || 'Genre'}</Text>
-        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
-          {genders.map(function(g) {
-            var active = gender === g.key;
-            return (
-              <TouchableOpacity
-                key={g.key}
-                activeOpacity={0.85}
-                onPress={function() { setGender(g.key); }}
-                style={{
-                  flex: 1,
-                  height: 50,
-                  borderRadius: 30,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: active ? 'rgba(174,239,77,0.12)' : 'transparent',
-                  borderWidth: active ? 1.5 : 1,
-                  borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.25)',
-                }}
-              >
-                <Text style={{ fontSize: 14, fontWeight: active ? '700' : '500', color: active ? '#AEEF4D' : '#ffffff', letterSpacing: 0.2 }}>{g.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        <View style={{ height: 1, backgroundColor: 'rgba(229,255,0,0.15)', marginBottom: 18 }} />
-
-        {row(tr.profile_birth_label || 'Date de naissance', formatDate(birthDate), function() { openEdit('date'); })}
-        {row(tr.profile_height_label || 'Taille (cm)', height != null ? height + ' cm' : null, function() { openEdit('height'); })}
-        {row(tr.profile_weight_label || 'Poids (kg)', weight != null ? weight + ' kg' : null, function() { openEdit('weight'); })}
-      </ScrollView>
-
-      <View style={{ paddingHorizontal: 24, paddingBottom: 36, paddingTop: 12, zIndex: 5 }}>
-        <GlassButton
-          onPress={submit}
-          loading={submitting}
-          variant="yellow"
-          size="lg"
-          textStyle={{ fontSize: 16, fontWeight: '800' }}
-        >
-          {submitting ? '…' : (ctaLabel || tr.profile_next_btn || 'Suivant')}
-        </GlassButton>
-      </View>
-
-      <Modal visible={!!editing} transparent animationType="slide" statusBarTranslucent onRequestClose={function() { setEditing(null); }}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <Pressable style={{ flex: 1 }} onPress={function() { setEditing(null); }} />
-          <View style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', borderBottomWidth: 0 }}>
-            <LiquidGlass intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ backgroundColor: 'rgba(10,20,35,0.85)', paddingTop: 12, paddingBottom: 32, paddingHorizontal: 24 }}>
-              <View style={{ alignItems: 'center', marginBottom: 4 }}>
-                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.25)' }} />
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 }}>
-                <TouchableOpacity onPress={function() { setEditing(null); }} hitSlop={10}>
-                  <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)' }}>{tr.profile_cancel_btn || 'Annuler'}</Text>
-                </TouchableOpacity>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#ffffff' }}>
-                  {editing === 'date' ? (tr.profile_birth_label || 'Date de naissance') : editing === 'height' ? (tr.profile_height_label || 'Taille (cm)') : (tr.profile_weight_label || 'Poids (kg)')}
-                </Text>
-                <TouchableOpacity onPress={saveEdit} hitSlop={10}>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#E5FF00' }}>{tr.profile_picker_done || 'Terminé'}</Text>
-                </TouchableOpacity>
-              </View>
-
-              {editing === 'date' ? (
-                DateTimePicker ? (
-                  <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-                    <DateTimePicker
-                      value={tempBirth}
-                      mode="date"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                      themeVariant="dark"
-                      locale={(lang || 'fr').toLowerCase().indexOf('fr') === 0 ? 'fr-FR' : 'en-US'}
-                      maximumDate={new Date()}
-                      minimumDate={new Date(1900, 0, 1)}
-                      onChange={function(_, d) { if (d) setTempBirth(d); }}
-                      textColor="#ffffff"
-                    />
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: 'row', gap: 10, paddingVertical: 18 }}>
-                    <TextInput
-                      value={String(tempBirth.getDate()).padStart(2, '0')}
-                      onChangeText={function(v) { var n = parseInt(v, 10); if (isFinite(n) && n >= 1 && n <= 31) { var nd = new Date(tempBirth); nd.setDate(n); setTempBirth(nd); } }}
-                      accessibilityLabel={tr.a11y_birth_day_input || 'Jour de naissance'}
-                      placeholder="JJ" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={2}
-                      style={{ flex: 1, height: 52, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 14, color: '#ffffff', fontSize: 18, textAlign: 'center', fontWeight: '600' }}
-                    />
-                    <TextInput
-                      value={String(tempBirth.getMonth() + 1).padStart(2, '0')}
-                      onChangeText={function(v) { var n = parseInt(v, 10); if (isFinite(n) && n >= 1 && n <= 12) { var nd = new Date(tempBirth); nd.setMonth(n - 1); setTempBirth(nd); } }}
-                      accessibilityLabel={tr.a11y_birth_month_input || 'Mois de naissance'}
-                      placeholder="MM" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={2}
-                      style={{ flex: 1, height: 52, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 14, color: '#ffffff', fontSize: 18, textAlign: 'center', fontWeight: '600' }}
-                    />
-                    <TextInput
-                      value={String(tempBirth.getFullYear())}
-                      onChangeText={function(v) { var n = parseInt(v, 10); if (isFinite(n) && n >= 1900 && n <= new Date().getFullYear()) { var nd = new Date(tempBirth); nd.setFullYear(n); setTempBirth(nd); } }}
-                      accessibilityLabel={tr.a11y_birth_year_input || 'Année de naissance'}
-                      placeholder="AAAA" placeholderTextColor="rgba(255,255,255,0.3)" keyboardType="number-pad" maxLength={4}
-                      style={{ flex: 1.4, height: 52, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 14, color: '#ffffff', fontSize: 18, textAlign: 'center', fontWeight: '600' }}
-                    />
-                  </View>
-                )
-              ) : (
-                <View style={{ paddingVertical: 18, alignItems: 'center' }}>
-                  <TextInput
-                    value={tempValue}
-                    onChangeText={setTempValue}
-                    accessibilityLabel={editing === 'height' ? (tr.a11y_height_cm_input || 'Taille en centimètres') : (tr.a11y_weight_kg_input || 'Poids en kilogrammes')}
-                    placeholder={editing === 'height' ? '170' : '65'}
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                    keyboardType="number-pad"
-                    maxLength={3}
-                    autoFocus
-                    style={{ width: 160, height: 64, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 16, color: '#ffffff', fontSize: 28, fontWeight: '700', textAlign: 'center' }}
-                  />
-                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 10, letterSpacing: 0.3 }}>
-                    {editing === 'height' ? 'cm' : 'kg'}
-                  </Text>
-                </View>
-              )}
-            </LiquidGlass>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-    </View>
-  );
-}
 
 // ══════════════════════════════════
 // APP ROOT
@@ -3268,30 +2763,3 @@ export default (Sentry && SENTRY_DSN && typeof Sentry.wrap === 'function')
   ? Sentry.wrap(AppWithBoundary)
   : AppWithBoundary;
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  logoRow: { position: 'absolute', top: 58, left: 0, right: 0, zIndex: 10, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', paddingHorizontal: 8, gap: 10 },
-  logoWordmark: { fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.2 },
-  metrics: { position: 'absolute', bottom: 30, left: 16, right: 16, flexDirection: 'row', gap: 8 },
-  metricShell: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
-    shadowColor: '#000',
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  metricBlurInner: { padding: 10, alignItems: 'center', justifyContent: 'center', minHeight: 64 },
-  metricWebFallback: { backgroundColor: 'rgba(255,255,255,0.14)' },
-  mval: { fontSize: 20, fontWeight: '500', color: '#fff' },
-  mlbl: { fontSize: 9, fontWeight: '200', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(255,255,255,0.92)', marginTop: 3 },
-  btnCtaLarge: { alignSelf: 'stretch', height: 48, borderRadius: 24, backgroundColor: 'rgba(174,239,77,0.12)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center' },
-  btnCtaOff: { opacity: 0.3 },
-  btnCtaLargeTxt: { fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 0.5 },
-  statCard: { flex: 1, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 14, alignItems: 'center' },
-  statLbl: { fontSize: 9, fontWeight: '200', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(174,239,77,0.6)' },
-});

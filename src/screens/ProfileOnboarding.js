@@ -20,20 +20,20 @@
 //     through `syncProfilePatch` immediately so closing the app mid-flow
 //     never loses progress.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, TextInput, Animated, Easing,
   StyleSheet, Dimensions, Platform, KeyboardAvoidingView, Modal, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 import { T } from '../constants/data';
 import { GlassCard, GlassButton, GlassView, GLASS_RADII } from '../components/ui';
 import { useTheme } from '../theme/ThemeProvider';
 import LivingBackground from '../components/LivingBackground';
-import { Bulle, BULLES_ONBOARDING, MeduseCornerIcon } from '../components/Meduse';
+import { Bulle, BULLES_ONBOARDING } from '../components/Meduse';
 import { Icon } from '../components/Icons';
 import healthkit from '../utils/healthkit';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
@@ -59,7 +59,6 @@ const { width: SW, height: SH } = Dimensions.get('window');
 const TOTAL_STEPS_INITIAL = 6;
 const TOTAL_STEPS_EDIT = 5;
 
-const GOAL_KEYS = ['tone', 'flex', 'posture', 'recovery', 'serenity'];
 
 function ChevronLeft({ color, size = 18 }) {
   return (

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Text, View, TouchableOpacity, Animated, Easing, Dimensions, StyleSheet, Alert, Platform, Linking } from 'react-native';
+import { Text, View, TouchableOpacity, Animated, Easing, Dimensions, StyleSheet, Platform, Linking } from 'react-native';
 // expo-image au lieu de l'Image de react-native — RCTImageLoader +
 // CGImageSourceCreateThumbnailAtIndex throw NSException sur les PNG larges
 // avec profil couleur Display P3 (cf. apple-watch-hero.png, 882x806 P3) sous
@@ -14,7 +14,6 @@ import { Bulle, BULLES_ONBOARDING } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import LivingBackground from '../components/LivingBackground';
 
-const { width: SW, height: SH } = Dimensions.get('window');
 
 // Hero image — drop your file at assets/apple-watch-hero.png
 let APPLE_WATCH_HERO = null;

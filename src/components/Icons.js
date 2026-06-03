@@ -11,7 +11,7 @@
 // affordances, etc.). On Apple TV the same components ship — react-native-svg
 // renders identically to iPhone on tvOS.
 
-import Svg, { Path, Circle, Line, Polyline, Rect, Polygon, G } from 'react-native-svg';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
 
 const LIME = '#AEEF4D';
 

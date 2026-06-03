@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Alert, Animated, Easing, Dimensions, StyleSheet, Linking as RNLinking } from 'react-native';
+import { Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, Animated, Easing, Dimensions, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { T } from '../constants/data';

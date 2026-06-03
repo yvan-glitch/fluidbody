@@ -12,7 +12,7 @@
 // becomes visible or after a program is created/deleted. No real-time
 // subscription — programs change rarely.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet, Dimensions, Platform, Alert,
 } from 'react-native';
@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { T, PILIER_IMAGES } from '../constants/data';
-import { GlassCard, GlassButton, GlassView, GLASS_RADII } from '../components/ui';
+import { GlassCard, GlassButton } from '../components/ui';
 import { useTheme } from '../theme/ThemeProvider';
 import LivingBackground from '../components/LivingBackground';
 import { Bulle, BULLES_ONBOARDING } from '../components/Meduse';
@@ -37,7 +37,6 @@ function _hapticSelection() {
   try { _HapticsMod.selectionAsync(); } catch (e) {}
 }
 
-const { width: SW } = Dimensions.get('window');
 
 function ChevronLeft({ color, size = 18 }) {
   return (

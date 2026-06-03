@@ -8,9 +8,9 @@
 // Tappable rows surface the underlying pilier metadata via `onRowPress`.
 
 import { useEffect, useRef } from 'react';
-import { View, Text, Pressable, Animated, Easing } from 'react-native';
+import { View, Text, Pressable, Animated } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
-import { GLASS_EASING, GLASS_DURATIONS } from '../ui/glassTokens';
+import { GLASS_EASING } from '../ui/glassTokens';
 
 function AnimatedBar({ pct, color, delay, height = 8 }) {
   const w = useRef(new Animated.Value(0)).current;

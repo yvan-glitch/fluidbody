@@ -26,7 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import { T, PILIERS_BASE } from '../constants/data';
+import { T } from '../constants/data';
 import { GlassCard, GlassButton, GlassView, GLASS_RADII } from '../components/ui';
 import { useTheme } from '../theme/ThemeProvider';
 import LivingBackground from '../components/LivingBackground';

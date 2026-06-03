@@ -13,10 +13,7 @@
 // jump when real numbers arrive.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View, Text, ScrollView, Pressable, Modal, StyleSheet,
-  Animated, Easing, Platform,
-} from 'react-native';
+import { View, Text, ScrollView, Pressable, Modal, StyleSheet, Animated, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 

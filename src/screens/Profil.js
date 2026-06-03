@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { Text, StyleSheet, View, TouchableOpacity, ScrollView, Share, Alert, Modal, Dimensions, TextInput, Platform } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import GlassButton from '../components/GlassButton';
-import { GlassCard, GlassView, GLASS_RADII } from '../components/ui';
+import { GlassCard, GLASS_RADII } from '../components/ui';
 import { useTheme } from '../theme/ThemeProvider';
 import { THEME_MODES } from '../theme';
 import LivingBackground from '../components/LivingBackground';
@@ -22,7 +22,7 @@ import { getPiliers } from '../utils';
 import { getMyReferralCode, getReferralStats } from '../utils/referrals';
 import calendarUtil from '../utils/calendar';
 import { deleteMyAccount } from '../utils/accountDeletion';
-import { ACHIEVEMENTS, getUnlockedSync, subscribe as subscribeAchievements } from '../utils/achievements';
+import { getUnlockedSync, subscribe as subscribeAchievements } from '../utils/achievements';
 import { Icon } from '../components/Icons';
 
 // Safe-require expo-clipboard pour le tap-to-copy. Si le module n'est

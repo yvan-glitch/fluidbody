@@ -16,7 +16,7 @@ import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet } from 'rea
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { T, PILIER_IMAGES } from '../constants/data';
+import { T } from '../constants/data';
 import { getPiliers, getSeances } from '../utils';
 import { pickSessionImage } from '../components/tv/tvImagePool';
 import {

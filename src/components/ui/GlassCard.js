@@ -4,7 +4,6 @@
 // gradient + Meduses are the canonical reference). Use `padded` to opt into
 // the standard inner padding without re-typing it.
 
-import { View } from 'react-native';
 import GlassView from './GlassView';
 import GlassPressable from './GlassPressable';
 import { GLASS_RADII } from './glassTokens';

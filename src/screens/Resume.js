@@ -101,13 +101,6 @@ function ActivityCalendar({ lang }) {
 // ══════════════════════════════════
 // BILAN CORPOREL VISUEL
 // ══════════════════════════════════
-var BODY_ZONES = [
-  { key: 'p1', label: 'Épaules', path: 'M38 28L32 34L30 42L34 42L38 36L42 36L46 42L50 42L48 34L42 28Z', cx: 40, cy: 35 },
-  { key: 'p2', label: 'Dos', path: 'M36 42L34 60L38 60L40 48L42 48L44 60L48 60L46 42Z', cx: 40, cy: 50 },
-  { key: 'p3', label: 'Mobilité', path: 'M34 60L30 78L36 78L38 68L42 68L44 78L50 78L46 60Z', cx: 40, cy: 70 },
-  { key: 'p4', label: 'Posture', path: 'M38 42L36 48L38 48L40 45L42 48L44 48L42 42Z', cx: 40, cy: 45 },
-  { key: 'p8', label: 'Office', path: 'M36 48L34 56L38 56L40 52L42 56L46 56L44 48Z', cx: 40, cy: 52 },
-];
 
 // Hourglass feminine silhouette with clear anatomy: round head, defined neck,
 // shoulders, narrow waist, fuller hips, and TWO distinct legs separated at
@@ -369,30 +362,7 @@ function BodyMapVisual({ done, lang }) {
 // ══════════════════════════════════
 // STREAK PROTECTOR
 // ══════════════════════════════════
-function getStreakStatus(streak, lastStreakDate) {
-  if (!lastStreakDate) return 'none';
-  var today = new Date().toDateString();
-  var yesterday = new Date(Date.now() - 86400000).toDateString();
-  if (lastStreakDate === today) return 'safe';
-  if (lastStreakDate === yesterday) return 'at_risk';
-  return 'lost';
-}
 
-function getSmartRecommendation(done, tensionIdxs, lang) {
-  var piliers = getPiliers(lang);
-  var seances = getSeances(lang);
-  var best = null; var bestScore = -1;
-  piliers.forEach(function(p) {
-    var d = done[p.key] || [];
-    var nextIdx = d.findIndex(function(v) { return !v; });
-    if (nextIdx === -1) return;
-    var isRecommended = (tensionIdxs || []).some(function(ti) { return ZONE_TO_PILIER[ti] === p.key; });
-    var doneCount = d.filter(Boolean).length;
-    var score = (isRecommended ? 50 : 0) + (20 - doneCount) + (nextIdx < 5 ? 10 : 0);
-    if (score > bestScore) { bestScore = score; best = { pilier: p, idx: nextIdx, seance: (seances[p.key] || [])[nextIdx] }; }
-  });
-  return best;
-}
 
 // ══════════════════════════════════
 // WEEKLY SUMMARY CARD

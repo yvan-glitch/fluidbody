@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { T, PILIERS_BASE, SEANCES_FR, SEANCES_EN, FREE_SEANCE_INDEX, ZONE_TO_PILIER, FREE_MONTHLY_SELECTION } from './constants/data';
+import { T, PILIERS_BASE, SEANCES_FR, SEANCES_EN, ZONE_TO_PILIER, FREE_MONTHLY_SELECTION } from './constants/data';
 import { safeNativeFire } from './utils/safeNativeCall';
 
 const FREE_MONTHLY_SET = new Set((FREE_MONTHLY_SELECTION || []).map(function(s) { return s.pilier + '_' + s.idx; }));

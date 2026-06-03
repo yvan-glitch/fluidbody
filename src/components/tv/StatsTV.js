@@ -19,7 +19,6 @@ import { T } from '../../constants/data';
 
 const TEXT_SHADOW = { textShadowColor: 'rgba(0,0,0,0.4)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } };
 
-const { width: SW } = Dimensions.get('window');
 const SIDE = 80;
 
 function countDone(arr) {

@@ -7,8 +7,7 @@
 // Sélectionner ouvre PilierPanelTV. TV-only — zéro impact iPhone.
 
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, ScrollView, Dimensions } from 'react-native';
 
 import TVCard16x9 from './TVCard16x9';
 import { pickSessionImage } from './tvImagePool';

@@ -1,8 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  View, Text, TouchableOpacity, Pressable, Animated,
-  Dimensions, Platform, StyleSheet, AppState, Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, Animated, Dimensions, StyleSheet, AppState, Alert } from 'react-native';
 import { Video, ResizeMode, Audio } from 'expo-av';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 // expo-screen-orientation: native module manquant sur tvOS, lazy require avec fallback
@@ -23,7 +20,7 @@ import { hapticLight } from '../utils';
 import useLiveHeartRate from '../hooks/useLiveHeartRate';
 import { recordSessionHour, cancelPauseActiveNotifications } from '../utils/notifications';
 import { IS_TV, tvFocusProps } from '../utils/platformTV';
-import { isDownloaded, getLocalVideoUri, cleanupTempVideo } from './DownloadManager';
+import { isDownloaded, getLocalVideoUri } from './DownloadManager';
 import { getCachedPref } from '../utils/userPreferences';
 
 // ── Small utilities (local copies to avoid circular deps) ──
@@ -43,13 +40,6 @@ function hasProtectedVideo(flag) {
 var RATE_OPTIONS = [0.75, 1.0, 1.25, 1.5];
 
 // ── Étape colors (also kept in App.js for PilierPanel) ──
-const ETAPE_COLORS = {
-  'Comprendre': 'rgba(0,220,170,0.9)',
-  'Ressentir': 'rgba(100,190,255,0.9)',
-  'Préparer': 'rgba(255,200,80,0.9)',
-  'Exécuter': 'rgba(255,145,100,0.9)',
-  'Évoluer': 'rgba(185,135,255,0.9)',
-};
 
 // ── Video resume persistence ──
 
@@ -146,25 +136,7 @@ function getCurrentCue(cues, posMs) {
 // ── Video icon sub-components ──
 
 /** Saut ±10 s — verre + doubles chevrons + « 10 » (sans arc ni allure +10 / −10). */
-const SKIP_BTN = 56;
 
-function VideoSkipChevrons({ reverse, size = 22 }) {
-  const c = '#fff';
-  if (reverse) {
-    return (
-      <Svg width={size} height={size} viewBox="0 0 28 28">
-        <Path d="M15 6 L9 14 L15 22 V6Z" fill={c} />
-        <Path d="M23 6 L17 14 L23 22 V6Z" fill={c} />
-      </Svg>
-    );
-  }
-  return (
-    <Svg width={size} height={size} viewBox="0 0 28 28">
-      <Path d="M7 6 L13 14 L7 22 V6Z" fill={c} />
-      <Path d="M15 6 L21 14 L15 22 V6Z" fill={c} />
-    </Svg>
-  );
-}
 
 function VideoSkip10Icon({ reverse, onPress, bumpTimer }) {
   const a11y = reverse ? 'Revenir de 10 secondes' : 'Avancer de 10 secondes';

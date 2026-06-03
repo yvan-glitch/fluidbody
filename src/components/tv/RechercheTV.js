@@ -8,7 +8,7 @@
 // TV-only — zéro impact iPhone.
 
 import { useMemo, useState } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TextInput, ScrollView, Dimensions } from 'react-native';
 
 import TVCard16x9 from './TVCard16x9';
 import { pickSessionImage } from './tvImagePool';

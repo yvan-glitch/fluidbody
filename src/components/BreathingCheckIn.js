@@ -22,7 +22,7 @@ import {
   View, Text, Modal, StyleSheet, Animated, Easing, Dimensions, Pressable, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Defs, RadialGradient, Stop, Circle, Path } from 'react-native-svg';
+import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LivingBackground from './LivingBackground';
 import { Bulle, BULLES_ONBOARDING, FloatingMedusas } from './Meduse';

@@ -19,8 +19,8 @@
 // so the head crosses the start of the ring and casts a subtle 3D
 // shadow — matching the Apple "you crushed your goal" look.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Animated, Easing, Pressable } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, Animated, Easing, Pressable } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);

@@ -23,7 +23,6 @@ import GlassButton from './ui/GlassButton';
 import AnimatedPlus from './AnimatedPlus';
 import { T } from '../constants/data';
 
-const { width: SW, height: SH } = Dimensions.get('window');
 const STORAGE_KEY = 'fluid_coach_welcome_seen';
 
 let HapticsMod = null;

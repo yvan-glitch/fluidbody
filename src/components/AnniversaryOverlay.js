@@ -19,7 +19,6 @@ import { MeduseCornerIcon, Bulle, BULLES_ONBOARDING } from './Meduse';
 import Confetti from './Confetti';
 import GlassButton from './ui/GlassButton';
 
-const { width: SW } = Dimensions.get('window');
 
 const ANNIV_MONTH = 4; // 0-indexed → May
 const ANNIV_DAY = 14;

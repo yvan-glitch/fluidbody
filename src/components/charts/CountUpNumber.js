@@ -6,7 +6,7 @@
 // changes, which is cheap.
 
 import { useEffect, useRef, useState } from 'react';
-import { Text, Animated, Easing } from 'react-native';
+import { Text, Animated } from 'react-native';
 import { GLASS_EASING } from '../ui/glassTokens';
 
 export default function CountUpNumber({

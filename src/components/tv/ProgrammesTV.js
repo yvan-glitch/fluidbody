@@ -26,7 +26,6 @@ import { Icon } from '../Icons';
 import { pickBadge } from '../../utils/sessionBadges';
 
 const { width: SW, height: SH } = Dimensions.get('window');
-const SIDE = 80;
 const FITNESS_GREEN = '#00DB7D';
 const TEXT_SHADOW = { textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } };
 const SABRINA_ABOUT = require('../../../assets/coach/sabrina_8.jpg');

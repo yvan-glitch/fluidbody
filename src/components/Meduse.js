@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Dimensions, View, Text } from 'react-native';
-import Svg, { Path, Circle, Ellipse, G, Defs, RadialGradient, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Circle, Ellipse, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
