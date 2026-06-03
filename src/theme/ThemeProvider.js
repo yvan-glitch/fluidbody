@@ -56,7 +56,11 @@ export function ThemeProvider({ children, initialMode }) {
     return function() { cancelled = true; };
   }, []);
 
-  const theme = useMemo(() => resolveTheme(mode, system), [mode, system]);
+  // App en thème SOMBRE uniquement (décision produit : le design « océan » est
+  // pensé pour le sombre ; en clair, c'était illisible — surtout sur Android où
+  // le système est souvent en clair). On ignore donc la préférence utilisateur
+  // ET le réglage système, et on force toujours le thème sombre.
+  const theme = useMemo(() => darkTheme, []);
   const resolvedMode = theme.mode;
 
   // ── Transition overlay ──

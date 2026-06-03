@@ -142,10 +142,22 @@ function sanitizeForSupabase(patch) {
   return row;
 }
 
+// Garde-fou : empêche une requête Supabase de bloquer l'UI à l'infini.
+// (Vécu à l'onboarding : un upsert profiles qui ne répondait jamais laissait
+//  « Enregistrement… » tourner pour toujours et figeait le bouton Suivant.)
+function withTimeoutP(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise(function (_, reject) {
+      setTimeout(function () { reject(new Error((label || 'op') + '-timeout-' + ms + 'ms')); }, ms);
+    }),
+  ]);
+}
+
 async function getSessionUserId() {
   if (!supabase) return null;
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await withTimeoutP(supabase.auth.getSession(), 6000, 'getSession');
     return session?.user?.id || null;
   } catch (e) { return null; }
 }
@@ -173,7 +185,7 @@ async function attemptRemoteUpsert(userId, patch) {
   row.id = userId;
   row.updated_at = new Date().toISOString();
   try {
-    const res = await supabase.from('profiles').upsert(row);
+    const res = await withTimeoutP(supabase.from('profiles').upsert(row), 8000, 'upsert');
     if (res.error) {
       reportRemoteFailure(res.error, { operation: 'upsert', columns: Object.keys(row) });
       return { ok: false, reason: 'error', error: res.error };
@@ -181,6 +193,8 @@ async function attemptRemoteUpsert(userId, patch) {
     remoteFailureStreak = 0;
     return { ok: true };
   } catch (e) {
+    // Timeout OU vraie erreur réseau → on ne bloque pas l'UI : le patch est
+    // déjà en cache local et sera remis en file pour un prochain essai.
     reportRemoteFailure(e, { operation: 'upsert-throw' });
     return { ok: false, reason: 'throw', error: e };
   }

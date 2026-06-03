@@ -1262,10 +1262,10 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </GlassCard></View>
         )}
 
-        {/* Apparence — segmented Auto/Clair/Sombre. Lives high in the
-            screen so it's easy to find. The active segment uses the brand
-            accent substrate; theme switches happen instantly via context,
-            the ThemeProvider's cross-fade handles the visual transition. */}
+        {/* Apparence — RETIRÉ : l'app est en thème sombre uniquement (forcé dans
+            ThemeProvider). Bloc conservé mais désactivé (`{false && …}`) pour
+            pouvoir le réactiver plus tard sans le réécrire. */}
+        {false && (
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
           <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
             <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.appearance_section || 'Apparence'}</Text>
@@ -1312,6 +1312,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             </Text>
           </GlassCard>
         </View>
+        )}
 
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dl_title || 'Téléchargements'}</Text>
