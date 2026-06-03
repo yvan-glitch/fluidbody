@@ -19,6 +19,9 @@
 const PLUGINS_INCOMPATIBLE_WITH_TVOS = [
   '@kingstinct/react-native-healthkit',
   'expo-apple-authentication',
+  // Google Sign-In : module iOS/Android only, pas de cible tvOS → strippé du
+  // build TV (l'Apple TV se connecte par pairing, pas par compte Google).
+  '@react-native-google-signin/google-signin',
   '@react-native-community/datetimepicker',
   'expo-notifications',
   // expo-camera n'existe pas sur tvOS (pas de capteur). Strippé du build
@@ -39,11 +42,31 @@ const PLUGINS_INCOMPATIBLE_WITH_TVOS = [
   // plugins/withLiquidGlass.js).
 ]
 
+// Connexion Google native (@react-native-google-signin) : le plugin a besoin
+// de l'« iosUrlScheme » (= l'ID client iOS inversé, ex.
+// com.googleusercontent.apps.123456-abc). On le lit depuis la variable
+// d'environnement EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME pour ne JAMAIS coder en dur
+// d'identifiant et pour qu'une correction ne nécessite pas de toucher au code.
+// Si la variable n'est pas encore définie, on n'ajoute pas le plugin (le build
+// passe quand même ; Google sera simplement inactif sur iOS tant que non
+// configuré). Android n'a pas besoin de ce scheme.
+const GOOGLE_IOS_URL_SCHEME = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME || ''
+
+function withGoogleSignIn(cfg) {
+  if (!GOOGLE_IOS_URL_SCHEME) return cfg
+  const plugins = Array.isArray(cfg.plugins) ? cfg.plugins.slice() : []
+  const already = plugins.some((p) => (Array.isArray(p) ? p[0] : p) === '@react-native-google-signin/google-signin')
+  if (!already) {
+    plugins.push(['@react-native-google-signin/google-signin', { iosUrlScheme: GOOGLE_IOS_URL_SCHEME }])
+  }
+  return { ...cfg, plugins }
+}
+
 module.exports = ({ config }) => {
   const isTV = process.env.EXPO_TV === '1'
 
   if (!isTV) {
-    return config
+    return withGoogleSignIn(config)
   }
 
   const basePlugins = Array.isArray(config.plugins) ? config.plugins : []

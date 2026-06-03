@@ -63,3 +63,4 @@ fluidbody-privacy/
 # --- security hardening (added by audit) ---
 .env.production
 .env.*.local
+.vercel
