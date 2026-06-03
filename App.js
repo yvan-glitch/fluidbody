@@ -63,6 +63,25 @@ try { Device = require('expo-device'); } catch(e) {}
 try { HapticsMod = require('expo-haptics'); } catch(e) {}
 let AppleAuth = null;
 try { AppleAuth = require('expo-apple-authentication'); } catch(e) {}
+
+// Connexion Google native (@react-native-google-signin) — require protégé.
+let GoogleSignin = null, GoogleStatusCodes = null;
+try {
+  const g = require('@react-native-google-signin/google-signin');
+  GoogleSignin = g.GoogleSignin;
+  GoogleStatusCodes = g.statusCodes;
+} catch(e) {}
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
+let _googleConfigured = false;
+function ensureGoogleConfigured() {
+  if (_googleConfigured || !GoogleSignin || !GOOGLE_WEB_CLIENT_ID) return;
+  try {
+    GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID, iosClientId: GOOGLE_IOS_CLIENT_ID || undefined, offlineAccess: false });
+    _googleConfigured = true;
+  } catch (e) { if (__DEV__) console.warn('GoogleSignin.configure', e?.message); }
+}
+
 let DateTimePicker = null;
 try { DateTimePicker = require('@react-native-community/datetimepicker').default; } catch(e) {}
 let HK = null;
@@ -532,6 +551,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
   const validPass = password.length >= 6;
   const canSubmit = validEmail && validPass && !loading;
   const appleAvailable = !!AppleAuth && Platform.OS === 'ios';
+  const googleAvailable = !!GoogleSignin && !!GOOGLE_WEB_CLIENT_ID;
 
   async function postAuthProfileSync(extraPrenom) {
     if (!supabase) return;
@@ -639,6 +659,36 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
     }
   }
 
+  async function handleGoogleSignIn() {
+    if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
+    if (!GoogleSignin) { Alert.alert('Google Sign In', 'Module @react-native-google-signin non chargé. Rebuild requis.'); return; }
+    if (!GOOGLE_WEB_CLIENT_ID) { Alert.alert('Google Sign In', "Connexion Google pas encore configurée (webClientId manquant)."); return; }
+    if (!termsAccepted) { setError(tr.ob_auth_terms_required || 'Tu dois accepter les CGU pour créer un compte.'); return; }
+    ensureGoogleConfigured();
+    setLoading(true); setError('');
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const res = await withTimeout(GoogleSignin.signIn(), 60000, 'googleSheet');
+      if (res?.type === 'cancelled') { setLoading(false); return; }
+      const idToken = res?.data?.idToken || res?.idToken || null;
+      if (!idToken) { const msg = 'Google : identity token manquant.'; setError(msg); Alert.alert('Google Sign In', msg); setLoading(false); return; }
+      const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'google', token: idToken }), 15000, 'googleSignIn');
+      if (err) { setError(err.message); Alert.alert('Google Sign In — Supabase', err.message || 'Erreur Supabase'); setLoading(false); return; }
+      const gName = res?.data?.user?.givenName || res?.user?.givenName || '';
+      AsyncStorage.setItem(TERMS_ACCEPTED_STORAGE_KEY, String(LEGAL.termsVersion || '1.0')).catch(() => {});
+      setLoading(false);
+      onSuccess && onSuccess();
+      postAuthProfileSync(gName).catch(function(e) { devWarn('postAuthProfileSync google (background)', e); });
+      return;
+    } catch (e) {
+      const code = e?.code;
+      if (GoogleStatusCodes && code === GoogleStatusCodes.SIGN_IN_CANCELLED) { setLoading(false); return; }
+      if (e?.message && e.message.indexOf('timeout') !== -1) { setError(tr.ob_auth_err_net || 'La connexion Google a pris trop de temps.'); }
+      else { const msg = e?.message || tr.ob_auth_err_net || 'Erreur.'; setError(msg); Alert.alert('Google Sign In — erreur', `${msg}\n\nCode: ${code || 'n/a'}`); }
+      setLoading(false);
+    }
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: '#000e18' }}>
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
@@ -688,6 +738,25 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
               }
             >
               {tr.auth_apple || 'Continuer avec Apple'}
+            </GlassButton>
+          ) : null}
+
+          {googleAvailable ? (
+            <GlassButton
+              onPress={handleGoogleSignIn}
+              loading={loading}
+              size="md"
+              style={{ marginBottom: 20 }}
+              leftIcon={
+                <Svg width={18} height={18} viewBox="0 0 48 48">
+                  <Path d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z" fill="#FFC107" />
+                  <Path d="M3.2 14.7l7 5.1C12 16 17.5 13 24 13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 15.4 2 7.9 6.9 3.2 14.7z" fill="#FF3D00" />
+                  <Path d="M24 46c5.5 0 10.5-2.1 14.3-5.6l-6.6-5.6C29.6 36.5 26.9 37 24 37c-6.1 0-10.7-3.1-12.5-8.4l-7 5.4C7.7 41.1 15.2 46 24 46z" fill="#4CAF50" />
+                  <Path d="M44.5 20H24v8.5h11.8c-.8 2.3-2.3 4.3-4.1 5.8l6.6 5.6C42.2 36.6 45 31 45 24c0-1.3-.2-2.7-.5-4z" fill="#1976D2" />
+                </Svg>
+              }
+            >
+              {tr.auth_google || 'Continuer avec Google'}
             </GlassButton>
           ) : null}
 
@@ -824,6 +893,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
   const validPass = password.length >= 6;
   const canSubmit = validEmail && validPass && !loading;
   const appleAvailable = !!AppleAuth && Platform.OS === 'ios';
+  const googleAvailable = !!GoogleSignin && !!GOOGLE_WEB_CLIENT_ID;
 
   const floatingMedusas = useRef([
     { baseX: SW - 80, baseY: SH * 0.12, size: 72, breath: 3200, dx: new Animated.Value(0), dy: new Animated.Value(0) },
@@ -933,6 +1003,36 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
     }
   }
 
+  async function handleGoogleSignIn() {
+    if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
+    if (!GoogleSignin) { Alert.alert('Google Sign In', 'Module @react-native-google-signin non chargé. Rebuild requis.'); return; }
+    if (!GOOGLE_WEB_CLIENT_ID) { Alert.alert('Google Sign In', "Connexion Google pas encore configurée (webClientId manquant)."); return; }
+    ensureGoogleConfigured();
+    setLoading(true); setError('');
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const res = await withTimeout(GoogleSignin.signIn(), 60000, 'googleSheet');
+      if (res?.type === 'cancelled') { setLoading(false); return; }
+      const idToken = res?.data?.idToken || res?.idToken || null;
+      if (!idToken) { const msg = 'Google : identity token manquant.'; setError(msg); Alert.alert('Google Sign In', msg); setLoading(false); return; }
+      const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'google', token: idToken }), 15000, 'googleSignIn');
+      if (err) { setError(err.message); Alert.alert('Google Sign In — Supabase', err.message || 'Erreur Supabase'); setLoading(false); return; }
+      const gName = res?.data?.user?.givenName || res?.user?.givenName || '';
+      if (gName) {
+        try { await supabase.auth.updateUser({ data: { prenom: gName } }); } catch(_) {}
+        try { const { data: { session } } = await supabase.auth.getSession(); if (session?.user) { await supabase.from('profiles').upsert({ id: session.user.id, prenom: gName, updated_at: new Date().toISOString() }); } } catch(_) {}
+      }
+      setLoading(false);
+      finish();
+    } catch (e) {
+      const code = e?.code;
+      if (GoogleStatusCodes && code === GoogleStatusCodes.SIGN_IN_CANCELLED) { setLoading(false); return; }
+      if (e?.message && e.message.indexOf('timeout') !== -1) { setError(tr.ob_auth_err_apple_timeout || 'La connexion Google a pris trop de temps.'); }
+      else { const msg = e?.message || tr.ob_auth_err_net || 'Erreur.'; setError(msg); Alert.alert('Google Sign In — erreur', `${msg}\n\nCode: ${code || 'n/a'}`); }
+      setLoading(false);
+    }
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
@@ -1007,6 +1107,24 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
               }
             >
               {tr.auth_apple || 'Continuer avec Apple'}
+            </GlassButton>
+          ) : null}
+          {googleAvailable ? (
+            <GlassButton
+              onPress={handleGoogleSignIn}
+              loading={loading}
+              size="md"
+              style={{ marginBottom: 16 }}
+              leftIcon={
+                <Svg width={18} height={18} viewBox="0 0 48 48">
+                  <Path d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z" fill="#FFC107" />
+                  <Path d="M3.2 14.7l7 5.1C12 16 17.5 13 24 13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 15.4 2 7.9 6.9 3.2 14.7z" fill="#FF3D00" />
+                  <Path d="M24 46c5.5 0 10.5-2.1 14.3-5.6l-6.6-5.6C29.6 36.5 26.9 37 24 37c-6.1 0-10.7-3.1-12.5-8.4l-7 5.4C7.7 41.1 15.2 46 24 46z" fill="#4CAF50" />
+                  <Path d="M44.5 20H24v8.5h11.8c-.8 2.3-2.3 4.3-4.1 5.8l6.6 5.6C42.2 36.6 45 31 45 24c0-1.3-.2-2.7-.5-4z" fill="#1976D2" />
+                </Svg>
+              }
+            >
+              {tr.auth_google || 'Continuer avec Google'}
             </GlassButton>
           ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
