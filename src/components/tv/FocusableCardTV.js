@@ -30,15 +30,19 @@ export default function FocusableCardTV({ children, focusPreferred, style, accen
   useEffect(function() {
     if (!IS_TV) return;
     Animated.parallel([
-      Animated.timing(scale, {
-        toValue: focused ? 1.10 : 1,
-        duration: 200,
-        easing: Easing.out(Easing.cubic),
+      // Spring sur le scale → léger dépassement "vivant" typique du focus
+      // engine Apple TV (plus tactile qu'un timing linéaire). 1.08 plutôt
+      // que 1.10 : assez pour ressortir, sans risque de clipping sur les
+      // grandes cards.
+      Animated.spring(scale, {
+        toValue: focused ? 1.08 : 1,
+        speed: 18,
+        bounciness: 7,
         useNativeDriver: true,
       }),
       Animated.timing(ring, {
         toValue: focused ? 1 : 0,
-        duration: 200,
+        duration: 180,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
