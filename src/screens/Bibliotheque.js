@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, ScrollView, TextInput, Dimensions, Modal, Animated, RefreshControl } from 'react-native';
+import { Text, StyleSheet, View, TouchableOpacity, ScrollView, FlatList, TextInput, Dimensions, Modal, Animated, RefreshControl } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
@@ -774,30 +774,8 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
   // pour conserver ce ratio plutôt qu'une bande large et basse.
   const cardHeight = IS_TV ? 240 : (IS_IPAD ? Math.round(cardWidth) : 170);
 
-  return (
-    <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
-      <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
-      <LivingBackground />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="none">
-        <FloatingMedusas />
-      </View>
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
-        {BULLES.map((b, i) => <Bulle key={`bib-${i}`} {...b} />)}
-      </View>
-
-      <ScrollView
-        style={{ flex: 1, zIndex: 2 }}
-        contentContainerStyle={{ paddingBottom: 50 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onPullRefresh}
-            tintColor="#AEEF4D"
-            colors={["#AEEF4D"]}
-          />
-        }
-      >
+  const topControls = (
+    <>
         {/* Header */}
         <View style={{ paddingTop: IS_TV ? 80 : 62, paddingHorizontal: IS_TV ? gridPadding : 20, paddingBottom: IS_TV ? 12 : 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <Text style={{ fontSize: IS_TV ? 64 : 28, fontWeight: IS_TV ? '200' : '700', color: '#ffffff', letterSpacing: IS_TV ? -1 : -0.3, lineHeight: IS_TV ? 72 : undefined }}>
@@ -908,6 +886,74 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
           </ScrollView>
         </View>
 
+    </>
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000a1a' }}>
+      <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
+      <LivingBackground />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="none">
+        <FloatingMedusas />
+      </View>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
+        {BULLES.map((b, i) => <Bulle key={`bib-${i}`} {...b} />)}
+      </View>
+
+      {showResults ? (
+        <FlatList
+          style={{ flex: 1, zIndex: 2 }}
+          data={filteredSessions}
+          key={'bibcols-' + cols}
+          numColumns={cols}
+          keyExtractor={(item) => String(item.id)}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews
+          initialNumToRender={cols * 4}
+          maxToRenderPerBatch={cols * 4}
+          windowSize={7}
+          contentContainerStyle={{ paddingBottom: 50 }}
+          columnWrapperStyle={{ paddingHorizontal: 20, justifyContent: 'space-between' }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} tintColor="#AEEF4D" colors={["#AEEF4D"]} />}
+          ListHeaderComponent={(
+            <View>
+              {topControls}
+              <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
+                <Text style={{ fontSize: 20, fontWeight: '600', color: '#ffffff', marginBottom: 14 }}>
+                  {tr.biblio_results_title || (lang === 'en' ? 'Results' : 'Résultats')}
+                </Text>
+              </View>
+            </View>
+          )}
+          ListEmptyComponent={(
+            <View style={{ paddingHorizontal: 20, paddingTop: 24, alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 22 }}>
+                {tr.biblio_empty_state_search || (lang === 'en' ? 'No session found. Refine your search.' : 'Aucune séance trouvée. Modifie ta recherche.')}
+              </Text>
+            </View>
+          )}
+          renderItem={({ item }) => (
+            <View style={{ width: cardWidth, marginBottom: cardGap }}>
+              <SeanceCard entry={item} width={cardWidth} lang={lang} labels={labels} onPress={() => playSession(item)} favorite={favoriteSet.has(item.id)} onToggleFavorite={() => handleToggleFavorite(item.id)} favoriteLabel={tr.a11y_favorite_toggle} />
+            </View>
+          )}
+        />
+      ) : (
+      <ScrollView
+        style={{ flex: 1, zIndex: 2 }}
+        contentContainerStyle={{ paddingBottom: 50 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onPullRefresh}
+            tintColor="#AEEF4D"
+            colors={["#AEEF4D"]}
+          />
+        }
+      >
+        {topControls}
         {/* Mes favoris — horizontal scroller. Shown when the user has at
             least one favorite AND the active surface isn't already a
             filtered results grid (we don't want to duplicate UI when the
@@ -948,38 +994,6 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
           </View>
         ) : null}
 
-        {showResults ? (
-          /* Results grid — replaces the standard sections when a search is active */
-          filteredSessions.length === 0 ? (
-            <View style={{ paddingHorizontal: 20, paddingTop: 24, alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 22 }}>
-                {tr.biblio_empty_state_search || (lang === 'en' ? 'No session found. Refine your search.' : 'Aucune séance trouvée. Modifie ta recherche.')}
-              </Text>
-            </View>
-          ) : (
-            <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
-              <Text style={{ fontSize: 20, fontWeight: '600', color: '#ffffff', marginBottom: 14 }}>
-                {tr.biblio_results_title || (lang === 'en' ? 'Results' : 'Résultats')}
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: cardGap }}>
-                {filteredSessions.map((entry) => (
-                  <View key={entry.id} style={{ width: cardWidth, marginBottom: cardGap }}>
-                    <SeanceCard
-                      entry={entry}
-                      width={cardWidth}
-                      lang={lang}
-                      labels={labels}
-                      onPress={() => playSession(entry)}
-                      favorite={favoriteSet.has(entry.id)}
-                      onToggleFavorite={() => handleToggleFavorite(entry.id)}
-                      favoriteLabel={tr.a11y_favorite_toggle}
-                    />
-                  </View>
-                ))}
-              </View>
-            </View>
-          )
-        ) : (
           <>
         {/* Types d'activités section */}
         <View style={{ marginBottom: 32 }}>
@@ -1218,8 +1232,8 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
           </View>
         ) : null}
           </>
-        )}
-      </ScrollView>
+        </ScrollView>
+      )}
 
       {activeTheory && (
         <Modal visible animationType="fade" presentationStyle="fullScreen" statusBarTranslucent supportedOrientations={['portrait', 'landscape-left', 'landscape-right']} onRequestClose={() => setActiveTheory(null)}>
