@@ -2,9 +2,9 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Text, StyleSheet, View, TouchableOpacity, ScrollView, TextInput, Dimensions, Modal, Animated, RefreshControl } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Circle, Ellipse, Line, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import { T, PILIER_IMAGES } from '../constants/data';
-import { Bulle, Rayon, FloatingMedusas, BULLES } from '../components/Meduse';
+import { Bulle, FloatingMedusas, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import { Icon } from '../components/Icons';
 import VideoPlayer from '../components/VideoPlayer';
@@ -15,7 +15,7 @@ import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import { getPiliers, getSeances, hapticLight } from '../utils';
 import supabase from '../lib/supabase';
 import { getFavorites, toggleFavorite } from '../utils/favorites';
-import { IS_TV, tvFocusProps } from '../utils/platformTV';
+import { IS_TV } from '../utils/platformTV';
 import { FocusableCardTV } from '../components/tv';
 
 // Accent / parsing helpers — used by the séance search & filters below.
@@ -93,6 +93,10 @@ function mixGradient(rgba, factor) {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// iPad : une grille 2-cols étire les vignettes (cards très larges et basses).
+// On passe à 3 colonnes avec une hauteur proportionnelle pour garder des
+// proportions proches de l'iPhone. iPhone reste inchangé.
+const IS_IPAD = !IS_TV && SCREEN_WIDTH >= 768;
 
 const ARTICLES = {
   fr: [
@@ -243,9 +247,6 @@ const FICHES = {
     { etape: '발전하기', num: '05', color: 'rgba(185,135,255,0.9)', soustitre: '길을 잃지 않고 진보하기', description: '진화는 경주가 아닙니다. 상승하는 나선입니다.', points: ['부하 전에 가동 범위 늘리기', '일상에 움직임 통합하기', '질로 진행 상황 측정하기', '더 나아가기 위해 기본으로 돌아가기'] },
   ],
 };
-
-// ICONS stub — IconComp is assigned but not rendered in Biblio JSX
-const ICONS = {};
 
 function ArticleDetail({ article, onClose, lang }) {
   const tr = T[lang] || T['fr'];
@@ -767,10 +768,11 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
   // Sur Apple TV (1920×1080+), une grille 2-cols fait des cards énormes.
   // 4 colonnes donne une density confortable lisible à 2-3 m.
   const tvCols = 4;
-  const cardWidth = IS_TV
-    ? (SCREEN_WIDTH - gridPadding * 2 - cardGap * (tvCols - 1)) / tvCols
-    : (SCREEN_WIDTH - gridPadding * 2 - cardGap) / 2;
-  const cardHeight = IS_TV ? 240 : 170;
+  const cols = IS_TV ? tvCols : (IS_IPAD ? 3 : 2);
+  const cardWidth = (SCREEN_WIDTH - gridPadding * 2 - cardGap * (cols - 1)) / cols;
+  // iPhone : 170 (vignette quasi carrée). iPad : on suit la largeur de colonne
+  // pour conserver ce ratio plutôt qu'une bande large et basse.
+  const cardHeight = IS_TV ? 240 : (IS_IPAD ? Math.round(cardWidth) : 170);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000a1a' }}>

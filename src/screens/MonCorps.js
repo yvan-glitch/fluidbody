@@ -13,7 +13,7 @@ import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView,
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import LiquidGlass from '../components/LiquidGlass';
-import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES, FREE_MONTHLY_SELECTION } from '../constants/data';
 import SeanceShareCard from '../components/SeanceShareCard';
@@ -34,23 +34,22 @@ import { shouldCelebrate, markCelebrated } from '../utils/streakMilestones';
 import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
-import { safeNativeCall, safeNativeFire, diag } from '../utils/safeNativeCall';
+import { safeNativeCall, diag } from '../utils/safeNativeCall';
 import { getActiveProgram, getProgramStats } from '../utils/programs';
 import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
-import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
-import { SeanceCompleteTV, HeroFeatured, HorizontalCarousel, TVHeaderBar, TVHeaderSearchIcon, TVHeaderBreathIcon, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground, RechercheTV, SessionBadge } from '../components/tv';
+import { IS_TV, tvFocusProps } from '../utils/platformTV';
+import { SeanceCompleteTV, TVHeaderBar, TVHeaderSearchIcon, TVHeaderBreathIcon, PilierPanelTV, ExplorerTV, ProgrammesTV, StatsTV, BibliothequeTV, TwoColLandingTV, AquaticBackground, RechercheTV, SessionBadge } from '../components/tv';
 import { pickBadge } from '../utils/sessionBadges';
 import { getCachedFavorites, subscribeFavorites } from '../utils/favorites';
 import { getThisWeekSchedule } from '../utils/weeklySchedule';
 import SeanceCarouselRow from '../components/SeanceCarouselRow';
 import DownloadButton from '../components/DownloadButton';
-import { primeDownloadsCache, subscribeDownloads, getCachedDownloads, getCachedStorageBytes, formatBytes, removeDownload, removeAllDownloads, isDownloadedCached } from '../utils/downloadsCache';
+import { primeDownloadsCache, subscribeDownloads } from '../utils/downloadsCache';
 import { pickSessionImage } from '../components/tv/tvImagePool';
 import { primeFavoritesCache } from '../utils/favorites';
 import { getDailyQuote } from '../constants/sabrinaQuotes';
-import { PILIER_CONTENT } from '../constants/pilierContent';
 import { Icon } from '../components/Icons';
 
 let Notifications = null;
@@ -90,13 +89,21 @@ const PROG_IMAGES = {
 };
 
 // Photos coach Sabrina (studio Espace Pilates) — TV uniquement.
-const SABRINA_HERO = require('../../assets/coach/sabrina_1.jpg');   // signature hero
-const SABRINA_BEACH = require('../../assets/coach/sabrina_3.jpg');  // backdrop "monde"
+   // signature hero
+  // backdrop "monde"
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
+// iPad : on contraint le contenu dans une colonne centrée de largeur "type
+// téléphone large" plutôt que d'étaler les cartes sur toute la dalle (sinon les
+// photos de catégories paraissent étirées). CW = largeur effective utilisée
+// pour dimensionner les cartes ; RW = ratio pour mettre à l'échelle les
+// hauteurs fixes afin de conserver des proportions proches de l'iPhone.
+const CONTENT_MAX_W = 640;
+const CW = IS_IPAD ? Math.min(SW, CONTENT_MAX_W) : SW;
+const RW = IS_IPAD ? CW / 390 : 1;
+const ipadH = function (h) { return IS_IPAD ? Math.round(h * RW) : h; };
 
-const U_STAR = '\u2B50';
 const U_DROP = '\uD83D\uDCA7';
 
 const ETAPE_COLORS = {
@@ -956,72 +963,6 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
 
 const PILIER_LABEL_IDX = { p1: 0, p2: 1, p3: 2, p4: 3, p5: 4, p6: 5, p7: 6, p8: 7 };
 
-function ZoneIcon({ idx, color, size }) {
-  var s = size || 28;
-  var c = color || '#AEEF4D';
-  switch (idx) {
-    case 0: // Dos / Nuque — colonne ondulée
-      return (
-        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-          <Path d="M12 3 Q15 7 12 11 Q9 15 12 19 Q14 21 12 22" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
-          <Circle cx="12" cy="6" r="1" fill={c} />
-          <Circle cx="12" cy="11" r="1" fill={c} />
-          <Circle cx="12" cy="16" r="1" fill={c} />
-        </Svg>
-      );
-    case 1: // Épaules
-      return (
-        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-          <Path d="M4 11 Q12 4 20 11" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
-          <Circle cx="5" cy="12" r="1.6" fill={c} />
-          <Circle cx="19" cy="12" r="1.6" fill={c} />
-          <Path d="M5 13 L5 19 M19 13 L19 19" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
-        </Svg>
-      );
-    case 2: // Hanches
-      return (
-        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-          <Path d="M5 6 L5 11 Q5 14 8 14 L16 14 Q19 14 19 11 L19 6" stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-          <Path d="M9 14 L8 21 M15 14 L16 21" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
-        </Svg>
-      );
-    case 3: // Posture
-      return (
-        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-          <Circle cx="12" cy="4.5" r="1.8" stroke={c} strokeWidth={1.6} />
-          <Path d="M12 7 L12 14" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
-          <Path d="M9 10 L15 10" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
-          <Path d="M12 14 L9 21 M12 14 L15 21" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
-        </Svg>
-      );
-    case 4: // Respiration
-      return (
-        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-          <Path d="M3 9 Q7 5 11 9 T19 9" stroke={c} strokeWidth={1.7} strokeLinecap="round" />
-          <Path d="M3 14 Q7 10 11 14 T19 14" stroke={c} strokeWidth={1.7} strokeLinecap="round" />
-          <Path d="M3 19 Q7 15 11 19 T19 19" stroke={c} strokeWidth={1.7} strokeLinecap="round" opacity={0.6} />
-        </Svg>
-      );
-    case 5: // Stress / pleine conscience
-      return (
-        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-          <Circle cx="12" cy="12" r="8" stroke={c} strokeWidth={1.6} />
-          <Circle cx="12" cy="12" r="4" stroke={c} strokeWidth={1.4} opacity={0.55} />
-          <Circle cx="12" cy="12" r="1.2" fill={c} />
-        </Svg>
-      );
-    case 6: // Bureau
-      return (
-        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-          <Rect x="5" y="6" width="14" height="9" rx="1.5" stroke={c} strokeWidth={1.6} />
-          <Path d="M3 18 L21 18" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
-          <Path d="M9 18 L9 21 M15 18 L15 21" stroke={c} strokeWidth={1.5} strokeLinecap="round" />
-        </Svg>
-      );
-    default:
-      return null;
-  }
-}
 
 function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout, supabase, supaUser, onOpenProfile }) {
   var tr = T[lang] || T["fr"];
@@ -1420,7 +1361,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       <ScrollView
         key={mcTab}
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 3 }}
-        contentContainerStyle={{ paddingTop: 190, paddingBottom: 110, paddingHorizontal: 16 }}
+        contentContainerStyle={{ paddingTop: 190, paddingBottom: 110, paddingHorizontal: 16, width: '100%', maxWidth: IS_IPAD ? CONTENT_MAX_W : undefined, alignSelf: 'center' }}
         showsVerticalScrollIndicator={false}
       >
         {/* Active algorithmic program banner. Visible across all MonCorps
@@ -1467,7 +1408,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         })()}
         {mcTab === 'explorer' && sdj && (
           <TouchableOpacity onPress={function() { if (onTryFreeSession) onTryFreeSession(); }} activeOpacity={0.9} style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#AEEF4D' }}>
-            <View style={{ height: 110 }}>
+            <View style={{ height: ipadH(110) }}>
               <Image source={PILIER_IMAGES[sdj.pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-sdj-' + sdj.pilier.key} style={StyleSheet.absoluteFill} />
               <LinearGradient colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.85)']} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
                 <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
@@ -1495,7 +1436,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             return null;
           }
           var gridGap = 6;
-          var fullW = SW - 32;
+          var fullW = CW - 32;
           var halfW = Math.floor((fullW - gridGap) / 2);
           var thirdW = Math.floor((fullW - gridGap * 2) / 3);
           var rowH1 = Math.floor(halfW * 0.72);
@@ -1750,7 +1691,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                         <TouchableOpacity
                           onPress={function() { setOpenPilier(p); }}
                           activeOpacity={0.9}
-                          style={{ height: 92, borderRadius: 16, overflow: 'hidden' }}
+                          style={{ height: ipadH(92), borderRadius: 16, overflow: 'hidden' }}
                         >
                           <View style={{ flex: 1 }}>
                             <Image source={PILIER_IMAGES[p.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pcard-' + p.key} style={StyleSheet.absoluteFill} />
@@ -1783,7 +1724,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             <Text style={{ fontSize: 13, fontWeight: "400", color: "rgba(255,255,255,0.45)", lineHeight: 18, marginBottom: 14 }}>{tr.prog_thematiques_sub || 'Des parcours ciblés pour tes objectifs'}</Text>
 
             {/* Réveil Matinal */}
-            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
+            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: ipadH(160), borderWidth: 1, borderColor: '#AEEF4D' }}>
               <View style={{ flex: 1 }}>
                 <Image source={PROG_IMAGES.reveil} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey="mc-prog-reveil" style={StyleSheet.absoluteFill} />
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
@@ -1804,7 +1745,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             </View>
 
             {/* Mal de dos */}
-            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
+            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: ipadH(160), borderWidth: 1, borderColor: '#AEEF4D' }}>
               <View style={{ flex: 1 }}>
                 <Image source={PROG_IMAGES.dos} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey="mc-prog-dos" style={StyleSheet.absoluteFill} />
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
@@ -1825,7 +1766,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             </View>
 
             {/* Post-travail */}
-            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
+            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: ipadH(160), borderWidth: 1, borderColor: '#AEEF4D' }}>
               <View style={{ flex: 1 }}>
                 <Image source={PROG_IMAGES.posttravail} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey="mc-prog-pt" style={StyleSheet.absoluteFill} />
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
@@ -1846,7 +1787,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             </View>
 
             {/* Core & Plancher */}
-            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
+            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: ipadH(160), borderWidth: 1, borderColor: '#AEEF4D' }}>
               <View style={{ flex: 1 }}>
                 <Image source={PROG_IMAGES.core} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey="mc-prog-core" style={StyleSheet.absoluteFill} />
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
@@ -1867,7 +1808,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             </View>
 
             {/* Souplesse totale */}
-            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: 160, borderWidth: 1, borderColor: '#AEEF4D' }}>
+            <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 14, height: ipadH(160), borderWidth: 1, borderColor: '#AEEF4D' }}>
               <View style={{ flex: 1 }}>
                 <Image source={PROG_IMAGES.souplesse} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey="mc-prog-soup" style={StyleSheet.absoluteFill} />
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
@@ -2017,8 +1958,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           // Sur Apple TV (1920×1080 ou plus), une card occupant 45 % de la
           // largeur écran est trop grande et perd le confort de scan visuel
           // à 2-3 m. On bascule à des dims pensées pour le focus engine.
-          var cardH = IS_TV ? 320 : Math.floor(SW * 0.45);
-          var freeCardW = IS_TV ? 380 : Math.round(SW * 0.62);
+          var cardH = IS_TV ? 320 : Math.floor(CW * 0.45);
+          var freeCardW = IS_TV ? 380 : Math.round(CW * 0.62);
           var freeCardH = IS_TV ? 440 : Math.round(freeCardW * 1.15);
           var freeItems = (FREE_MONTHLY_SELECTION || []).map(function(item) {
             var p = piliers.find(function(x) { return x.key === item.pilier; });
@@ -2131,7 +2072,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               var isToday = cls.day === new Date().getDay();
               return (
                 <View key={cls.id} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 14, borderWidth: 1, borderColor: isToday ? '#AEEF4D' : 'rgba(174,239,77,0.15)' }}>
-                  <View style={{ height: 150 }}>
+                  <View style={{ height: ipadH(150) }}>
                     <Image source={require('../../assets/coach.jpg')} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey="mc-coach" style={StyleSheet.absoluteFill} />
                     <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.7)', padding: 16, justifyContent: 'space-between' }}>
                       <View>
@@ -2170,7 +2111,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         )}
         {mcTab === 'recherche' && (function() {
           var seancesData = getSeances(lang);
-          var halfW = (SW - 52) / 2;
+          var halfW = (CW - 52) / 2;
           var allResults = [];
           piliers.forEach(function(p) {
             var ps = seancesData[p.key] || [];
@@ -2228,7 +2169,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   var etapeColor = ETAPE_COLORS[etape] || 'rgba(255,255,255,0.5)';
                   return (
                     <TouchableOpacity key={r.pilier.key + '-' + r.idx + '-' + i} activeOpacity={0.88} onPress={function() { setOpenPilier(r.pilier); }}
-                      style={{ width: halfW, height: 140, borderRadius: 14, overflow: 'hidden', marginBottom: 2 }}>
+                      style={{ width: halfW, height: ipadH(140), borderRadius: 14, overflow: 'hidden', marginBottom: 2 }}>
                       <View style={{ flex: 1 }}>
                         <Image source={PILIER_IMAGES[r.pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-r-' + r.pilier.key} style={StyleSheet.absoluteFill} />
                         <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.8)']} style={{ flex: 1, justifyContent: 'space-between', padding: 10 }}>
