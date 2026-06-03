@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Dimensions, View, Text } from 'react-native';
+import { Animated, Easing, Dimensions, View, Text, Platform } from 'react-native';
 import Svg, { Path, Circle, Ellipse, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
+// Android gère mal beaucoup d'animations continues simultanées (pas de blur
+// natif, rendu SVG + ombres coûteux) → l'app paraît saccadée. On allège donc
+// la charge sur Android UNIQUEMENT (iOS garde le rendu complet) : moins de
+// méduses flottantes, moins de bulles, pas de particules autour de la méduse.
+const IS_ANDROID = Platform.OS === 'android';
 
 // ── tentaclePath ──
 function tentaclePath(bx, by, angle, length, t, phase, amp) {
@@ -477,14 +482,14 @@ const BULLES = BULLES_RAW.map(function(b) {
 
 // ── BULLES_MONCORPS ──
 /** Moins dense qu'avant : 24 bulles x 3 décalages (les autres écrans gardent `BULLES` complet). */
-const BULLES_MONCORPS_BASE = BULLES.slice(0, 10);
+const BULLES_MONCORPS_BASE = BULLES.slice(0, IS_ANDROID ? 4 : 10);
 const BULLES_MONCORPS = [
   ...BULLES_MONCORPS_BASE,
 ];
 
 // ── BULLES_ONBOARDING ──
 /** Onboarding : quelques vagues décalées + bulles en plus (moins dense que la version max). */
-const BULLES_ONBOARDING = BULLES.slice(0, 12);
+const BULLES_ONBOARDING = BULLES.slice(0, IS_ANDROID ? 5 : 12);
 
 // ══════════════════════════════════
 // MÉDUSE VIVANTE — évolue avec la progression
@@ -540,7 +545,7 @@ function LivingMedusa({ pct, streak, lang, showLabel }) {
       ]));
       glowLoop.start(); loops.push(glowLoop);
     }
-    if (ms.particles > 0) {
+    if (!IS_ANDROID && ms.particles > 0) {
       var pts = [];
       for (var i = 0; i < ms.particles; i++) {
         pts.push({ angle: (i / ms.particles) * Math.PI * 2, dist: ms.size * 0.5 + 10 + Math.random() * 20, speed: 2000 + Math.random() * 3000, anim: new Animated.Value(0) });
@@ -616,7 +621,7 @@ function FloatingMedusas({ topInset = 200, bottomInset = 140 } = {}) {
     { baseX: SW * 0.30,   baseY: Math.max(topInset, SH * 0.50), size: 74 },
     { baseX: SW * 0.80,   baseY: Math.max(topInset, SH * 0.62), size: 60 },
     { baseX: SW * 0.15,   baseY: Math.max(topInset, SH * 0.78), size: 76 },
-  ].map(function(c) {
+  ].slice(0, IS_ANDROID ? 3 : 5).map(function(c) {
     return Object.assign({}, c, {
       driftX: new Animated.Value(0), // delta vs baseX
       driftY: new Animated.Value(0), // delta vs baseY

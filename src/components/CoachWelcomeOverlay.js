@@ -123,8 +123,9 @@ export default function CoachWelcomeOverlay({ visible, onDone, lang, prenom }) {
 
       <Pressable onPress={handleDismiss} style={StyleSheet.absoluteFill}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 26 }}>
-          {/* Wordmark — top */}
-          <View style={{ position: 'absolute', top: 64, flexDirection: 'row', alignItems: 'baseline' }}>
+          {/* Wordmark — top (centré horizontalement : en absolute il faut
+              left/right + justifyContent, sinon il se cale à gauche) */}
+          <View style={{ position: 'absolute', top: 64, left: 0, right: 0, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center' }}>
             <Text style={{ fontSize: 22, fontWeight: '900', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY</Text>
             <AnimatedPlus style={{ fontSize: 26, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
           </View>
