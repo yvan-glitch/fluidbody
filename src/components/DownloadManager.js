@@ -14,12 +14,33 @@ import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 const DOWNLOADS_DIR = FileSystem.documentDirectory + 'downloads/';
 const DOWNLOADS_KEY = 'fluid_downloads';
 
-// XOR with a derived seed key is a placeholder, not real DRM. It prevents
-// casual file extraction from the device's documents directory but offers no
-// protection against a determined attacker — the seed is constant per app and
-// derivable from the bundled JS. Replace with expo-secure-store + a per-user
-// key before this is treated as security-relevant.
-const ENCRYPTION_SEED = 'com.ytissot.fluidbody.offline.v1';
+// Clé de chiffrement des téléchargements hors-ligne.
+//
+// AVANT : SHA256 d'une graine constante bundlée (`com.ytissot.fluidbody...`)
+//   → identique pour TOUS les utilisateurs et dérivable depuis le JS bundlé.
+//   Quiconque lit le bundle pouvait reconstituer la clé. FAIBLE.
+// MAINTENANT : graine aléatoire de 32 octets générée une seule fois par
+//   installation (expo-crypto, déjà en dépendance), stockée dans AsyncStorage.
+//   La clé n'est plus présente dans le bundle ; chaque appareil a la sienne.
+//
+// Reste un « anti-bidouille », pas du vrai DRM : AsyncStorage n'est pas le
+// Keychain (lisible via le sandbox app sur appareil jailbreaké / backup).
+// Prochaine étape sécurité = expo-secure-store (Keychain matériel) — nécessite
+// un module natif donc un build EAS (non OTA), à faire dans une session dédiée.
+const DEVICE_SECRET_KEY = 'fluid_dl_secret_v1';
+
+// Récupère (ou crée au tout premier appel) la graine aléatoire par installation.
+async function getDeviceSecret() {
+  let secret = await AsyncStorage.getItem(DEVICE_SECRET_KEY);
+  if (!secret) {
+    const bytes = await Crypto.getRandomBytesAsync(32);
+    secret = Array.prototype.map.call(bytes, function (b) {
+      return ('0' + (b & 0xFF).toString(16)).slice(-2);
+    }).join('');
+    await AsyncStorage.setItem(DEVICE_SECRET_KEY, secret);
+  }
+  return secret;
+}
 
 // Ensure downloads directory exists
 async function ensureDir() {
@@ -27,22 +48,10 @@ async function ensureDir() {
   if (!info.exists) await FileSystem.makeDirectoryAsync(DOWNLOADS_DIR, { intermediates: true });
 }
 
-// Generate encryption key from seed
+// Generate encryption key from the per-install secret (SHA256 → 64 hex chars).
 async function getEncryptionKey() {
-  return await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, ENCRYPTION_SEED);
-}
-
-// XOR encrypt/decrypt buffer (same operation for both)
-function xorCrypt(data, keyHex) {
-  const keyBytes = [];
-  for (let i = 0; i < keyHex.length; i += 2) {
-    keyBytes.push(parseInt(keyHex.substr(i, 2), 16));
-  }
-  const result = new Uint8Array(data.length);
-  for (let i = 0; i < data.length; i++) {
-    result[i] = data[i] ^ keyBytes[i % keyBytes.length];
-  }
-  return result;
+  const secret = await getDeviceSecret();
+  return await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, secret);
 }
 
 // Get download state from AsyncStorage
@@ -183,7 +192,20 @@ async function getLocalVideoUri(pilierKey, seanceIndex) {
   if (sepIdx < 0) return null;
   const verification = rest.slice(0, sepIdx);
   const hex = rest.slice(sepIdx + 1);
-  if (verification !== key.substring(0, 16)) return null;
+  if (verification !== key.substring(0, 16)) {
+    // Clé différente de celle ayant chiffré le fichier — typiquement la
+    // migration graine constante → graine par installation (ou une
+    // réinstallation). Le .enc est indéchiffrable : on le purge + on retire
+    // l'entrée pour que l'UI propose un re-téléchargement (et que la lecture
+    // bascule proprement sur le streaming signé) plutôt que de rester "OK".
+    try { await FileSystem.deleteAsync(encPath, { idempotent: true }); } catch (e) {}
+    try {
+      const all = await getDownloads();
+      delete all[pilierKey + '_' + seanceIndex];
+      await saveDownloads(all);
+    } catch (e) {}
+    return null;
+  }
 
   // Hex → byte array, XOR back avec la même séquence key pour reconstruire
   // les charcodes de la string base64 originale.
