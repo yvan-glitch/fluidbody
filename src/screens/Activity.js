@@ -19,7 +19,7 @@
 //   stat). Streak is persisted both locally and remotely via profileSync.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Animated, Easing, RefreshControl, Dimensions, StyleSheet, Modal, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, Animated, Easing, RefreshControl, Dimensions, StyleSheet, Modal, TextInput, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Polyline } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -585,21 +585,27 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
                 <MeduseCornerIcon size={64} tint={colors.accentText} breathCycleMs={3000} />
               </View>
               <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 8 }}>
-                {tr.activity_no_hk || 'Connect Apple Health'}
+                {Platform.OS === 'android'
+                  ? ((lang || 'fr').toLowerCase().indexOf('fr') === 0 ? "Suivi d'activité bientôt sur Android" : 'Activity tracking coming to Android')
+                  : (tr.activity_no_hk || 'Connect Apple Health')}
               </Text>
               <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 19, marginBottom: 16 }}>
-                {tr.activity_no_hk_sub || 'Allow FluidBody to read your activity to see your rings.'}
+                {Platform.OS === 'android'
+                  ? ((lang || 'fr').toLowerCase().indexOf('fr') === 0 ? 'La synchro de tes anneaux et de ta fréquence cardiaque arrivera via Health Connect (le hub santé de Google).' : 'Syncing your rings and heart rate will arrive via Health Connect (Google’s health hub).')
+                  : (tr.activity_no_hk_sub || 'Allow FluidBody to read your activity to see your rings.')}
               </Text>
-              <GlassButton
-                variant="accent"
-                onPress={function () {
-                  healthkit.ensureHealthKitInit().then(function (res) {
-                    setHkAuthorized(!!(res && res.ok));
-                  });
-                }}
-              >
-                {tr.activity_connect_hk || 'Connect Apple Health'}
-              </GlassButton>
+              {Platform.OS !== 'android' ? (
+                <GlassButton
+                  variant="accent"
+                  onPress={function () {
+                    healthkit.ensureHealthKitInit().then(function (res) {
+                      setHkAuthorized(!!(res && res.ok));
+                    });
+                  }}
+                >
+                  {tr.activity_connect_hk || 'Connect Apple Health'}
+                </GlassButton>
+              ) : null}
             </GlassCard>
           </View>
         ) : null}

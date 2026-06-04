@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, Modal, Alert, Dimensions, Linking, StyleSheet, Animated, Easing, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Modal, Alert, Dimensions, Linking, StyleSheet, Animated, Easing, TouchableOpacity, Platform } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedPlus from './AnimatedPlus';
@@ -303,6 +303,24 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   var theme = useTheme().theme;
   var isLight = theme.mode === 'light';
   var isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+
+  // Texte légal d'abonnement adapté à la plateforme : sur Android l'abonnement
+  // se gère dans Google Play (et non dans les Réglages Apple). On force ces
+  // libellés selon Platform.OS (les chaînes de data.js sont rédigées « Apple »).
+  var isAndroidStore = Platform.OS === 'android';
+  var paywallCancelPill = isFr
+    ? (isAndroidStore ? 'Annulable depuis Google Play' : 'Annulable depuis Réglages Apple')
+    : (isAndroidStore ? 'Cancel anytime in Google Play' : 'Cancel anytime in Apple Settings');
+  var paywallFounderLegal = isFr
+    ? (isAndroidStore ? 'Aucun engagement, annulable à tout moment dans Google Play' : 'Aucun engagement, annulable à tout moment depuis tes Réglages Apple')
+    : (isAndroidStore ? 'No commitment, cancel anytime in Google Play' : 'No commitment, cancel anytime from your Apple Settings');
+  var paywallFullLegal = isFr
+    ? (isAndroidStore
+        ? "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période. Le paiement est débité via votre compte Google Play. Gérez ou annulez dans Google Play > Abonnements."
+        : "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période. Le paiement est débité via votre compte Apple. Gérez ou annulez dans Réglages > Apple ID > Abonnements.")
+    : (isAndroidStore
+        ? 'The subscription renews automatically unless cancelled at least 24h before the end of the period. Payment is charged to your Google Play account. Manage or cancel in Google Play > Subscriptions.'
+        : 'The subscription renews automatically unless cancelled at least 24h before the end of the period. Payment is charged to your Apple account. Manage or cancel in Settings > Apple ID > Subscriptions.');
   var monthlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.monthly];
   var yearlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.yearly];
   var monthlyPriceRaw = getRcPriceString(monthlyPkg) || 'CHF 12.90';
@@ -326,7 +344,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   const monthlyLabel = isFr ? 'Mensuel' : 'Monthly';
   const ctaLabel = tr.paywall_founder_cta || (isFr ? 'S\'abonner' : 'Subscribe');
 
-  const founderBullets = Array.isArray(tr.paywall_founder_bullets) && tr.paywall_founder_bullets.length > 0
+  const founderBulletsBase = Array.isArray(tr.paywall_founder_bullets) && tr.paywall_founder_bullets.length > 0
     ? tr.paywall_founder_bullets
     : (isFr ? [
         '9 piliers de Pilates conscient',
@@ -341,6 +359,15 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
         'Available in four languages',
         'Personalised Sabrina AI — coming soon',
       ]);
+
+  // Sur Android, l'app n'est ni sur iPhone ni sur Apple TV → on neutralise
+  // l'avantage qui les mentionne pour ne pas afficher d'appareils inexistants.
+  const founderBullets = founderBulletsBase.map(function(b) {
+    if (isAndroidStore && /Apple TV|iPhone/i.test(b)) {
+      return isFr ? 'Tout FluidBody+ dans un seul abonnement' : 'All of FluidBody+ in a single subscription';
+    }
+    return b;
+  });
 
   // (Le tarif standard ne s'affiche plus barré sur les cards : on a
   // remplacé par "Puis 24.90 / Puis 199" en small print sous le prix
@@ -630,7 +657,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 borderColor: 'rgba(174,239,77,0.5)',
               }}>
                 <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.accentText, letterSpacing: 0.3 }}>
-                  {tr.paywall_guarantee_pill || (isFr ? 'Annulable depuis Réglages Apple' : 'Cancel anytime in Apple Settings')}
+                  {paywallCancelPill}
                 </Text>
               </View>
               <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 14, letterSpacing: 0.2 }}>
@@ -639,9 +666,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                   : 'Founder offer — for early members')}
               </Text>
               <Text style={{ fontSize: 11, fontWeight: '400', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 6, lineHeight: 16, letterSpacing: 0.1 }}>
-                {tr.paywall_founder_legal || (isFr
-                  ? 'Aucun engagement, annulable à tout moment depuis tes Réglages Apple'
-                  : 'No commitment, cancel anytime from your Apple Settings')}
+                {paywallFounderLegal}
               </Text>
             </GlassCard>
 
@@ -697,7 +722,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               elevated={false}
             >
               <Text style={{ fontSize: 11, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 17 }}>
-                {tr.paywall_legal || "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période. Le paiement est débité via votre compte Apple. Gérez ou annulez dans Réglages > Apple ID > Abonnements."}
+                {paywallFullLegal}
               </Text>
               <View style={{ marginTop: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                 <GlassPressable

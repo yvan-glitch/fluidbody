@@ -2816,7 +2816,9 @@ function App() {
         dismissWelcomeIntro();
       }} />;
     }
-    if (hkPromptShown === false) {
+    // HealthKit = iOS uniquement. Sur Android on saute cet écran d'onboarding
+    // (Apple Santé n'existe pas ; l'équivalent Health Connect viendra plus tard).
+    if (hkPromptShown === false && Platform.OS === 'ios') {
       return <HealthKitConnectScreen lang={lang} onDone={function() { dismissHkPrompt(); }} />;
     }
     return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} onAccountDeleted={handleAccountDeleted} />;
