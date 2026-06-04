@@ -25,7 +25,7 @@ import {
   ensureHealthKitInit,
   writeWeightKg,
   writeHeightCm,
-} from './healthkit';
+} from './health';
 
 let Sentry = null;
 try { Sentry = require('@sentry/react-native'); } catch (e) {}

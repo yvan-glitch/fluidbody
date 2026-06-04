@@ -17,7 +17,7 @@ if (!ViewShot) ViewShot = require('react-native').View;
 import { T, PILIER_IMAGES } from '../constants/data';
 import { Bulle, FloatingMedusas, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
-import healthkit from '../utils/healthkit';
+import healthkit from '../utils/health';
 import { getPiliers } from '../utils';
 import { getMyReferralCode, getReferralStats } from '../utils/referrals';
 import calendarUtil from '../utils/calendar';

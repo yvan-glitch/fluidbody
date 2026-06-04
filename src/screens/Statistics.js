@@ -246,7 +246,7 @@ export default function StatisticsScreen({ lang, done, streak, supaUser, onClose
             {rings.week.length === 0 && rings.monthly.length === 0 ? (
               <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontStyle: 'italic' }}>
                 {Platform.OS === 'android'
-                  ? ((lang || 'fr').toLowerCase().indexOf('fr') === 0 ? 'Suivi des anneaux à venir sur Android, via Health Connect.' : 'Activity rings coming to Android, via Health Connect.')
+                  ? ((lang || 'fr').toLowerCase().indexOf('fr') === 0 ? 'Connecte Health Connect pour suivre tes anneaux ici.' : 'Connect Health Connect to track your rings here.')
                   : (tr.stats_hk_unavailable || 'Connecte Apple Santé pour suivre tes anneaux ici.')}
               </Text>
             ) : (

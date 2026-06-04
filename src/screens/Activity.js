@@ -32,7 +32,7 @@ import LivingBackground from '../components/LivingBackground';
 import { FloatingMedusas, Bulle, BULLES, MeduseCornerIcon } from '../components/Meduse';
 import Confetti from '../components/Confetti';
 import ActivityRings, { MiniActivityRings, RING_COLORS } from '../components/ActivityRings';
-import healthkit from '../utils/healthkit';
+import healthkit from '../utils/health';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
 import { ACHIEVEMENTS, getUnlockedSync, subscribe as subscribeAchievements, prime as primeAchievements } from '../utils/achievements';
 import { Icon } from '../components/Icons';
@@ -586,26 +586,26 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
               </View>
               <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 8 }}>
                 {Platform.OS === 'android'
-                  ? ((lang || 'fr').toLowerCase().indexOf('fr') === 0 ? "Suivi d'activité bientôt sur Android" : 'Activity tracking coming to Android')
+                  ? ((lang || 'fr').toLowerCase().indexOf('fr') === 0 ? 'Connecte tes données santé' : 'Connect your health data')
                   : (tr.activity_no_hk || 'Connect Apple Health')}
               </Text>
               <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 19, marginBottom: 16 }}>
                 {Platform.OS === 'android'
-                  ? ((lang || 'fr').toLowerCase().indexOf('fr') === 0 ? 'La synchro de tes anneaux et de ta fréquence cardiaque arrivera via Health Connect (le hub santé de Google).' : 'Syncing your rings and heart rate will arrive via Health Connect (Google’s health hub).')
+                  ? ((lang || 'fr').toLowerCase().indexOf('fr') === 0 ? 'Autorise FluidBody+ à lire ton activité et ta fréquence cardiaque via Health Connect.' : 'Allow FluidBody+ to read your activity and heart rate via Health Connect.')
                   : (tr.activity_no_hk_sub || 'Allow FluidBody to read your activity to see your rings.')}
               </Text>
-              {Platform.OS !== 'android' ? (
-                <GlassButton
-                  variant="accent"
-                  onPress={function () {
-                    healthkit.ensureHealthKitInit().then(function (res) {
-                      setHkAuthorized(!!(res && res.ok));
-                    });
-                  }}
-                >
-                  {tr.activity_connect_hk || 'Connect Apple Health'}
-                </GlassButton>
-              ) : null}
+              <GlassButton
+                variant="accent"
+                onPress={function () {
+                  healthkit.ensureHealthKitInit().then(function (res) {
+                    setHkAuthorized(!!(res && res.ok));
+                  });
+                }}
+              >
+                {Platform.OS === 'android'
+                  ? ((lang || 'fr').toLowerCase().indexOf('fr') === 0 ? 'Connecter Health Connect' : 'Connect Health Connect')
+                  : (tr.activity_connect_hk || 'Connect Apple Health')}
+              </GlassButton>
             </GlassCard>
           </View>
         ) : null}

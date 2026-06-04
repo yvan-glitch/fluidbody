@@ -12,7 +12,7 @@
 //
 // Any one threshold breached => the user counts as already active.
 
-import healthkit from './healthkit';
+import healthkit from './health';
 
 const STEP_THRESHOLD = 8000;
 const ACTIVE_ENERGY_THRESHOLD_KCAL = 250;

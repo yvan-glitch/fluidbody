@@ -35,7 +35,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import LivingBackground from '../components/LivingBackground';
 import { Bulle, BULLES_ONBOARDING } from '../components/Meduse';
 import { Icon } from '../components/Icons';
-import healthkit from '../utils/healthkit';
+import healthkit from '../utils/health';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
 import supabase from '../lib/supabase';
 import { claimReferralCode, readPendingReferralCode, clearPendingReferralCode, normalizeReferralCode } from '../utils/referrals';

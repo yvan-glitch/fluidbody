@@ -15,7 +15,7 @@
 //     the chart components can rely on it.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import healthkit from './healthkit';
+import healthkit from './health';
 import { getPiliers, getSeances } from '../utils';
 import { readCachedProfile } from './profileSync';
 

@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
+import { readRecentHeartRate as hcReadRecentHr } from '../utils/health';
 
 // HK kill-switch — à garder pour pouvoir désactiver HealthKit côté JS sans
 // rebuild natif si un nouveau crash apparaît sur une version iOS future.
@@ -43,7 +44,16 @@ function sourceNameOf(sample) {
 }
 
 async function fetchRecentHr() {
-  if (HEALTHKIT_DISABLED || !HK || Platform.OS !== 'ios') return null;
+  if (HEALTHKIT_DISABLED) return null;
+  // Android → Health Connect (lecture du dernier BPM récent via la façade).
+  if (Platform.OS === 'android') {
+    try {
+      const r = hcReadRecentHr ? await hcReadRecentHr() : null;
+      if (!r || !r.bpm) return null;
+      return { bpm: r.bpm, source: 'Health Connect', measuredAt: r.measuredAt };
+    } catch (e) { return null; }
+  }
+  if (!HK || Platform.OS !== 'ios') return null;
   try {
     const endDate = new Date();
     const startDate = new Date(endDate.getTime() - SAMPLE_LOOKBACK_MS);
@@ -109,7 +119,9 @@ export default function useLiveHeartRate(opts) {
   }, []);
 
   const start = useCallback(function () {
-    if (HEALTHKIT_DISABLED || !enabled || !HK || Platform.OS !== 'ios') return;
+    if (HEALTHKIT_DISABLED || !enabled) return;
+    if (Platform.OS === 'ios' && !HK) return;          // iOS sans HealthKit
+    if (Platform.OS !== 'ios' && Platform.OS !== 'android') return; // ni iOS ni Android (ex. web)
     if (pollHandleRef.current) return;
     aggRef.current = { sum: 0, count: 0, max: 0, min: Infinity, startedAt: Date.now(), samples: [] };
     lastMeasuredAtRef.current = null;

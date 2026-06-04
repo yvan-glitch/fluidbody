@@ -128,7 +128,23 @@
         "backgroundColor": "#001a2e"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.ytissot.fluidbody"
+      "package": "com.ytissot.fluidbody",
+      "permissions": [
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_FLOORS_CLIMBED",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_HEIGHT",
+        "android.permission.health.WRITE_WEIGHT",
+        "android.permission.health.WRITE_HEIGHT",
+        "android.permission.health.WRITE_EXERCISE",
+        "android.permission.health.WRITE_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.WRITE_HEART_RATE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -182,7 +198,16 @@
           "cameraPermission": "Fluidbody utilise l'appareil photo uniquement pour scanner le QR code de pairage avec l'Apple TV. Aucune image n'est enregistrée. — Fluidbody uses the camera only to scan the Apple TV pairing QR code. No image is stored."
         }
       ],
-      "./plugins/withLiquidGlass.js"
+      "./plugins/withLiquidGlass.js",
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
     ]
   }
 }
