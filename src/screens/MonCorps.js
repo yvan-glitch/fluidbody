@@ -1469,39 +1469,11 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           var seancesByKey = getSeances(lang);
 
           // Métadonnées catalogue pour la card CTA "Le Pilates conscient,
-          // au quotidien" : X séances · Y min/h · Avec Sabrina. Compte
-          // TOUTES les séances du catalogue (pas de filtre vidéo — sinon
-          // on affichait "0 séances" tant que peu de vidéos étaient
-          // tournées). Parser de durée gère "12 min" et "1'59''".
-          var catCount = 0;
-          var catMinDecimal = 0;
-          piliers.forEach(function(p) {
-            var arr = (seancesByKey && seancesByKey[p.key]) || [];
-            arr.forEach(function(ss) {
-              if (!ss) return;
-              catCount += 1;
-              var raw = String(ss[1] || '');
-              // "X'YY''" → X minutes + YY secondes (ex. "1'59''" → 1.98 min)
-              var ap = raw.match(/(\d+)\s*'\s*(\d+)/);
-              if (ap) { catMinDecimal += parseInt(ap[1], 10) + parseInt(ap[2], 10) / 60; return; }
-              // "X min" ou juste "X"
-              var m = raw.match(/(\d+)/);
-              if (m) catMinDecimal += parseInt(m[1], 10);
-            });
-          });
-          var catMin = Math.round(catMinDecimal);
-          var heroMetaIPhone = (function() {
-            var dur;
-            if (catMin >= 120) {
-              var h = Math.floor(catMin / 60);
-              var rest = catMin - h * 60;
-              dur = h + ' h' + (rest ? ' ' + rest : '') + (lang === 'fr' ? ' de pratique' : ' of practice');
-            } else {
-              dur = catMin + (lang === 'fr' ? ' min de pratique' : ' min of practice');
-            }
-            var left = catCount + (lang === 'fr' ? ' séances' : ' sessions');
-            return left + ' · ' + dur + ' · ' + (lang === 'fr' ? 'Avec Sabrina' : 'With Sabrina');
-          })();
+          // au quotidien". On masque le compteur "X séances · Y h Z de
+          // pratique" tant que les vidéos ne sont pas tournées (sinon on
+          // afficherait un volume qui ne correspond à rien de regardable).
+          // On garde uniquement "Avec Sabrina".
+          var heroMetaIPhone = lang === 'fr' ? 'Avec Sabrina' : 'With Sabrina';
 
           // Rangée "Cette semaine" iPhone (Lot 4) — 7 séances suggérées sur
           // les 7 prochains jours. Biais intention si l'utilisateur a une
