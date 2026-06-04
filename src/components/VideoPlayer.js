@@ -706,7 +706,6 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
           shouldPlay={introN <= 0}
           rate={playbackRate}
           shouldCorrectPitch={true}
-          useNativeControls={Platform.OS === 'ios'}
           onPlaybackStatusUpdate={onPlaybackStatusUpdate}
         />
       ) : hasRealVideo ? (
@@ -761,19 +760,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         </View>
       ) : null}
 
-      {/* iOS : contrôles natifs (glassy iOS 26) → on garde juste un X de
-          fermeture accessible (les contrôles inline natifs n'en ont pas). */}
-      {Platform.OS === 'ios' && hasRealVideo && !videoLoadFailed ? (
-        <View pointerEvents="box-none" style={{ position: 'absolute', top: 50, left: 16, zIndex: 350 }}>
-          <LiquidGlassCapsule tint="light" paddingH={10} paddingV={6}>
-            <TouchableOpacity onPress={() => { void handleCloseVideo(); }} hitSlop={12} accessibilityRole="button" accessibilityLabel="Fermer" style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="close" size={18} color="#FFFFFF" strokeWidth={2} />
-            </TouchableOpacity>
-          </LiquidGlassCapsule>
-        </View>
-      ) : null}
-
-      {Platform.OS !== 'ios' && !videoLoadFailed && !isTheory && !showControls && (
+      {!videoLoadFailed && !isTheory && !showControls && (
         <>
         <View pointerEvents="none" style={{ position: 'absolute', top: 50, left: 16, zIndex: 210 }}>
           <View style={{ backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 16, padding: 12, minWidth: 110 }}>
@@ -813,7 +800,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         </>
       )}
 
-      {Platform.OS !== 'ios' && hasRealVideo && !videoLoadFailed && !showControls && (
+      {hasRealVideo && !videoLoadFailed && !showControls && (
         <View pointerEvents="none" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, zIndex: 210 }}>
           <View style={{ height: 3, width: (progress * 100) + '%', backgroundColor: '#AEEF4D' }} />
         </View>
@@ -870,11 +857,11 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         </View>
       )}
 
-      {Platform.OS !== 'ios' && !videoLoadFailed && !showControls && (
+      {!videoLoadFailed && !showControls && (
         <Pressable style={StyleSheet.absoluteFillObject} onPress={revealControls} android_ripple={null} />
       )}
 
-      {Platform.OS !== 'ios' && !videoLoadFailed && showControls && (
+      {!videoLoadFailed && showControls && (
         <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFillObject, { opacity: controlsOpacity }]}>
           <Pressable style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)' }]} onPress={hideControls} android_ripple={null} />
           <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>

@@ -123,11 +123,14 @@ export default function CoachWelcomeOverlay({ visible, onDone, lang, prenom }) {
 
       <Pressable onPress={handleDismiss} style={StyleSheet.absoluteFill}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 26 }}>
-          {/* Wordmark — top (centré horizontalement : en absolute il faut
-              left/right + justifyContent, sinon il se cale à gauche) */}
+          {/* Wordmark — top. Centré OPTIQUEMENT : on centre la rangée (left/right
+              + justifyContent), et on ajoute à gauche un espace invisible égal à
+              la place prise par le « + » à droite, pour que « FLUIDBODY » tombe
+              pile au centre (sinon le + le pousse vers la gauche). */}
           <View style={{ position: 'absolute', top: 64, left: 0, right: 0, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center' }}>
+            <View style={{ width: 18 }} />
             <Text style={{ fontSize: 22, fontWeight: '900', color: '#ffffff', letterSpacing: -0.2 }}>FLUIDBODY</Text>
-            <AnimatedPlus style={{ fontSize: 26, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
+            <AnimatedPlus style={{ fontSize: 26, fontWeight: '900', color: '#AEEF4D', marginLeft: 4 }}>+</AnimatedPlus>
           </View>
 
           {/* Jellyfish hero */}
