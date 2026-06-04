@@ -85,11 +85,13 @@ export async function creditReferralOnPaid(supabase) {
 // Fetch les stats parrainage du user courant. Renvoie un objet stable
 // pour que l'UI puisse afficher 0 partout en cas d'échec / offline.
 export async function getReferralStats(supabase, userId) {
+  // NB : compteur en JOURS depuis 2026-06-05 (parrainage = +7 jours au
+  // parrain uniquement). Anciennes colonnes free_months_* abandonnées.
   const empty = {
     referrals_count: 0,
-    free_months_earned: 0,
-    free_months_used: 0,
-    free_months_available: 0,
+    free_days_earned: 0,
+    free_days_used: 0,
+    free_days_available: 0,
     referral_code: null,
     referred_by_code: null,
   };
@@ -97,17 +99,17 @@ export async function getReferralStats(supabase, userId) {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('referral_code, referred_by_code, referrals_count, free_months_earned, free_months_used')
+      .select('referral_code, referred_by_code, referrals_count, free_days_earned, free_days_used')
       .eq('id', userId)
       .maybeSingle();
     if (error || !data) return empty;
-    const earned = Number.isFinite(data.free_months_earned) ? data.free_months_earned : 0;
-    const used = Number.isFinite(data.free_months_used) ? data.free_months_used : 0;
+    const earned = Number.isFinite(data.free_days_earned) ? data.free_days_earned : 0;
+    const used = Number.isFinite(data.free_days_used) ? data.free_days_used : 0;
     return {
       referrals_count: Number.isFinite(data.referrals_count) ? data.referrals_count : 0,
-      free_months_earned: earned,
-      free_months_used: used,
-      free_months_available: Math.max(0, earned - used),
+      free_days_earned: earned,
+      free_days_used: used,
+      free_days_available: Math.max(0, earned - used),
       referral_code: data.referral_code || null,
       referred_by_code: data.referred_by_code || null,
     };

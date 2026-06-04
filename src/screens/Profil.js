@@ -119,7 +119,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   // qui paie pendant la session courante), donc on re-fetch sur
   // profileRefreshKey (le même signal utilisé par le bloc « infos »).
   var [referralCode, setReferralCode] = useState(null);
-  var [referralStats, setReferralStats] = useState({ referrals_count: 0, free_months_earned: 0, free_months_used: 0, free_months_available: 0 });
+  var [referralStats, setReferralStats] = useState({ referrals_count: 0, free_days_earned: 0, free_days_used: 0, free_days_available: 0 });
   var [referralCopiedToast, setReferralCopiedToast] = useState(false);
   // Easter egg — 5 taps on the avatar pill within 3s, admin-only. Opens the
   // "Coach mode" debug panel.
@@ -743,7 +743,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 {tr.referral_section_title || 'Mon parrainage'}
               </Text>
               <Text style={{ fontSize: 13, fontWeight: '400', color: theme.colors.textSecondary, lineHeight: 19, marginBottom: 16 }}>
-                {tr.referral_explainer || 'Chaque amie qui s\'abonne via ton code te fait gagner 1 mois gratuit — à elle aussi.'}
+                {tr.referral_explainer || 'Chaque amie qui s\'abonne via ton code te fait gagner 7 jours gratuits.'}
               </Text>
 
               {/* Code en gros, tap-to-copy */}
@@ -801,15 +801,15 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                   </Text>
                 </View>
                 <View style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: theme.colors.hairline, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 22, fontWeight: '800', color: '#AEEF4D' }}>{referralStats.free_months_earned}</Text>
+                  <Text style={{ fontSize: 22, fontWeight: '800', color: '#AEEF4D' }}>{referralStats.free_days_earned}</Text>
                   <Text numberOfLines={2} style={{ fontSize: 10, color: theme.colors.textSecondary, textAlign: 'center', marginTop: 4, letterSpacing: 0.3 }}>
-                    {tr.referral_stat_months_earned || 'mois gratuits gagnés'}
+                    {tr.referral_stat_days_earned || 'jours gratuits gagnés'}
                   </Text>
                 </View>
                 <View style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: 'rgba(174,239,77,0.10)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 22, fontWeight: '800', color: '#AEEF4D' }}>{referralStats.free_months_available}</Text>
+                  <Text style={{ fontSize: 22, fontWeight: '800', color: '#AEEF4D' }}>{referralStats.free_days_available}</Text>
                   <Text numberOfLines={2} style={{ fontSize: 10, color: theme.colors.textSecondary, textAlign: 'center', marginTop: 4, letterSpacing: 0.3 }}>
-                    {tr.referral_stat_months_available || 'mois disponibles'}
+                    {tr.referral_stat_days_available || 'jours disponibles'}
                   </Text>
                 </View>
               </View>

@@ -284,7 +284,7 @@ function TVPaywallFallback({ onClose, onRefresh, lang }) {
   );
 }
 
-export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore, freeMonthsAvailable, isSubscriber, onTvRefreshSubscriber }) {
+export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore, freeDaysAvailable, isSubscriber, onTvRefreshSubscriber }) {
   // Apple TV : court-circuit safety. Règle « jamais de paywall TV » —
   // un user payé sur iPhone qui paire sa TV doit voir l'app, pas le
   // paywall. Si jamais le paywall s'ouvre (CTA mal câblé, race condition
@@ -563,7 +563,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                   délibérément voyant (accent vert) pour pousser le CTA.
                   TODO post-MVP : déduire X mois sur la facture via une
                   promotional offer RC, plutôt que de juste l'afficher. */}
-              {Number.isFinite(freeMonthsAvailable) && freeMonthsAvailable > 0 ? (
+              {Number.isFinite(freeDaysAvailable) && freeDaysAvailable > 0 ? (
                 <View style={{
                   marginBottom: 14,
                   paddingVertical: 12,
@@ -581,8 +581,8 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                     </Text>
                     <Text style={{ fontSize: 12, fontWeight: '500', color: theme.colors.text, lineHeight: 17 }}>
                       {typeof tr.paywall_referral_bonus_sub === 'function'
-                        ? tr.paywall_referral_bonus_sub(freeMonthsAvailable)
-                        : `${freeMonthsAvailable} ${isFr ? 'mois gratuit(s) t\'attendent.' : 'free month(s) waiting for you.'}`}
+                        ? tr.paywall_referral_bonus_sub(freeDaysAvailable)
+                        : `${freeDaysAvailable} ${isFr ? 'jour(s) gratuit(s) t\'attendent.' : 'free day(s) waiting for you.'}`}
                     </Text>
                   </View>
                 </View>

@@ -1454,16 +1454,16 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   // Parrainage — mois gratuits en attente pour afficher le bandeau dans
   // le paywall. Source de vérité : Supabase. Refresh quand le paywall
   // s'ouvre + après un achat (cf. purchaseSubscription).
-  const [freeMonthsAvailable, setFreeMonthsAvailable] = useState(0);
+  const [freeDaysAvailable, setFreeDaysAvailable] = useState(0);
 
-  async function refreshFreeMonthsAvailable() {
+  async function refreshFreeDaysAvailable() {
     if (!supabase || !supaUser) {
-      setFreeMonthsAvailable(0);
+      setFreeDaysAvailable(0);
       return;
     }
     try {
       const stats = await getReferralStats(supabase, supaUser.id);
-      setFreeMonthsAvailable(stats?.free_months_available || 0);
+      setFreeDaysAvailable(stats?.free_days_available || 0);
     } catch (e) {}
   }
 
@@ -1533,7 +1533,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     // Refresh "à l'ouverture" plutôt que de mounter un listener continu :
     // l'utilisateur n'ouvre le paywall qu'en pressant un CTA, donc on a
     // un point d'entrée clair où re-fetcher.
-    refreshFreeMonthsAvailable();
+    refreshFreeDaysAvailable();
   }
 
   async function setSubscriptionActive(active) {
@@ -1577,7 +1577,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           creditReferralOnPaid(supabase).then(function(res) {
             if (__DEV__) devLog('referral credit result:', res);
             // Rafraîchit les stats locales — le badge sur Profil bouge.
-            refreshFreeMonthsAvailable();
+            refreshFreeDaysAvailable();
           }).catch(function() {});
         }
       } catch (e) {}
@@ -1945,7 +1945,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         onRestore={() => restoreSubscription()}
         onTryFree={() => { setPaywallVisible(false); setFreeDetailVisible(true); }}
         coachImage={COACH_IMAGE}
-        freeMonthsAvailable={freeMonthsAvailable}
+        freeDaysAvailable={freeDaysAvailable}
         isSubscriber={effectiveIsSubscriber}
         onTvRefreshSubscriber={() => { if (tvRefreshSubscriber.current) tvRefreshSubscriber.current(); }}
       />
