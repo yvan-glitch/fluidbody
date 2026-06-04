@@ -610,6 +610,17 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     return function() { clearInterval(interval); };
   }, []);
 
+  // ── Compte à rebours d'intro (façon FitOn) ──
+  // Petit « 3·2·1 » plein écran avant le début. Il retient aussi la lecture
+  // vidéo (cf. shouldPlay={introN <= 0}) pour que la séance démarre pile à 0.
+  // Sauté pour les contenus théoriques (Comprendre / Ressentir).
+  var [introN, setIntroN] = useState(isTheory ? 0 : 3);
+  useEffect(function() {
+    if (introN <= 0) return;
+    var t = setTimeout(function() { setIntroN(function(n) { return n - 1; }); }, 900);
+    return function() { clearTimeout(t); };
+  }, [introN]);
+
   function getElapsedMinutes() { return Math.max(1, Math.round(elapsedSec / 60)); }
 
   // Start the live-HR polling session the FIRST time the video actually
@@ -692,7 +703,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
           source={{ uri }}
           style={{ position: 'absolute', top: 0, left: 0, width: dims.width, height: dims.height }}
           resizeMode={ResizeMode.CONTAIN}
-          shouldPlay
+          shouldPlay={introN <= 0}
           rate={playbackRate}
           shouldCorrectPitch={true}
           onPlaybackStatusUpdate={onPlaybackStatusUpdate}
@@ -739,6 +750,15 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
           </Text>
         </View>
       )}
+
+      {/* Compte à rebours d'intro façon FitOn — retient la vidéo jusqu'à 0 */}
+      {introN > 0 ? (
+        <View pointerEvents="auto" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 320, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,8,16,0.85)' }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(255,255,255,0.65)', marginBottom: 12 }}>Prépare-toi</Text>
+          <Text style={{ fontSize: 112, fontWeight: '800', color: '#AEEF4D', fontVariant: ['tabular-nums'], textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 18 }}>{introN}</Text>
+          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 10 }}>Respire… on commence.</Text>
+        </View>
+      ) : null}
 
       {!videoLoadFailed && !isTheory && !showControls && (
         <>
