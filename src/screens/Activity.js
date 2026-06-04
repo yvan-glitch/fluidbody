@@ -345,7 +345,10 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
       setHkAuthorized(true);
       return function () { cancelled = true; };
     }
-    healthkit.ensureHealthKitInit().then(function (res) {
+    // Montage : init NON interactive (aucun appel natif Health Connect sur
+    // Android → pas de crash à l'ouverture). La connexion Health Connect se
+    // fait au clic sur « Connecter Health Connect ».
+    healthkit.ensureHealthKitInit({ interactive: false }).then(function (res) {
       if (cancelled) return;
       setHkChecked(true);
       setHkAuthorized(!!(res && res.ok));

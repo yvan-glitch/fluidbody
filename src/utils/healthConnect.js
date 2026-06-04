@@ -53,9 +53,16 @@ async function sdkAvailable() {
  * Initialise Health Connect + demande les permissions. Idempotent.
  * Même signature/retour que ensureHealthKitInit côté iOS : `{ ok, reason? }`.
  */
-export function ensureHealthKitInit() {
+export function ensureHealthKitInit(opts) {
   if (!isSupported()) return Promise.resolve({ ok: false, reason: 'unsupported' });
   if (initialised) return Promise.resolve({ ok: true });
+  // Appel NON interactif (montage d'écran : Activité, onboarding, check au
+  // démarrage) → on ne touche à AUCUNE API native Health Connect, pour ne
+  // jamais risquer un crash à l'ouverture. L'init réelle + la demande de
+  // permission ne se font que sur action explicite (bouton « Connecter »).
+  if (opts && opts.interactive === false) {
+    return Promise.resolve({ ok: false, reason: 'deferred' });
+  }
   if (initInFlight) return initInFlight;
   initInFlight = (async function () {
     try {

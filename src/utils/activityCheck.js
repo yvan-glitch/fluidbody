@@ -34,7 +34,10 @@ const SAFE_FALLBACK = Object.freeze({ active: false, reason: null, values: null 
  */
 export async function isUserAlreadyActive() {
   try {
-    const init = await healthkit.ensureHealthKitInit();
+    // Check passif (lecture seule) → non interactif : sur Android on ne
+    // déclenche pas la permission Health Connect ici (évite tout crash au
+    // démarrage). Si non connecté, on renvoie le fallback neutre.
+    const init = await healthkit.ensureHealthKitInit({ interactive: false });
     if (!init || !init.ok) return SAFE_FALLBACK;
 
     const now = new Date();
