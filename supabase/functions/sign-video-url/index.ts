@@ -175,6 +175,12 @@ Deno.serve(async (req) => {
   if (assetErr) return json({ error: "lookup-failed" }, 500);
   if (!asset?.bunny_path) return json({ error: "not-found" }, 404);
 
+  // Séance 1 (index 0) gratuite pour TOUS — miroir de canAccessSeanceIndex côté
+  // app (« séance 1 gratuite pour tous »). Sans ça, un utilisateur non abonné
+  // se voit refuser la séance d'essai → vidéo « indisponible ».
+  const seanceIdx = parseInt(sessionId.split("_").pop() || "", 10);
+  const isFreeSeance = seanceIdx === 0;
+
   // Entitlement: admin email → profiles.is_subscriber → live RC fallback.
   const email = (user.email || "").toLowerCase();
   let entitled = ADMIN_EMAILS.includes(email);
@@ -199,7 +205,7 @@ Deno.serve(async (req) => {
     entitled = await isEntitledViaRevenueCat(rcAppUserId);
   }
 
-  if (!entitled) return json({ error: "not-subscribed" }, 403);
+  if (!entitled && !isFreeSeance) return json({ error: "not-subscribed" }, 403);
 
   const path = pathForKind(asset.bunny_path, kind, lang, quality);
   const signed = await signBunnyUrl(
