@@ -200,6 +200,7 @@
       ],
       "./plugins/withLiquidGlass.js",
       "react-native-health-connect",
+      "./plugins/withHealthConnectDelegate.js",
       [
         "expo-build-properties",
         {
