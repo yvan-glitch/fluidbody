@@ -39,6 +39,12 @@ function hasProtectedVideo(flag) {
 
 var RATE_OPTIONS = [0.75, 1.0, 1.25, 1.5];
 
+// Garde-fou juridique pré-séance : confirmation unique par session (process
+// en mémoire, PAS de persistance AsyncStorage → réaffiché à chaque cold start,
+// une seule fois ensuite). Partagé entre tous les montages de VideoPlayer pour
+// ne pas réafficher l'alerte à chaque séance lancée dans la même session.
+var _preSeanceConfirmedThisSession = false;
+
 // ── Étape colors (also kept in App.js for PilierPanel) ──
 
 // ── Video resume persistence ──
@@ -253,6 +259,10 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   const [videoResetKey, setVideoResetKey] = useState(0);
   const [titre, duree, etape, videoFlag] = seance;
   const isTheory = etape === 'Comprendre' || etape === 'Ressentir';
+  // Pré-séance : on ne gate que les vraies séances de pratique (pas le
+  // théorique Comprendre/Ressentir). Confirmé d'office si déjà validé dans
+  // cette session process, ou pour le contenu théorique.
+  const [preSeanceConfirmed, setPreSeanceConfirmed] = useState(_preSeanceConfirmedThisSession || isTheory);
   const hasRealVideo = hasProtectedVideo(videoFlag);
   const sessionId = hasRealVideo ? buildSessionId(pilier?.key, seanceIndex) : null;
   const [showControls, setShowControls] = useState(!hasRealVideo);
@@ -610,16 +620,41 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     return function() { clearInterval(interval); };
   }, []);
 
+  // ── Confirmation pré-séance (garde-fou juridique) ──
+  // Avant la 1ère lecture de la session (cold start), on demande à
+  // l'utilisateur de reconnaître qu'il s'arrête en cas de douleur. Native
+  // Alert pour rester léger ; une seule fois par session process. Tant que
+  // ce n'est pas confirmé, le compte à rebours d'intro et la lecture sont
+  // retenus (cf. shouldPlay). « Annuler » referme le lecteur.
+  useEffect(function() {
+    if (preSeanceConfirmed) return;
+    const isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+    const psTr = isFrLang ? T.fr : T.en;
+    Alert.alert(
+      psTr.preseance_title,
+      psTr.preseance_body,
+      [
+        { text: psTr.preseance_cancel, style: 'cancel', onPress: function() { if (onClose) onClose(); } },
+        { text: psTr.preseance_ok, style: 'default', onPress: function() {
+            _preSeanceConfirmedThisSession = true;
+            setPreSeanceConfirmed(true);
+          } },
+      ],
+      { cancelable: false }
+    );
+  }, []);
+
   // ── Compte à rebours d'intro (façon FitOn) ──
   // Petit « 3·2·1 » plein écran avant le début. Il retient aussi la lecture
   // vidéo (cf. shouldPlay={introN <= 0}) pour que la séance démarre pile à 0.
   // Sauté pour les contenus théoriques (Comprendre / Ressentir).
   var [introN, setIntroN] = useState(isTheory ? 0 : 3);
   useEffect(function() {
+    if (!preSeanceConfirmed) return;
     if (introN <= 0) return;
     var t = setTimeout(function() { setIntroN(function(n) { return n - 1; }); }, 900);
     return function() { clearTimeout(t); };
-  }, [introN]);
+  }, [introN, preSeanceConfirmed]);
 
   function getElapsedMinutes() { return Math.max(1, Math.round(elapsedSec / 60)); }
 
@@ -703,7 +738,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
           source={{ uri }}
           style={{ position: 'absolute', top: 0, left: 0, width: dims.width, height: dims.height }}
           resizeMode={ResizeMode.CONTAIN}
-          shouldPlay={introN <= 0}
+          shouldPlay={introN <= 0 && preSeanceConfirmed}
           rate={playbackRate}
           shouldCorrectPitch={true}
           onPlaybackStatusUpdate={onPlaybackStatusUpdate}

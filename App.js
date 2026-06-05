@@ -117,6 +117,7 @@ import ThemedStatusBar from './src/theme/ThemedStatusBar';
 import Confetti from './src/components/Confetti';
 import LivingBackground from './src/components/LivingBackground';
 import CoachWelcomeOverlay, { isCoachWelcomeSeen } from './src/components/CoachWelcomeOverlay';
+import MedicalDisclaimerOverlay, { isMedicalDisclaimerSeen } from './src/components/MedicalDisclaimerOverlay';
 import OtaUpdateBanner from './src/components/OtaUpdateBanner';
 import AnniversaryOverlay, { shouldShowAnniversary } from './src/components/AnniversaryOverlay';
 import WelcomeAnimation, { isWelcomeAnimationShown } from './src/components/WelcomeAnimation';
@@ -1448,6 +1449,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [rcPackagesByProductId, setRcPackagesByProductId] = useState({});
   const [rcLoadingPrices, setRcLoadingPrices] = useState(false);
   const [coachWelcomeVisible, setCoachWelcomeVisible] = useState(false);
+  const [medicalDisclaimerVisible, setMedicalDisclaimerVisible] = useState(false);
   const [purchaseConfettiActive, setPurchaseConfettiActive] = useState(false);
   const [annivVisible, setAnnivVisible] = useState(false);
   const [welcomeAnimVisible, setWelcomeAnimVisible] = useState(false);
@@ -1470,15 +1472,34 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   // First-launch coach welcome — once per install, opened ~700ms after MainApp
   // mounts so the user sees the tab bar settle first (less jarring than a hard
   // takeover). Flag in AsyncStorage; see `CoachWelcomeOverlay`.
+  //
+  // tvOS : on n'affiche jamais l'overlay coach. Le press de dismiss
+  // (« Je commence ») laissait fuiter le focus vers le bouton « Mon compte »
+  // → ProfilTV s'ouvrait tout seul. On le coupe purement sur TV.
+  const coachWelcomeTriggeredRef = useRef(false);
+  function maybeShowCoachWelcome() {
+    if (coachWelcomeTriggeredRef.current || IS_TV) return;
+    isCoachWelcomeSeen().then(function(seen) {
+      if (seen || coachWelcomeTriggeredRef.current) return;
+      coachWelcomeTriggeredRef.current = true;
+      setTimeout(function() { setCoachWelcomeVisible(true); }, 700);
+    });
+  }
+
+  // First-launch medical disclaimer — legal safety gate shown once per install,
+  // BEFORE the coach welcome and before any session can start (protection
+  // contre les claims de blessure). Flag in AsyncStorage; see
+  // `MedicalDisclaimerOverlay`. Skipped on tvOS. When already acknowledged we
+  // jump straight to the coach welcome so the two never stack.
   useEffect(function() {
     let cancelled = false;
-    isCoachWelcomeSeen().then(function(seen) {
-      // tvOS : on n'affiche jamais l'overlay coach. Le press de dismiss
-      // (« Je commence ») laissait fuiter le focus vers le bouton « Mon
-      // compte » → ProfilTV s'ouvrait tout seul. Copie iPhone-centrée en
-      // plus. On le coupe purement sur TV.
-      if (cancelled || seen || IS_TV) return;
-      setTimeout(function() { if (!cancelled) setCoachWelcomeVisible(true); }, 700);
+    isMedicalDisclaimerSeen().then(function(seen) {
+      if (cancelled) return;
+      if (seen || IS_TV) {
+        maybeShowCoachWelcome();
+      } else {
+        setMedicalDisclaimerVisible(true);
+      }
     });
     return function() { cancelled = true; };
   }, []);
@@ -2170,6 +2191,14 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           </Modal>
         );
       })() : null}
+      <MedicalDisclaimerOverlay
+        visible={medicalDisclaimerVisible}
+        lang={lang}
+        onDone={function() {
+          setMedicalDisclaimerVisible(false);
+          maybeShowCoachWelcome();
+        }}
+      />
       <CoachWelcomeOverlay
         visible={coachWelcomeVisible}
         lang={lang}
