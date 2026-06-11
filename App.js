@@ -2146,14 +2146,22 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           supaUser={supaUser}
           ctaLabel={(T[lang] || T.fr).profile_save_btn || 'Enregistrer'}
           onClose={function() { setEditingProfile(false); }}
-          onDone={async function(payload) {
+          onDone={function(payload) {
             // FIX audit 2026-06-10 (E-3) : handleProfileSetupSave vit dans
             // App(), pas dans MainApp — l'appel direct levait un
             // ReferenceError et laissait la modal bloquée. La fonction est
-            // désormais passée en prop (onProfileSave), et la fermeture de
-            // la modal est garantie même si la sauvegarde cloud échoue.
+            // passée en prop (onProfileSave).
+            // FIX 2026-06-11 (lenteur) : PAS de await ici. Quand onDone est
+            // appelé, ProfileOnboarding a DÉJÀ tout sauvé via syncProfilePatch
+            // (AsyncStorage + upsert Supabase + file de retry offline).
+            // onProfileSave ne fait que du mirroring (state prenom, flag
+            // AsyncStorage, metadata auth) + un upsert redondant hérité du
+            // debug onboarding, avec des timeouts de secours de 15 s qui
+            // faisaient poireauter l'utilisateur sur la modal. Fire-and-forget.
             try {
-              if (onProfileSave) await onProfileSave(payload);
+              if (onProfileSave) {
+                Promise.resolve(onProfileSave(payload)).catch(function(e) { devWarn('profile save (bg)', e); });
+              }
             } catch (e) { devWarn('profile save', e); }
             setEditingProfile(false);
             setProfileRefreshKey(function(k) { return k + 1; });
