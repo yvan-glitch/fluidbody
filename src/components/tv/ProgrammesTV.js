@@ -129,7 +129,7 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
 
   const heroH = Math.round(SH * 0.52);
   const themeItems = THEMES.map(function (t) {
-    return { key: 't_' + t.key, title: tr[t.titleKey] || t.fallback, subtitle: t.duration, image: t.img, pilier: pilierByKey(t.pilier) };
+    return { key: 't_' + t.key, title: tr[t.titleKey] || t.fallback, subtitle: tr['prog_' + t.key + '_duree'] || t.duration, image: t.img, pilier: pilierByKey(t.pilier) };
   });
 
   // Priorité du focus initial : hero → séances courtes → 1re card sur-mesure.

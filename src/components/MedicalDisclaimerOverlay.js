@@ -128,6 +128,9 @@ export default function MedicalDisclaimerOverlay({ visible, onDone, lang }) {
   return (
     <Animated.View
       pointerEvents="auto"
+      // a11y (audit 2026-06-10 E-7) : gate légal — VoiceOver ne doit PAS
+      // pouvoir naviguer dans l'app derrière l'overlay.
+      accessibilityViewIsModal={true}
       style={[StyleSheet.absoluteFill, { opacity: opacAnim, zIndex: 10000 }]}
     >
       <LinearGradient
@@ -173,6 +176,12 @@ export default function MedicalDisclaimerOverlay({ visible, onDone, lang }) {
                 {/* Checkbox — gates the CTA */}
                 <Pressable
                   onPress={() => { hapticSoft(); setChecked((v) => !v); }}
+                  // a11y : sans role/state, un utilisateur VoiceOver ne peut
+                  // ni percevoir la case ni comprendre pourquoi le CTA reste
+                  // désactivé.
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked }}
+                  accessibilityLabel={tr.disclaimer_checkbox}
                   style={{ flexDirection: 'row', alignItems: 'center', marginTop: 18, marginBottom: 4 }}
                 >
                   <View
@@ -204,7 +213,7 @@ export default function MedicalDisclaimerOverlay({ visible, onDone, lang }) {
                 >
                   {tr.disclaimer_cta}
                 </GlassButton>
-                <Pressable onPress={openTerms} style={{ marginTop: 14, alignItems: 'center' }} hitSlop={8}>
+                <Pressable onPress={openTerms} accessibilityRole="link" accessibilityLabel={tr.disclaimer_terms_link} style={{ marginTop: 14, alignItems: 'center' }} hitSlop={8}>
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.62)', textDecorationLine: 'underline' }}>
                     {tr.disclaimer_terms_link}
                   </Text>

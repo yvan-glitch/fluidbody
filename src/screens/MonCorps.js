@@ -880,7 +880,6 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
       <View style={{ flex: 1, backgroundColor: "#000e18" }}>
         <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
         <LivingBackground />
-      <LivingBackground />
         <LiquidGlass intensity={Platform.OS === 'ios' ? 90 : 0} tint="dark" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,35,0.6)' }} pointerEvents="none" />
         <ScrollView contentContainerStyle={{ paddingTop: 60, paddingHorizontal: 24, paddingBottom: 40 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -1417,7 +1416,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                     <View style={{ backgroundColor: '#FF3B30', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
-                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#ffffff', letterSpacing: 1 }}>NOUVEAU</Text>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#ffffff', letterSpacing: 1 }}>{(pickBadge({ isNew: true, lang: lang }) || {}).label || 'NOUVEAU'}</Text>
                     </View>
                   </View>
                   <Text style={{ fontSize: 17, fontWeight: '700', color: '#ffffff' }}>{sdj.seance[0]}</Text>
@@ -1702,8 +1701,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
                   <View>
                     <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_reveil || 'Réveil Matinal'}</Text>
-                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>10 min pour réveiller ton corps en douceur</Text>
-                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>7 JOURS · 10 MIN/JOUR</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>{tr.prog_reveil_sub || '10 min pour réveiller ton corps en douceur'}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>{tr.prog_reveil_duree || '7 JOURS · 10 MIN/JOUR'}</Text>
                   </View>
                   <TouchableOpacity
                     onPress={function() { var p = piliers.find(function(x) { return x.key === 'p4'; }); if (p) setOpenPilier(p); }}
@@ -1723,8 +1722,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
                   <View>
                     <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_dos || 'Mal de dos'}</Text>
-                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>Soulage et renforce ton dos en 21 jours</Text>
-                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>21 JOURS · 15 MIN/JOUR</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>{tr.prog_dos_sub || 'Soulage et renforce ton dos en 21 jours'}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>{tr.prog_dos_duree || '21 JOURS · 15 MIN/JOUR'}</Text>
                   </View>
                   <TouchableOpacity
                     onPress={function() { var p = piliers.find(function(x) { return x.key === 'p2'; }); if (p) setOpenPilier(p); }}
@@ -1744,8 +1743,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
                   <View>
                     <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_posttravail || 'Post-travail'}</Text>
-                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>Décompresse après une journée assise</Text>
-                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>5 JOURS · 15 MIN/JOUR</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>{tr.prog_posttravail_sub || 'Décompresse après une journée assise'}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>{tr.prog_posttravail_duree || '5 JOURS · 15 MIN/JOUR'}</Text>
                   </View>
                   <TouchableOpacity
                     onPress={function() { var p = piliers.find(function(x) { return x.key === 'p1'; }); if (p) setOpenPilier(p); }}
@@ -1765,8 +1764,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
                   <View>
                     <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_core || 'Core & Plancher'}</Text>
-                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>Renforce ton centre et ta stabilité</Text>
-                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>14 JOURS · 12 MIN/JOUR</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>{tr.prog_core_sub || 'Renforce ton centre et ta stabilité'}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>{tr.prog_core_duree || '14 JOURS · 12 MIN/JOUR'}</Text>
                   </View>
                   <TouchableOpacity
                     onPress={function() { var p = piliers.find(function(x) { return x.key === 'p7'; }); if (p) setOpenPilier(p); }}
@@ -1786,8 +1785,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 <View style={{ flex: 1, padding: 16, justifyContent: "space-between", backgroundColor: 'rgba(0,0,0,0.45)' }}>
                   <View>
                     <Text style={{ fontSize: 20, fontWeight: "800", color: "#ffffff", marginBottom: 4 }}>{tr.prog_souplesse || 'Souplesse totale'}</Text>
-                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>Gagne en mobilité sur tout le corps</Text>
-                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>14 JOURS · 20 MIN/JOUR</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "400", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>{tr.prog_souplesse_sub || 'Gagne en mobilité sur tout le corps'}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>{tr.prog_souplesse_duree || '14 JOURS · 20 MIN/JOUR'}</Text>
                   </View>
                   <TouchableOpacity
                     onPress={function() { var p = piliers.find(function(x) { return x.key === 'p3'; }); if (p) setOpenPilier(p); }}
@@ -2123,7 +2122,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   return (
                     <TouchableOpacity key={etape} onPress={function() { setSearchEtape(active ? null : etape); }}
                       style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.08)', marginRight: 8 }}>
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#001226' : 'rgba(255,255,255,0.6)' }}>{etape}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#001226' : 'rgba(255,255,255,0.6)' }}>{(tr.etapes && tr.etapes[etape]) || etape}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -2148,7 +2147,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                           <View style={{ flexDirection: 'row' }}>
                             {etape ? (
                               <View style={{ backgroundColor: etapeColor, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 }}>
-                                <Text style={{ fontSize: 9, fontWeight: '700', color: '#001226' }}>{etape}</Text>
+                                <Text style={{ fontSize: 9, fontWeight: '700', color: '#001226' }}>{(tr.etapes && tr.etapes[etape]) || etape}</Text>
                               </View>
                             ) : null}
                           </View>

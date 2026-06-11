@@ -15,10 +15,7 @@
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production",
-      "env": {
-        "EXPO_PUBLIC_SENTRY_DSN": "$EXPO_PUBLIC_SENTRY_DSN"
-      }
+      "channel": "production"
     },
     "development-tv": {
       "extends": "development",

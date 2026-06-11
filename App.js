@@ -611,8 +611,8 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
   }
 
   async function handleAppleSignIn() {
-    if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
-    if (!AppleAuth) { Alert.alert('Apple Sign In', 'Module expo-apple-authentication non chargé. Vérifie le plugin dans app.json.'); return; }
+    if (!supabase) { Alert.alert('FluidBody+', tr.err_supabase_unavailable || 'Supabase indisponible.'); return; }
+    if (!AppleAuth) { Alert.alert('Apple Sign In', tr.err_apple_module || 'Module expo-apple-authentication non chargé. Vérifie le plugin dans app.json.'); return; }
     if (!appleAvailable) {
       Alert.alert('FluidBody+', tr.auth_apple_unavailable || 'Sign in with Apple est disponible sur iOS uniquement.');
       return;
@@ -630,7 +630,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
         ],
       }), 45000, 'appleSheet');
       if (!credential.identityToken) {
-        const msg = 'Apple identity token manquant.';
+        const msg = tr.err_apple_token_missing || 'Apple identity token manquant.';
         setError(msg); Alert.alert('Apple Sign In', msg);
         setLoading(false); return;
       }
@@ -639,7 +639,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
         token: credential.identityToken,
       }), 15000, 'appleSignIn');
       if (err) {
-        setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || 'Erreur Supabase');
+        setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase');
         setLoading(false); return;
       }
       const applePrenom = credential.fullName?.givenName || '';
@@ -661,9 +661,9 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
   }
 
   async function handleGoogleSignIn() {
-    if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
-    if (!GoogleSignin) { Alert.alert('Google Sign In', 'Module @react-native-google-signin non chargé. Rebuild requis.'); return; }
-    if (!GOOGLE_WEB_CLIENT_ID) { Alert.alert('Google Sign In', "Connexion Google pas encore configurée (webClientId manquant)."); return; }
+    if (!supabase) { Alert.alert('FluidBody+', tr.err_supabase_unavailable || 'Supabase indisponible.'); return; }
+    if (!GoogleSignin) { Alert.alert('Google Sign In', tr.err_google_module || 'Module @react-native-google-signin non chargé. Rebuild requis.'); return; }
+    if (!GOOGLE_WEB_CLIENT_ID) { Alert.alert('Google Sign In', tr.err_google_not_configured || "Connexion Google pas encore configurée (webClientId manquant)."); return; }
     if (!termsAccepted) { setError(tr.ob_auth_terms_required || 'Tu dois accepter les CGU pour créer un compte.'); return; }
     ensureGoogleConfigured();
     setLoading(true); setError('');
@@ -672,9 +672,9 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
       const res = await withTimeout(GoogleSignin.signIn(), 60000, 'googleSheet');
       if (res?.type === 'cancelled') { setLoading(false); return; }
       const idToken = res?.data?.idToken || res?.idToken || null;
-      if (!idToken) { const msg = 'Google : identity token manquant.'; setError(msg); Alert.alert('Google Sign In', msg); setLoading(false); return; }
+      if (!idToken) { const msg = tr.err_google_token_missing || 'Google : identity token manquant.'; setError(msg); Alert.alert('Google Sign In', msg); setLoading(false); return; }
       const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'google', token: idToken }), 15000, 'googleSignIn');
-      if (err) { setError(err.message); Alert.alert('Google Sign In — Supabase', err.message || 'Erreur Supabase'); setLoading(false); return; }
+      if (err) { setError(err.message); Alert.alert('Google Sign In — Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase'); setLoading(false); return; }
       const gName = res?.data?.user?.givenName || res?.user?.givenName || '';
       AsyncStorage.setItem(TERMS_ACCEPTED_STORAGE_KEY, String(LEGAL.termsVersion || '1.0')).catch(() => {});
       setLoading(false);
@@ -930,7 +930,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
   function finish() { onDone('', lang, [], { skipCloudAuth: true }); }
 
   async function handleEmailAuth(mode) {
-    if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
+    if (!supabase) { Alert.alert('FluidBody+', tr.err_supabase_unavailable || 'Supabase indisponible.'); return; }
     const em = email.trim().toLowerCase();
     if (!validEmail) { setError(tr.ob_auth_err_email); return; }
     if (!validPass) { setError(tr.ob_auth_err_short); return; }
@@ -962,22 +962,22 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
   }
 
   async function handleAppleSignIn() {
-    if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
-    if (!AppleAuth) { Alert.alert('Apple Sign In', 'Module expo-apple-authentication non chargé. Vérifie le plugin dans app.json.'); return; }
-    if (!appleAvailable) { Alert.alert('FluidBody+', 'Sign in with Apple disponible sur iOS uniquement.'); return; }
+    if (!supabase) { Alert.alert('FluidBody+', tr.err_supabase_unavailable || 'Supabase indisponible.'); return; }
+    if (!AppleAuth) { Alert.alert('Apple Sign In', tr.err_apple_module || 'Module expo-apple-authentication non chargé. Vérifie le plugin dans app.json.'); return; }
+    if (!appleAvailable) { Alert.alert('FluidBody+', tr.auth_apple_unavailable || 'Sign in with Apple est disponible sur iOS uniquement.'); return; }
     setLoading(true); setError('');
     try {
       const credential = await withTimeout(AppleAuth.signInAsync({
         requestedScopes: [AppleAuth.AppleAuthenticationScope.FULL_NAME, AppleAuth.AppleAuthenticationScope.EMAIL],
       }), 45000, 'appleSheet');
       if (!credential.identityToken) {
-        const msg = 'Apple identity token manquant.';
+        const msg = tr.err_apple_token_missing || 'Apple identity token manquant.';
         setError(msg); Alert.alert('Apple Sign In', msg);
         setLoading(false); return;
       }
       const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken }), 15000, 'appleSignIn');
       if (err) {
-        setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || 'Erreur Supabase');
+        setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase');
         setLoading(false); return;
       }
       const applePrenom = credential.fullName?.givenName || '';
@@ -1005,9 +1005,9 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
   }
 
   async function handleGoogleSignIn() {
-    if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
-    if (!GoogleSignin) { Alert.alert('Google Sign In', 'Module @react-native-google-signin non chargé. Rebuild requis.'); return; }
-    if (!GOOGLE_WEB_CLIENT_ID) { Alert.alert('Google Sign In', "Connexion Google pas encore configurée (webClientId manquant)."); return; }
+    if (!supabase) { Alert.alert('FluidBody+', tr.err_supabase_unavailable || 'Supabase indisponible.'); return; }
+    if (!GoogleSignin) { Alert.alert('Google Sign In', tr.err_google_module || 'Module @react-native-google-signin non chargé. Rebuild requis.'); return; }
+    if (!GOOGLE_WEB_CLIENT_ID) { Alert.alert('Google Sign In', tr.err_google_not_configured || "Connexion Google pas encore configurée (webClientId manquant)."); return; }
     ensureGoogleConfigured();
     setLoading(true); setError('');
     try {
@@ -1015,9 +1015,9 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
       const res = await withTimeout(GoogleSignin.signIn(), 60000, 'googleSheet');
       if (res?.type === 'cancelled') { setLoading(false); return; }
       const idToken = res?.data?.idToken || res?.idToken || null;
-      if (!idToken) { const msg = 'Google : identity token manquant.'; setError(msg); Alert.alert('Google Sign In', msg); setLoading(false); return; }
+      if (!idToken) { const msg = tr.err_google_token_missing || 'Google : identity token manquant.'; setError(msg); Alert.alert('Google Sign In', msg); setLoading(false); return; }
       const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'google', token: idToken }), 15000, 'googleSignIn');
-      if (err) { setError(err.message); Alert.alert('Google Sign In — Supabase', err.message || 'Erreur Supabase'); setLoading(false); return; }
+      if (err) { setError(err.message); Alert.alert('Google Sign In — Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase'); setLoading(false); return; }
       const gName = res?.data?.user?.givenName || res?.user?.givenName || '';
       if (gName) {
         try { await supabase.auth.updateUser({ data: { prenom: gName } }); } catch(_) {}
@@ -1145,7 +1145,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
           />
           <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', lineHeight: 14, marginBottom: 10, paddingHorizontal: 2 }}>
             En continuant, tu acceptes nos Conditions d'utilisation et notre{' '}
-            <Text onPress={function() { RNLinking.openURL('https://yvan-glitch.github.io/fluidbody-privacy/'); }} style={{ color: 'rgba(174,239,77,0.7)', textDecorationLine: 'underline' }}>Politique de confidentialité</Text>
+            <Text onPress={function() { RNLinking.openURL('https://yvan-glitch.github.io/fluidbody-privacy/'); }} style={{ color: 'rgba(174,239,77,0.7)', textDecorationLine: 'underline' }}>{tr.ob_auth_privacy_link || 'Politique de confidentialité'}</Text>
           </Text>
           <TextInput
             value={password} onChangeText={setPassword}
@@ -1408,7 +1408,7 @@ function TVMainView({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChan
 // ══════════════════════════════════
 // MAIN APP
 // ══════════════════════════════════
-function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChange, onAccountDeleted }) {
+function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChange, onAccountDeleted, onProfileSave }) {
   diag('MainApp.render', 'enter');
   const tr = T[lang] || T['fr'];
   const [done, setDone] = useState({
@@ -1587,22 +1587,31 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         setPurchaseConfettiActive(true);
         setTimeout(function() { setPurchaseConfettiActive(false); }, 3000);
       }, 350);
-      // Parrainage — déclenche le credit côté Supabase. La RPC est
-      // idempotente (no-op si déjà créditée), donc safe à rappeler à
-      // chaque achat. On ignore le résultat (best-effort) — l'utilisateur
-      // ne doit pas attendre.
-      // TODO : remplacer par un webhook RC côté edge function pour
-      // robustifier (transaction_id idempotency + détection renouvellement).
-      try {
-        if (supabase && supaUser) {
-          creditReferralOnPaid(supabase).then(function(res) {
-            if (__DEV__) devLog('referral credit result:', res);
-            // Rafraîchit les stats locales — le badge sur Profil bouge.
-            refreshFreeDaysAvailable();
-          }).catch(function() {});
-        }
-      } catch (e) {}
+      // Sync server-side (audit 2026-06-10 C-1/C-2) : l'edge function
+      // confirm-purchase vérifie le paiement via l'API RevenueCat (clé
+      // secrète), pose profiles.is_subscriber / rc_app_user_id (colonnes
+      // verrouillées côté client) et crédite le parrain. Idempotent,
+      // best-effort — l'utilisateur ne doit pas attendre.
+      syncEntitlementServerSide();
     }
+  }
+
+  // Fire-and-forget : pousse l'entitlement RC vérifié vers Supabase.
+  // C'est ce qui alimente profiles.is_subscriber pour le flux Apple TV.
+  function syncEntitlementServerSide() {
+    try {
+      if (!supabase || !supaUser || rcDisabled) return;
+      Promise.resolve(
+        safeNativeCall('rc.getAppUserID', function() { return Purchases.getAppUserID(); }, null)
+      ).then(function(rcId) {
+        if (!rcId) return null;
+        return creditReferralOnPaid(supabase, rcId);
+      }).then(function(res) {
+        if (res && __DEV__) devLog('confirm-purchase result:', res);
+        // Rafraîchit les stats locales — le badge sur Profil bouge.
+        refreshFreeDaysAvailable();
+      }).catch(function() {});
+    } catch (e) {}
   }
 
   async function restoreSubscription() {
@@ -1611,6 +1620,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     if (!info) return;
     const active = !!info?.entitlements?.active?.[RC_ENTITLEMENT_ID];
     await setSubscriptionActive(active);
+    // Un restore réussi doit aussi resynchroniser is_subscriber côté
+    // Supabase (cas : nouvel iPhone, ou TV pairée avant le restore).
+    if (active) syncEntitlementServerSide();
   }
 
   // Apple TV : RevenueCat n'est pas dispo sur tvOS — on doit se reposer
@@ -1629,14 +1641,19 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('is_subscriber')
+          .select('is_subscriber, subscription_expires_at')
           .eq('id', supaUser.id)
           .single();
         if (error) {
           if (__DEV__) devWarn('[TV] profile fetch failed', error.message);
           return;
         }
-        if (!cancelled && data && data.is_subscriber === true) {
+        // FIX audit 2026-06-10 (I-4) : on respecte l'expiry — un abonné
+        // résilié ne doit pas garder l'accès TV indéfiniment via le flag.
+        // expires_at null = abonnement sans échéance connue (legacy/admin).
+        const expMs = data?.subscription_expires_at ? Date.parse(data.subscription_expires_at) : 0;
+        const stillValid = !expMs || expMs > Date.now();
+        if (!cancelled && data && data.is_subscriber === true && stillValid) {
           setIsSubscriber(true);
           try { await AsyncStorage.setItem(FLUID_SUB_KEY, 'true'); } catch (e) {}
         }
@@ -2052,7 +2069,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           saveHealthKitWorkout={saveHealthKitWorkout}
           supaUser={supaUser}
           onLogout={async () => {
-            if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
+            if (!supabase) { Alert.alert('FluidBody+', tr.err_supabase_unavailable || 'Supabase indisponible.'); return; }
             try { await supabase.auth.signOut(); } catch (e) {}
           }}
         />
@@ -2064,12 +2081,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
             <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={function() { setShowAuthScreen(true); }} onOpenStatistics={function() { setShowStatistics(true); }} />}</Tab.Screen>
             <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
             <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={async () => {
-              if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
+              if (!supabase) { Alert.alert('FluidBody+', tr.err_supabase_unavailable || 'Supabase indisponible.'); return; }
               try {
                 const { error } = await supabase.auth.signOut();
-                if (error) { Alert.alert('FluidBody+', error.message || 'Erreur de déconnexion.'); return; }
+                if (error) { Alert.alert('FluidBody+', error.message || tr.err_signout || 'Erreur de déconnexion.'); return; }
               } catch (e) {
-                Alert.alert('FluidBody+', e?.message || 'Erreur de déconnexion.');
+                Alert.alert('FluidBody+', e?.message || tr.err_signout || 'Erreur de déconnexion.');
               }
             }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onOpenSabrina={() => setShowSabrinaProfile(true)} onOpenAchievements={() => setShowAchievements(true)} onOpenDownloads={() => setShowDownloads(true)} onOpenPreferences={() => setShowPreferences(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
           </Tab.Navigator>
@@ -2130,7 +2147,14 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           ctaLabel={(T[lang] || T.fr).profile_save_btn || 'Enregistrer'}
           onClose={function() { setEditingProfile(false); }}
           onDone={async function(payload) {
-            await handleProfileSetupSave(payload);
+            // FIX audit 2026-06-10 (E-3) : handleProfileSetupSave vit dans
+            // App(), pas dans MainApp — l'appel direct levait un
+            // ReferenceError et laissait la modal bloquée. La fonction est
+            // désormais passée en prop (onProfileSave), et la fermeture de
+            // la modal est garantie même si la sauvegarde cloud échoue.
+            try {
+              if (onProfileSave) await onProfileSave(payload);
+            } catch (e) { devWarn('profile save', e); }
             setEditingProfile(false);
             setProfileRefreshKey(function(k) { return k + 1; });
           }}
@@ -2506,7 +2530,11 @@ function App() {
   useEffect(() => {
     function friendlyFromEmail(email) {
       if (!email || typeof email !== 'string') return '';
-      if (email.toLowerCase().indexOf('privaterelay.appleid.com') !== -1) return 'Yvan';
+      // Adresse Apple « Masquer mon e-mail » : le local-part est un hash
+      // aléatoire, impossible d'en dériver un prénom — on n'invente rien.
+      // (FIX audit 2026-06-10 E-4 : un 'Yvan' de debug était hardcodé ici
+      // et saluait tous les utilisateurs private-relay par ce prénom.)
+      if (email.toLowerCase().indexOf('privaterelay.appleid.com') !== -1) return '';
       const local = email.split('@')[0] || '';
       const word = local.replace(/[.+_-]+/g, ' ').trim().split(/\s+/)[0] || '';
       if (!word) return '';
@@ -2798,7 +2826,7 @@ function App() {
       if (!supaUser) {
         return <TVLoginScreen lang={lang} />;
       }
-      return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} />;
+      return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} onProfileSave={handleProfileSetupSave} />;
     }
 
     if (!introShown) {
@@ -2850,7 +2878,7 @@ function App() {
     if (hkPromptShown === false && Platform.OS === 'ios') {
       return <HealthKitConnectScreen lang={lang} onDone={function() { dismissHkPrompt(); }} />;
     }
-    return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} onAccountDeleted={handleAccountDeleted} />;
+    return <MainApp prenom={prenom} lang={lang} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onTensionChange={handleTensionChange} onAccountDeleted={handleAccountDeleted} onProfileSave={handleProfileSetupSave} />;
   }
 
   return (

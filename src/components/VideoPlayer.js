@@ -789,7 +789,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
       {/* Compte à rebours d'intro façon FitOn — retient la vidéo jusqu'à 0 */}
       {introN > 0 ? (
         <View pointerEvents="auto" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 320, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,8,16,0.85)' }}>
-          <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(255,255,255,0.65)', marginBottom: 12 }}>Prépare-toi</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(255,255,255,0.65)', marginBottom: 12 }}>{tr.video_get_ready || 'Prépare-toi'}</Text>
           <Text style={{ fontSize: 112, fontWeight: '800', color: '#AEEF4D', fontVariant: ['tabular-nums'], textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 18 }}>{introN}</Text>
           <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 10 }}>Respire… on commence.</Text>
         </View>

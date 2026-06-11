@@ -24,8 +24,20 @@
 //     Empêche qu'un attaquant ayant intercepté le nonce (ex: photo du QR
 //     code) puisse drainer la session avant la TV légitime.
 //   - Anti-rejeu : tokens nulled au premier poll réussi.
-//   - Rate-limit poll : 1 req/sec/nonce (vérif `last_poll_at` lazy).
+//   - Rate-limit poll : 1 req/sec/nonce (vérif `last_poll_at` lazy,
+//     migration 20260610100500). Réponse 429, la TV retente au tick
+//     suivant (intervalle 2 s > 1 s, donc jamais throttlée en usage normal).
 //   - TTL strict 5 min : `expires_at` posé à l'init.
+//
+// Limite assumée (audit 2026-06-10 E-5) : le redeem n'exige QUE le nonce +
+// un JWT valide — c'est inhérent au design, l'iPhone ne connaît que le
+// contenu du QR, et mettre le tv_secret dans le QR détruirait la protection
+// du poll contre les photos du QR. Conséquence : quiconque photographie le
+// QR pendant ses 5 min de vie peut redeem AVANT le téléphone légitime, avec
+// SON propre compte — la TV se loggue alors sur le compte de l'attaquant
+// (confusion/déni, pas de vol de session : le poll reste protégé par le
+// secret). Mitigations en place : TTL 5 min, redeem one-shot
+// (already-redeemed 409), contexte physique (QR affiché dans le salon).
 //
 // La fonction utilise SERVICE_ROLE pour bypass RLS de `tv_pairings` (la
 // table est verrouillée par défaut, cf. migration).
@@ -174,19 +186,34 @@ async function handlePoll(body: {
   const { data: pairing, error: lookupErr } = await adminClient
     .from("tv_pairings")
     .select(
-      "nonce, tv_secret, expires_at, redeemed_user_id, access_token, refresh_token, consumed_at",
+      "nonce, tv_secret, expires_at, redeemed_user_id, access_token, refresh_token, consumed_at, last_poll_at",
     )
     .eq("nonce", nonce)
     .maybeSingle();
   if (lookupErr) return json({ error: "lookup-failed" }, 500);
   if (!pairing) return json({ error: "not-found" }, 404);
 
-  // Secret check : on ne révèle PAS la cause précise pour éviter de
-  // dire à un attaquant "bon nonce, mauvais secret" — même réponse
-  // que not-found.
+  // Secret check EN PREMIER : on ne révèle PAS la cause précise pour
+  // éviter de dire à un attaquant "bon nonce, mauvais secret" — même
+  // réponse que not-found. Et surtout, le rate-limit n'est stampé QU'APRÈS
+  // un secret valide : sinon un attaquant qui ne connaît que le nonce
+  // (photo du QR) pourrait poller à 1 Hz et maintenir la TV légitime en
+  // 429 permanent (DoS du pairing).
   if (pairing.tv_secret !== tvSecret) {
     return json({ error: "not-found" }, 404);
   }
+
+  // Rate-limit lazy : 1 poll/s/nonce. La TV polle toutes les 2 s, donc un
+  // client légitime n'est jamais throttlé ; seules les requêtes au secret
+  // valide comptent dans la fenêtre (cf. ci-dessus).
+  const lastPollMs = pairing.last_poll_at ? Date.parse(pairing.last_poll_at) : 0;
+  if (lastPollMs && Date.now() - lastPollMs < 1000) {
+    return json({ error: "too-many-requests" }, 429);
+  }
+  await adminClient
+    .from("tv_pairings")
+    .update({ last_poll_at: new Date().toISOString() })
+    .eq("nonce", nonce);
 
   if (new Date(pairing.expires_at).getTime() < Date.now()) {
     return json({ error: "expired" }, 410);

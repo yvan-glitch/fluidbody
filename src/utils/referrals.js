@@ -69,16 +69,25 @@ export async function claimReferralCode(supabase, code) {
 }
 
 // À appeler une fois le `Purchases.purchasePackage` validé côté RC.
-// Idempotent — la RPC checke `first_paid_subscription_at` et no-op si
-// déjà crédité.
-export async function creditReferralOnPaid(supabase) {
+// Depuis 2026-06-10 (audit C-2) : passe par l'edge function `confirm-purchase`
+// qui VÉRIFIE le paiement via l'API RevenueCat (clé secrète server-side) avant
+// de poser profiles.is_subscriber + créditer le parrain. L'ancienne RPC
+// directe `credit_referral_on_first_paid` n'est plus exécutable par le client.
+// Idempotent — safe à rappeler à chaque achat/restore. En bonus, ça peuple
+// enfin profiles.is_subscriber / rc_app_user_id, dont dépendent le flux tvOS
+// et le fallback RC de sign-video-url.
+// `rcAppUserId` = résultat de `Purchases.getAppUserID()`.
+export async function creditReferralOnPaid(supabase, rcAppUserId) {
   if (!supabase) return { ok: false, error: 'offline' };
+  if (!rcAppUserId) return { ok: false, error: 'no_rc_app_user_id' };
   try {
-    const { data, error } = await supabase.rpc('credit_referral_on_first_paid');
-    if (error) return { ok: false, error: 'rpc_error', detail: error.message || String(error) };
+    const { data, error } = await supabase.functions.invoke('confirm-purchase', {
+      body: { rc_app_user_id: String(rcAppUserId) },
+    });
+    if (error) return { ok: false, error: 'fn_error', detail: error.message || String(error) };
     return data || { ok: false, error: 'bad_response' };
   } catch (e) {
-    return { ok: false, error: 'rpc_throw', detail: e?.message || String(e) };
+    return { ok: false, error: 'fn_throw', detail: e?.message || String(e) };
   }
 }
 

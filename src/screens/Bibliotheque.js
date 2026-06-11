@@ -464,6 +464,7 @@ const PILIER_LABELS = {
 // favori heart top-right, métadonnées en bas.
 function SeanceCard({ entry, width, height = 170, lang, labels, onPress, favorite, onToggleFavorite, favoriteLabel }) {
   const { pilier } = entry;
+  const trCard = T[lang] || T.fr;
   return (
     <View style={{ width, height, borderRadius: 14, overflow: 'hidden' }}>
       <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={{ flex: 1 }}>
@@ -482,7 +483,7 @@ function SeanceCard({ entry, width, height = 170, lang, labels, onPress, favorit
         >
           <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 3 }} numberOfLines={1}>
             {(labels && labels[pilier.key]) || pilier.label}
-            {entry.etape ? ` · ${entry.etape}` : ''}
+            {entry.etape ? ` · ${(trCard.etapes && trCard.etapes[entry.etape]) || entry.etape}` : ''}
           </Text>
           <Text style={{ fontSize: 15, fontWeight: '600', color: '#ffffff', lineHeight: 19 }} numberOfLines={2}>
             {entry.titre}
@@ -879,7 +880,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
             {typeOptions.map((t) => (
               <FilterChip
                 key={'tf-' + t}
-                label={t}
+                label={(tr.etapes && tr.etapes[t]) || t}
                 active={filterTypes.has(t)}
                 onPress={() => toggleType(t)}
               />
