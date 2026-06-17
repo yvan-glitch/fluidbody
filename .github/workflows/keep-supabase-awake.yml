@@ -1,0 +1,14 @@
+name: keep-supabase-awake
+on:
+  schedule:
+    - cron: '0 6 * * *'      # tous les jours à 06h00 UTC
+  workflow_dispatch:          # + bouton "Run" manuel
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Requête DB (reset le compteur d'inactivité)
+        run: |
+          curl --fail --silent --show-error \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            "https://ctvtjeidkqpdsmhsjsij.supabase.co/rest/v1/keep_alive?select=id&limit=1"
