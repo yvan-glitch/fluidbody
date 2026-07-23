@@ -205,7 +205,16 @@ function CelebrationOverlay({ visible, onDone, pilier, lang, seance }) {
 
   useEffect(() => {
     if (!visible) return;
+    // Signature haptique de fin de séance (2026-07-23) : une chorégraphie en
+    // trois temps calée sur l'animation — burst initial (succès), deux pulses
+    // légers pendant l'envol des particules, puis un succès final quand la
+    // médaille se pose. Le moment le plus important de l'app doit se SENTIR.
     hapticSuccess();
+    const hapticTimers = [
+      setTimeout(hapticLight, 180),
+      setTimeout(hapticLight, 380),
+      setTimeout(hapticSuccess, 820),
+    ];
     Animated.parallel([
       Animated.timing(opacAnim,  { toValue: 1, duration: 300, useNativeDriver: true }),
       Animated.spring(scaleAnim, { toValue: 1, friction: 7, tension: 80, useNativeDriver: true }),
@@ -237,7 +246,10 @@ function CelebrationOverlay({ visible, onDone, pilier, lang, seance }) {
     // Auto-dismiss after 6s \u2014 long enough to read + decide to share, but not
     // so long the user gets stuck on the celebration screen.
     autoDismissRef.current = setTimeout(onDone, 6000);
-    return clearAutoDismiss;
+    return function() {
+      clearAutoDismiss();
+      hapticTimers.forEach(function(t) { clearTimeout(t); });
+    };
   }, [visible]);
 
   async function handleShare() {

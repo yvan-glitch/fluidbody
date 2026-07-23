@@ -521,7 +521,9 @@ function useStableCallback(fn) {
 }
 
 // Options d'onglets hoistées (les TabIcon* sont des déclarations hoistées).
-const TAB_OPTIONS_HOME = { tabBarIcon: function() { return null; } };
+// (2026-07-23) Séances était le SEUL onglet sans icône — la méduse de la
+// marque (IconJellyfish) prend sa place, même famille de tracé que les autres.
+const TAB_OPTIONS_HOME = { tabBarIcon: function(props) { return <IconJellyfish color={tabBarIconTint(props && props.color)} size={(props && props.size) || 20} strokeWidth={1.8} />; } };
 const TAB_OPTIONS_ACTIVITY = { tabBarIcon: function(props) { return <TabIconActivity {...props} />; } };
 const TAB_OPTIONS_RESUME = { tabBarIcon: function(props) { return <TabIconResume {...props} />; } };
 const TAB_OPTIONS_BIBLIO = { tabBarIcon: function(props) { return <TabIconBiblio {...props} />; } };

@@ -327,10 +327,27 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
         : 'The subscription renews automatically unless cancelled at least 24h before the end of the period. Payment is charged to your Apple account. Manage or cancel in Settings > Apple ID > Subscriptions.');
   var monthlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.monthly];
   var yearlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.yearly];
-  var monthlyPriceRaw = getRcPriceString(monthlyPkg) || 'CHF 12.90';
-  var yearlyPriceRaw = getRcPriceString(yearlyPkg) || 'CHF 99.00';
+  // (2026-07-23) Prix ENTIÈREMENT localisés via RevenueCat/StoreKit :
+  // - grand prix de la carte = prix d'INTRO App Store si défini (12.90/99 en
+  //   Suisse), sinon prix standard ;
+  // - « Puis X » = prix standard localisé (avant : « Puis 24.90 CHF » codé en
+  //   dur → incohérent pour tout client hors storefront suisse).
+  // Fallbacks CHF conservés pour l'affichage hors-ligne / packages absents.
+  var monthlyIntroStr = (monthlyPkg && monthlyPkg.product && monthlyPkg.product.introPrice && monthlyPkg.product.introPrice.priceString) || null;
+  var yearlyIntroStr = (yearlyPkg && yearlyPkg.product && yearlyPkg.product.introPrice && yearlyPkg.product.introPrice.priceString) || null;
+  var monthlyStdStr = getRcPriceString(monthlyPkg) || null;
+  var yearlyStdStr = getRcPriceString(yearlyPkg) || null;
+  var monthlyPriceRaw = monthlyIntroStr || monthlyStdStr || 'CHF 12.90';
+  var yearlyPriceRaw = yearlyIntroStr || yearlyStdStr || 'CHF 99.00';
   var monthlyDisplay = withPeriod(monthlyPriceRaw, isFr ? '/mois' : '/mo');
   var yearlyDisplay = withPeriod(yearlyPriceRaw, isFr ? '/an' : '/yr');
+  // Small print « Puis X/mois » — dynamique dès qu'on a un vrai prix store.
+  var thenMonthlyText = monthlyStdStr
+    ? ((isFr ? 'Puis ' : 'Then ') + monthlyStdStr + (isFr ? '/mois' : '/month'))
+    : (tr.paywall_founder_then_monthly || (isFr ? 'Puis 24.90 CHF/mois' : 'Then 24.90 CHF/month'));
+  var thenYearlyText = yearlyStdStr
+    ? ((isFr ? 'Puis ' : 'Then ') + yearlyStdStr + (isFr ? '/an' : '/yr'))
+    : (tr.paywall_founder_then_yearly || (isFr ? 'Puis 199 CHF/an' : 'Then 199 CHF/year'));
 
   const selectedPrice = selected === 'yearly' ? yearlyDisplay : monthlyDisplay;
   const testimonials = Array.isArray(tr.paywall_testimonials) ? tr.paywall_testimonials : null;
@@ -555,8 +572,8 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 </Text>
                 <Text style={{ fontSize: 13, fontWeight: '500', color: '#ffffff', lineHeight: 20, letterSpacing: -0.1 }}>
                   {isFr
-                    ? 'Mensuel — 12.90 CHF/mois les 3 premiers mois, puis 24.90.\nAnnuel — 99 CHF la première année, puis 199.'
-                    : 'Monthly — 12.90 CHF/mo for the first 3 months, then 24.90.\nYearly — 99 CHF the first year, then 199.'}
+                    ? ('Mensuel — ' + monthlyPriceRaw + '/mois les 3 premiers mois, puis ' + (monthlyStdStr || '24.90 CHF') + '.\nAnnuel — ' + yearlyPriceRaw + ' la première année, puis ' + (yearlyStdStr || '199 CHF') + '.')
+                    : ('Monthly — ' + monthlyPriceRaw + '/mo for the first 3 months, then ' + (monthlyStdStr || '24.90 CHF') + '.\nYearly — ' + yearlyPriceRaw + ' the first year, then ' + (yearlyStdStr || '199 CHF') + '.')}
                 </Text>
               </GlassView>
               {/* Bandeau bonus parrainage — uniquement si l'utilisateur a
@@ -615,7 +632,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                   annualLabel,
                   tr.paywall_founder_intro_yearly_sub || (isFr ? 'Tarif fondateur · 1re année' : 'Founder pricing · first year'),
                   yearlyDisplay,
-                  tr.paywall_founder_then_yearly || (isFr ? 'Puis 199 CHF/an' : 'Then 199 CHF/year'),
+                  thenYearlyText,
                   tr.paywall_founder_save_intro_yearly || (isFr
                     ? ('Économise ' + FOUNDER_INTRO_SAVINGS_CHF + ' CHF la 1re année')
                     : ('Save ' + FOUNDER_INTRO_SAVINGS_CHF + ' CHF on year one'))
@@ -625,7 +642,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                   monthlyLabel,
                   tr.paywall_founder_intro_monthly_sub || (isFr ? 'Tarif fondateur · 3 premiers mois' : 'Founder pricing · first 3 months'),
                   monthlyDisplay,
-                  tr.paywall_founder_then_monthly || (isFr ? 'Puis 24.90 CHF/mois' : 'Then 24.90 CHF/month'),
+                  thenMonthlyText,
                   null
                 )}
               </View>
