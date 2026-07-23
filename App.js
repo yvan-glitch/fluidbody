@@ -128,6 +128,7 @@ import TVLoginScreen from './src/screens/TVLoginScreen';
 import ProfilTV from './src/screens/ProfilTV';
 import { IS_TV } from './src/utils/platformTV';
 import ActivityScreen from './src/screens/Activity';
+import ProgressScreen from './src/screens/Progress';
 import ProfileOnboardingScreen from './src/screens/ProfileOnboarding';
 import SabrinaProfileTVScreen, { SabrinaProfileModal } from './src/screens/SabrinaProfile';
 import { detectNewUnlocks, prime as primeAchievements, getAchievementById, recordPilierUsage, getRecentPiliers, clearAchievements } from './src/utils/achievements';
@@ -504,8 +505,7 @@ import { primePreferencesCache } from './src/utils/userPreferences';
 // Résultat : un setState sans rapport ne re-rend plus que MainApp lui-même.
 // ══════════════════════════════════
 const MonCorpsMemo = memo(MonCorps);
-const ActivityScreenMemo = memo(ActivityScreen);
-const ResumeScreenMemo = memo(ResumeScreen);
+const ProgressScreenMemo = memo(ProgressScreen);
 const BiblioMemo = memo(Biblio);
 const ProfilScreenMemo = memo(ProfilScreen);
 
@@ -2168,10 +2168,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
               screenOptions={TAB_NAV_SCREEN_OPTIONS}
               screenListeners={TAB_NAV_SCREEN_LISTENERS}
             >
+            {/* Refonte IA 2026-07-23 : 5 onglets → 4. « Séances » (catalogue),
+                « Biblio », « Progrès » (fusion Résumé + Activité, Statistics en
+                « voir plus »), « Profil ». Trois surfaces de progression → une. */}
             <Tab.Screen name={tr.tabs[0]} options={TAB_OPTIONS_HOME}>{() => <MonCorpsMemo prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} onTensionChange={onTensionChange} streak={streak} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={onTryFreeSession} saveHealthKitWorkout={saveHealthKitWorkout} supabase={supabase} supaUser={supaUser} />}</Tab.Screen>
-            <Tab.Screen name={tr.activity_tab || 'Activité'} options={TAB_OPTIONS_ACTIVITY}>{() => <ActivityScreenMemo lang={lang} supabase={supabase} supaUser={supaUser} done={done} />}</Tab.Screen>
-            <Tab.Screen name={tr.tabs[1]} options={TAB_OPTIONS_RESUME}>{() => <ResumeScreenMemo done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={onCreateAccount} onOpenStatistics={onOpenStatistics} />}</Tab.Screen>
             <Tab.Screen name={tr.tabs[2]} options={TAB_OPTIONS_BIBLIO}>{() => <BiblioMemo lang={lang} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
+            <Tab.Screen name={tr.tabs[1]} options={TAB_OPTIONS_RESUME}>{() => <ProgressScreenMemo done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supabase={supabase} supaUser={supaUser} onCreateAccount={onCreateAccount} onOpenStatistics={onOpenStatistics} />}</Tab.Screen>
             <Tab.Screen name={tr.tabs[3]} options={TAB_OPTIONS_PROFIL}>{() => <ProfilScreenMemo prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={onProfilLogout} onCreateAccount={onCreateAccount} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={onRestorePurchases} onReset={resetAllData} onOpenTimer={onOpenTimer} onOpenStatistics={onOpenStatistics} onOpenSabrina={onOpenSabrina} onOpenAchievements={onOpenAchievements} onOpenDownloads={onOpenDownloads} onOpenPreferences={onOpenPreferences} onEditProfile={onEditProfile} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
           </Tab.Navigator>
         </NavigationContainer>

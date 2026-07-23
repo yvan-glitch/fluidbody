@@ -23,7 +23,9 @@ export const ZONE_TO_PILIER = { 0: 'p2', 1: 'p1', 2: 'p3', 3: 'p4', 4: 'p5', 5: 
 export const T = {
   fr: {
     lang: 'fr', flag: '🇫🇷', nom: 'Français',
-    tabs: ['FluidBody+', 'Résumé', 'Biblio', 'Profil'],
+    // Refonte IA 2026-07-23 : « FluidBody+ » (marque) → « Séances » (dit ce que
+    // contient l'onglet) ; « Résumé » → « Progrès » (fusion Résumé + Activité).
+    tabs: ['Séances', 'Progrès', 'Biblio', 'Profil'],
     cest_parti: "C'est parti !",
     hk_skip: 'Passer',
     hk_title: 'Connecte Apple Santé',
@@ -740,7 +742,7 @@ export const T = {
   },
   en: {
     lang: 'en', flag: '🇬🇧', nom: 'English',
-    tabs: ['FluidBody+', 'Summary', 'Library', 'Profile'],
+    tabs: ['Sessions', 'Progress', 'Library', 'Profile'],
     cest_parti: "Let's go!",
     hk_skip: 'Skip',
     hk_title: 'Connect Apple Health',
