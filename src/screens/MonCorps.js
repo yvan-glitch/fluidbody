@@ -34,6 +34,8 @@ import { shouldCelebrate, markCelebrated } from '../utils/streakMilestones';
 import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
+import ChallengeModal from '../components/ChallengeModal';
+import { CHALLENGE_7J, challengeDoneCount, challengeNextDay } from '../constants/challenge';
 import { safeNativeCall, diag } from '../utils/safeNativeCall';
 import { getActiveProgram, getProgramStats } from '../utils/programs';
 import MyPrograms from './MyPrograms';
@@ -1001,6 +1003,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   var [savedPrograms, setSavedPrograms] = useState([]);
   var [searchQuery, setSearchQuery] = useState('');
   var [searchEtape, setSearchEtape] = useState(null);
+  // Défi 7 jours « Libère ton dos » — cf. src/constants/challenge.js (flag enabled).
+  var [showChallenge, setShowChallenge] = useState(false);
   // Duration filter — partagé entre l'onglet Explorer et Recherche.
   // Buckets : '5' (<=5min), '10' (6-10min), '1520' (15-20min), 'long' (>20min).
   var [durationFilter, setDurationFilter] = useState(null);
@@ -1594,6 +1598,31 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 </TouchableOpacity>
               ) : null}
               <Text style={{ fontSize: 13, fontWeight: '500', fontStyle: 'italic', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.1, marginBottom: 14, paddingHorizontal: 4 }}>« {getDailyQuote()} »  <Text style={{ color: '#AEEF4D', fontWeight: '700', fontStyle: 'normal' }}>Sabrina</Text></Text>
+              {/* Défi 7 jours « Libère ton dos » — n'apparaît que quand
+                  CHALLENGE_7J.enabled est true (vidéos en ligne). */}
+              {CHALLENGE_7J.enabled ? (function() {
+                var cdCount = challengeDoneCount(done);
+                var cdNext = challengeNextDay(done);
+                var cdDone = cdNext === -1;
+                return (
+                  <TouchableOpacity
+                    onPress={function() { hapticLight(); setShowChallenge(true); }}
+                    activeOpacity={0.88}
+                    accessibilityRole="button"
+                    accessibilityLabel={(lang === 'fr' ? 'Défi 7 jours — Libère ton dos, jour ' : '7-day challenge — Free your back, day ') + Math.min(cdCount + 1, 7)}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 14, marginBottom: 14, backgroundColor: 'rgba(174,239,77,0.10)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.5)' }}
+                  >
+                    <MeduseCornerIcon size={40} tint="rgba(174,239,77,1)" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#AEEF4D', letterSpacing: 1.5, textTransform: 'uppercase' }}>{lang === 'fr' ? 'Défi 7 jours' : '7-day challenge'}</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '700', color: '#ffffff', marginTop: 2 }}>{lang === 'fr' ? 'Libère ton dos' : 'Free your back'}</Text>
+                    </View>
+                    <View style={{ backgroundColor: cdDone ? '#AEEF4D' : 'rgba(255,255,255,0.10)', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: cdDone ? '#001226' : '#ffffff' }}>{cdDone ? '🏆 7/7' : cdCount + '/7'}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })() : null}
               <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
                 {glassCell(mosaicImages[0], halfW, rowH1, 'm0')}
                 {glassCell(mosaicImages[1], halfW, rowH1, 'm1')}
@@ -2218,6 +2247,21 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         }}
       />
 
+      <ChallengeModal
+        visible={showChallenge}
+        onClose={function() { setShowChallenge(false); }}
+        lang={lang}
+        done={done}
+        isSubscriber={isSubscriber}
+        onActivateSubscription={onActivateSubscription}
+        onOpenSeance={function(pilierKey, idx) {
+          var target = piliers.find(function(x) { return x.key === pilierKey; });
+          if (!target) return;
+          setShowChallenge(false);
+          setOpenInitialIdx(typeof idx === 'number' ? idx : null);
+          setOpenPilier(target);
+        }}
+      />
       <CreateProgramScreen visible={showCreateProg} onClose={function() { setShowCreateProg(false); }} lang={lang} onSaved={loadSavedPrograms} />
       {(function() {
         // Defensive guard around the BreathingCheckIn modal — non-critical
