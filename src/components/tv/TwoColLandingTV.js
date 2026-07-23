@@ -27,7 +27,7 @@ import { getThisWeekSchedule } from '../../utils/weeklySchedule';
 
 const { width: SW } = Dimensions.get('window');
 const SIDE = 80;
-const FITNESS_GREEN = '#00DB7D';
+const FITNESS_GREEN = '#AEEF4D'; // lime marque — couleur d'action unique TV (ex-#00DB7D)
 const TEXT_SHADOW = { textShadowColor: 'rgba(0,0,0,0.45)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } };
 const GLOW = Platform.OS === 'ios'
   ? { shadowColor: '#FFFFFF', shadowOpacity: 0.78, shadowRadius: 40, shadowOffset: { width: 0, height: 0 } }
@@ -40,7 +40,7 @@ function CTA({ label, variant, onPress, focusPreferred }) {
   const ringO = useRef(new Animated.Value(0)).current;
   useEffect(function () {
     Animated.parallel([
-      Animated.timing(scale, { toValue: focused ? 1.10 : 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(scale, { toValue: focused ? 1.08 : 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(ringO, { toValue: focused ? 1 : 0, duration: 180, useNativeDriver: true }),
     ]).start();
   }, [focused]);
@@ -61,7 +61,7 @@ function CTA({ label, variant, onPress, focusPreferred }) {
             {Platform.OS === 'ios' ? (
               <BlurView intensity={35} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
             ) : null}
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: focused ? 'rgba(0,240,138,0.92)' : 'rgba(0,219,125,0.88)' }]} pointerEvents="none" />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: focused ? 'rgba(196,247,110,0.95)' : 'rgba(174,239,77,0.9)' }]} pointerEvents="none" />
             <View style={[StyleSheet.absoluteFill, { borderRadius: 32, borderWidth: 1, borderColor: 'rgba(255,255,255,0.42)' }]} pointerEvents="none" />
             <Text style={{ fontSize: 21, fontWeight: '700', color: '#001B10', letterSpacing: 0.2 }}>{label}</Text>
           </View>
@@ -87,7 +87,7 @@ function MosaicCell({ image, size, onPress, focusPreferred }) {
   const ringO = useRef(new Animated.Value(0)).current;
   useEffect(function () {
     Animated.parallel([
-      Animated.timing(scale, { toValue: focused ? 1.10 : 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(scale, { toValue: focused ? 1.08 : 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(ringO, { toValue: focused ? 1 : 0, duration: 180, useNativeDriver: true }),
     ]).start();
   }, [focused]);
@@ -118,7 +118,7 @@ function ResumeCard({ image, title, pilierLabel, positionMillis, durationMillis,
   const ringO = useRef(new Animated.Value(0)).current;
   useEffect(function () {
     Animated.parallel([
-      Animated.timing(scale, { toValue: focused ? 1.04 : 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(scale, { toValue: focused ? 1.06 : 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(ringO, { toValue: focused ? 1 : 0, duration: 180, useNativeDriver: true }),
     ]).start();
   }, [focused]);

@@ -123,7 +123,7 @@ function CoachAvatar({ onPress }) {
   const [focused, setFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
   useEffect(function () {
-    Animated.timing(scale, { toValue: focused ? 1.10 : 1, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(scale, { toValue: focused ? 1.08 : 1, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [focused]);
   return (
     <Animated.View style={[

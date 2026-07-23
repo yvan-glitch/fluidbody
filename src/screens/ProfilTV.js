@@ -8,6 +8,7 @@
 // d'App.js fait `IS_TV && !supaUser` → TVLoginScreen). Donc on n'a
 // pas besoin de gérer le cas anonyme.
 
+import { useState } from 'react';
 import {
   Alert,
   StyleSheet,
@@ -20,20 +21,21 @@ import { T } from '../constants/data';
 import AnimatedPlus from '../components/AnimatedPlus';
 import { AquaticBackground, GlassCardTV } from '../components/tv';
 
-function Card({ label, value, focusPreferred, onPress, accent, danger }) {
-  const ringAccent = danger ? 'green' : (accent ? 'green' : 'cyan');
+function Card({ label, value, focusPreferred, onPress, accent, danger, wide }) {
+  // Ring focus blanc par défaut (unifié site-wide) — plus d'accent
+  // green/cyan arbitraire par carte. L'accent lime reste sur le LABEL
+  // (contenu), pas sur le geste focus.
   const variant = onPress ? 'elevated' : 'standard';
   return (
     <GlassCardTV
       onPress={onPress}
       focusPreferred={focusPreferred}
-      accent={ringAccent}
       variant={variant}
       shape="card"
       padding={0}
       tiltOnFocus={false}
       enhanced
-      style={styles.card}
+      style={[styles.card, wide ? styles.cardWide : null]}
       contentStyle={styles.cardContent}
       accessibilityLabel={label + ' ' + value}
     >
@@ -66,6 +68,9 @@ export default function ProfilTV({
 }) {
   const tr = T[lang] || T['fr'];
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+  // Feedback focus du bouton Retour — sans ça, la Siri Remote peut le
+  // sélectionner sans aucun indicateur visuel.
+  const [backFocused, setBackFocused] = useState(false);
 
   const subStatus = isAdmin
     ? (isFr ? 'Admin · accès complet' : 'Admin · full access')
@@ -96,7 +101,9 @@ export default function ProfilTV({
         {onClose ? (
           <TouchableOpacity
             onPress={onClose}
-            style={styles.backBtn}
+            onFocus={function() { setBackFocused(true); }}
+            onBlur={function() { setBackFocused(false); }}
+            style={[styles.backBtn, backFocused ? styles.backBtnFocused : null]}
             activeOpacity={0.85}
           >
             <Text style={styles.backBtnText}>{tr.retour || (isFr ? 'Retour' : 'Back')}</Text>
@@ -117,7 +124,7 @@ export default function ProfilTV({
         />
         {onOpenSabrina ? (
           <Card
-            label={isFr ? 'Votre coach' : 'Your coach'}
+            label={isFr ? 'Ta coach' : 'Your coach'}
             value={isFr ? 'Découvrir Sabrina' : 'Discover Sabrina'}
             accent
             onPress={onOpenSabrina}
@@ -131,6 +138,7 @@ export default function ProfilTV({
           label={isFr ? 'Déconnexion' : 'Sign out'}
           value={isFr ? 'Se déconnecter de cette TV' : 'Sign out of this TV'}
           danger
+          wide
           onPress={confirmLogout}
         />
       </View>
@@ -159,6 +167,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(174,239,77,0.4)',
   },
   backBtnText: { fontSize: 19, color: '#AEEF4D', fontWeight: '700', letterSpacing: 0.5 },
+  backBtnFocused: {
+    backgroundColor: 'rgba(174,239,77,0.16)',
+    borderColor: 'rgba(255,255,255,0.85)',
+    borderWidth: 3,
+    shadowColor: '#FFFFFF',
+    shadowOpacity: 0.6,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 0 },
+  },
 
   cardsRow: {
     flexDirection: 'row',
@@ -168,6 +185,12 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '47%',
+  },
+  // Déconnexion : pleine largeur — évite la 3e rangée orpheline avec une
+  // seule carte à gauche (5 cartes × 47%), et isole visuellement l'action
+  // destructive des cartes d'info.
+  cardWide: {
+    width: '100%',
   },
   cardContent: {
     paddingVertical: 36,

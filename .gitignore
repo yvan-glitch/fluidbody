@@ -64,3 +64,6 @@ fluidbody-privacy/
 .env.production
 .env.*.local
 .vercel
+
+# Clé API App Store Connect (dossier local, jamais commiter)
+KEY/

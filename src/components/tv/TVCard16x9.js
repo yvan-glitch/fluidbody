@@ -2,7 +2,7 @@
 //
 // Image full-bleed + bandeau bas glassy (BlurView intensity 20) sur lequel
 // vit le titre/sous-titre — texte lisible sans tout brouiller la photo.
-// Au focus : scale 1.10 (native driver) + GLOW lumineux blanc fort
+// Au focus : scale 1.08 (native driver, aligné site-wide) + GLOW lumineux blanc fort
 // (shadow opacity 0.78, radius 40) + ring blanc 3px opaque + voile blanc
 // très subtil pour sortir la card du fond. Android : fallback elevation.
 //
@@ -41,7 +41,7 @@ export default function TVCard16x9({
 
   useEffect(function () {
     Animated.parallel([
-      Animated.timing(scale, { toValue: focused ? 1.10 : 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(scale, { toValue: focused ? 1.08 : 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(ringOpacity, { toValue: focused ? 1 : 0, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
   }, [focused]);

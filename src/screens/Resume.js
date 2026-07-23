@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, ScrollView,
   Dimensions, StyleSheet, Animated, Easing,
@@ -431,10 +431,12 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
     setShowNameInput(false);
     AsyncStorage.setItem('fluid_meduse_name', name);
   }
-  var totalDone = Object.values(done).flat().filter(Boolean).length;
+  // PERF (2026-07-23) : totalDone / recentSeances / sortedPiliers étaient
+  // recalculés à chaque render — mémoïsés sur leurs vraies dépendances.
+  var totalDone = useMemo(function() { return Object.values(done).flat().filter(Boolean).length; }, [done]);
   var totalDoneCapped = Math.min(totalDone, 40);
   var pct = Math.round(totalDoneCapped / 40 * 100);
-  var recommendedPiliers = (tensionIdxs || []).map(function(i) { return ZONE_TO_PILIER[i]; });
+  var recommendedPiliers = useMemo(function() { return (tensionIdxs || []).map(function(i) { return ZONE_TO_PILIER[i]; }); }, [tensionIdxs]);
 
   var now = new Date();
   var dayNames = { fr: ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'], en: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'], es: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'], it: ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'] };
@@ -443,14 +445,18 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
   var mn = (monthNames[lang] || monthNames.fr)[now.getMonth()];
   var dateStr = dn + ' ' + now.getDate() + ' ' + mn;
 
-  var recentSeances = [];
-  piliers.forEach(function(p) {
-    var d = done[p.key];
-    if (d) d.forEach(function(v, i) { if (v === true || v === 'true') recentSeances.push({ pilier: p, idx: i }); });
-  });
-  recentSeances = recentSeances.slice(-5).reverse();
+  var recentSeances = useMemo(function() {
+    var rs = [];
+    piliers.forEach(function(p) {
+      var d = done[p.key];
+      if (d) d.forEach(function(v, i) { if (v === true || v === 'true') rs.push({ pilier: p, idx: i }); });
+    });
+    return rs.slice(-5).reverse();
+  }, [done, lang]);
 
-  var sortedPiliers = [].concat(piliers).sort(function(a, b) { return (recommendedPiliers.includes(a.key) ? 0 : 1) - (recommendedPiliers.includes(b.key) ? 0 : 1); });
+  var sortedPiliers = useMemo(function() {
+    return [].concat(piliers).sort(function(a, b) { return (recommendedPiliers.includes(a.key) ? 0 : 1) - (recommendedPiliers.includes(b.key) ? 0 : 1); });
+  }, [lang, recommendedPiliers]);
 
   return (
     <View style={{ flex: 1 }}>

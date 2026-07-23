@@ -21,33 +21,42 @@ No test runner or linter is configured.
 
 ## Architecture
 
-**This is a single-file app.** Nearly all application code lives in `App.js` (~3765 lines). There is no component/screen directory structure — screens, navigation, business logic, translations, content data, and styling are all in `App.js`.
+**App.js (~2 950 lignes) est l'orchestrateur racine**, plus l'unique fichier de l'app : la majorité du code vit désormais sous `src/` (~125 fichiers). App.js garde : les safe-requires natifs, l'init Sentry, la navigation (Tab.Navigator + CustomTabBar), MainApp (état global : abonnement RevenueCat, streak, done, paywall), l'enchaînement des overlays de premier lancement (WelcomeAnimation → MedicalDisclaimer → CoachWelcome), l'auth Supabase (getSession + onAuthStateChange — ATTENTION : ne jamais `await` un appel réseau directement dans le callback onAuthStateChange, deadlock du verrou auth ; le travail est différé via setTimeout(0)) et le root (onboarding, profil).
 
-### Key sections in App.js (top to bottom)
+### Arborescence src/
 
-1. **Imports & safe-requires** (lines 1-28): Optional native modules (RevenueCat, Notifications, Haptics) are loaded with try/catch to work in Expo Go
-2. **Utility functions** (lines 30-210): Streak counting, video URL detection, haptics, video resume/persistence via AsyncStorage
-3. **Translations** (`const T`, ~line 253): Multi-language string map keyed by `fr|en|es|it`
-4. **Content data** (~lines 680-840): Articles (`ARTICLES`), fiches (`FICHES`), séances (`SEANCES_FR/EN/ES/IT`), piliers (`PILIERS_BASE`)
-5. **SVG icon components** (~lines 885-930): Body zone icons (épaules, dos, hanches, etc.)
-6. **Animated visuals** (~lines 931-1150): Jellyfish (`Meduse`) animation, celebration overlay
-7. **VideoPlayer** (~line 1465): Full video player with HLS (Bunny CDN), skip controls, resume support
-8. **Screen components**:
-   - `MonCorps` (~line 2176): Home/body map screen with tension zone selection + orbs
-   - `Biblio` (~line 2586): Article/fiche library
-   - `Progresser` (~line 2690): Progress stats
-   - `ParcoursScreen` (~line 2760): Journey/profile screen
-   - `AuthScreen` (~line 2903): Supabase email auth (magic link)
-   - `OnboardingScreen` (~line 3002): First-launch onboarding flow
-9. **Notifications & Supabase setup** (~line 3300): Notification scheduling, Supabase client init
-10. **MainApp** (~line 3351): Tab navigator with subscription/IAP logic (RevenueCat)
-11. **App root** (~line 3588): Onboarding check, auth state, profile sync
+```
+src/
+├── components/       # ~30 composants (VideoPlayer, PaywallModal, Meduse,
+│   │                 #  StreakCelebration, ElementQuiz, DownloadManager…)
+│   ├── ui/           # primitives verre : GlassView, GlassCard, GlassPressable,
+│   │                 #  glassTokens (durées/easings) — GlassCard accepte onPress
+│   ├── tv/           # variantes Apple TV (GlassCardTV, PilierPanelTV…)
+│   └── charts/       # LineChart, MiniRingsRow, CountUpNumber…
+├── screens/          # ~20 écrans (MonCorps, Profil, Resume, Bibliotheque,
+│                     #  Activity, Statistics, SignIn, ProfileOnboarding…)
+├── constants/        # data.js (traductions T fr/en/es/it + séances + piliers),
+│                     #  pilierContent, sabrinaQuotes (citation du jour), iap, legal
+├── utils.js          # helpers transverses (haptics, piliers, accès séances)
+├── utils/            # ~28 modules : healthkit, healthConnect, notifications,
+│                     #  downloadsCache, withTimeout, accountDeletion, statistics…
+├── theme/            # ThemeProvider (SOMBRE uniquement, décision produit)
+├── hooks/            # useLiveHeartRate…
+└── lib/              # supabase.js (client + AsyncStorage)
+```
 
-### Only other source file
-- `components/ErrorBoundary.js`: React error boundary with retry button
+### Règles de performance (leçons du 2026-07-07)
 
-### Entry point
-- `index.js` registers `App` via `registerRootComponent`
+- **Jamais plusieurs BlurView dans un ScrollView** : l'écran Profil utilise
+  GlassCard `intensity={0}` (verre léger sans blur temps réel) pour tout ce qui
+  défile ; seuls les modals gardent un vrai blur.
+- **Pas d'ombre animée frame par frame** : les blobs de LivingBackground sont
+  rasterisés (`shouldRasterizeIOS` / `renderToHardwareTextureAndroid`).
+
+### Wording
+
+- **Tutoiement partout** (unifié le 2026-07-07). Les italiques font partie du
+  design et sont voulus par Yvan — ne pas les retirer.
 
 ## Backend & Services
 

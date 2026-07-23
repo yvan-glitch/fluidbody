@@ -8,9 +8,8 @@
 // records the play (we don't want it to loop on every launch if it half-played).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Animated, Easing, StyleSheet, Platform } from 'react-native';
+import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import LiquidGlass from './LiquidGlass';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MeduseCornerIcon } from './Meduse';
 
@@ -88,7 +87,9 @@ export default function WelcomeAnimation({ visible, lang, prenom, tr, onDone }) 
         locations={[0, 0.55, 1]}
         style={StyleSheet.absoluteFill}
       />
-      <LiquidGlass intensity={Platform.OS === 'ios' ? 18 : 0} tint="dark" style={StyleSheet.absoluteFill} />
+      {/* Voile simple (pas d'UIGlassEffect : l'overlay est en fondu, et
+          UIVisualEffectView rend mal sous alpha < 1 — cf. fix CoachWelcome). */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(4,14,26,0.30)' }]} />
       <View style={{ alignItems: 'center', paddingHorizontal: 32 }}>
         <Text
           style={{

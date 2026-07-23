@@ -109,7 +109,7 @@ export default function GlassCardTV({
     setFocused(true);
     if (onFocus) onFocus();
     Animated.parallel([
-      Animated.timing(scale, { toValue: 1.10, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1.08, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(ringOpacity, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       tiltOnFocus
         ? Animated.timing(tilt, { toValue: 1, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: false })

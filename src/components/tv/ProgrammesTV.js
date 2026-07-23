@@ -26,7 +26,7 @@ import { Icon } from '../Icons';
 import { pickBadge } from '../../utils/sessionBadges';
 
 const { width: SW, height: SH } = Dimensions.get('window');
-const FITNESS_GREEN = '#00DB7D';
+const FITNESS_GREEN = '#AEEF4D'; // lime marque — couleur d'action unique TV (ex-#00DB7D)
 const TEXT_SHADOW = { textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } };
 const SABRINA_ABOUT = require('../../../assets/coach/sabrina_8.jpg');
 
@@ -50,11 +50,11 @@ function FocusableSurface({ children, onPress, focusPreferred, height, glowColor
   const ringO = useRef(new Animated.Value(0)).current;
   useEffect(function () {
     Animated.parallel([
-      Animated.timing(scale, { toValue: focused ? 1.06 : 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(scale, { toValue: focused ? 1.08 : 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(ringO, { toValue: focused ? 1 : 0, duration: 180, useNativeDriver: true }),
     ]).start();
   }, [focused]);
-  // Card very large : scale 1.06 plutôt que 1.10 pour ne pas déborder de
+  // Card very large : scale 1.08, aligné sur la courbe de focus unifiée, sans déborder de
   // la mise en page latérale, mais glow et ring poussés au max.
   const glow = Platform.OS === 'ios'
     ? { shadowColor: glowColor || '#FFFFFF', shadowOpacity: 0.78, shadowRadius: 40, shadowOffset: { width: 0, height: 0 } }

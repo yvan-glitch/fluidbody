@@ -81,7 +81,7 @@ function StaggeredFadeIn({ delay, children }) {
 function HeaderKpiCard({ label, value, accent, formatter, delay }) {
   const { theme } = useTheme();
   return (
-    <GlassCard intensity={55} padding={14} borderRadius={GLASS_RADII.card} style={{ flex: 1 }}>
+    <GlassCard intensity={0} padding={14} borderRadius={GLASS_RADII.card} style={{ flex: 1 }}>
       <View style={{ alignItems: 'center' }}>
         <CountUpNumber
           value={value}
@@ -229,7 +229,7 @@ export default function StatisticsScreen({ lang, done, streak, supaUser, onClose
 
         {/* ── B. Pillar progression ── */}
         <StaggeredFadeIn delay={100}>
-          <GlassCard intensity={55} padding={18} borderRadius={GLASS_RADII.card}>
+          <GlassCard intensity={0} padding={18} borderRadius={GLASS_RADII.card}>
             <SectionTitle>{tr.stats_pillar_progress || 'Progression par pilier'}</SectionTitle>
             <HorizontalBarChart
               data={piliers}
@@ -241,7 +241,7 @@ export default function StatisticsScreen({ lang, done, streak, supaUser, onClose
 
         {/* ── C. Activity rings ── */}
         <StaggeredFadeIn delay={200}>
-          <GlassCard intensity={55} padding={18} borderRadius={GLASS_RADII.card}>
+          <GlassCard intensity={0} padding={18} borderRadius={GLASS_RADII.card}>
             <SectionTitle>{tr.stats_rings_section || 'Anneaux Activité'}</SectionTitle>
             {rings.week.length === 0 && rings.monthly.length === 0 ? (
               <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontStyle: 'italic' }}>
@@ -267,7 +267,7 @@ export default function StatisticsScreen({ lang, done, streak, supaUser, onClose
 
         {/* ── D. Heart-rate trends ── */}
         <StaggeredFadeIn delay={300}>
-          <GlassCard intensity={55} padding={18} borderRadius={GLASS_RADII.card}>
+          <GlassCard intensity={0} padding={18} borderRadius={GLASS_RADII.card}>
             <SectionTitle sub={tr.stats_hr_subtitle || ''}>
               {tr.stats_hr_trends || 'Fréquence cardiaque'}
             </SectionTitle>
@@ -307,7 +307,7 @@ export default function StatisticsScreen({ lang, done, streak, supaUser, onClose
 
         {/* ── E. Badges ── */}
         <StaggeredFadeIn delay={400}>
-          <GlassCard intensity={55} padding={18} borderRadius={GLASS_RADII.card}>
+          <GlassCard intensity={0} padding={18} borderRadius={GLASS_RADII.card}>
             <SectionTitle
               sub={typeof tr.stats_badges_unlocked === 'function' ? tr.stats_badges_unlocked(badges.unlockedCount, badges.list.length) : (badges.unlockedCount + ' / ' + badges.list.length)}
             >
@@ -329,7 +329,7 @@ export default function StatisticsScreen({ lang, done, streak, supaUser, onClose
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} onPress={function () { setDrawer(null); }} />
         {drawer ? (
           <View style={{ position: 'absolute', left: 16, right: 16, bottom: 40 }}>
-            <GlassCard intensity={70} padding={20} borderRadius={GLASS_RADII.cardLg}>
+            <GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.cardLg}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                 <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: colorForPct(drawer.pct) }} />
                 <Text style={{ flex: 1, fontSize: 18, fontWeight: '800', color: theme.colors.text }}>{drawer.label}</Text>

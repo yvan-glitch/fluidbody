@@ -76,6 +76,19 @@ module.exports = ({ config }) => {
       const name = Array.isArray(p) ? p[0] : p
       return !PLUGINS_INCOMPATIBLE_WITH_TVOS.includes(name)
     })
+    .map((p) => {
+      // Les extraPods iOS (GoogleUtilities/RecaptchaInterop en modular
+      // headers, requis par AppCheckCore ← GoogleSignIn) n'ont pas de sens
+      // sur tvOS : Google Sign-In y est strippé, et RecaptchaInterop ne
+      // déclare pas de cible tvOS → les garder ferait échouer le
+      // `pod install` du build TV. On les retire du bloc expo-build-properties.
+      if (Array.isArray(p) && p[0] === 'expo-build-properties' && p[1] && p[1].ios) {
+        const iosProps = { ...p[1].ios }
+        delete iosProps.extraPods
+        return ['expo-build-properties', { ...p[1], ios: iosProps }]
+      }
+      return p
+    })
     .concat([
       // Plugin officiel — passer `appleTVImages` génère les TVAppIcon.brandassets
       // ET configure ASSETCATALOG_COMPILER_APPICON_NAME=TVAppIcon dans le projet

@@ -15,7 +15,6 @@ import {
   View, Text, Animated, Easing, StyleSheet, Dimensions, Pressable, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import LiquidGlass from './LiquidGlass';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MeduseCornerIcon, Bulle, BULLES_ONBOARDING } from './Meduse';
 import LivingBackground from './LivingBackground';
@@ -138,10 +137,15 @@ export default function CoachWelcomeOverlay({ visible, onDone, lang, prenom }) {
             <MeduseCornerIcon size={148} breathCycleMs={2800} breathMaxScale={1.32} tint="rgba(174,239,77,1)" />
           </Animated.View>
 
-          {/* Card */}
+          {/* Card — verre léger SANS UIGlassEffect/BlurView : la carte est
+              animée (spring scale + fade), et UIVisualEffectView se
+              désaligne de son contenu quand un ancêtre est transformé ou en
+              alpha < 1 (bug vu sur iOS 26 : fond du verre décalé en haut à
+              gauche, signature hors carte). Fond semi-opaque + bordure =
+              même look sur ce dégradé, zéro glitch. */}
           <Animated.View style={{ transform: [{ scale: cardAnim }], width: '100%', maxWidth: 380 }}>
-            <View style={{ borderRadius: 28, overflow: 'hidden' }}>
-              <LiquidGlass intensity={Platform.OS === 'ios' ? 80 : 0} tint="dark" style={{ padding: 26, backgroundColor: 'rgba(8,18,32,0.55)' }}>
+            <View style={{ borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }}>
+              <View style={{ padding: 26, backgroundColor: 'rgba(8,18,32,0.72)' }}>
                 <Animated.Text
                   style={{
                     fontSize: 26, fontWeight: '800', color: '#ffffff', letterSpacing: -0.4,
@@ -183,7 +187,7 @@ export default function CoachWelcomeOverlay({ visible, onDone, lang, prenom }) {
                     — {coachName}
                   </Text>
                 </Animated.View>
-              </LiquidGlass>
+              </View>
             </View>
           </Animated.View>
         </View>

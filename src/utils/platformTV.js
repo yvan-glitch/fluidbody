@@ -44,7 +44,7 @@ export function tvFocusProps (preferred = false) {
     hasTVPreferredFocus: preferred,
     tvParallaxProperties: {
       enabled: true,
-      magnification: 1.06,
+      magnification: 1.0, // le scale JS unifié (1.08) gère la magnification — évite l'empilement natif+JS
       pressMagnification: 1.0,
     },
     // RN tvOS appelle ces handlers quand le focus engine entre/quitte

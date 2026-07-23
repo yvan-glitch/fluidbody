@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, ScrollView, Share, Alert, Modal, Dimensions, TextInput, Platform } from 'react-native';
+import { Text, StyleSheet, View, TouchableOpacity, ScrollView, Share, Alert, Modal, Dimensions, TextInput, Platform, Linking } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import GlassButton from '../components/GlassButton';
+import ElementQuiz from '../components/ElementQuiz';
 import { GlassCard, GLASS_RADII } from '../components/ui';
 import { useTheme } from '../theme/ThemeProvider';
 import { THEME_MODES } from '../theme';
@@ -79,6 +80,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   var sectionTitleColor = theme.colors.accentText;
   var shareRef = useRef(null);
   var [showCoachBio, setShowCoachBio] = useState(false);
+  var [showElementQuiz, setShowElementQuiz] = useState(false);
   var [showDevBio, setShowDevBio] = useState(false);
   var [showPairTv, setShowPairTv] = useState(false);
   function openPairAppleTV() {
@@ -558,7 +560,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   // Réglages / Compte / À propos). Each row pairs a localized label with
   // the icon key from src/components/Icons.js — emoji-free.
   var SECTION_LABELS = {
-    coach:    { iconKey: 'user',        fr: 'Votre coach', en: 'Your coach', es: 'Tu coach',     it: 'La tua coach' },
+    coach:    { iconKey: 'user',        fr: 'Ta coach', en: 'Your coach', es: 'Tu coach',     it: 'La tua coach' },
     activity: { iconKey: 'bar_chart',   fr: 'Mon activité', en: 'My activity', es: 'Mi actividad', it: 'La mia attività' },
     settings: { iconKey: 'gear',        fr: 'Réglages',     en: 'Settings',    es: 'Ajustes',      it: 'Impostazioni' },
     account:  { iconKey: 'credit_card', fr: 'Compte',       en: 'Account',     es: 'Cuenta',       it: 'Account' },
@@ -661,7 +663,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         )}
         <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
           <TouchableOpacity activeOpacity={0.92} onPress={handleAvatarTap} accessible={false}>
-            <GlassCard intensity={60} padding={18} borderRadius={GLASS_RADII.cardLg}>
+            <GlassCard intensity={0} padding={18} borderRadius={GLASS_RADII.cardLg}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                 <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
                   <Text style={{ fontSize: 20, fontWeight: '800', color: '#000000' }}>{prenom ? prenom.slice(0, 2).toUpperCase() : 'YT'}</Text>
@@ -738,7 +740,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             (referrals_count, earned, available). */}
         {supaUser && (
           <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
-            <GlassCard intensity={60} padding={20} borderRadius={GLASS_RADII.card} substrateColor={theme.glass.substrateAccent}>
+            <GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card} substrateColor={theme.glass.substrateAccent}>
               <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>
                 {tr.referral_section_title || 'Mon parrainage'}
               </Text>
@@ -818,7 +820,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         )}
 
         <SectionHeader sectionKey="coach" label={sectionLabel('coach')} />
-        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={60} padding={20} borderRadius={GLASS_RADII.card} substrateColor={theme.glass.substrateAccent}>
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card} substrateColor={theme.glass.substrateAccent}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
             <View style={{ width: 70, height: 70, borderRadius: 35, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginRight: 14 }}>
               <ExpoImage source={COACH_IMAGE} contentFit="cover" cachePolicy="memory-disk" style={{ flex: 1 }} />
@@ -828,7 +830,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <Text style={{ fontSize: 12, color: '#AEEF4D', marginTop: 2 }}>{tr.coach_subtitle || 'Experte Pilates · 30 ans d\'expérience'}</Text>
             </View>
           </View>
-          <Text style={{ fontSize: 13, fontWeight: '300', color: theme.colors.textSecondary, lineHeight: 20, fontStyle: 'italic', marginBottom: 14 }}>{tr.coach_bio || 'Passionnée par le mouvement conscient, je vous guide vers un corps plus libre et plus fort.'}</Text>
+          <Text style={{ fontSize: 13, fontWeight: '300', color: theme.colors.textSecondary, lineHeight: 20, fontStyle: 'italic', marginBottom: 14 }}>{tr.coach_bio || 'Passionnée par le mouvement conscient, je te guide vers un corps plus libre et plus fort.'}</Text>
           <TouchableOpacity activeOpacity={0.85} onPress={function() {
             if (onOpenSabrina) onOpenSabrina();
             else setShowCoachBio(true);
@@ -836,6 +838,42 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.coach_more || 'En savoir plus'}</Text>
           </TouchableOpacity>
         </GlassCard></View>
+
+        {/* Magic Days — séjours Pilates "les 4 éléments" avec Sabrina.
+            Ouvre la page dédiée du site (FR ou EN selon la langue). */}
+        <GlassCard
+          onPress={function() {
+            var url = (lang === 'fr') ? 'https://espace-pilates.ch/magicdays' : 'https://espace-pilates.ch/en/magicdays';
+            Linking.openURL(url).catch(function() {});
+          }}
+          accessibilityLabel={tr.magicdays_title || 'Magic Days'}
+          padding={18} borderRadius={16} intensity={0} substrateColor={theme.glass.substrateAccent}
+          style={{ marginHorizontal: 20, marginBottom: 16 }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+            <Icon name="compass" size={22} color="#AEEF4D" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.magicdays_title || 'Magic Days'}</Text>
+            <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.magicdays_sub || 'Séjours Pilates avec Sabrina · montagne, océan, désert'}</Text>
+          </View>
+          <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
+          </View>
+        </GlassCard>
+
+        {/* Quiz des 4 éléments — mini-jeu qui recommande un Magic Day. */}
+        <TouchableOpacity
+          onPress={function() { setShowElementQuiz(true); }}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          style={{ marginHorizontal: 20, marginTop: -6, marginBottom: 16, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, backgroundColor: 'rgba(174,239,77,0.10)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.28)' }}
+        >
+          <Text style={{ fontSize: 12.5, fontWeight: '700', color: '#AEEF4D' }}>
+            {(lang === 'fr') ? 'Quel élément es-tu ? · Fais le test' : 'Which element are you? · Take the quiz'}
+          </Text>
+        </TouchableOpacity>
+        <ElementQuiz visible={showElementQuiz} lang={lang} onClose={function() { setShowElementQuiz(false); }} />
 
         <Modal visible={showCoachBio} animationType="slide" transparent statusBarTranslucent>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.6)', justifyContent: 'center' }}>
@@ -862,13 +900,13 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
 
         <SectionHeader sectionKey="activity" label={sectionLabel('activity')} />
         {onOpenStatistics && (
-          <TouchableOpacity
+          <GlassCard
             onPress={onOpenStatistics}
-            activeOpacity={0.85}
-            accessibilityRole="button"
             accessibilityLabel={tr.stats_a11y_open || 'Ouvrir les statistiques avancées'}
-            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
+            padding={18} borderRadius={16} intensity={0} substrateColor={theme.glass.substrateAccent}
+            style={{ marginHorizontal: 20, marginBottom: 16 }}
           >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
               <StatsBarsIcon color="#AEEF4D" size={22} />
             </View>
@@ -877,20 +915,21 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.stats_subtitle || 'Ta progression dans le temps'}</Text>
             </View>
             <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
-          </TouchableOpacity>
+            </View>
+          </GlassCard>
         )}
 
         {/* Mes accomplissements — accès direct vers la vue dédiée 2-col
             des 15 badges (catalogue dans utils/achievements.js). Le compteur
             se met à jour live via le pub/sub achievements. */}
         {onOpenAchievements && (
-          <TouchableOpacity
+          <GlassCard
             onPress={onOpenAchievements}
-            activeOpacity={0.85}
-            accessibilityRole="button"
             accessibilityLabel={tr.profile_my_achievements_title || 'Mes accomplissements'}
-            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
+            padding={18} borderRadius={16} intensity={0} substrateColor={theme.glass.substrateAccent}
+            style={{ marginHorizontal: 20, marginBottom: 16 }}
           >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
               <Icon name="trophy" size={22} color="#AEEF4D" />
             </View>
@@ -906,18 +945,20 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               </Text>
             </View>
             <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
-          </TouchableOpacity>
+            </View>
+          </GlassCard>
         )}
 
         {/* Mes téléchargements — accessible aux iPhone abonnés. La gestion
             réelle des fichiers (cache, suppression, espace) vit dans le
             screen dédié MesTelechargements. */}
         {onOpenDownloads && (
-          <TouchableOpacity
+          <GlassCard
             onPress={onOpenDownloads}
-            activeOpacity={0.85}
-            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
+            padding={18} borderRadius={16} intensity={0} substrateColor={theme.glass.substrateAccent}
+            style={{ marginHorizontal: 20, marginBottom: 16 }}
           >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
               <Icon name="download" size={22} color="#AEEF4D" />
             </View>
@@ -926,15 +967,17 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.downloads_sub || (lang === 'fr' ? 'Séances disponibles hors-ligne' : 'Sessions available offline')}</Text>
             </View>
             <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
-          </TouchableOpacity>
+            </View>
+          </GlassCard>
         )}
 
         {onOpenTimer && (
-          <TouchableOpacity
+          <GlassCard
             onPress={onOpenTimer}
-            activeOpacity={0.85}
-            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
+            padding={18} borderRadius={16} intensity={0} substrateColor={theme.glass.substrateAccent}
+            style={{ marginHorizontal: 20, marginBottom: 16 }}
           >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
               <TimerIcon color="#AEEF4D" size={22} />
             </View>
@@ -943,7 +986,8 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.timer_sub || 'Lance un minuteur pour tes étirements'}</Text>
             </View>
             <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
-          </TouchableOpacity>
+            </View>
+          </GlassCard>
         )}
 
         <SectionHeader sectionKey="settings" label={sectionLabel('settings')} />
@@ -953,7 +997,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             une ligne avec icône + label + chevron. */}
         {supaUser && (
           <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
-            <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+            <GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card}>
               <TouchableOpacity
                 onPress={openPairAppleTV}
                 accessibilityRole="button"
@@ -998,11 +1042,12 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         {/* Préférences — qualité streaming, audio background, HD systématique,
             Wi-Fi only download. Écran dédié, état persistant via AsyncStorage. */}
         {onOpenPreferences && (
-          <TouchableOpacity
+          <GlassCard
             onPress={onOpenPreferences}
-            activeOpacity={0.85}
-            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(0,18,38,0.35)', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(174,239,77,0.18)' }}
+            padding={18} borderRadius={16} intensity={0} substrateColor={theme.glass.substrateAccent}
+            style={{ marginHorizontal: 20, marginBottom: 16 }}
           >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(174,239,77,0.14)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
               <Icon name="gear" size={22} color="#AEEF4D" />
             </View>
@@ -1011,10 +1056,11 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.prefs_row_sub || (lang === 'fr' ? 'Qualité, audio, téléchargements' : 'Quality, audio, downloads')}</Text>
             </View>
             <Text style={{ fontSize: 22, color: 'rgba(174,239,77,0.7)', fontWeight: '300' }}>{'›'}</Text>
-          </TouchableOpacity>
+            </View>
+          </GlassCard>
         )}
 
-        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.notif_section || 'Rappels'}</Text>
 
           {/* Rappel quotidien \u2014 master toggle */}
@@ -1108,7 +1154,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         </GlassCard></View>
 
         {Platform.OS === 'ios' && (
-          <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+          <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card}>
             <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.session_settings_title || 'Pendant la séance'}</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1, paddingRight: 12 }}>
@@ -1127,7 +1173,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         )}
 
 {Platform.OS === 'ios' && (
-          <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+          <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card}>
             <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.watch_section || 'Connexions'}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 }}>
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', flex: 1, paddingRight: 12 }}>
@@ -1151,7 +1197,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         )}
 
         {Platform.OS === 'ios' && (
-          <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+          <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card}>
             <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.calendar_section_title || 'Planification'}</Text>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: calSyncEnabled ? 16 : 0 }}>
@@ -1267,7 +1313,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             pouvoir le réactiver plus tard sans le réécrire. */}
         {false && (
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
-          <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+          <GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card}>
             <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.appearance_section || 'Apparence'}</Text>
             <View style={{ flexDirection: 'row', borderRadius: 14, padding: 4, backgroundColor: theme.mode === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: theme.colors.hairline }}>
               {THEME_MODES.map(function(m) {
@@ -1314,7 +1360,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         </View>
         )}
 
-        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dl_title || 'Téléchargements'}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.dl_storage || 'Espace utilisé'}</Text>
@@ -1338,7 +1384,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
 
         <SectionHeader sectionKey="account" label={sectionLabel('account')} />
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
-          <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+          <GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card}>
             <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text, marginBottom: 12, letterSpacing: -0.2 }}>{tr.subscription_status_label}</Text>
             <Text style={{ fontSize: 15, fontWeight: '400', color: '#AEEF4D', marginBottom: 16 }}>{isAdmin ? 'Admin · accès complet' : (isSubscriber ? tr.subscription_status_active : tr.subscription_status_free)}</Text>
             <TouchableOpacity onPress={onRestorePurchases} accessibilityRole="button" accessibilityLabel={tr.subscription_reset} style={{ paddingVertical: 13, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.10)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.22)', alignItems: 'center' }}>
@@ -1348,7 +1394,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         </View>
 
         {supaUser && (
-          <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+          <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text }}>{tr.profile_section_personal || tr.profile_card_title || 'Mes infos personnelles'}</Text>
               <TouchableOpacity
@@ -1574,7 +1620,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         <SectionHeader sectionKey="about" label={sectionLabel('about')} />
 
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
-          <GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+          <GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card}>
             <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text, marginBottom: 14, letterSpacing: -0.2 }}>{tr.mon_compte}</Text>
             {supaUser && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
@@ -1593,7 +1639,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </GlassCard>
         </View>
 
-        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text, marginBottom: 12 }}>{tr.profil_donnees_title || 'Confidentialité'}</Text>
           <Text style={{ fontSize: 13, color: theme.colors.textSecondary, lineHeight: 20, marginBottom: 14 }}>{tr.profil_donnees_desc || 'Vos données restent sur votre appareil. Aucune donnée personnelle n\'est envoyée à des serveurs tiers. Les séances, la progression et les préférences sont stockées localement via AsyncStorage. Si vous vous connectez, seul votre email est synchronisé via Supabase pour sauvegarder votre profil.'}</Text>
           <View style={{ borderTopWidth: 0.5, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 12, gap: 8 }}>
@@ -1612,7 +1658,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           </View>
         </GlassCard></View>
 
-        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={55} padding={20} borderRadius={GLASS_RADII.card}>
+        <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.dev_title || 'Développeur'}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
             <View style={{ width: 70, height: 70, borderRadius: 35, overflow: 'hidden', borderWidth: 2, borderColor: '#AEEF4D', marginRight: 14 }}>

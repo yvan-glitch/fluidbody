@@ -468,7 +468,13 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     const sub = Dimensions.addEventListener('change', ({ window }) => setDims(window));
     return () => {
       void deactivateKeepAwake().catch(() => {});
-      if (!IS_TV && ScreenOrientation) ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      // FIX audit iPad 2026-06-11 : ne re-locker en portrait que sur iPhone.
+      // Sur iPad (4 orientations autorisées dans Info.plist), ce lock forçait
+      // l'app en portrait après chaque vidéo fermée, même pour un utilisateur
+      // en paysage. + .catch() : lockAsync peut rejeter en multitâche iPad.
+      if (!IS_TV && !Platform.isPad && ScreenOrientation) {
+        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+      }
       if (controlsTimer.current) clearTimeout(controlsTimer.current);
       sub?.remove();
     };

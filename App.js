@@ -90,7 +90,7 @@ try {
 } catch (e) {
   if (__DEV__) console.warn('@kingstinct/react-native-healthkit unavailable:', e);
 }
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Svg, { Path, Circle, Ellipse, G } from 'react-native-svg';
 // expo-screen-orientation: native module manquant sur tvOS, lazy require avec fallback
 let ScreenOrientation = null;
@@ -143,6 +143,7 @@ import { isUserAlreadyActive } from './src/utils/activityCheck';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
 import { creditReferralOnPaid, getReferralStats, parseReferralCodeFromUrl, savePendingReferralCode } from './src/utils/referrals';
 import { safeNativeCall, safeNativeFire, diag } from './src/utils/safeNativeCall';
+import { maybeAskForReview } from './src/utils/reviewPrompt';
 
 // ─── GLOBAL ERROR HANDLER (PROD ONLY) ─────────────────────────────────────────
 // En prod : on envoie l'erreur à Sentry et on affiche un message générique.
@@ -284,7 +285,9 @@ function tabBarIconTint(color) {
   return color != null && color !== '' ? color : 'rgba(0,220,255,0.9)';
 }
 
-function CustomTabBar({ state, descriptors, navigation }) {
+// PERF : mémoïsé — la barre (et son BlurView intensity 80) ne re-rend plus à
+// chaque setState de MainApp, seulement quand l'état de navigation change.
+const CustomTabBar = memo(function CustomTabBar({ state, descriptors, navigation }) {
   var theme = useTheme().theme;
   var tabCount = state.routes.length;
   var barW = SW - 40;
@@ -367,7 +370,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
       </GlassView>
     </View>
   );
-}
+});
 
 function TabIconResume({ color, size }) {
   var c = tabBarIconTint(color);
@@ -486,6 +489,43 @@ import PreferencesScreen from './src/screens/Preferences';
 import AchievementsScreen from './src/screens/Achievements';
 import { Icon, IconJellyfish } from './src/components/Icons';
 import { primePreferencesCache } from './src/utils/userPreferences';
+
+// ══════════════════════════════════
+// PERF (2026-07-23) — stabilisation de l'arbre de navigation.
+// MainApp détient ~30 useState et rend directement le Tab.Navigator : avant,
+// CHAQUE setState (paywall, overlay, confetti…) re-rendait les 5 écrans
+// montés, car les écrans n'étaient pas mémoïsés et tous les callbacks/options
+// étaient recréés inline à chaque rendu. Désormais :
+//   1. les 5 écrans d'onglet sont enveloppés dans React.memo ;
+//   2. les handlers passés en props ont une identité stable (useStableCallback) ;
+//   3. les objets options/tabBar/listeners sont hoistés au niveau module ;
+//   4. freezeOnBlur gèle le rendu des onglets non focus.
+// Résultat : un setState sans rapport ne re-rend plus que MainApp lui-même.
+// ══════════════════════════════════
+const MonCorpsMemo = memo(MonCorps);
+const ActivityScreenMemo = memo(ActivityScreen);
+const ResumeScreenMemo = memo(ResumeScreen);
+const BiblioMemo = memo(Biblio);
+const ProfilScreenMemo = memo(ProfilScreen);
+
+// Handler à identité stable : la ref pointe toujours vers la dernière closure,
+// l'identité de la fonction retournée ne change JAMAIS entre les rendus.
+// (Équivalent du futur useEvent de React.)
+function useStableCallback(fn) {
+  const ref = useRef(fn);
+  ref.current = fn;
+  return useRef(function() { return ref.current.apply(null, arguments); }).current;
+}
+
+// Options d'onglets hoistées (les TabIcon* sont des déclarations hoistées).
+const TAB_OPTIONS_HOME = { tabBarIcon: function() { return null; } };
+const TAB_OPTIONS_ACTIVITY = { tabBarIcon: function(props) { return <TabIconActivity {...props} />; } };
+const TAB_OPTIONS_RESUME = { tabBarIcon: function(props) { return <TabIconResume {...props} />; } };
+const TAB_OPTIONS_BIBLIO = { tabBarIcon: function(props) { return <TabIconBiblio {...props} />; } };
+const TAB_OPTIONS_PROFIL = { tabBarIcon: function(props) { return <TabIconProfil {...props} />; } };
+const TAB_NAV_SCREEN_OPTIONS = { headerShown: false, animation: 'fade', freezeOnBlur: true };
+const TAB_NAV_SCREEN_LISTENERS = { tabPress: function() { hapticLight(); } };
+function renderCustomTabBar(props) { return <CustomTabBar {...props} />; }
 
 
 // ══════════════════════════════════
@@ -1421,7 +1461,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   // (utilisé pour la review Apple + admin officiel). À sortir en env var
   // / Supabase row à terme — pour l'instant hardcodé pour ne pas bloquer
   // la submission.
-  const ADMIN_EMAILS = ['admin@fluidbody.ch'];
+  const ADMIN_EMAILS = ['admin@fluidbody.ch', 'yvan@espace-pilates.ch', 'sabrina@espace-pilates.ch'];
   const isAdmin = !!(supaUser && supaUser.email && ADMIN_EMAILS.indexOf(supaUser.email.toLowerCase()) !== -1);
   const effectiveIsSubscriber = isSubscriber || isAdmin;
   const [paywallVisible, setPaywallVisible] = useState(false);
@@ -1491,28 +1531,28 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   // contre les claims de blessure). Flag in AsyncStorage; see
   // `MedicalDisclaimerOverlay`. Skipped on tvOS. When already acknowledged we
   // jump straight to the coach welcome so the two never stack.
-  useEffect(function() {
-    let cancelled = false;
+  function runMedicalGate() {
     isMedicalDisclaimerSeen().then(function(seen) {
-      if (cancelled) return;
       if (seen || IS_TV) {
         maybeShowCoachWelcome();
       } else {
         setMedicalDisclaimerVisible(true);
       }
     });
-    return function() { cancelled = true; };
-  }, []);
+  }
 
-  // First-launch welcome animation. Plays exactly once per install — the
-  // WelcomeAnimation component owns its own 800ms hold + 600ms fade-in +
-  // 2.5s display + 600ms fade-out and marks the flag itself at fade-out
-  // start so a kill mid-display still counts as played.
+  // Enchainement des overlays de PREMIERE ouverture, en file indienne :
+  // 1. WelcomeAnimation (meduse + prenom, une fois par install)
+  // 2. puis avertissement medical (via runMedicalGate au onDone)
+  // 3. puis mot de bienvenue de la coach (via maybeShowCoachWelcome)
+  // Avant : welcome et disclaimer se declenchaient en parallele au premier
+  // lancement et se chevauchaient a l'ecran pour les nouveaux comptes.
   useEffect(function() {
     let cancelled = false;
     isWelcomeAnimationShown().then(function(shown) {
-      if (cancelled || shown) return;
-      setWelcomeAnimVisible(true);
+      if (cancelled) return;
+      if (shown) { runMedicalGate(); }
+      else { setWelcomeAnimVisible(true); }
     });
     return function() { cancelled = true; };
   }, []);
@@ -1549,13 +1589,13 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const rcSupported = Platform.OS === 'ios';
   const rcDisabled = !Purchases || !rcSupported || (Device && Device.isDevice === false);
 
-  function openPaywall() {
+  const openPaywall = useStableCallback(function() {
     setPaywallVisible(true);
     // Refresh "à l'ouverture" plutôt que de mounter un listener continu :
     // l'utilisateur n'ouvre le paywall qu'en pressant un CTA, donc on a
     // un point d'entrée clair où re-fetcher.
     refreshFreeDaysAvailable();
-  }
+  });
 
   async function setSubscriptionActive(active) {
     setIsSubscriber(!!active);
@@ -1866,7 +1906,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     };
   }, []);
 
-  async function resetAllData() {
+  const resetAllData = useStableCallback(async function() {
     try {
       var keys = await AsyncStorage.getAllKeys();
       var fluidKeys = keys.filter(function(k) { return k.startsWith('fluid') || k === DONE_KEY || k === 'is_subscription_active'; });
@@ -1876,47 +1916,59 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     setStreak(0);
     setIsSubscriber(false);
     try { await clearAchievements(); } catch (e) {}
-  }
+  });
 
-  async function toggleDone(key, idx) {
+  // PERF (2026-07-23, audit constat 3) : le corps du handler ne fait plus que
+  // haptique + setState — TOUTE la persistance (AsyncStorage, Supabase,
+  // milestones, calendar, achievements, streak) part en tâche de fond sans
+  // bloquer le retour visuel du tap. L'ordre interne des blocs de fond est
+  // préservé à l'identique (calendar → achievements → streak).
+  const toggleDone = useStableCallback(function(key, idx) {
+    const wasDone = !!done[key][idx];
     const next = { ...done, [key]: [...done[key]] };
     next[key][idx] = !next[key][idx];
+    // Retour haptique : fierté quand on valide une séance, discret quand on décoche.
+    if (next[key][idx]) { hapticSuccess(); } else { hapticLight(); }
     setDone(next);
-    try { await AsyncStorage.setItem(DONE_KEY, JSON.stringify(next)); } catch (e) {}
+    // Persistance fire-and-forget.
+    AsyncStorage.setItem(DONE_KEY, JSON.stringify(next)).catch(function() {});
     if (supabase && supaUser) {
-      try { await supabase.from('progression').upsert({ user_id: supaUser.id, done: next, updated_at: new Date().toISOString() }); } catch (e) { devWarn('Supabase progression upsert', e); }
+      Promise.resolve(
+        supabase.from('progression').upsert({ user_id: supaUser.id, done: next, updated_at: new Date().toISOString() })
+      ).then(function(r) { if (r && r.error) devWarn('Supabase progression upsert', r.error); })
+       .catch(function(e) { devWarn('Supabase progression upsert', e); });
     }
+    if (wasDone) return; // Décocher : rien d'autre à déclencher.
     // First séance modal
-    if (!done[key][idx] && !supaUser) {
+    if (!supaUser) {
       var prevTotal = Object.values(done).flat().filter(Boolean).length;
       if (prevTotal === 0) {
         setTimeout(function() { setShowFirstSeanceModal(true); }, 1500);
       }
     }
     // Milestone celebrations
-    if (!done[key][idx]) {
-      var MILESTONES = [5, 7, 10, 15, 20, 25, 30, 35, 40, 100];
-      var PUSH_MILESTONES = [7, 30, 100];
-      var newTotal = 0;
-      Object.values(next).forEach(function(arr) {
-        if (arr) arr.forEach(function(v) { if (v) newTotal++; });
-      });
-      if (MILESTONES.includes(newTotal)) {
-        AsyncStorage.getItem('fluid_milestones_seen').then(function(raw) {
-          var seen = raw ? JSON.parse(raw) : [];
-          if (!seen.includes(newTotal)) {
-            seen.push(newTotal);
-            AsyncStorage.setItem('fluid_milestones_seen', JSON.stringify(seen)).catch(function() {});
-            setMilestoneNum(newTotal);
-            if (PUSH_MILESTONES.includes(newTotal)) {
-              scheduleMilestoneReward({ milestoneNum: newTotal, lang: lang, prenom: prenom });
-            }
+    var MILESTONES = [5, 7, 10, 15, 20, 25, 30, 35, 40, 100];
+    var PUSH_MILESTONES = [7, 30, 100];
+    var newTotal = 0;
+    Object.values(next).forEach(function(arr) {
+      if (arr) arr.forEach(function(v) { if (v) newTotal++; });
+    });
+    if (MILESTONES.includes(newTotal)) {
+      AsyncStorage.getItem('fluid_milestones_seen').then(function(raw) {
+        var seen = raw ? JSON.parse(raw) : [];
+        if (!seen.includes(newTotal)) {
+          seen.push(newTotal);
+          AsyncStorage.setItem('fluid_milestones_seen', JSON.stringify(seen)).catch(function() {});
+          setMilestoneNum(newTotal);
+          if (PUSH_MILESTONES.includes(newTotal)) {
+            scheduleMilestoneReward({ milestoneNum: newTotal, lang: lang, prenom: prenom });
           }
-        }).catch(function() {});
-      }
+        }
+      }).catch(function() {});
     }
-    // Calendar heatmap
-    if (!done[key][idx]) {
+    // Tâche de fond : calendar → achievements → streak (ordre historique).
+    (async function() {
+      // Calendar heatmap
       try {
         var calKey = 'fluid_activity_calendar';
         var calRaw = await AsyncStorage.getItem(calKey);
@@ -1925,13 +1977,10 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         cal[todayCal] = (cal[todayCal] || 0) + 1;
         await AsyncStorage.setItem(calKey, JSON.stringify(cal));
       } catch(e) {}
-    }
-    // Achievements — auto-détection en parallèle des milestones.
-    if (!done[key][idx]) {
+      // Achievements — auto-détection en parallèle des milestones.
       try {
         await recordPilierUsage(key);
         const recent = await getRecentPiliers();
-        // Recompute streak fresh (above block writes STREAK_KEY in same tick — read it).
         const streakNow = parseInt(await AsyncStorage.getItem(STREAK_KEY) || '0') || streak;
         const fresh = await detectNewUnlocks({
           done: next,
@@ -1945,9 +1994,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           setTimeout(function () { setNewAchievement(fresh[0]); }, 800);
         }
       } catch (e) {}
-    }
-    // Streak
-    if (!done[key][idx]) {
+      // Streak
       try {
         const today = new Date().toDateString();
         const lastDate = await AsyncStorage.getItem(STREAK_DATE_KEY);
@@ -1960,14 +2007,50 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           setStreak(newStreak);
         }
       } catch (e) {}
-    }
-  }
+      // Demande d'avis App Store — sur un moment positif, jamais en même
+      // temps qu'un milestone (qui a son propre overlay). Délai pour laisser
+      // la célébration de séance se terminer. No-op tant que expo-store-review
+      // n'est pas dans le build natif (safe-require).
+      if (!MILESTONES.includes(newTotal)) {
+        var streakForReview = parseInt(await AsyncStorage.getItem(STREAK_KEY) || '0') || streak;
+        setTimeout(function() {
+          maybeAskForReview({ totalDone: newTotal, streak: streakForReview }).catch(function() {});
+        }, 2600);
+      }
+    })();
+  });
 
   // Flush any pending profile sync on cold start when a session is available.
   useEffect(function() {
     if (!supaUser?.id) return undefined;
     flushPendingProfileSync({ userId: supaUser.id }).catch(function() {});
   }, [supaUser?.id]);
+
+  // PERF — handlers à identité stable passés aux écrans mémoïsés (avant :
+  // recréés inline à chaque rendu → tous les onglets re-rendaient à chaque
+  // setState de MainApp).
+  const onTryFreeSession = useStableCallback(function() { setFreeDetailVisible(true); });
+  const onCreateAccount = useStableCallback(function() { setShowAuthScreen(true); });
+  const onOpenStatistics = useStableCallback(function() { setShowStatistics(true); });
+  const onOpenTimer = useStableCallback(function() { setShowStretchTimer(true); });
+  const onOpenSabrina = useStableCallback(function() { setShowSabrinaProfile(true); });
+  const onOpenAchievements = useStableCallback(function() { setShowAchievements(true); });
+  const onOpenDownloads = useStableCallback(function() { setShowDownloads(true); });
+  const onOpenPreferences = useStableCallback(function() { setShowPreferences(true); });
+  const onRestorePurchases = useStableCallback(function() { setPaywallVisible(true); });
+  const onEditProfile = useStableCallback(function(initial) { setEditingProfileInitial(initial || null); setEditingProfile(true); });
+  const onProfilLogout = useStableCallback(async function() {
+    if (!supabase) { Alert.alert('FluidBody+', tr.err_supabase_unavailable || 'Supabase indisponible.'); return; }
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) { Alert.alert('FluidBody+', error.message || tr.err_signout || 'Erreur de déconnexion.'); return; }
+    } catch (e) {
+      Alert.alert('FluidBody+', e?.message || tr.err_signout || 'Erreur de déconnexion.');
+    }
+  });
+  // Séance du jour mémoïsée (avant : getSeanceDuJour recalculé à chaque rendu
+  // de MainApp, même modale fermée — audit I-7 du 23/07).
+  const sdj = useMemo(function() { return getSeanceDuJour(done, tensionIdxs, lang); }, [done, tensionIdxs, lang]);
 
   return (
     <>
@@ -1990,10 +2073,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       <SeanceDetailModal
         visible={freeDetailVisible}
         onClose={() => { setFreeDetailVisible(false); setFreeVideoPlaying(false); }}
-        sdj={getSeanceDuJour(done, tensionIdxs, lang)}
+        sdj={sdj}
         lang={lang}
         onPlay={() => {
-          const sdj = getSeanceDuJour(done, tensionIdxs, lang);
           const sid = sdj ? buildSessionId(sdj.pilier.key, sdj.idx) : null;
           if (sid) prefetchSignedVideoUrl(sid, 'mp4');
           setFreeDetailVisible(false);
@@ -2001,7 +2083,6 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         }}
       />
       {freeVideoPlaying && (function() {
-        var sdj = getSeanceDuJour(done, tensionIdxs, lang);
         if (!sdj) return null;
         return (
           <Modal visible animationType="fade" presentationStyle="fullScreen" statusBarTranslucent supportedOrientations={['portrait', 'landscape-left', 'landscape-right']} onRequestClose={() => setFreeVideoPlaying(false)}>
@@ -2075,20 +2156,16 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         />
       ) : (
         <NavigationContainer>
-            <Tab.Navigator tabBar={function(props) { return <CustomTabBar {...props} />; }} screenOptions={{ headerShown: false }}>
-            <Tab.Screen name={tr.tabs[0]} options={{ tabBarIcon: () => null }}>{() => <MonCorps prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} onTensionChange={onTensionChange} streak={streak} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={() => setFreeDetailVisible(true)} saveHealthKitWorkout={saveHealthKitWorkout} supabase={supabase} supaUser={supaUser} />}</Tab.Screen>
-            <Tab.Screen name={tr.activity_tab || 'Activité'} options={{ tabBarIcon: (props) => <TabIconActivity {...props} /> }}>{() => <ActivityScreen lang={lang} supabase={supabase} supaUser={supaUser} done={done} />}</Tab.Screen>
-            <Tab.Screen name={tr.tabs[1]} options={{ tabBarIcon: (props) => <TabIconResume {...props} /> }}>{() => <ResumeScreen done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={function() { setShowAuthScreen(true); }} onOpenStatistics={function() { setShowStatistics(true); }} />}</Tab.Screen>
-            <Tab.Screen name={tr.tabs[2]} options={{ tabBarIcon: (props) => <TabIconBiblio {...props} /> }}>{() => <Biblio lang={lang} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
-            <Tab.Screen name={tr.tabs[3]} options={{ tabBarIcon: (props) => <TabIconProfil {...props} /> }}>{() => <ProfilScreen prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={async () => {
-              if (!supabase) { Alert.alert('FluidBody+', tr.err_supabase_unavailable || 'Supabase indisponible.'); return; }
-              try {
-                const { error } = await supabase.auth.signOut();
-                if (error) { Alert.alert('FluidBody+', error.message || tr.err_signout || 'Erreur de déconnexion.'); return; }
-              } catch (e) {
-                Alert.alert('FluidBody+', e?.message || tr.err_signout || 'Erreur de déconnexion.');
-              }
-            }} onCreateAccount={() => setShowAuthScreen(true)} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={() => { setPaywallVisible(true); }} onReset={resetAllData} onOpenTimer={() => setShowStretchTimer(true)} onOpenStatistics={() => setShowStatistics(true)} onOpenSabrina={() => setShowSabrinaProfile(true)} onOpenAchievements={() => setShowAchievements(true)} onOpenDownloads={() => setShowDownloads(true)} onOpenPreferences={() => setShowPreferences(true)} onEditProfile={(initial) => { setEditingProfileInitial(initial || null); setEditingProfile(true); }} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
+            <Tab.Navigator
+              tabBar={renderCustomTabBar}
+              screenOptions={TAB_NAV_SCREEN_OPTIONS}
+              screenListeners={TAB_NAV_SCREEN_LISTENERS}
+            >
+            <Tab.Screen name={tr.tabs[0]} options={TAB_OPTIONS_HOME}>{() => <MonCorpsMemo prenom={prenom} done={done} toggleDone={toggleDone} lang={lang} tensionIdxs={tensionIdxs} onTensionChange={onTensionChange} streak={streak} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} onTryFreeSession={onTryFreeSession} saveHealthKitWorkout={saveHealthKitWorkout} supabase={supabase} supaUser={supaUser} />}</Tab.Screen>
+            <Tab.Screen name={tr.activity_tab || 'Activité'} options={TAB_OPTIONS_ACTIVITY}>{() => <ActivityScreenMemo lang={lang} supabase={supabase} supaUser={supaUser} done={done} />}</Tab.Screen>
+            <Tab.Screen name={tr.tabs[1]} options={TAB_OPTIONS_RESUME}>{() => <ResumeScreenMemo done={done} lang={lang} streak={streak} prenom={prenom} tensionIdxs={tensionIdxs} supaUser={supaUser} onCreateAccount={onCreateAccount} onOpenStatistics={onOpenStatistics} />}</Tab.Screen>
+            <Tab.Screen name={tr.tabs[2]} options={TAB_OPTIONS_BIBLIO}>{() => <BiblioMemo lang={lang} isSubscriber={effectiveIsSubscriber} onActivateSubscription={openPaywall} />}</Tab.Screen>
+            <Tab.Screen name={tr.tabs[3]} options={TAB_OPTIONS_PROFIL}>{() => <ProfilScreenMemo prenom={prenom} done={done} lang={lang} streak={streak} supabase={supabase} supaUser={supaUser} onLogout={onProfilLogout} onCreateAccount={onCreateAccount} isSubscriber={effectiveIsSubscriber} isAdmin={isAdmin} onRestorePurchases={onRestorePurchases} onReset={resetAllData} onOpenTimer={onOpenTimer} onOpenStatistics={onOpenStatistics} onOpenSabrina={onOpenSabrina} onOpenAchievements={onOpenAchievements} onOpenDownloads={onOpenDownloads} onOpenPreferences={onOpenPreferences} onEditProfile={onEditProfile} profileRefreshKey={profileRefreshKey} onAccountDeleted={onAccountDeleted} />}</Tab.Screen>
           </Tab.Navigator>
         </NavigationContainer>
       )}
@@ -2248,7 +2325,11 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         lang={lang}
         prenom={prenom}
         tr={tr}
-        onDone={function() { setWelcomeAnimVisible(false); }}
+        onDone={function() {
+          setWelcomeAnimVisible(false);
+          // Etape suivante de la file : avertissement medical, puis coach.
+          runMedicalGate();
+        }}
       />
       {purchaseConfettiActive && (
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
@@ -2614,10 +2695,10 @@ function App() {
       ]);
     }
     function finishLoading() {
-      // Splash minimum = 3000 ms (UX delibere : mise en valeur de l'animation meduse).
-      // Trade-off assume : +2.1 sec sur cold start, mais identite brand renforcee.
+      // Splash minimum = 2000 ms (reduit de 3000 le 2026-07-07 : l'app parait
+      // nettement plus fluide au demarrage, la meduse reste bien visible).
       var elapsed = Date.now() - splashStart;
-      var remain = Math.max(0, 3000 - elapsed);
+      var remain = Math.max(0, 2000 - elapsed);
       if (remain === 0) setLoading(false);
       else setTimeout(function() { setLoading(false); }, remain);
     }
@@ -2634,7 +2715,12 @@ function App() {
         if (session?.user) {
           setSupaUser(session.user);
           // Timeout 5s sur fetchAndMergeProfile : meme protection.
-          await withTimeout(fetchAndMergeProfile(session.user), 5000, 'fetchProfile');
+          // Le fetch profil a son propre try/catch : s'il echoue (reseau lent),
+          // on laisse quand meme entrer l'utilisateur avec ses donnees locales
+          // au lieu de le renvoyer vers l'ecran de connexion.
+          try {
+            await withTimeout(fetchAndMergeProfile(session.user), 5000, 'fetchProfile');
+          } catch (pe) { devWarn('fetchProfile boot', pe); }
           setShowAuth(false);
           setOnboardingDone(true);
           // Session restaurée → l'utilisateur a déjà passé l'intro/sign-in.
@@ -2648,19 +2734,32 @@ function App() {
     }
     checkSession();
     if (!supabase) return undefined;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // ATTENTION deadlock supabase-js : il ne faut JAMAIS `await` un appel
+    // reseau directement dans le callback onAuthStateChange. Le client tient
+    // un verrou interne pendant le callback ; si fetchAndMergeProfile traine
+    // (reseau flaky au demarrage), TOUS les autres appels auth (getSession,
+    // refresh de token...) se bloquent en attendant le verrou → spinner
+    // infini "a la connexion" jusqu'au kill de l'app. On differe donc le
+    // travail avec setTimeout(0) pour sortir du callback immediatement,
+    // et on ajoute un timeout dur de 8s sur le fetch profil.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (_event === 'SIGNED_IN') breadcrumb('Login', { uid: session?.user?.id }, { category: 'auth' });
       else if (_event === 'SIGNED_OUT') breadcrumb('Logout', undefined, { category: 'auth' });
       setSupaUser(session?.user || null);
       if (session?.user) {
-        try {
-          await fetchAndMergeProfile(session.user);
+        const u = session.user;
+        setTimeout(async function() {
+          try {
+            await withTimeout(fetchAndMergeProfile(u), 8000, 'fetchProfileAuthChange');
+          } catch (e) { devWarn('Profil après connexion', e); }
+          // Session valide → on laisse entrer, meme si le profil distant n'a
+          // pas pu etre recupere (les donnees locales prennent le relais).
           setShowAuth(false);
           setOnboardingDone(true);
           // Idem : si le SIGNED_IN ou TOKEN_REFRESHED arrive après le bootstrap
           // (rare mais possible), on s'assure aussi de passer l'intro.
           setIntroShown(true);
-        } catch (e) { devWarn('Profil après connexion', e); }
+        }, 0);
       }
     });
     // Safety net absolu : force la sortie du splash apres 8s maximum,

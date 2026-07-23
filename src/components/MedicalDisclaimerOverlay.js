@@ -19,7 +19,6 @@ import {
   View, Text, Animated, StyleSheet, Platform, Pressable, ScrollView, Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import LiquidGlass from './LiquidGlass';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MeduseCornerIcon, Bulle, BULLES_ONBOARDING } from './Meduse';
 import LivingBackground from './LivingBackground';
@@ -149,8 +148,11 @@ export default function MedicalDisclaimerOverlay({ visible, onDone, lang }) {
             <MeduseCornerIcon size={96} breathCycleMs={2800} breathMaxScale={1.32} tint="rgba(174,239,77,1)" />
           </View>
 
-          <View style={{ borderRadius: 28, overflow: 'hidden', width: '100%' }}>
-            <LiquidGlass intensity={Platform.OS === 'ios' ? 80 : 0} tint="dark" style={{ backgroundColor: 'rgba(8,18,32,0.6)' }}>
+          {/* Verre léger sans UIGlassEffect/BlurView : la carte est animée
+              (scale + fade parent) et UIVisualEffectView se désaligne de son
+              contenu sous transform/alpha — même fix que CoachWelcomeOverlay. */}
+          <View style={{ borderRadius: 28, overflow: 'hidden', width: '100%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }}>
+            <View style={{ backgroundColor: 'rgba(8,18,32,0.74)' }}>
               <ScrollView
                 style={{ maxHeight: 460 }}
                 contentContainerStyle={{ padding: 24 }}
@@ -219,7 +221,7 @@ export default function MedicalDisclaimerOverlay({ visible, onDone, lang }) {
                   </Text>
                 </Pressable>
               </View>
-            </LiquidGlass>
+            </View>
           </View>
         </Animated.View>
       </View>

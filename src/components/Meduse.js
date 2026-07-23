@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Dimensions, View, Text, Platform } from 'react-native';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, AppState, Easing, Dimensions, View, Text, Platform } from 'react-native';
 import Svg, { Path, Circle, Ellipse, Defs, RadialGradient, Stop } from 'react-native-svg';
+import { NavigationContext } from '@react-navigation/native';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
@@ -51,6 +52,82 @@ const TENTS2 = [
   { sx:225, sy:128, angle:Math.PI*0.452, len:260, phase:0.7, amp:14, color:'rgba(222,230,255,0.45)', w:0.70},
 ];
 
+// ── Ticker partagé des tentacules ──
+// PERF (2026-07-23) : avant, CHAQUE méduse avait son propre setInterval(80ms)
+// + setState + reconstruction de 13 paths SVG par tick. Avec 5 à 16 instances
+// simultanées (FloatingMedusas, MeduseRain, PluieBulles…), le thread JS
+// reconstruisait >100 paths béziers/seconde en concurrence directe avec le
+// scroll. Désormais : UN SEUL interval pour toute l'app, les paths sont
+// calculés une fois par tick puis partagés entre toutes les instances (ils
+// sont identiques : mêmes TENTS2, même tick), et le ticker s'arrête quand
+// aucune méduse n'est sur un écran focus ou que l'app passe en arrière-plan.
+const _tickListeners = new Set();
+let _tickId = null;
+let _tickValue = 0;
+let _appStateReady = false;
+let _sharedTentPaths = TENTS2.map(t => tentaclePath(t.sx, t.sy, t.angle, t.len, 0, t.phase, t.amp));
+
+function _startTicker() {
+  if (_tickId != null || _tickListeners.size === 0) return;
+  _tickId = setInterval(() => {
+    _tickValue += 0.058;
+    _sharedTentPaths = TENTS2.map(t => tentaclePath(t.sx, t.sy, t.angle, t.len, _tickValue, t.phase, t.amp));
+    _tickListeners.forEach(fn => { try { fn(); } catch (e) {} });
+  }, 80);
+}
+
+function _stopTicker() {
+  if (_tickId != null) { clearInterval(_tickId); _tickId = null; }
+}
+
+function _ensureAppStateListener() {
+  if (_appStateReady) return;
+  _appStateReady = true;
+  try {
+    AppState.addEventListener('change', (s) => {
+      if (s === 'active') _startTicker(); else _stopTicker();
+    });
+  } catch (e) {}
+}
+
+function subscribeTick(fn) {
+  _ensureAppStateListener();
+  _tickListeners.add(fn);
+  _startTicker();
+  return () => {
+    _tickListeners.delete(fn);
+    if (_tickListeners.size === 0) _stopTicker();
+  };
+}
+
+// ── useScreenFocused ──
+/** Focus de l'écran react-navigation porteur. Hors navigateur (onboarding,
+ *  overlays racine) NavigationContext est absent → considéré toujours focus. */
+function useScreenFocused() {
+  const nav = useContext(NavigationContext);
+  const [focused, setFocused] = useState(() => (nav && nav.isFocused ? nav.isFocused() : true));
+  useEffect(() => {
+    if (!nav || !nav.addListener) return;
+    const u1 = nav.addListener('focus', () => setFocused(true));
+    const u2 = nav.addListener('blur', () => setFocused(false));
+    setFocused(nav.isFocused ? nav.isFocused() : true);
+    return () => { try { u1 && u1(); u2 && u2(); } catch (e) {} };
+  }, [nav]);
+  return focused;
+}
+
+// ── useSharedTentPaths ──
+/** Abonne le composant au ticker partagé tant que `active` est vrai ;
+ *  renvoie les paths de tentacules courants (référence partagée). */
+function useSharedTentPaths(active) {
+  const [, force] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    return subscribeTick(() => force(n => n + 1));
+  }, [active]);
+  return _sharedTentPaths;
+}
+
 // ── BULLE_DEPART_SOUS_BORD ──
 /** Bulles ancrées en bas ; translateY positif = sous le bord, puis montée jusqu'en hors écran. */
 const BULLE_DEPART_SOUS_BORD = 72;
@@ -59,14 +136,16 @@ const BULLE_DEPART_SOUS_BORD = 72;
 function Bulle({ delay, x, size, duration, colorIndex }) {
   const a = useRef(new Animated.Value(0)).current;
   const isWhite = (colorIndex != null ? colorIndex : Math.round(x)) % 2 === 1;
+  const focused = useScreenFocused();
   useEffect(() => {
+    if (!focused) return;
     let loop = null;
     const t = setTimeout(() => {
       loop = Animated.loop(Animated.timing(a, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true }));
       loop.start();
     }, delay);
     return () => { clearTimeout(t); try { loop && loop.stop(); } catch (e) {} };
-  }, []);
+  }, [focused]);
   return (
     <Animated.View
       pointerEvents="none"
@@ -95,7 +174,9 @@ function Bulle({ delay, x, size, duration, colorIndex }) {
 // ── Rayon ──
 function Rayon({ left, width, delay, duration, opacity }) {
   const a = useRef(new Animated.Value(opacity * 0.5)).current;
+  const focused = useScreenFocused();
   useEffect(() => {
+    if (!focused) return;
     let loop = null;
     const t = setTimeout(() => {
       loop = Animated.loop(Animated.sequence([
@@ -105,17 +186,19 @@ function Rayon({ left, width, delay, duration, opacity }) {
       loop.start();
     }, delay);
     return () => { clearTimeout(t); try { loop && loop.stop(); } catch (e) {} };
-  }, []);
+  }, [focused]);
   return <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left, width, bottom: 0, backgroundColor: 'rgba(0,255,255,0.12)', opacity: a, transform: [{ skewX: '-5deg' }] }} />;
 }
 
 // ── Meduse ──
 function Meduse() {
   const anim  = useRef(new Animated.Value(0)).current;
-  const [tick, setTick] = useState(0);
-  const tickRef = useRef(0);
+  const focused = useScreenFocused();
+  // Ticker partagé : plus de setInterval par instance (cf. bloc PERF en tête).
+  const tentPaths = useSharedTentPaths(focused);
 
   useEffect(() => {
+    if (!focused) return;
     const loop = Animated.loop(
       Animated.timing(anim, {
         toValue: 1,
@@ -125,11 +208,8 @@ function Meduse() {
       })
     );
     loop.start();
-    // Tick à ~80ms (12fps) au lieu de 36ms : reconstruit les paths SVG des tentacules
-    // moins souvent. La houle reste fluide visuellement (les tentacules ondulent lentement).
-    const id = setInterval(() => { tickRef.current += 0.058; setTick(tickRef.current); }, 80);
-    return () => { clearInterval(id); try { loop.stop(); } catch (e) {} };
-  }, []);
+    return () => { try { loop.stop(); } catch (e) {} };
+  }, [focused]);
 
   const N = 20;
   const pts = Array.from({ length: N + 1 }, (_, i) => i / N);
@@ -141,8 +221,6 @@ function Meduse() {
     inputRange:  pts,
     outputRange: pts.map(t => -18 * Math.sin(Math.PI * t)),
   });
-
-  const tentPaths = TENTS2.map(t => tentaclePath(t.sx, t.sy, t.angle, t.len, tick, t.phase, t.amp));
 
   return (
     <Animated.View style={{ transform: [{ translateY: floatY }], alignItems: 'center' }}>
@@ -214,8 +292,9 @@ function blueMeduse(a) {
 function MeduseCornerIcon({ size = 50, breathCycleMs = null, breathMaxScale = 1.08, tint = null }) {
   const anim = useRef(new Animated.Value(0)).current;
   const breath = useRef(new Animated.Value(1)).current;
-  const [tick, setTick] = useState(0);
-  const tickRef = useRef(0);
+  const focused = useScreenFocused();
+  // Ticker partagé : plus de setInterval par instance (cf. bloc PERF en tête).
+  const tentPaths = useSharedTentPaths(focused);
 
   const { bellScale, floatY } = useMemo(() => {
     const N = 20;
@@ -235,6 +314,7 @@ function MeduseCornerIcon({ size = 50, breathCycleMs = null, breathMaxScale = 1.
   }, [anim]);
 
   useEffect(() => {
+    if (!focused) return;
     const loop = Animated.loop(
       Animated.timing(anim, {
         toValue: 1,
@@ -244,20 +324,13 @@ function MeduseCornerIcon({ size = 50, breathCycleMs = null, breathMaxScale = 1.
       })
     );
     loop.start();
-    // Tick throttle : 80ms (12fps) au lieu de 36ms (28fps). Suffisant pour la
-    // houle lente des tentacules ; ~3x moins de rebuilds de SVG paths.
-    const id = setInterval(() => {
-      tickRef.current += 0.058;
-      setTick(tickRef.current);
-    }, 80);
     return () => {
-      loop.stop();
-      clearInterval(id);
+      try { loop.stop(); } catch (e) {}
     };
-  }, [anim]);
+  }, [anim, focused]);
 
   useEffect(() => {
-    if (!breathCycleMs) return;
+    if (!breathCycleMs || !focused) return;
     breath.setValue(1);
     const half = breathCycleMs / 2;
     const breathLoop = Animated.loop(
@@ -267,10 +340,9 @@ function MeduseCornerIcon({ size = 50, breathCycleMs = null, breathMaxScale = 1.
       ])
     );
     breathLoop.start();
-    return () => breathLoop.stop();
-  }, [breathCycleMs, breath, breathMaxScale]);
+    return () => { try { breathLoop.stop(); } catch (e) {} };
+  }, [breathCycleMs, breath, breathMaxScale, focused]);
 
-  const tentPaths = TENTS2.map(t => tentaclePath(t.sx, t.sy, t.angle, t.len, tick, t.phase, t.amp));
   var mc = tint ? function(a) { return tint.replace('1)', a + ')').replace('rgb(', 'rgba('); } : blueMeduse;
   var mcSolid = tint || MEDUSE_CORNER_BLUE;
 
@@ -379,8 +451,8 @@ function VideoPlaceholderMeduse({ size }) {
     };
   }, [float]);
   const floatY = float.interpolate({ inputRange: [0, 1], outputRange: [8, -16] });
-  const tick = 0;
-  const tentPaths = TENTS2.map(t => tentaclePath(t.sx, t.sy, t.angle, t.len, tick, t.phase, t.amp));
+  // Paths statiques (tick 0) — mémoïsés, jamais reconstruits.
+  const tentPaths = useMemo(() => TENTS2.map(t => tentaclePath(t.sx, t.sy, t.angle, t.len, 0, t.phase, t.amp)), []);
   const w = size;
   const h = size * (460 / 260);
   return (
@@ -530,8 +602,10 @@ function LivingMedusa({ pct, streak, lang, showLabel }) {
   var floatAnim = useRef(new Animated.Value(0)).current;
   var glowAnim = useRef(new Animated.Value(0)).current;
   var [particles, setParticles] = useState([]);
+  var focused = useScreenFocused();
 
   useEffect(function() {
+    if (!focused) return;
     var loops = [];
     var floatLoop = Animated.loop(Animated.sequence([
       Animated.timing(floatAnim, { toValue: 1, duration: ms.breath, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -562,7 +636,7 @@ function LivingMedusa({ pct, streak, lang, showLabel }) {
     return function() {
       loops.forEach(function(l) { try { l.stop && l.stop(); } catch (e) {} });
     };
-  }, [stateIdx]);
+  }, [stateIdx, focused]);
 
   var translateY = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 10] });
   var scale = floatAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.95, 1.05, 0.95] });
@@ -629,8 +703,10 @@ function FloatingMedusas({ topInset = 200, bottomInset = 140 } = {}) {
       sway: new Animated.Value(0),
     });
   })).current;
+  var focused = useScreenFocused();
 
   useEffect(function() {
+    if (!focused) return;
     var mounted = true;
     var timeouts = [];
     var loops = [];
@@ -683,7 +759,7 @@ function FloatingMedusas({ topInset = 200, bottomInset = 140 } = {}) {
       loops.forEach(function(l) { try { l.stop && l.stop(); } catch (e) {} });
       currentDrifts.forEach(function(d) { try { d && d.stop && d.stop(); } catch (e) {} });
     };
-  }, []);
+  }, [focused]);
 
   return meds.map(function(m, i) {
     var bobAmp = 8 + i * 2;
@@ -718,14 +794,16 @@ function FloatingMedusas({ topInset = 200, bottomInset = 140 } = {}) {
 // ── MeduseRainDrop ── une méduse qui tombe du haut
 function MeduseRainDrop({ x, size, duration, delay, opacity, tint }) {
   const fall = useRef(new Animated.Value(0)).current;
+  const focused = useScreenFocused();
   useEffect(() => {
+    if (!focused) return;
     let loop = null;
     const t = setTimeout(() => {
       loop = Animated.loop(Animated.timing(fall, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true }));
       loop.start();
     }, delay);
     return () => { clearTimeout(t); try { loop && loop.stop(); } catch (e) {} };
-  }, []);
+  }, [focused]);
   const translateY = fall.interpolate({ inputRange: [0, 1], outputRange: [-size * 3, SH + size * 3] });
   return (
     <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: x, opacity, transform: [{ translateY }] }}>
@@ -757,14 +835,16 @@ function MeduseRain() {
 function BulleDescendante({ x, size, duration, delay }) {
   const fall = useRef(new Animated.Value(0)).current;
   const isWhite = Math.round(x * 10) % 2 === 1;
+  const focused = useScreenFocused();
   useEffect(() => {
+    if (!focused) return;
     let loop = null;
     const t = setTimeout(() => {
       loop = Animated.loop(Animated.timing(fall, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true }));
       loop.start();
     }, delay);
     return () => { clearTimeout(t); try { loop && loop.stop(); } catch (e) {} };
-  }, []);
+  }, [focused]);
   const translateY = fall.interpolate({ inputRange: [0, 1], outputRange: [-size * 2, SH + size * 2] });
   const opacity    = fall.interpolate({ inputRange: [0, 0.05, 0.88, 1], outputRange: [0.3, 0.85, 0.45, 0] });
   return (

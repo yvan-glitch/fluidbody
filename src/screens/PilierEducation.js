@@ -395,7 +395,7 @@ export default function PilierEducation({ visible, pilier, lang, onClose, onOpen
 
           {/* Section 1 — Anatomie */}
           <Section title={tr.pilier_education_section_anatomy || 'Anatomy'} accent={accentSolid} fadeStyle={{ opacity: sectionFades[1].opacity, transform: [{ translateY: sectionFades[1].translateY }] }}>
-            <GlassView intensity={70} borderRadius={GLASS_RADII.cardLg} contentStyle={{ padding: 20 }}>
+            <GlassView intensity={0} borderRadius={GLASS_RADII.cardLg} contentStyle={{ padding: 20 }}>
               {content.anatomy.map(function(para, i) {
                 return (
                   <Text key={i} style={{ fontSize: 15, lineHeight: 24, color: sectionTextColor, marginBottom: i === content.anatomy.length - 1 ? 0 : 14 }}>
@@ -412,7 +412,7 @@ export default function PilierEducation({ visible, pilier, lang, onClose, onOpen
             {content.why_matters.map(function(item, i) {
               return (
                 <View key={i} style={{ marginBottom: 10 }}>
-                  <GlassView intensity={55} borderRadius={GLASS_RADII.card} contentStyle={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                  <GlassView intensity={0} borderRadius={GLASS_RADII.card} contentStyle={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                     <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)' }}>
                       <WhyIcon name={item.icon} color={accentSolid} size={24} />
                     </View>
@@ -427,7 +427,7 @@ export default function PilierEducation({ visible, pilier, lang, onClose, onOpen
 
           {/* Section 3 — L'approche Sabrina */}
           <Section title={tr.pilier_education_section_approach || "Sabrina's approach"} accent={accentSolid} fadeStyle={{ opacity: sectionFades[3].opacity, transform: [{ translateY: sectionFades[3].translateY }] }}>
-            <GlassView intensity={70} borderRadius={GLASS_RADII.cardLg} contentStyle={{ padding: 20 }}>
+            <GlassView intensity={0} borderRadius={GLASS_RADII.cardLg} contentStyle={{ padding: 20 }}>
               {content.pilates_approach.map(function(para, i) {
                 return (
                   <Text key={i} style={{ fontSize: 15, lineHeight: 24, color: sectionTextColor, marginBottom: 14 }}>
@@ -472,7 +472,7 @@ export default function PilierEducation({ visible, pilier, lang, onClose, onOpen
                   accessibilityRole={hasSeance ? 'button' : 'text'}
                   accessibilityLabel={mv.name + (hasSeance ? ' — ' + (tr.pilier_education_movement_open || 'Open') : ' — ' + (tr.pilier_education_movement_soon || 'Soon'))}
                 >
-                  <GlassView intensity={55} borderRadius={GLASS_RADII.card} contentStyle={{ padding: 16 }}>
+                  <GlassView intensity={0} borderRadius={GLASS_RADII.card} contentStyle={{ padding: 16 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 10 }}>
                       <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: accentSolid }}>
                         <Text style={{ fontSize: 13, fontWeight: '800', color: isLight ? '#ffffff' : '#001a2e' }}>{i + 1}</Text>
@@ -515,7 +515,7 @@ export default function PilierEducation({ visible, pilier, lang, onClose, onOpen
             {content.recommended_programs.map(function(prog, i) {
               return (
                 <View key={i} style={{ marginBottom: 10 }}>
-                  <GlassView intensity={55} borderRadius={GLASS_RADII.card} contentStyle={{ padding: 16 }}>
+                  <GlassView intensity={0} borderRadius={GLASS_RADII.card} contentStyle={{ padding: 16 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                       <Text style={{ fontSize: 16, fontWeight: '700', color: sectionTextColor }}>{prog.label}</Text>
                     </View>

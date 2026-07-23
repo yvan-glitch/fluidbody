@@ -4,8 +4,9 @@
 // Auto-dismiss après 3.6 s, tap pour fermer plus tôt. iPhone + Apple TV.
 
 import { useEffect, useRef } from 'react';
-import { Modal, View, Text, Animated, Easing, TouchableOpacity, Platform, StyleSheet, Dimensions } from 'react-native';
+import { Modal, View, Text, Animated, Easing, TouchableOpacity, Platform, StyleSheet, Dimensions, Share } from 'react-native';
 import LiquidGlass from './LiquidGlass';
+import { hapticSuccess } from '../utils';
 
 import { MeduseCornerIcon } from './Meduse';
 
@@ -36,18 +37,31 @@ export default function StreakCelebration({ visible, streak, lang, onClose }) {
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   const fade = useRef(new Animated.Value(0)).current;
   const big = useRef(new Animated.Value(0.6)).current;
+  const timerRef = useRef(null);
+
+  function shareStreak() {
+    // On fige l'overlay le temps du partage (sinon l'auto-dismiss ferme tout).
+    if (timerRef.current) { try { clearTimeout(timerRef.current); } catch (e) {} }
+    const msg = isFr
+      ? streak + ' jours de Pilates d’affilée avec FluidBody+ 🪼 10 à 25 min par jour avec Sabrina. fluidbody.ch'
+      : streak + ' days of Pilates in a row with FluidBody+ 🪼 10-25 min a day with Sabrina. fluidbody.ch';
+    Share.share({ message: msg }).catch(function () {}).finally(function () {
+      if (onClose) onClose();
+    });
+  }
   useEffect(function () {
     if (!visible) {
       fade.setValue(0);
       big.setValue(0.6);
       return undefined;
     }
+    hapticSuccess(); // petite vibration de fierté au moment où la milestone s'affiche
     Animated.parallel([
       Animated.timing(fade, { toValue: 1, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.spring(big, { toValue: 1, friction: 5, tension: 90, useNativeDriver: true }),
     ]).start();
-    const t = setTimeout(function () { if (onClose) onClose(); }, 3600);
-    return function () { clearTimeout(t); };
+    timerRef.current = setTimeout(function () { if (onClose) onClose(); }, 3600);
+    return function () { clearTimeout(timerRef.current); };
   }, [visible]);
   if (!visible) return null;
   const medusas = [];
@@ -78,6 +92,15 @@ export default function StreakCelebration({ visible, streak, lang, onClose }) {
             <Animated.Text style={{ fontSize: 110, fontWeight: '900', color: '#AEEF4D', letterSpacing: -3, textShadowColor: 'rgba(174,239,77,0.6)', textShadowRadius: 30, transform: [{ scale: big }] }}>{streak}</Animated.Text>
             <Text style={{ fontSize: 28, fontWeight: '700', color: '#ffffff', letterSpacing: -0.4, marginTop: 6, textAlign: 'center' }}>{headline}</Text>
             <Text style={{ fontSize: 18, fontWeight: '500', color: 'rgba(255,255,255,0.78)', marginTop: 8, textAlign: 'center' }}>{sub}</Text>
+            <TouchableOpacity
+              onPress={shareStreak}
+              activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel={isFr ? 'Partager ma série' : 'Share my streak'}
+              style={{ marginTop: 22, paddingVertical: 12, paddingHorizontal: 26, borderRadius: 999, backgroundColor: 'rgba(174,239,77,0.16)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.5)' }}
+            >
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D' }}>{isFr ? 'Partager ma série' : 'Share my streak'}</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Animated.View>

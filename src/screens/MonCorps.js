@@ -614,16 +614,19 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
         </View>
       </View>
       <ScrollView style={{ flex: 1, paddingHorizontal: IS_TV ? 40 : 16 }} contentContainerStyle={{ paddingTop: IS_TV ? 90 : 0, paddingRight: IS_TV ? 40 : 0 }} showsVerticalScrollIndicator={false}>
-        {seances.map(([titre, duree, etape, url], i) => {
+        {(function() {
+        // PERF (2026-07-23) : l'en-tête de section était calculé via une
+        // boucle arrière O(n) par item (O(n²) au total, à chaque render).
+        // Le map s'exécutant dans l'ordre, une simple variable de closure
+        // suffit — même sémantique, une seule passe.
+        let lastPracticalEtape = null;
+        return seances.map(([titre, duree, etape, url], i) => {
           if (etape === 'Comprendre' || etape === 'Ressentir') return null;
           const isDone = done[i] === true || done[i] === 'true';
           const noVideo = !url;
           const locked = !noVideo && !canAccessSeanceIndex(i, isSubscriber, pilier.key);
-          let prevPracticalEtape = null;
-          for (let k = i - 1; k >= 0; k--) {
-            const e = seances[k][2];
-            if (e !== 'Comprendre' && e !== 'Ressentir') { prevPracticalEtape = e; break; }
-          }
+          const prevPracticalEtape = lastPracticalEtape;
+          lastPracticalEtape = etape;
           let sectionTitle = null;
           if (etape !== prevPracticalEtape) sectionTitle = tr.etapes[etape] || etape;
           const isFirstVisible = prevPracticalEtape === null;
@@ -707,7 +710,8 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
             </FocusableCard>
             </Fragment>
           );
-        })}
+        });
+        })()}
         <View style={{ height: 100 }} />
       </ScrollView>
       </View>
@@ -998,6 +1002,51 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
     if (bucket === 'long') return m > 20;
     return true;
   }
+  // PERF (2026-07-23) : les calculs des onglets Recherche et Explorer sont
+  // mémoïsés — avant, la double boucle piliers × séances (~160 items) était
+  // reconstruite dans le render à CHAQUE frappe clavier et à chaque re-render.
+  var searchResults = useMemo(function() {
+    var seancesData = getSeances(lang);
+    var results = [];
+    getPiliers(lang).forEach(function(p) {
+      var ps = seancesData[p.key] || [];
+      ps.forEach(function(s, idx) {
+        var titre = s[0] || '';
+        var etape = s[2] || '';
+        var matchQuery = !searchQuery || titre.toLowerCase().includes(searchQuery.toLowerCase());
+        var matchEtape = !searchEtape || etape === searchEtape;
+        var matchDur = _matchesDurationBucket(s[1], durationFilter);
+        if (matchQuery && matchEtape && matchDur) {
+          results.push({ seance: s, idx: idx, pilier: p });
+        }
+      });
+    });
+    return results;
+  }, [lang, searchQuery, searchEtape, durationFilter]);
+
+  var explorerData = useMemo(function() {
+    var seancesData = getSeances(lang);
+    var piliersAll = getPiliers(lang);
+    var freeItems = (FREE_MONTHLY_SELECTION || []).map(function(item) {
+      var p = piliersAll.find(function(x) { return x.key === item.pilier; });
+      var seance = (seancesData[item.pilier] || [])[item.idx];
+      if (!p || !seance) return null;
+      return { pilier: p, idx: item.idx, titre: seance[0], duree: seance[1], etape: seance[2] };
+    }).filter(Boolean).filter(function (it) {
+      return _matchesDurationBucket(it.duree, durationFilter);
+    });
+    // Filter piliers to those containing at least one session matching the duration bucket.
+    var piliersFiltered = piliersAll.filter(function (p) {
+      if (!durationFilter) return true;
+      var ps = seancesData[p.key] || [];
+      for (var i = 0; i < ps.length; i++) {
+        if (_matchesDurationBucket(ps[i] && ps[i][1], durationFilter)) return true;
+      }
+      return false;
+    });
+    return { freeItems: freeItems, piliersFiltered: piliersFiltered };
+  }, [lang, durationFilter]);
+
   var DURATION_CHIPS = [
     { key: '5', labelFr: '5 min', labelEn: '5 min' },
     { key: '10', labelFr: '10 min', labelEn: '10 min' },
@@ -1530,7 +1579,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   <Text style={{ fontSize: 14, color: '#AEEF4D', fontWeight: '300', marginLeft: 2 }}>{'›'}</Text>
                 </TouchableOpacity>
               ) : null}
-              <Text style={{ fontSize: 13, fontWeight: '500', fontStyle: 'italic', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.1, marginBottom: 14, paddingHorizontal: 4 }}>« {getDailyQuote()} »</Text>
+              <Text style={{ fontSize: 13, fontWeight: '500', fontStyle: 'italic', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.1, marginBottom: 14, paddingHorizontal: 4 }}>« {getDailyQuote()} »  <Text style={{ color: '#AEEF4D', fontWeight: '700', fontStyle: 'normal' }}>Sabrina</Text></Text>
               <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
                 {glassCell(mosaicImages[0], halfW, rowH1, 'm0')}
                 {glassCell(mosaicImages[1], halfW, rowH1, 'm1')}
@@ -1932,23 +1981,9 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           var cardH = IS_TV ? 320 : Math.floor(CW * 0.45);
           var freeCardW = IS_TV ? 380 : Math.round(CW * 0.62);
           var freeCardH = IS_TV ? 440 : Math.round(freeCardW * 1.15);
-          var freeItems = (FREE_MONTHLY_SELECTION || []).map(function(item) {
-            var p = piliers.find(function(x) { return x.key === item.pilier; });
-            var seance = (seancesData[item.pilier] || [])[item.idx];
-            if (!p || !seance) return null;
-            return { pilier: p, idx: item.idx, titre: seance[0], duree: seance[1], etape: seance[2] };
-          }).filter(Boolean).filter(function (it) {
-            return _matchesDurationBucket(it.duree, durationFilter);
-          });
-          // Filter piliers to those containing at least one session matching the duration bucket.
-          var piliersFiltered = piliers.filter(function (p) {
-            if (!durationFilter) return true;
-            var ps = seancesData[p.key] || [];
-            for (var i = 0; i < ps.length; i++) {
-              if (_matchesDurationBucket(ps[i] && ps[i][1], durationFilter)) return true;
-            }
-            return false;
-          });
+          // PERF : mémoïsés en tête de composant (explorerData).
+          var freeItems = explorerData.freeItems;
+          var piliersFiltered = explorerData.piliersFiltered;
           return (
             <View key="explorer-sections">
               <DurationChipsRow />
@@ -2081,22 +2116,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           </View>
         )}
         {mcTab === 'recherche' && (function() {
-          var seancesData = getSeances(lang);
           var halfW = (CW - 52) / 2;
-          var allResults = [];
-          piliers.forEach(function(p) {
-            var ps = seancesData[p.key] || [];
-            ps.forEach(function(s, idx) {
-              var titre = s[0] || '';
-              var etape = s[2] || '';
-              var matchQuery = !searchQuery || titre.toLowerCase().includes(searchQuery.toLowerCase());
-              var matchEtape = !searchEtape || etape === searchEtape;
-              var matchDur = _matchesDurationBucket(s[1], durationFilter);
-              if (matchQuery && matchEtape && matchDur) {
-                allResults.push({ seance: s, idx: idx, pilier: p });
-              }
-            });
-          });
+          var allResults = searchResults; // PERF : mémoïsé en tête de composant.
           return (
             <View>
               {/* Search bar — Liquid Glass capsule */}

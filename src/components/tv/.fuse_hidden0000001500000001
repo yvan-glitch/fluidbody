@@ -164,6 +164,7 @@ export default function SeanceCompleteTV({
             <GlassCardTV
               onPress={onContinue}
               focusPreferred
+              accent="green"
               variant="elevated"
               shape="pill"
               padding={0}
@@ -177,6 +178,7 @@ export default function SeanceCompleteTV({
           {onClose ? (
             <GlassCardTV
               onPress={onClose}
+              accent="cyan"
               variant="subtle"
               shape="pill"
               padding={0}

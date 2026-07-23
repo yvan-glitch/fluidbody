@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { View, Animated, Easing, Dimensions, Platform } from 'react-native';
+import { NavigationContext } from '@react-navigation/native';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -39,7 +40,21 @@ export default function LivingBackground() {
     y: new Animated.Value(0),
   }))).current;
 
+  // PERF (2026-07-23) : pause de la dérive quand l'écran porteur n'est pas
+  // focus (les écrans restent montés dans le Tab.Navigator). Hors navigateur,
+  // NavigationContext est absent → toujours considéré focus.
+  const nav = useContext(NavigationContext);
+  const [focused, setFocused] = useState(() => (nav && nav.isFocused ? nav.isFocused() : true));
   useEffect(() => {
+    if (!nav || !nav.addListener) return;
+    const u1 = nav.addListener('focus', () => setFocused(true));
+    const u2 = nav.addListener('blur', () => setFocused(false));
+    setFocused(nav.isFocused ? nav.isFocused() : true);
+    return () => { try { u1 && u1(); u2 && u2(); } catch (e) {} };
+  }, [nav]);
+
+  useEffect(() => {
+    if (!focused) return;
     const loops = [];
     anims.forEach((a, i) => {
       const cfg = BLOBS[i];
@@ -65,7 +80,7 @@ export default function LivingBackground() {
         try { a.x.removeAllListeners(); a.y.removeAllListeners(); } catch (e) {}
       });
     };
-  }, []);
+  }, [focused]);
 
   return (
     <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
@@ -75,6 +90,12 @@ export default function LivingBackground() {
         return (
           <Animated.View
             key={i}
+            // Perf critique : le halo (shadowRadius 90) coûtait un flou gaussien
+            // recalculé à CHAQUE frame pendant la dérive → saccades au scroll.
+            // La rasterisation le fige en texture : calculé une fois, puis
+            // simplement translaté par le GPU (l'animation est translate-only).
+            shouldRasterizeIOS={true}
+            renderToHardwareTextureAndroid={true}
             style={{
               position: 'absolute',
               left: b.startX - b.size / 2,
