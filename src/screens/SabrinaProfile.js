@@ -116,7 +116,7 @@ export default function SabrinaProfile({ lang, onClose }) {
                 marginBottom: IS_TV ? 10 : 6,
               }}
             >
-              {isFr ? 'Votre coach' : 'Your coach'}
+              {isFr ? 'Ta coach' : 'Your coach'}
             </Text>
             <Text
               style={{

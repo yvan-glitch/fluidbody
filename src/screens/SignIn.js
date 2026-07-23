@@ -113,7 +113,6 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
       const { error: err } = await withTimeout(supabase.auth.signInWithPassword({ email: em, password }), 15000, 'signIn');
       if (err) { setError(err.message); setLoading(false); return; }
       persistTermsAccepted();
-      persistTermsAccepted();
       setLoading(false);
       onSuccess && onSuccess();
     } catch (e) {
@@ -236,7 +235,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
                 fontWeight: '900',
                 textAlign: 'center',
                 letterSpacing: 4,
-                color: '#E5FF00',
+                color: '#AEEF4D',
                 textShadowColor: 'rgba(0, 0, 0, 0.4)',
                 textShadowOffset: { width: 0, height: 3 },
                 textShadowRadius: 14,
@@ -250,7 +249,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
                   fontWeight: '900',
                   letterSpacing: 1,
                   marginLeft: 40,
-                  color: '#E5FF00',
+                  color: '#AEEF4D',
                   textShadowColor: 'rgba(0, 0, 0, 0.4)',
                   textShadowOffset: { width: 0, height: 3 },
                   textShadowRadius: 14,
@@ -260,8 +259,8 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', flexWrap: 'nowrap', marginTop: -2, width: '100%', paddingHorizontal: 8 }}>
-            <Text style={{ fontSize: 28, fontWeight: '400', color: '#E5FF00', letterSpacing: 16, textTransform: 'uppercase', textShadowColor: 'rgba(0, 12, 28, 0.45)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>PILATES</Text>
-            <Text style={{ marginLeft: 14, fontSize: 28, fontWeight: '300', color: '#E5FF00', letterSpacing: 2, textShadowColor: 'rgba(0, 12, 28, 0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>{'& More'}</Text>
+            <Text style={{ fontSize: 28, fontWeight: '400', color: '#AEEF4D', letterSpacing: 16, textTransform: 'uppercase', textShadowColor: 'rgba(0, 12, 28, 0.45)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>PILATES</Text>
+            <Text style={{ marginLeft: 14, fontSize: 28, fontWeight: '300', color: '#AEEF4D', letterSpacing: 2, textShadowColor: 'rgba(0, 12, 28, 0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>{'& More'}</Text>
           </View>
           <Text style={{ marginTop: 22, fontSize: 22, fontWeight: '700', color: '#ffffff', textAlign: 'center', letterSpacing: -0.2 }}>{isFr ? 'Bon retour' : 'Welcome back'}</Text>
         </View>
@@ -309,9 +308,9 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
             </GlassButton>
           ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
-            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(229,255,0,0.25)' }} />
-            <Text style={{ fontSize: 11, color: '#E5FF00', marginHorizontal: 14, letterSpacing: 1, textTransform: 'uppercase' }}>{tr.auth_or || 'ou'}</Text>
-            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(229,255,0,0.25)' }} />
+            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(174,239,77,0.25)' }} />
+            <Text style={{ fontSize: 11, color: '#AEEF4D', marginHorizontal: 14, letterSpacing: 1, textTransform: 'uppercase' }}>{tr.auth_or || 'ou'}</Text>
+            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(174,239,77,0.25)' }} />
           </View>
           <TextInput
             value={email}
@@ -325,7 +324,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
             autoCapitalize="none"
             autoCorrect={false}
             editable={!loading}
-            style={{ width: '100%', height: 48, backgroundColor: emailFocused ? 'rgba(229,255,0,0.06)' : 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: emailFocused ? '#E5FF00' : 'rgba(255,255,255,0.25)', borderRadius: 25, color: '#ffffff', fontSize: 15, paddingHorizontal: 18, marginBottom: 10 }}
+            style={{ width: '100%', height: 48, backgroundColor: emailFocused ? 'rgba(174,239,77,0.06)' : 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: emailFocused ? '#AEEF4D' : 'rgba(255,255,255,0.25)', borderRadius: 25, color: '#ffffff', fontSize: 15, paddingHorizontal: 18, marginBottom: 10 }}
           />
           <TextInput
             value={password}
@@ -339,7 +338,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
             autoCapitalize="none"
             autoCorrect={false}
             editable={!loading}
-            style={{ width: '100%', height: 48, backgroundColor: passwordFocused ? 'rgba(229,255,0,0.06)' : 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: passwordFocused ? '#E5FF00' : 'rgba(255,255,255,0.25)', borderRadius: 25, color: '#ffffff', fontSize: 15, paddingHorizontal: 18, marginBottom: 10 }}
+            style={{ width: '100%', height: 48, backgroundColor: passwordFocused ? 'rgba(174,239,77,0.06)' : 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: passwordFocused ? '#AEEF4D' : 'rgba(255,255,255,0.25)', borderRadius: 25, color: '#ffffff', fontSize: 15, paddingHorizontal: 18, marginBottom: 10 }}
           />
           {error ? <Text style={{ color: 'rgba(255,140,140,0.95)', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>{error}</Text> : null}
 
@@ -385,14 +384,14 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
             activeOpacity={0.85}
             style={{
               width: '100%', height: 50, borderRadius: 25,
-              backgroundColor: canSubmit ? 'rgba(229,255,0,0.18)' : 'rgba(229,255,0,0.06)',
-              borderWidth: 1.5, borderColor: '#E5FF00',
+              backgroundColor: canSubmit ? 'rgba(174,239,77,0.18)' : 'rgba(174,239,77,0.06)',
+              borderWidth: 1.5, borderColor: '#AEEF4D',
               alignItems: 'center', justifyContent: 'center',
               opacity: canSubmit ? 1 : 0.5,
-              shadowColor: '#E5FF00', shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
+              shadowColor: '#AEEF4D', shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
             }}
           >
-            <Text style={{ fontSize: 15, fontWeight: '800', color: '#E5FF00', letterSpacing: 0.3 }}>{loading ? '…' : (tr.ob_auth_submit_in || 'Se connecter')}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: '#AEEF4D', letterSpacing: 0.3 }}>{loading ? '…' : (tr.ob_auth_submit_in || 'Se connecter')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={onSwitchToSignUp} disabled={loading} activeOpacity={0.7} style={{ alignItems: 'center', paddingVertical: 12, marginTop: 6 }}>

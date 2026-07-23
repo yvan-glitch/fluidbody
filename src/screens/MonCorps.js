@@ -890,63 +890,63 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
         <ScrollView contentContainerStyle={{ paddingTop: 60, paddingHorizontal: 24, paddingBottom: 40 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
             <TouchableOpacity onPress={onClose} style={{ paddingVertical: 8 }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5FF00', letterSpacing: 1.5, textTransform: 'uppercase' }}>{tr.retour}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1.5, textTransform: 'uppercase' }}>{tr.retour}</Text>
             </TouchableOpacity>
           </View>
           <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff', marginBottom: 24 }}>{tr.prog_create_title}</Text>
 
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5FF00', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_select_piliers}</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_select_piliers}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 }}>
             {piliers.map(function(p) {
               var active = selected.includes(p.key);
               return (
-                <TouchableOpacity key={p.key} onPress={function() { togglePilier(p.key); }} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, borderWidth: 1.5, borderColor: active ? '#E5FF00' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(229,255,0,0.12)' : 'rgba(0,18,32,0.6)' }}>
+                <TouchableOpacity key={p.key} onPress={function() { togglePilier(p.key); }} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, borderWidth: 1.5, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(174,239,77,0.12)' : 'rgba(0,18,32,0.6)' }}>
                   <View style={{ width: 32, height: 32, borderRadius: 16, overflow: 'hidden' }}>
                     <Image source={PILIER_IMAGES[p.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pil-' + p.key} style={{ flex: 1 }} />
                   </View>
-                  <Text style={{ fontSize: 14, fontWeight: '500', color: active ? '#E5FF00' : 'rgba(255,255,255,0.6)' }}>{p.label}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.6)' }}>{p.label}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
 
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5FF00', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_duree_label}</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_duree_label}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 28 }} contentContainerStyle={{ gap: 10 }}>
             {dureeOptions.map(function(d, i) {
               var active = duree === i;
               return (
-                <TouchableOpacity key={i} onPress={function() { setDuree(i); }} style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: active ? '#E5FF00' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(229,255,0,0.12)' : 'rgba(0,18,32,0.6)' }}>
-                  <Text style={{ fontSize: 14, color: active ? '#E5FF00' : 'rgba(255,255,255,0.6)' }}>{d}</Text>
+                <TouchableOpacity key={i} onPress={function() { setDuree(i); }} style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(174,239,77,0.12)' : 'rgba(0,18,32,0.6)' }}>
+                  <Text style={{ fontSize: 14, color: active ? '#AEEF4D' : 'rgba(255,255,255,0.6)' }}>{d}</Text>
                 </TouchableOpacity>
               );
             })}
           </ScrollView>
 
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5FF00', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_jours_label}</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_jours_label}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 36 }} contentContainerStyle={{ gap: 10 }}>
             {joursOptions.map(function(j) {
               var active = jours === j;
               return (
-                <TouchableOpacity key={j} onPress={function() { setJours(j); }} style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: active ? '#E5FF00' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(229,255,0,0.12)' : 'rgba(0,18,32,0.6)', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: active ? '#E5FF00' : 'rgba(255,255,255,0.6)' }}>{j}</Text>
+                <TouchableOpacity key={j} onPress={function() { setJours(j); }} style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(174,239,77,0.12)' : 'rgba(0,18,32,0.6)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.6)' }}>{j}</Text>
                 </TouchableOpacity>
               );
             })}
           </ScrollView>
 
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5FF00', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_notif_days || 'Jours de rappel'}</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_notif_days || 'Jours de rappel'}</Text>
           <View style={{ flexDirection: 'row', gap: 6, marginBottom: 28, flexWrap: 'wrap' }}>
             {[1, 2, 3, 4, 5, 6, 0].map(function(d, i) {
               var active = selectedDays.includes(d);
               return (
-                <TouchableOpacity key={d} onPress={function() { toggleDay(d); }} style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: active ? '#E5FF00' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(229,255,0,0.12)' : 'rgba(0,18,32,0.6)', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#E5FF00' : 'rgba(255,255,255,0.6)' }}>{jourLabels[i]}</Text>
+                <TouchableOpacity key={d} onPress={function() { toggleDay(d); }} style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(174,239,77,0.12)' : 'rgba(0,18,32,0.6)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.6)' }}>{jourLabels[i]}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
 
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5FF00', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_notif_hour || 'Heure de rappel'}</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_notif_hour || 'Heure de rappel'}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 36 }}>
             <TouchableOpacity onPress={function() { setNotifHour(Math.max(5, notifHour - 1)); }} style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.6)' }}>{'\u2212'}</Text>
@@ -957,7 +957,7 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity onPress={saveProg} disabled={selected.length === 0} activeOpacity={0.85} style={{ height: 56, borderRadius: 28, backgroundColor: selected.length > 0 ? '#E5FF00' : 'rgba(229,255,0,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+          <TouchableOpacity onPress={saveProg} disabled={selected.length === 0} activeOpacity={0.85} style={{ height: 56, borderRadius: 28, backgroundColor: selected.length > 0 ? '#AEEF4D' : 'rgba(174,239,77,0.2)', alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontSize: 17, fontWeight: '700', color: '#000000' }}>{saved ? tr.prog_saved : tr.prog_save}</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -1699,7 +1699,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 <View style={{ marginBottom: 24 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingHorizontal: 4 }}>
                     <View style={{ flex: 1, paddingRight: 12 }}>
-                      <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', letterSpacing: -0.2 }}>{tr.bilan_program_title || 'Votre programme personnalisé'}</Text>
+                      <Text style={{ fontSize: 18, fontWeight: '700', color: '#ffffff', letterSpacing: -0.2 }}>{tr.bilan_program_title || 'Ton programme personnalisé'}</Text>
                     </View>
                     <TouchableOpacity onPress={function() { setBilanEditMode(true); }} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                       <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEEF4D' }}>{tr.bilan_update_btn || 'Mettre à jour'}</Text>

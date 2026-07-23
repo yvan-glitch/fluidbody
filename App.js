@@ -1114,7 +1114,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
                   fontSize: 260,
                   letterSpacing: 1,
                   marginLeft: 40,
-                  color: '#E5FF00',
+                  color: '#AEEF4D',
                   textShadowColor: 'rgba(0, 0, 0, 0.4)',
                   textShadowOffset: { width: 0, height: 3 },
                   textShadowRadius: 14,
@@ -1124,8 +1124,8 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', flexWrap: 'nowrap', marginTop: -2, width: '100%', paddingHorizontal: 8 }}>
-            <Text style={{ fontSize: 28, fontWeight: '400', color: '#E5FF00', letterSpacing: 16, textTransform: 'uppercase', textShadowColor: 'rgba(0, 12, 28, 0.45)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>PILATES</Text>
-            <Text style={{ marginLeft: 14, fontSize: 28, fontWeight: '300', color: '#E5FF00', letterSpacing: 2, textShadowColor: 'rgba(0, 12, 28, 0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>{'& More'}</Text>
+            <Text style={{ fontSize: 28, fontWeight: '400', color: '#AEEF4D', letterSpacing: 16, textTransform: 'uppercase', textShadowColor: 'rgba(0, 12, 28, 0.45)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>PILATES</Text>
+            <Text style={{ marginLeft: 14, fontSize: 28, fontWeight: '300', color: '#AEEF4D', letterSpacing: 2, textShadowColor: 'rgba(0, 12, 28, 0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6, ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}) }}>{'& More'}</Text>
           </View>
         </View>
       </View>
@@ -1175,9 +1175,9 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
             </GlassButton>
           ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
-            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(229,255,0,0.25)' }} />
-            <Text style={{ fontSize: 11, color: '#E5FF00', marginHorizontal: 14, letterSpacing: 1, textTransform: 'uppercase' }}>{tr.auth_or || 'ou'}</Text>
-            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(229,255,0,0.25)' }} />
+            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(174,239,77,0.25)' }} />
+            <Text style={{ fontSize: 11, color: '#AEEF4D', marginHorizontal: 14, letterSpacing: 1, textTransform: 'uppercase' }}>{tr.auth_or || 'ou'}</Text>
+            <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(174,239,77,0.25)' }} />
           </View>
           <TextInput
             value={email} onChangeText={setEmail}
@@ -1187,7 +1187,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
             placeholder={tr.ob_email_ph}
             placeholderTextColor="rgba(255,255,255,0.4)"
             keyboardType="email-address" autoCapitalize="none" autoCorrect={false} editable={!loading}
-            style={{ width: '100%', height: 48, backgroundColor: emailFocused ? 'rgba(229,255,0,0.06)' : 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: emailFocused ? '#E5FF00' : 'rgba(255,255,255,0.25)', borderRadius: 25, color: '#ffffff', fontSize: 15, paddingHorizontal: 18, marginBottom: 8 }}
+            style={{ width: '100%', height: 48, backgroundColor: emailFocused ? 'rgba(174,239,77,0.06)' : 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: emailFocused ? '#AEEF4D' : 'rgba(255,255,255,0.25)', borderRadius: 25, color: '#ffffff', fontSize: 15, paddingHorizontal: 18, marginBottom: 8 }}
           />
           <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', lineHeight: 14, marginBottom: 10, paddingHorizontal: 2 }}>
             En continuant, tu acceptes nos Conditions d'utilisation et notre{' '}
@@ -1201,11 +1201,11 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
             placeholder={tr.ob_pass_ph}
             placeholderTextColor="rgba(255,255,255,0.4)"
             secureTextEntry autoCapitalize="none" autoCorrect={false} editable={!loading}
-            style={{ width: '100%', height: 48, backgroundColor: passwordFocused ? 'rgba(229,255,0,0.06)' : 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: passwordFocused ? '#E5FF00' : 'rgba(255,255,255,0.25)', borderRadius: 25, color: '#ffffff', fontSize: 15, paddingHorizontal: 18, marginBottom: 10 }}
+            style={{ width: '100%', height: 48, backgroundColor: passwordFocused ? 'rgba(174,239,77,0.06)' : 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: passwordFocused ? '#AEEF4D' : 'rgba(255,255,255,0.25)', borderRadius: 25, color: '#ffffff', fontSize: 15, paddingHorizontal: 18, marginBottom: 10 }}
           />
           {error ? (
             emailExistsErr ? (
-              <View style={{ marginBottom: 10, padding: 10, borderRadius: 14, backgroundColor: 'rgba(229,255,0,0.06)', borderWidth: 1, borderColor: 'rgba(229,255,0,0.4)' }}>
+              <View style={{ marginBottom: 10, padding: 10, borderRadius: 14, backgroundColor: 'rgba(174,239,77,0.06)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.4)' }}>
                 <Text style={{ color: 'rgba(255,220,140,0.95)', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>{error}</Text>
                 <TouchableOpacity onPress={() => onSwitchToSignIn && onSwitchToSignIn(email)} activeOpacity={0.85} style={{ alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: '#AEEF4D' }}>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: '#AEEF4D' }}>{tr.ob_auth_submit_in || 'Se connecter'}</Text>
@@ -2441,13 +2441,13 @@ function WelcomeIntroScreen({ onDone, lang }) {
             borderRadius: 30,
             backgroundColor: 'transparent',
             borderWidth: 1.5,
-            borderColor: '#E5FF00',
+            borderColor: '#AEEF4D',
             alignItems: 'center',
             justifyContent: 'center',
             opacity: confettiActive ? 0.45 : 1,
           }}
         >
-          <Text style={{ fontSize: 16, fontWeight: '800', color: '#E5FF00', letterSpacing: 0.2 }}>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: '#AEEF4D', letterSpacing: 0.2 }}>
             {tr.welcome_program_cta || 'On va créer ton programme'}
           </Text>
         </TouchableOpacity>

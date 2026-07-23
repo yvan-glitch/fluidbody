@@ -1509,7 +1509,7 @@ export const SABRINA_QUOTES = {
     "Se tenir droit ne signifie pas se raidir. Ça signifie s'aligner.",
     "Le sol ne ment pas. Il révèle exactement où tu en es.",
     "Avant de renforcer, il faut comprendre.",
-    "La meilleure posture est celle que vous quittez.",
+    "La meilleure posture est celle que tu quittes.",
     "Dans chaque souffle conscient, le corps retrouve son chemin.",
     "Le corps sait. Il faut juste apprendre à l'écouter.",
     "La qualité prime toujours sur la quantité.",

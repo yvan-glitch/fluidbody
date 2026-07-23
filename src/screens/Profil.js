@@ -1641,11 +1641,11 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
 
         <View style={{ marginHorizontal: 20, marginBottom: 16 }}><GlassCard intensity={0} padding={20} borderRadius={GLASS_RADII.card}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.text, marginBottom: 12 }}>{tr.profil_donnees_title || 'Confidentialité'}</Text>
-          <Text style={{ fontSize: 13, color: theme.colors.textSecondary, lineHeight: 20, marginBottom: 14 }}>{tr.profil_donnees_desc || 'Vos données restent sur votre appareil. Aucune donnée personnelle n\'est envoyée à des serveurs tiers. Les séances, la progression et les préférences sont stockées localement via AsyncStorage. Si vous vous connectez, seul votre email est synchronisé via Supabase pour sauvegarder votre profil.'}</Text>
+          <Text style={{ fontSize: 13, color: theme.colors.textSecondary, lineHeight: 20, marginBottom: 14 }}>{tr.profil_donnees_desc || 'Tes données restent sur ton appareil. Aucune donnée personnelle n\'est envoyée à des serveurs tiers. Les séances, la progression et les préférences sont stockées localement. Si tu te connectes, seul ton email est synchronisé via Supabase pour sauvegarder ton profil.'}</Text>
           <View style={{ borderTopWidth: 0.5, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 12, gap: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Icon name="lock" size={14} color="rgba(174,239,77,0.7)" />
-              <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.7)', flex: 1 }}>{tr.profil_donnees_local || 'Données stockées localement sur votre appareil'}</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(174,239,77,0.7)', flex: 1 }}>{tr.profil_donnees_local || 'Données stockées localement sur ton appareil'}</Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Icon name="no_tracking" size={14} color="rgba(174,239,77,0.7)" />

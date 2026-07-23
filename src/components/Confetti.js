@@ -3,7 +3,7 @@ import { View, Animated, Easing, Dimensions } from 'react-native';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
-const COLORS = ['#AEEF4D', '#E5FF00', '#00BDD0', '#ffffff'];
+const COLORS = ['#AEEF4D', '#AEEF4D', '#00BDD0', '#ffffff'];
 const SHAPES = ['rect', 'circle'];
 
 function rand(a, b) { return a + Math.random() * (b - a); }
