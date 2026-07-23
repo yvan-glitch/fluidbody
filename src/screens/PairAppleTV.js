@@ -52,6 +52,13 @@ try {
   useCameraPermissions = null;
 }
 
+// FIX rules-of-hooks (2026-07-23) : hooks avant tout early-return.
+// On fige au chargement du module un hook toujours appelable : soit le vrai
+// useCameraPermissions, soit un fallback qui renvoie [null, null]. La
+// disponibilité du module ne change jamais au runtime, l'ordre des hooks
+// reste donc stable.
+const useCameraPermissionsSafe = useCameraPermissions || function useCameraPermissionsFallback() { return [null, null]; };
+
 export default function PairAppleTV({ onClose, lang, supaUser }) {
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
   const [phase, setPhase] = useState('init'); // init | scanning | manual | submitting | done | error
@@ -60,7 +67,7 @@ export default function PairAppleTV({ onClose, lang, supaUser }) {
   const lastScannedRef = useRef('');
   const submittingRef = useRef(false);
 
-  const cameraPerm = useCameraPermissions ? useCameraPermissions() : [null, null];
+  const cameraPerm = useCameraPermissionsSafe();
   const cameraStatus = cameraPerm[0];
   const requestCameraPerm = cameraPerm[1];
 

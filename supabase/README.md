@@ -87,8 +87,61 @@ positive answer:
 
 Anyone else gets 403. Anyone signed-out gets 401.
 
-To turn on the webhook path: in RevenueCat → Integrations → Webhooks, send
-events to a separate `revenuecat-webhook` function (TBD) that updates
-`profiles.is_subscriber` and `profiles.subscription_expires_at` keyed by
-`event.app_user_id`. The client must also call `Purchases.logIn(supaUser.id)`
-after login so RC's app-user-id matches `auth.users.id`.
+The webhook path (step 2) is fed by the `revenuecat-webhook` function — see
+the next section.
+
+## Webhook RevenueCat
+
+La fonction `supabase/functions/revenuecat-webhook/index.ts` reçoit les
+événements RevenueCat (renouvellements, annulations, expirations,
+remboursements…) et met à jour `profiles.is_subscriber` /
+`profiles.subscription_expires_at` côté serveur — y compris quand l'app n'est
+jamais ouverte (contrairement à `confirm-purchase`, qui dépend d'un appel
+client).
+
+Mapping des événements :
+
+| Événement RC                                                        | Effet |
+|---------------------------------------------------------------------|-------|
+| `INITIAL_PURCHASE`, `RENEWAL`, `UNCANCELLATION`, `NON_RENEWING_PURCHASE` | `is_subscriber = true` + échéance |
+| `CANCELLATION`, `BILLING_ISSUE`, `PRODUCT_CHANGE`                   | échéance mise à jour, accès conservé jusqu'à expiration |
+| `EXPIRATION`                                                        | `is_subscriber = false` |
+| Autres (`TEST`, `TRANSFER`…)                                        | ignoré (`{skipped:true}`) |
+
+Le profil est retrouvé via `profiles.rc_app_user_id` comparé à
+`event.app_user_id`, `event.original_app_user_id` et `event.aliases[]` ; en
+repli, si l'un de ces IDs est un UUID (client ayant fait
+`Purchases.logIn(supaUser.id)`), match direct sur `profiles.id`. Un user
+inconnu répond `200 {skipped:true}` — RC retente tout non-200, et un ID
+anonyme jamais lié n'est pas une erreur.
+
+### Déploiement
+
+```bash
+# secret partagé avec le dashboard RC — génère une valeur longue et aléatoire,
+# ex. : openssl rand -hex 32
+supabase secrets set RC_WEBHOOK_AUTH=<valeur-secrète>
+
+# --no-verify-jwt est OBLIGATOIRE : RevenueCat appelle sans JWT Supabase,
+# l'auth se fait par le header Authorization comparé à RC_WEBHOOK_AUTH.
+supabase functions deploy revenuecat-webhook --no-verify-jwt
+```
+
+### Configuration côté RevenueCat
+
+Dans le dashboard RevenueCat → **Integrations → Webhooks → + New** :
+
+1. **Webhook URL** :
+   `https://<project-ref>.supabase.co/functions/v1/revenuecat-webhook`
+2. **Authorization header value** : exactement la valeur de `RC_WEBHOOK_AUTH`
+   (comparaison stricte, préfixe compris si tu en mets un).
+3. Environnement : Production (les événements `TEST` sont ignorés par la
+   fonction de toute façon).
+
+Vérification : bouton « Send test event » dans le dashboard RC → la fonction
+répond `200 {"skipped":true,"reason":"ignored-event-type"}` ; un mauvais
+header répond `401`.
+
+Pour que le webhook matche les profils de façon fiable, le client doit
+appeler `Purchases.logIn(supaUser.id)` après login (sinon seul le lien posé
+par `confirm-purchase` via `rc_app_user_id` permet le match).

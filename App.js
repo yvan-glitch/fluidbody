@@ -144,6 +144,7 @@ import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResum
 import { creditReferralOnPaid, getReferralStats, parseReferralCodeFromUrl, savePendingReferralCode } from './src/utils/referrals';
 import { safeNativeCall, safeNativeFire, diag } from './src/utils/safeNativeCall';
 import { maybeAskForReview } from './src/utils/reviewPrompt';
+import { reportError } from './src/utils/reportError';
 
 // ─── GLOBAL ERROR HANDLER (PROD ONLY) ─────────────────────────────────────────
 // En prod : on envoie l'erreur à Sentry et on affiche un message générique.
@@ -612,8 +613,8 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
           tension_idxs: Array.isArray(tensionIdxsForProfile) ? tensionIdxsForProfile : [],
           updated_at: new Date().toISOString(),
         });
-      } catch (e) { devWarn('profiles upsert post-auth', e); }
-    } catch(e) { devWarn('postAuthProfileSync', e); }
+      } catch (e) { reportError('profiles.upsert.postAuth', e); }
+    } catch(e) { reportError('profiles.postAuthProfileSync', e); }
   }
 
   async function handleEmailAuth(mode) {
@@ -1028,8 +1029,11 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
           if (session?.user) {
             await supabase.from('profiles').upsert({ id: session.user.id, prenom: applePrenom, updated_at: new Date().toISOString() });
           }
-        } catch(_) {}
+        } catch(e) { reportError('profiles.upsert.onboardingApple', e); }
       }
+      // CGU (2026-07-23) : consentement implicite affiché à l'écran
+      // (« En continuant, tu acceptes… ») — on trace la version acceptée.
+      AsyncStorage.setItem(TERMS_ACCEPTED_STORAGE_KEY, String(LEGAL.termsVersion || '1.0')).catch(() => {});
       setLoading(false);
       finish();
     } catch (e) {
@@ -1061,8 +1065,10 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
       const gName = res?.data?.user?.givenName || res?.user?.givenName || '';
       if (gName) {
         try { await supabase.auth.updateUser({ data: { prenom: gName } }); } catch(_) {}
-        try { const { data: { session } } = await supabase.auth.getSession(); if (session?.user) { await supabase.from('profiles').upsert({ id: session.user.id, prenom: gName, updated_at: new Date().toISOString() }); } } catch(_) {}
+        try { const { data: { session } } = await supabase.auth.getSession(); if (session?.user) { await supabase.from('profiles').upsert({ id: session.user.id, prenom: gName, updated_at: new Date().toISOString() }); } } catch(e) { reportError('profiles.upsert.onboardingGoogle', e); }
       }
+      // CGU (2026-07-23) : idem Apple — trace de la version acceptée.
+      AsyncStorage.setItem(TERMS_ACCEPTED_STORAGE_KEY, String(LEGAL.termsVersion || '1.0')).catch(() => {});
       setLoading(false);
       finish();
     } catch (e) {
@@ -1601,7 +1607,8 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     setIsSubscriber(!!active);
     try {
       await AsyncStorage.setItem(FLUID_SUB_KEY, active ? 'true' : 'false');
-      await AsyncStorage.setItem('is_subscription_active', active ? 'true' : 'false');
+      // (2026-07-23) clé morte `is_subscription_active` supprimée : écrite ici
+      // mais jamais relue nulle part — resetAllData continue de la purger.
     } catch (e) {}
   }
 
@@ -1935,8 +1942,8 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     if (supabase && supaUser) {
       Promise.resolve(
         supabase.from('progression').upsert({ user_id: supaUser.id, done: next, updated_at: new Date().toISOString() })
-      ).then(function(r) { if (r && r.error) devWarn('Supabase progression upsert', r.error); })
-       .catch(function(e) { devWarn('Supabase progression upsert', e); });
+      ).then(function(r) { if (r && r.error) reportError('progression.upsert', r.error); })
+       .catch(function(e) { reportError('progression.upsert', e); });
     }
     if (wasDone) return; // Décocher : rien d'autre à déclencher.
     // First séance modal

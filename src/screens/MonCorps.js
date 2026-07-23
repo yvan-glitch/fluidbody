@@ -802,7 +802,6 @@ async function cancelProgNotifications(notifIds) {
 }
 
 function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
-  if (!visible) return null;
   var tr = T[lang] || T["fr"];
   var piliers = getPiliers(lang);
   var [selected, setSelected] = useState([]);
@@ -811,6 +810,9 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
   var [saved, setSaved] = useState(false);
   var [notifHour, setNotifHour] = useState(8);
   var [selectedDays, setSelectedDays] = useState([1, 2, 3, 4, 5]);
+  // FIX rules-of-hooks (2026-07-23) : le early-return était AVANT les hooks →
+  // « Rendered more hooks than during the previous render » à l'ouverture.
+  if (!visible) return null;
   var dureeOptions = ['10 min', '15 min', '20 min', '30 min', '45 min'];
   var joursOptions = [2, 3, 4, 5, 6, 7];
   var jourLabels = JOUR_LABELS[lang] || JOUR_LABELS.fr;

@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, Animated, Easing, Dimensions, StyleSheet } from 'react-native';
+import { Text, View, TextInput, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, Alert, Animated, Easing, Dimensions, StyleSheet, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { T } from '../constants/data';
+import { LEGAL, getTermsUrl, TERMS_ACCEPTED_STORAGE_KEY } from '../constants/legal';
 import { Bulle, Meduse, MeduseCornerIcon, BULLES_ONBOARDING } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import GlassButton from '../components/GlassButton';
 import LivingBackground from '../components/LivingBackground';
 import { withTimeout } from '../utils/withTimeout';
+import { reportError } from '../utils/reportError';
 
 let AppleAuth = null;
 try { AppleAuth = require('expo-apple-authentication'); } catch(e) {}
@@ -33,6 +36,21 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // FIX CGU (2026-07-23) : Apple/Google via signInWithIdToken CRÉENT un compte
+  // au premier passage — ce flux n'exigeait aucune acceptation des CGU
+  // (divergence avec AuthScreen, risque légal). Même mécanique qu'AuthScreen :
+  // case bloquante, pré-cochée si déjà acceptée sur cet appareil.
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(TERMS_ACCEPTED_STORAGE_KEY)
+      .then(v => { if (!cancelled && v) setTermsAccepted(true); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  function persistTermsAccepted() {
+    AsyncStorage.setItem(TERMS_ACCEPTED_STORAGE_KEY, String(LEGAL.termsVersion || '1.0')).catch(() => {});
+  }
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const validPass = password.length >= 6;
   const canSubmit = validEmail && validPass && !loading;
@@ -89,10 +107,13 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
     const em = email.trim().toLowerCase();
     if (!validEmail) { setError(tr.ob_auth_err_email || 'Email invalide.'); return; }
     if (!validPass) { setError(tr.ob_auth_err_short || 'Mot de passe trop court.'); return; }
+    if (!termsAccepted) { setError(tr.ob_auth_terms_required || 'Tu dois accepter les CGU pour continuer.'); return; }
     setLoading(true); setError('');
     try {
       const { error: err } = await withTimeout(supabase.auth.signInWithPassword({ email: em, password }), 15000, 'signIn');
       if (err) { setError(err.message); setLoading(false); return; }
+      persistTermsAccepted();
+      persistTermsAccepted();
       setLoading(false);
       onSuccess && onSuccess();
     } catch (e) {
@@ -105,6 +126,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
     if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
     if (!AppleAuth) { Alert.alert('Apple Sign In', 'Module expo-apple-authentication non chargé. Vérifie le plugin dans app.json.'); return; }
     if (!appleAvailable) { Alert.alert('FluidBody+', 'Sign in with Apple disponible sur iOS uniquement.'); return; }
+    if (!termsAccepted) { setError(tr.ob_auth_terms_required || 'Tu dois accepter les CGU pour continuer.'); return; }
     setLoading(true); setError('');
     try {
       const credential = await withTimeout(AppleAuth.signInAsync({
@@ -128,8 +150,9 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
           if (session?.user) {
             await supabase.from('profiles').upsert({ id: session.user.id, prenom: applePrenom, updated_at: new Date().toISOString() });
           }
-        } catch(_) {}
+        } catch(e) { reportError('profiles.upsert.signInApple', e); }
       }
+      persistTermsAccepted();
       setLoading(false);
       onSuccess && onSuccess();
     } catch (e) {
@@ -148,6 +171,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
     if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
     if (!GoogleSignin) { Alert.alert('Google Sign In', 'Module @react-native-google-signin non chargé. Rebuild requis.'); return; }
     if (!GOOGLE_WEB_CLIENT_ID) { Alert.alert('Google Sign In', "Connexion Google pas encore configurée (webClientId manquant)."); return; }
+    if (!termsAccepted) { setError(tr.ob_auth_terms_required || 'Tu dois accepter les CGU pour continuer.'); return; }
     setLoading(true); setError('');
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -173,8 +197,9 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
           if (session?.user) {
             await supabase.from('profiles').upsert({ id: session.user.id, prenom: gName, updated_at: new Date().toISOString() });
           }
-        } catch(_) {}
+        } catch(e) { reportError('profiles.upsert.signInGoogle', e); }
       }
+      persistTermsAccepted();
       setLoading(false);
       onSuccess && onSuccess();
     } catch (e) {
@@ -317,6 +342,42 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
             style={{ width: '100%', height: 48, backgroundColor: passwordFocused ? 'rgba(229,255,0,0.06)' : 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: passwordFocused ? '#E5FF00' : 'rgba(255,255,255,0.25)', borderRadius: 25, color: '#ffffff', fontSize: 15, paddingHorizontal: 18, marginBottom: 10 }}
           />
           {error ? <Text style={{ color: 'rgba(255,140,140,0.95)', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>{error}</Text> : null}
+
+          <Pressable
+            onPress={() => setTermsAccepted(v => !v)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: termsAccepted }}
+            accessibilityLabel={(tr.ob_auth_terms_prefix || '') + (tr.ob_auth_terms_link || '')}
+            style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12, paddingHorizontal: 4 }}
+          >
+            <View style={{
+              width: 20, height: 20, borderRadius: 6,
+              borderWidth: 1.5,
+              borderColor: termsAccepted ? '#AEEF4D' : 'rgba(255,255,255,0.35)',
+              backgroundColor: termsAccepted ? 'rgba(174,239,77,0.18)' : 'transparent',
+              alignItems: 'center', justifyContent: 'center',
+              marginRight: 10, marginTop: 1,
+            }}>
+              {termsAccepted ? <Text style={{ color: '#AEEF4D', fontSize: 13, fontWeight: '800' }}>{'✓'}</Text> : null}
+            </View>
+            <Text style={{ flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.78)', lineHeight: 17 }}>
+              {tr.ob_auth_terms_prefix || "En continuant, j'accepte les "}
+              <Text
+                style={{ color: '#AEEF4D', textDecorationLine: 'underline', fontWeight: '600' }}
+                onPress={() => Linking.openURL(getTermsUrl(lang) || LEGAL.termsUrl)}
+              >
+                {tr.ob_auth_terms_link || "Conditions d'utilisation"}
+              </Text>
+              {tr.ob_auth_terms_and || ' et la '}
+              <Text
+                style={{ color: '#AEEF4D', textDecorationLine: 'underline', fontWeight: '600' }}
+                onPress={() => Linking.openURL(LEGAL.privacyUrl)}
+              >
+                {tr.ob_auth_privacy_link || 'Politique de confidentialité'}
+              </Text>
+              .
+            </Text>
+          </Pressable>
 
           <TouchableOpacity
             onPress={handleSignIn}

@@ -34,11 +34,10 @@ export default function MeduseTV({
   glow = true,
   style,
 }) {
-  if (!IS_TV) return null;
   const glowAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(function() {
-    if (!glow) return;
+    if (!IS_TV || !glow) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, { toValue: 1, duration: breathCycleMs, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -48,6 +47,9 @@ export default function MeduseTV({
     loop.start();
     return function() { try { loop.stop(); } catch (e) {} };
   }, [glow, breathCycleMs]);
+
+  // FIX rules-of-hooks (2026-07-23) : hooks avant tout early-return.
+  if (!IS_TV) return null;
 
   const haloSize = Math.round(size * haloScale);
   const haloColor = haloTint || tint;

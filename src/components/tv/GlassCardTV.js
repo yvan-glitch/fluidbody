@@ -77,12 +77,6 @@ export default function GlassCardTV({
   onBlur,
   accessibilityLabel,
 }) {
-  if (!IS_TV) {
-    // Sur iPhone, on ne devrait pas importer ce fichier mais par sécurité,
-    // on renvoie un View transparent qui rend les enfants.
-    return <View style={style}>{children}</View>;
-  }
-
   const [focused, setFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
   const ringOpacity = useRef(new Animated.Value(0)).current;
@@ -131,6 +125,13 @@ export default function GlassCardTV({
       try { scale.stopAnimation(); ringOpacity.stopAnimation(); tilt.stopAnimation(); } catch (e) {}
     };
   }, []);
+
+  // FIX rules-of-hooks (2026-07-23) : hooks avant tout early-return.
+  if (!IS_TV) {
+    // Sur iPhone, on ne devrait pas importer ce fichier mais par sécurité,
+    // on renvoie un View transparent qui rend les enfants.
+    return <View style={style}>{children}</View>;
+  }
 
   const rotX = tilt.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-2deg'] });
   const rotY = tilt.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '3deg'] });

@@ -110,11 +110,11 @@ export default function SeanceCompleteTV({
   onContinue,       // CTA primary : "Une autre séance"
   onClose,          // CTA secondary : "Retour à l'accueil"
 }) {
-  if (!IS_TV) return null;
   const confetti = useMemo(buildConfetti, []);
   const [titleAnim] = useState(function() { return new Animated.Value(0); });
 
   useEffect(function() {
+    if (!IS_TV) return;
     Animated.timing(titleAnim, {
       toValue: 1,
       duration: 600,
@@ -123,6 +123,9 @@ export default function SeanceCompleteTV({
       delay: 200,
     }).start();
   }, []);
+
+  // FIX rules-of-hooks (2026-07-23) : hooks avant tout early-return.
+  if (!IS_TV) return null;
 
   const titleTranslate = titleAnim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] });
   const titleOpacity = titleAnim;

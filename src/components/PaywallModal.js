@@ -285,6 +285,11 @@ function TVPaywallFallback({ onClose, onRefresh, lang }) {
 }
 
 export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore, freeDaysAvailable, isSubscriber, onTvRefreshSubscriber }) {
+  // FIX rules-of-hooks (2026-07-23) : hooks avant tout early-return.
+  var theme = useTheme().theme;
+  const [selected, setSelected] = useState('yearly');
+  const liveMembers = useMemo(liveMembersGuess, []);
+
   // Apple TV : court-circuit safety. Règle « jamais de paywall TV » —
   // un user payé sur iPhone qui paire sa TV doit voir l'app, pas le
   // paywall. Si jamais le paywall s'ouvre (CTA mal câblé, race condition
@@ -300,7 +305,6 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   }
 
   var tr = T[lang] || T['fr'];
-  var theme = useTheme().theme;
   var isLight = theme.mode === 'light';
   var isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
 
@@ -328,9 +332,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   var monthlyDisplay = withPeriod(monthlyPriceRaw, isFr ? '/mois' : '/mo');
   var yearlyDisplay = withPeriod(yearlyPriceRaw, isFr ? '/an' : '/yr');
 
-  const [selected, setSelected] = useState('yearly');
   const selectedPrice = selected === 'yearly' ? yearlyDisplay : monthlyDisplay;
-  const liveMembers = useMemo(liveMembersGuess, []);
   const testimonials = Array.isArray(tr.paywall_testimonials) ? tr.paywall_testimonials : null;
   const compareFeatures = Array.isArray(tr.paywall_compare_features) ? tr.paywall_compare_features : null;
 

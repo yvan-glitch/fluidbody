@@ -164,7 +164,6 @@ export function AquaticDrifters({
   contentOpacity = 1,
   style,
 }) {
-  if (!IS_TV) return null;
   const meduses = useMemo(function() {
     if (density === 'high') return MEDUSES_TV_HIGH;
     if (density === 'low') return MEDUSES_TV.slice(0, 3);
@@ -175,6 +174,8 @@ export function AquaticDrifters({
     if (density === 'low') return BULLES_TV.filter(function(_, i) { return i % 2 === 0; });
     return BULLES_TV;
   }, [density]);
+  // FIX rules-of-hooks (2026-07-23) : hooks avant tout early-return.
+  if (!IS_TV) return null;
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { overflow: 'hidden', opacity: contentOpacity }, style]}>
       {bulles.map(function(b, i) { return <Bulle key={'tv-b-' + i} {...b} colorIndex={i} />; })}
