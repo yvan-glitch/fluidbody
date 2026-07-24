@@ -96,6 +96,10 @@ const PROG_IMAGES = {
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const IS_IPAD = SW >= 768;
+// Écrans ≤ 410 pt (iPhone 13/14/15/16 non-Max) : pas la place pour
+// wordmark + pastille respiration avec libellé + "Bonjour {prénom}" sur
+// une seule rangée → la pastille passe en icône seule.
+const HEADER_COMPACT = !IS_IPAD && SW < 410;
 // iPad : on contraint le contenu dans une colonne centrée de largeur "type
 // téléphone large" plutôt que d'étaler les cartes sur toute la dalle (sinon les
 // photos de catégories paraissent étirées). CW = largeur effective utilisée
@@ -1342,10 +1346,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       </View>
       {!IS_TV && (<Fragment>
       <View style={[localStyles.logoRow, { justifyContent: "space-between", paddingLeft: 20, paddingRight: 20, paddingTop: 10, marginBottom: 20, flexDirection: 'row', alignItems: 'center' }]} pointerEvents="box-none">
-        <Text style={localStyles.logoWordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+        {/* flexShrink:1 : sans lui la rangée déborde sur les écrans ≤ 390 pt
+            et le prénom ("Bonjour Maelle") est poussé hors écran à droite. */}
+        <Text style={[localStyles.logoWordmark, { flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
           FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, fontWeight: "900", color: "#AEEF4D", fontSize: 34 }}>+</AnimatedPlus>
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           {(function() {
             // Defensive guard: if the breath pill ever throws during render
             // (post Sprint-B addition, suspected in the build #46 mount
@@ -1374,9 +1380,11 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               <Circle cx="12" cy="12" r="9" stroke={breathDoneToday ? '#AEEF4D' : 'rgba(255,255,255,0.78)'} strokeWidth={1.6} />
               <Circle cx="12" cy="12" r="4.5" stroke={breathDoneToday ? '#AEEF4D' : 'rgba(255,255,255,0.78)'} strokeWidth={1.2} opacity={0.6} />
             </Svg>
+            {!HEADER_COMPACT ? (
             <Text style={{ fontSize: 12, fontWeight: '700', color: breathDoneToday ? '#AEEF4D' : 'rgba(255,255,255,0.86)', letterSpacing: 0.3 }}>
               {breathDoneToday ? (tr.breath_pill_done || 'Respiration faite') : (tr.breath_pill || 'Respirer 60s')}
             </Text>
+            ) : null}
           </TouchableOpacity>
               );
             } catch (e) {
@@ -1390,14 +1398,19 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               activeOpacity={0.7}
             >
-              <Text style={{ fontSize: 14, fontWeight: '300', color: 'rgba(174,239,77,0.6)' }}>{tr.bonjour(prenom)}</Text>
+              <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '300', color: 'rgba(174,239,77,0.6)' }}>{tr.bonjour(prenom)}</Text>
             </TouchableOpacity>
           ) : null}
         </View>
       </View>
       <View style={{ position: "absolute", top: 105, left: 0, right: 0, zIndex: 5, marginTop: 20 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
-          <LiquidGlassCapsule tint="light" paddingH={6} paddingV={6} gap={4} premium>
+          {/* tint="dark" + tintColor sombre : la version claire devenait
+              illisible dès que du contenu clair défilait derrière (retour
+              test iPhone 13). Sur iOS 26 on garde l'UIGlassEffect natif
+              (effet loupe) mais assombri ; ailleurs le fallback BlurView
+              sombre reprend la densité du menu du bas. */}
+          <LiquidGlassCapsule tint="dark" paddingH={6} paddingV={6} gap={4} premium glassStyle="regular" tintColor="#141A22" tintIntensity={0.35}>
             {MC_TABS.map(function(t) {
               var active = mcTab === t;
               return (

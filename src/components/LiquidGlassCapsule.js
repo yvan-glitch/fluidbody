@@ -48,9 +48,12 @@ export default function LiquidGlassCapsule({
         interactive={resolvedInteractive}
         style={StyleSheet.absoluteFillObject}
       />
+      {/* Fallback (pas d'UIGlassEffect natif) : substrat sombre plus dense,
+          aligné sur la densité de la tab bar (GlassView intensity 80) pour
+          garder le texte lisible quand du contenu clair défile derrière. */}
       <View style={[
         StyleSheet.absoluteFillObject,
-        { backgroundColor: isLight ? 'rgba(255,255,255,0.22)' : 'rgba(20,20,28,0.30)' },
+        { backgroundColor: isLight ? 'rgba(255,255,255,0.22)' : (HAS_LIQUID_GLASS ? 'rgba(20,20,28,0.30)' : 'rgba(20,20,28,0.42)') },
       ]} />
       {!HAS_LIQUID_GLASS ? (
         <LinearGradient
