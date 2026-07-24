@@ -1289,7 +1289,11 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       Alert.alert('FluidBody', (tr.calendar_removed_count ? tr.calendar_removed_count(n) : (n + ' événement(s) retiré(s)')));
     } catch (e) {}
   }
-  var MC_TABS = ['pour_vous', 'explorer', 'programmes', /* 'live', */ 'recherche'];
+  // 'recherche' retiré de la capsule iPhone le 24/07 (choix Yvan : doublon
+  // avec Bibliothèque/Pour toi) — l'écran reste rendu si mcTab === 'recherche'
+  // et l'icône recherche du header TV est conservée. Bonus : 3 onglets =
+  // capsule entière visible sans scroll horizontal.
+  var MC_TABS = ['pour_vous', 'explorer', 'programmes' /* , 'live', 'recherche' */];
   var mcTabLabels = { pour_vous: tr.tab_pour_vous, explorer: tr.tab_explorer, programmes: tr.tab_programmes, live: tr.live_title || 'Live', recherche: tr.tab_recherche };
   var piliers = getPiliers(lang);
   var recommendedPiliers = tensionIdxs.map(function(i) { return ZONE_TO_PILIER[i]; });
@@ -1345,6 +1349,18 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad2-" + i} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />; })}
       </View>
       {!IS_TV && (<Fragment>
+      {/* Scrim header : dégradé fond → transparent sous logo + onglets.
+          Sans lui, le contenu défile derrière la rangée logo (transparente)
+          et se superpose au wordmark / pastille / prénom — illisible
+          (retour Yvan 24/07). zIndex 4 : au-dessus du ScrollView (3),
+          sous la capsule (5) et la rangée logo (10). Couleurs = haut de
+          bgGradient pour un raccord invisible. */}
+      <LinearGradient
+        colors={['#000a1a', '#001527', 'rgba(0,26,46,0)']}
+        locations={[0, 0.5, 1]}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 200, zIndex: 4 }}
+        pointerEvents="none"
+      />
       <View style={[localStyles.logoRow, { justifyContent: "space-between", paddingLeft: 20, paddingRight: 20, paddingTop: 10, marginBottom: 20, flexDirection: 'row', alignItems: 'center' }]} pointerEvents="box-none">
         {/* flexShrink:1 : sans lui la rangée déborde sur les écrans ≤ 390 pt
             et le prénom ("Bonjour Maelle") est poussé hors écran à droite. */}
