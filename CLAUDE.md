@@ -102,10 +102,18 @@ Setup:
 - Run `supabase db push` to create `video_assets` + add `profiles.is_subscriber`,
   then `supabase functions deploy sign-video-url`.
 
-`DownloadManager.js`'s XOR-with-derived-seed encryption is a casual-tamper
-deterrent, **not** DRM. It's tagged in the file as a placeholder; replace
-with `expo-secure-store` + a per-user-derived key before treating it as a
-real protection layer.
+Téléchargements hors-ligne (2026-07-24) : format **v3 = AES-256-CTR natif**
+(`react-native-quick-crypto`) avec clé aléatoire par appareil dans le
+Keychain (`expo-secure-store`, `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`) —
+voir `src/utils/downloadCrypto.js`. Fichier : magic `FBV3` + IV(16) +
+ciphertext, I/O en flux (chunks 4 MB) via la nouvelle API `File` d'expo-
+file-system. Les fichiers v2 (XOR legacy) restent lisibles et sont migrés
+vers v3 à la première lecture ; Expo Go (natif absent) retombe sur v2.
+Limite résiduelle : MP4 déchiffré temporaire dans le cache pendant la
+lecture (seul un vrai DRM FairPlay ferait mieux — hors scope). NB :
+`react-native-quick-base64` est patché pour tvOS par
+`scripts/patch-quick-base64-tvos.js` (postinstall) sinon `pod install`
+de la cible TV échoue.
 
 ## Metro Config
 

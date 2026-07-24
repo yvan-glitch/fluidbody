@@ -10,15 +10,21 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Crypto from 'expo-crypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
+import * as DLCrypto from '../utils/downloadCrypto';
 
 const DOWNLOADS_DIR = FileSystem.documentDirectory + 'downloads/';
 const DOWNLOADS_KEY = 'fluid_downloads';
 
-// XOR with a derived seed key is a placeholder, not real DRM. It prevents
-// casual file extraction from the device's documents directory but offers no
-// protection against a determined attacker — the seed is constant per app and
-// derivable from the bundled JS. Replace with expo-secure-store + a per-user
-// key before this is treated as security-relevant.
+// FORMAT v3 (2026-07-24) — chiffrement fort : AES-256-CTR natif
+// (react-native-quick-crypto) avec clé aléatoire par appareil stockée dans le
+// Keychain (expo-secure-store). Voir src/utils/downloadCrypto.js pour le
+// design complet. Les nouveaux téléchargements sont en v3 ; les fichiers v2
+// (XOR legacy ci-dessous) restent lisibles et sont migrés vers v3 à la
+// première lecture. Le path XOR v2 n'est conservé qu'en fallback Expo Go
+// (module natif absent).
+//
+// Le seed v2 reste uniquement pour déchiffrer/migrer l'existant — il ne
+// protège rien de sérieux (constant, dérivable du bundle JS).
 const ENCRYPTION_SEED = 'com.ytissot.fluidbody.offline.v1';
 
 // Ensure downloads directory exists
@@ -99,29 +105,13 @@ async function downloadVideo(pilierKey, seanceIndex, onProgress, quality) {
     const result = await downloadResumable.downloadAsync();
     if (!result || !result.uri) throw new Error('Download failed');
 
-    // Read file as base64, encrypt, write.
-    //
-    // FORMAT v2 — `"v2|" + verification(16 hex) + "|" + hex(xor(base64))`.
-    // L'ancienne v1 écrivait l'XOR brut comme UTF-8 — mais l'XOR peut produire
-    // les octets \0, \r, \n, etc. qui ne round-trippent PAS via UTF-8 write/read
-    // (NULL truncation, normalisation CRLF). Conséquence : MP4 décrypté
-    // corrompu → AVErrorFileFormatNotRecognized -11829.
-    //
-    // v2 encode l'XOR en hex (chars 0-9, a-f uniquement → 100% UTF-8 safe).
-    // Doublement de taille acceptable (~2.7 MB vidéo → ~7 MB fichier chiffré).
-    const key = await getEncryptionKey();
-    const base64 = await FileSystem.readAsStringAsync(tempPath, { encoding: FileSystem.EncodingType.Base64 });
-
-    const verification = key.substring(0, 16);
-    const hexChars = '0123456789abcdef';
-    let hex = '';
-    for (let i = 0; i < base64.length; i++) {
-      const b = (base64.charCodeAt(i) ^ key.charCodeAt(i % key.length)) & 0xFF;
-      hex += hexChars[(b >> 4) & 0xF] + hexChars[b & 0xF];
+    if (DLCrypto.isAvailable()) {
+      // FORMAT v3 — AES-256-CTR en flux, clé Keychain. Mémoire bornée
+      // (chunks), taille fichier ≈ taille vidéo + 20 octets d'en-tête.
+      await DLCrypto.encryptFileToV3(tempPath, encPath);
+    } else {
+      await encryptV2Legacy(tempPath, encPath);
     }
-    const encrypted = 'v2|' + verification + '|' + hex;
-
-    await FileSystem.writeAsStringAsync(encPath, encrypted, { encoding: FileSystem.EncodingType.UTF8 });
 
     // Cleanup temp
     await FileSystem.deleteAsync(tempPath, { idempotent: true });
@@ -138,6 +128,32 @@ async function downloadVideo(pilierKey, seanceIndex, onProgress, quality) {
     await saveDownloads(downloads);
     throw e;
   }
+}
+
+// Fallback Expo Go uniquement (crypto natif absent) — ancien format v2.
+//
+// FORMAT v2 — `"v2|" + verification(16 hex) + "|" + hex(xor(base64))`.
+    // L'ancienne v1 écrivait l'XOR brut comme UTF-8 — mais l'XOR peut produire
+// les octets \0, \r, \n, etc. qui ne round-trippent PAS via UTF-8 write/read
+// (NULL truncation, normalisation CRLF). Conséquence : MP4 décrypté
+// corrompu → AVErrorFileFormatNotRecognized -11829.
+//
+// v2 encode l'XOR en hex (chars 0-9, a-f uniquement → 100% UTF-8 safe).
+// Doublement de taille acceptable (~2.7 MB vidéo → ~7 MB fichier chiffré).
+async function encryptV2Legacy(tempPath, encPath) {
+  const key = await getEncryptionKey();
+  const base64 = await FileSystem.readAsStringAsync(tempPath, { encoding: FileSystem.EncodingType.Base64 });
+
+  const verification = key.substring(0, 16);
+  const hexChars = '0123456789abcdef';
+  let hex = '';
+  for (let i = 0; i < base64.length; i++) {
+    const b = (base64.charCodeAt(i) ^ key.charCodeAt(i % key.length)) & 0xFF;
+    hex += hexChars[(b >> 4) & 0xF] + hexChars[b & 0xF];
+  }
+  const encrypted = 'v2|' + verification + '|' + hex;
+
+  await FileSystem.writeAsStringAsync(encPath, encrypted, { encoding: FileSystem.EncodingType.UTF8 });
 }
 
 // Check if a video is downloaded
@@ -161,6 +177,20 @@ async function getLocalVideoUri(pilierKey, seanceIndex) {
   const encPath = getEncPath(pilierKey, seanceIndex);
   const info = await FileSystem.getInfoAsync(encPath);
   if (!info.exists) return null;
+
+  const tempPathV3 = FileSystem.cacheDirectory + 'play_' + pilierKey + '_' + seanceIndex + '.mp4';
+
+  // FORMAT v3 — détection binaire du magic "FBV3" (4 octets), sans charger
+  // le fichier entier. Prioritaire sur les formats texte legacy.
+  let isV3 = false;
+  try { isV3 = DLCrypto.hasV3Magic(DLCrypto.readFirstBytes(encPath, 4)); } catch (e) {}
+  if (isV3) {
+    // Fichier v3 sans crypto natif (Expo Go) : illisible par design.
+    if (!DLCrypto.isAvailable()) return null;
+    try { await FileSystem.deleteAsync(tempPathV3, { idempotent: true }); } catch (e) {}
+    const ok = await DLCrypto.decryptV3ToFile(encPath, tempPathV3);
+    return ok ? tempPathV3 : null;
+  }
 
   const key = await getEncryptionKey();
   const encrypted = await FileSystem.readAsStringAsync(encPath, { encoding: FileSystem.EncodingType.UTF8 });
@@ -202,6 +232,20 @@ async function getLocalVideoUri(pilierKey, seanceIndex) {
   const tempPath = FileSystem.cacheDirectory + 'play_' + pilierKey + '_' + seanceIndex + '.mp4';
   try { await FileSystem.deleteAsync(tempPath, { idempotent: true }); } catch (e) {}
   await FileSystem.writeAsStringAsync(tempPath, base64, { encoding: FileSystem.EncodingType.Base64 });
+
+  // Migration opportuniste v2 → v3 : maintenant qu'on a le MP4 en clair dans
+  // le cache, on re-chiffre le .enc en AES (moitié moins lourd sur disque au
+  // passage : v2 = hex, v3 = binaire). Échec non bloquant — au pire le
+  // fichier reste en v2 et sera retenté à la prochaine lecture.
+  if (DLCrypto.isAvailable()) {
+    try {
+      await DLCrypto.encryptFileToV3(tempPath, encPath);
+      const newInfo = await FileSystem.getInfoAsync(encPath);
+      const all = await getDownloads();
+      const entry = all[pilierKey + '_' + seanceIndex];
+      if (entry && newInfo.size) { entry.size = newInfo.size; await saveDownloads(all); }
+    } catch (e) {}
+  }
 
   return tempPath;
 }

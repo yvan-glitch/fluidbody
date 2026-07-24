@@ -337,17 +337,27 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   var yearlyIntroStr = (yearlyPkg && yearlyPkg.product && yearlyPkg.product.introPrice && yearlyPkg.product.introPrice.priceString) || null;
   var monthlyStdStr = getRcPriceString(monthlyPkg) || null;
   var yearlyStdStr = getRcPriceString(yearlyPkg) || null;
+  // (2026-07-24) Si le produit live n'a PAS d'offre d'introduction dans App
+  // Store Connect, StoreKit renvoie introPrice = null → on masquait le
+  // problème en retombant sur le prix standard, ce qui affichait
+  // « X les 3 premiers mois, puis X » (même prix deux fois = copy mensongère,
+  // risque de rejet Apple). Règle : toute la copy d'intro (« les 3 premiers
+  // mois », « puis X », pill éco) n'apparaît QUE si l'intro existe côté store.
+  // Package absent (offline / Expo Go) → on garde la copy founder par défaut
+  // (marché CHF connu, config cible avec intro).
+  var monthlyHasIntro = monthlyPkg ? !!monthlyIntroStr : true;
+  var yearlyHasIntro = yearlyPkg ? !!yearlyIntroStr : true;
   var monthlyPriceRaw = monthlyIntroStr || monthlyStdStr || 'CHF 12.90';
   var yearlyPriceRaw = yearlyIntroStr || yearlyStdStr || 'CHF 99.00';
   var monthlyDisplay = withPeriod(monthlyPriceRaw, isFr ? '/mois' : '/mo');
   var yearlyDisplay = withPeriod(yearlyPriceRaw, isFr ? '/an' : '/yr');
-  // Small print « Puis X/mois » — dynamique dès qu'on a un vrai prix store.
-  var thenMonthlyText = monthlyStdStr
+  // Small print « Puis X/mois » — uniquement si une intro existe réellement.
+  var thenMonthlyText = !monthlyHasIntro ? null : (monthlyStdStr
     ? ((isFr ? 'Puis ' : 'Then ') + monthlyStdStr + (isFr ? '/mois' : '/month'))
-    : (tr.paywall_founder_then_monthly || (isFr ? 'Puis 24.90 CHF/mois' : 'Then 24.90 CHF/month'));
-  var thenYearlyText = yearlyStdStr
+    : (tr.paywall_founder_then_monthly || (isFr ? 'Puis 24.90 CHF/mois' : 'Then 24.90 CHF/month')));
+  var thenYearlyText = !yearlyHasIntro ? null : (yearlyStdStr
     ? ((isFr ? 'Puis ' : 'Then ') + yearlyStdStr + (isFr ? '/an' : '/yr'))
-    : (tr.paywall_founder_then_yearly || (isFr ? 'Puis 199 CHF/an' : 'Then 199 CHF/year'));
+    : (tr.paywall_founder_then_yearly || (isFr ? 'Puis 199 CHF/an' : 'Then 199 CHF/year')));
 
   const selectedPrice = selected === 'yearly' ? yearlyDisplay : monthlyDisplay;
   const testimonials = Array.isArray(tr.paywall_testimonials) ? tr.paywall_testimonials : null;
@@ -572,8 +582,10 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 </Text>
                 <Text style={{ fontSize: 13, fontWeight: '500', color: '#ffffff', lineHeight: 20, letterSpacing: -0.1 }}>
                   {isFr
-                    ? ('Mensuel — ' + monthlyPriceRaw + '/mois les 3 premiers mois, puis ' + (monthlyStdStr || '24.90 CHF') + '.\nAnnuel — ' + yearlyPriceRaw + ' la première année, puis ' + (yearlyStdStr || '199 CHF') + '.')
-                    : ('Monthly — ' + monthlyPriceRaw + '/mo for the first 3 months, then ' + (monthlyStdStr || '24.90 CHF') + '.\nYearly — ' + yearlyPriceRaw + ' the first year, then ' + (yearlyStdStr || '199 CHF') + '.')}
+                    ? (('Mensuel — ' + monthlyPriceRaw + '/mois' + (monthlyHasIntro ? (' les 3 premiers mois, puis ' + (monthlyStdStr || '24.90 CHF')) : '') + '.')
+                       + '\n' + ('Annuel — ' + yearlyPriceRaw + (yearlyHasIntro ? (' la première année, puis ' + (yearlyStdStr || '199 CHF')) : ' par an') + '.'))
+                    : (('Monthly — ' + monthlyPriceRaw + '/mo' + (monthlyHasIntro ? (' for the first 3 months, then ' + (monthlyStdStr || '24.90 CHF')) : '') + '.')
+                       + '\n' + ('Yearly — ' + yearlyPriceRaw + (yearlyHasIntro ? (' the first year, then ' + (yearlyStdStr || '199 CHF')) : ' per year') + '.'))}
                 </Text>
               </GlassView>
               {/* Bandeau bonus parrainage — uniquement si l'utilisateur a
@@ -630,17 +642,23 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 {planPill(
                   'yearly',
                   annualLabel,
-                  tr.paywall_founder_intro_yearly_sub || (isFr ? 'Tarif fondateur · 1re année' : 'Founder pricing · first year'),
+                  yearlyHasIntro
+                    ? (tr.paywall_founder_intro_yearly_sub || (isFr ? 'Tarif fondateur · 1re année' : 'Founder pricing · first year'))
+                    : (isFr ? 'Tarif fondateur' : 'Founder pricing'),
                   yearlyDisplay,
                   thenYearlyText,
-                  tr.paywall_founder_save_intro_yearly || (isFr
-                    ? ('Économise ' + FOUNDER_INTRO_SAVINGS_CHF + ' CHF la 1re année')
-                    : ('Save ' + FOUNDER_INTRO_SAVINGS_CHF + ' CHF on year one'))
+                  yearlyHasIntro
+                    ? (tr.paywall_founder_save_intro_yearly || (isFr
+                        ? ('Économise ' + FOUNDER_INTRO_SAVINGS_CHF + ' CHF la 1re année')
+                        : ('Save ' + FOUNDER_INTRO_SAVINGS_CHF + ' CHF on year one')))
+                    : null
                 )}
                 {planPill(
                   'monthly',
                   monthlyLabel,
-                  tr.paywall_founder_intro_monthly_sub || (isFr ? 'Tarif fondateur · 3 premiers mois' : 'Founder pricing · first 3 months'),
+                  monthlyHasIntro
+                    ? (tr.paywall_founder_intro_monthly_sub || (isFr ? 'Tarif fondateur · 3 premiers mois' : 'Founder pricing · first 3 months'))
+                    : (isFr ? 'Tarif fondateur' : 'Founder pricing'),
                   monthlyDisplay,
                   thenMonthlyText,
                   null
