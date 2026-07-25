@@ -1449,35 +1449,32 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       </View>
       <View style={{ position: "absolute", top: 105, left: 0, right: 0, zIndex: 5, marginTop: 20 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
-          {/* tint="dark" + tintColor sombre : la version claire devenait
-              illisible dès que du contenu clair défilait derrière (retour
-              test iPhone 13). Sur iOS 26 on garde l'UIGlassEffect natif
-              (effet loupe) mais assombri ; ailleurs le fallback BlurView
-              sombre reprend la densité du menu du bas. */}
-          <LiquidGlassCapsule tint="dark" paddingH={6} paddingV={6} gap={4} premium glassStyle="regular" tintColor="#141A22" tintIntensity={0.35}>
+          {/* Style Apple Fitness+ (demande Yvan 25/07, capture fournie) :
+              pastilles séparées au lieu de la capsule verre — l'active en
+              blanc plein / texte noir, les inactives en gris sombre
+              translucide sans bordure. Zéro BlurView ici = perf OK. */}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
             {MC_TABS.map(function(t) {
               var active = mcTab === t;
               return (
                 <TouchableOpacity
                   key={t}
                   onPress={function() { setMcTab(t); }}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                   style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
+                    paddingHorizontal: 18,
+                    paddingVertical: 10,
                     borderRadius: 999,
-                    backgroundColor: active ? 'rgba(174,239,77,0.18)' : 'transparent',
-                    borderWidth: active ? 1 : 0,
-                    borderColor: active ? 'rgba(174,239,77,0.5)' : 'transparent',
+                    backgroundColor: active ? '#ffffff' : 'rgba(118,118,128,0.28)',
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: active ? "700" : "600", color: active ? "#AEEF4D" : "#ffffff" }}>
+                  <Text style={{ fontSize: 15, fontWeight: active ? "700" : "600", color: active ? "#000000" : "#ffffff" }}>
                     {mcTabLabels[t]}
                   </Text>
                 </TouchableOpacity>
               );
             })}
-          </LiquidGlassCapsule>
+          </View>
         </ScrollView>
       </View>
       </Animated.View>)}
