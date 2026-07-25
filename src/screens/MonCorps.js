@@ -2109,8 +2109,13 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           // largeur écran est trop grande et perd le confort de scan visuel
           // à 2-3 m. On bascule à des dims pensées pour le focus engine.
           var cardH = IS_TV ? 320 : Math.floor(CW * 0.45);
-          var freeCardW = IS_TV ? 380 : Math.round(CW * 0.62);
-          var freeCardH = IS_TV ? 440 : Math.round(freeCardW * 1.15);
+          // Cards gratuites iPhone : 2 cards côte à côte qui tiennent
+          // ENTIÈREMENT dans l'écran (retour Yvan 25/07 : « ça sort de
+          // l'écran »). Largeur = (CW − 2×16 padding − 12 gap) / 2 ; s'il y
+          // a plus de 2 séances gratuites un jour, le ScrollView reprend
+          // son rôle avec 2 cards visibles.
+          var freeCardW = IS_TV ? 380 : Math.floor((CW - 16 * 2 - 12) / 2);
+          var freeCardH = IS_TV ? 440 : Math.round(freeCardW * 1.3);
           // PERF : mémoïsés en tête de composant (explorerData).
           var freeItems = explorerData.freeItems;
           var piliersFiltered = explorerData.piliersFiltered;
@@ -2135,7 +2140,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                         >
                           <View style={{ flex: 1 }}>
                             <Image source={getSeanceImage(it.pilier.key, it.idx)} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-it-' + it.pilier.key + '-' + it.idx} style={StyleSheet.absoluteFill} />
-                            <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.18)', 'rgba(0,0,0,0.38)', 'rgba(0,0,0,0.60)', 'rgba(0,0,0,0.80)', 'rgba(0,0,0,0.92)']} locations={[0, 0.3, 0.5, 0.7, 0.85, 1]} style={{ flex: 1, padding: IS_TV ? 22 : 16, justifyContent: 'space-between' }}>
+                            <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.18)', 'rgba(0,0,0,0.38)', 'rgba(0,0,0,0.60)', 'rgba(0,0,0,0.80)', 'rgba(0,0,0,0.92)']} locations={[0, 0.3, 0.5, 0.7, 0.85, 1]} style={{ flex: 1, padding: IS_TV ? 22 : 12, justifyContent: 'space-between' }}>
                               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <View style={{ backgroundColor: '#AEEF4D', borderRadius: IS_TV ? 10 : 8, paddingHorizontal: IS_TV ? 12 : 9, paddingVertical: IS_TV ? 6 : 4 }}>
                                   <Text style={{ fontSize: IS_TV ? 12 : 9, fontWeight: '900', color: '#000', letterSpacing: 1.5 }}>{tr.gratuit_badge || 'GRATUIT'}</Text>
@@ -2143,8 +2148,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                                 <Text style={{ fontSize: IS_TV ? 14 : 11, fontWeight: '700', color: 'rgba(255,255,255,0.85)', letterSpacing: IS_TV ? 1.5 : 0 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, color: '#AEEF4D' }}>+</AnimatedPlus></Text>
                               </View>
                               <View>
-                                <Text style={{ fontSize: IS_TV ? 13 : 10, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8, fontWeight: '700' }}>{(tr.etapes && tr.etapes[it.etape]) || it.etape} · {it.pilier.label}</Text>
-                                <Text style={{ fontSize: IS_TV ? 26 : 19, fontWeight: IS_TV ? '600' : '800', color: '#ffffff', lineHeight: IS_TV ? 30 : 23, marginBottom: 12, letterSpacing: IS_TV ? -0.3 : 0 }} numberOfLines={2}>{it.titre}</Text>
+                                <Text numberOfLines={1} style={{ fontSize: IS_TV ? 13 : 10, color: '#AEEF4D', letterSpacing: IS_TV ? 2 : 1, textTransform: 'uppercase', marginBottom: 8, fontWeight: '700' }}>{(tr.etapes && tr.etapes[it.etape]) || it.etape} · {it.pilier.label}</Text>
+                                <Text style={{ fontSize: IS_TV ? 26 : 16, fontWeight: IS_TV ? '600' : '800', color: '#ffffff', lineHeight: IS_TV ? 30 : 20, marginBottom: 10, letterSpacing: IS_TV ? -0.3 : 0 }} numberOfLines={2}>{it.titre}</Text>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                   <View style={{ width: IS_TV ? 42 : 32, height: IS_TV ? 42 : 32, borderRadius: IS_TV ? 21 : 16, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center' }}>
                                     <Text style={{ fontSize: IS_TV ? 17 : 13, color: '#000' }}>{'▶'}</Text>

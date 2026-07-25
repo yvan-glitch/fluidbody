@@ -1650,7 +1650,13 @@ export const PILIER_IMAGE_VARIANTS = {
   p6: [PILIER_IMAGES.p6],
   p7: [PILIER_IMAGES.p7, require("../../assets/coach/sabrina_trampoline.jpg"), require("../../assets/programs/souplesse.jpg"), require("../../assets/programs/reveil-matinal.jpg")],
   p8: [PILIER_IMAGES.p8],
-  p9: [PILIER_IMAGES.p9, require("../../assets/coach/sabrina_1.jpg"), require("../../assets/coach/sabrina_16.jpg")],
+  // p9 : sabrina_16 retirée (25/07, retour Yvan : tête coupée dans la card
+  // "Cette semaine" — le fichier source est cadré trop serré, le haut du
+  // crâne est déjà hors champ dans le JPEG). Remplacée par sabrina_12
+  // (mains sur la barre, douce, thème ménopause) ; déjà en variante p5
+  // mais jamais servie sur le même écran. sabrina_16 reste OK dans le
+  // tvImagePool (grandes cards TV).
+  p9: [PILIER_IMAGES.p9, require("../../assets/coach/sabrina_1.jpg"), require("../../assets/coach/sabrina_12.jpg")],
 };
 
 export function getSeanceImage(pilierKey, idx) {
