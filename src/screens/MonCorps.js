@@ -1581,16 +1581,16 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           var rowH1 = Math.floor(halfW * 0.72);
           var rowH2 = Math.floor(thirdW * 0.82);
           // Mosaïque décorative (aucun onPress) — retour Sabrina 25/07 :
-          // « pas d'homogénéité ». On la limite à la série STUDIO (lumière
-          // claire, tons marine/blanc/bois) : exit golf (extérieur) et chalet
-          // (contre-jour sombre), qui restent sur leurs pilier cards Explorer.
+          // « pas d'homogénéité ». 100 % série STUDIO (lumière claire, tons
+          // marine/blanc/bois), sélection dynamique (mouvement plutôt que
+          // portraits assis) ; golf/chalet restent sur les cards Explorer.
           // Invariant anti-doublon : uniquement des canoniques PILIER_IMAGES
-          // ou des photos retirées des variantes (sabrina_15, sabrina_1),
-          // jamais servies par getSeanceImage (cards Cette semaine/favoris).
+          // ou des photos retirées des variantes (sabrina_2, sabrina_6,
+          // sabrina_15), jamais servies par getSeanceImage.
           var mosaicImages = [
-            PILIER_IMAGES.p1, PILIER_IMAGES.p4,
+            PILIER_IMAGES.p1, require('../../assets/coach/sabrina_2.jpg'),
             require('../../assets/coach/sabrina_15.jpg'), PILIER_IMAGES.p5, PILIER_IMAGES.p9,
-            PILIER_IMAGES.p2, require('../../assets/coach/sabrina_1.jpg'),
+            PILIER_IMAGES.p2, require('../../assets/coach/sabrina_6.jpg'),
           ];
           // Style Fitness+ (demande Yvan 25/07, capture fournie) : cells
           // nues — pas de bordure verre ni de reflet, juste l'image avec un
@@ -1619,13 +1619,6 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           // eslint-disable-next-line no-unused-vars
           var _favTick = favVersion;
           var seancesByKey = getSeances(lang);
-
-          // Métadonnées catalogue pour la card CTA "Le Pilates conscient,
-          // au quotidien". On masque le compteur "X séances · Y h Z de
-          // pratique" tant que les vidéos ne sont pas tournées (sinon on
-          // afficherait un volume qui ne correspond à rien de regardable).
-          // On garde uniquement "Avec Sabrina".
-          var heroMetaIPhone = lang === 'fr' ? 'Avec Sabrina' : 'With Sabrina';
 
           // Rangée "Cette semaine" iPhone (Lot 4) — 7 séances suggérées sur
           // les 7 prochains jours. Biais intention si l'utilisateur a une
@@ -1709,18 +1702,45 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   </TouchableOpacity>
                 );
               })() : null}
-              <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
-                {glassCell(mosaicImages[0], halfW, rowH1, 'm0')}
-                {glassCell(mosaicImages[1], halfW, rowH1, 'm1')}
-              </View>
-              <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
-                {glassCell(mosaicImages[2], thirdW, rowH2, 'm2')}
-                {glassCell(mosaicImages[3], thirdW, rowH2, 'm3')}
-                {glassCell(mosaicImages[4], thirdW, rowH2, 'm4')}
-              </View>
-              <View style={{ flexDirection: "row", gap: gridGap, marginBottom: 0 }}>
-                {glassCell(mosaicImages[5], halfW, rowH1, 'm5')}
-                {glassCell(mosaicImages[6], halfW, rowH1, 'm6')}
+              {/* Collage + bloc abonnement fondu dedans (layout Fitness+,
+                  demande Yvan 25/07 : « l'option d'abonnement sur les images
+                  comme Apple »). Le dégradé absorbe les rangées 2-3 ; le
+                  contenu (titre/CTA/prix) se superpose au bas du collage.
+                  Bloc affiché pour TOUT LE MONDE (leçon f7aa154 : ne pas le
+                  masquer pour les abonnés, Yvan-admin croit à un bug). */}
+              <View style={{ position: 'relative', marginBottom: 8 }}>
+                <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
+                  {glassCell(mosaicImages[0], halfW, rowH1, 'm0')}
+                  {glassCell(mosaicImages[1], halfW, rowH1, 'm1')}
+                </View>
+                <View style={{ flexDirection: "row", gap: gridGap, marginBottom: gridGap }}>
+                  {glassCell(mosaicImages[2], thirdW, rowH2, 'm2')}
+                  {glassCell(mosaicImages[3], thirdW, rowH2, 'm3')}
+                  {glassCell(mosaicImages[4], thirdW, rowH2, 'm4')}
+                </View>
+                <View style={{ flexDirection: "row", gap: gridGap, marginBottom: 0 }}>
+                  {glassCell(mosaicImages[5], halfW, rowH1, 'm5')}
+                  {glassCell(mosaicImages[6], halfW, rowH1, 'm6')}
+                </View>
+                <LinearGradient
+                  colors={['rgba(4,22,32,0)', 'rgba(4,22,32,0.55)', 'rgba(4,22,32,0.92)', 'rgba(4,22,32,0.99)']}
+                  locations={[0, 0.32, 0.62, 1]}
+                  style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: Math.floor(rowH1 * 0.55), justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 18 }}
+                >
+                  <Text style={{ fontSize: 26, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.4, lineHeight: 31, marginBottom: 8 }}>{tr.paywall_title}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '400', color: 'rgba(255,255,255,0.72)', textAlign: 'center', lineHeight: 19, marginBottom: 16 }}>{tr.paywall_sub}</Text>
+                  <TouchableOpacity
+                    onPress={function() { onActivateSubscription && onActivateSubscription(); }}
+                    activeOpacity={0.85}
+                    style={{ alignSelf: 'stretch', backgroundColor: '#AEEF4D', borderRadius: 26, paddingVertical: 15, alignItems: 'center', marginBottom: 10 }}
+                  >
+                    <Text style={{ fontSize: 17, fontWeight: '700', color: '#001226' }}>{tr.paywall_start}</Text>
+                  </TouchableOpacity>
+                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 8 }}>{"CHF 12.90" + (tr.paywall_per_month || '/mois')}</Text>
+                  <TouchableOpacity onPress={function() { onActivateSubscription && onActivateSubscription(); }} activeOpacity={0.8}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#ffffff' }}>{tr.paywall_yearly_link}</Text>
+                  </TouchableOpacity>
+                </LinearGradient>
               </View>
               {/* Rangée "Mes favoris" iPhone (Lot 2 Speir-inspired) — hidden
                   si l'utilisateur n'a aucun cœur. Tap → ouvre la séance
@@ -1741,25 +1761,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   onItemPress={function(it) { setOpenInitialIdx(it.idx); setOpenPilier(it.pilier); }}
                 />
               ) : null}
-              <LinearGradient colors={["rgba(28,28,30,0.3)", "rgba(28,28,30,0.88)", "rgba(28,28,30,0.95)"]} locations={[0, 0.4, 1]} style={{ borderRadius: 16, marginTop: 14, paddingTop: 60, paddingBottom: 24, paddingHorizontal: 20, alignItems: "center" }}>
-                <Text style={{ fontSize: 23, fontWeight: "700", color: "#ffffff", textAlign: "center", marginBottom: 6 }}>{tr.paywall_title}</Text>
-                <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.65)", textAlign: "center", lineHeight: 19, marginBottom: 8 }}>{tr.paywall_sub}</Text>
-                {/* Métadata catalogue (Lot 3) — X séances · Y min/h · Avec Sabrina */}
-                <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.78)', textAlign: 'center', letterSpacing: 0.2, marginBottom: 18 }}>{heroMetaIPhone}</Text>
-                <View style={{ alignSelf: "stretch", marginBottom: 12 }}>
-                  <GlassButton
-                    onPress={function() { onActivateSubscription && onActivateSubscription(); }}
-                    textColor="#AEEF4D"
-                    textStyle={{ fontSize: 17, fontWeight: '700' }}
-                  >
-                    {tr.paywall_start}
-                  </GlassButton>
-                </View>
-                <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>{"CHF 12.90" + (tr.paywall_per_month || '/mois')}</Text>
-                <TouchableOpacity onPress={function() { onActivateSubscription && onActivateSubscription(); }} activeOpacity={0.8}>
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: "rgba(255,255,255,0.8)" }}>{tr.paywall_yearly_link}</Text>
-                </TouchableOpacity>
-              </LinearGradient>
+              {/* (Carte abonnement déplacée : elle est désormais fondue dans
+                  le collage ci-dessus, layout Fitness+ — commit du 25/07.) */}
             </View>
           );
         })()}
