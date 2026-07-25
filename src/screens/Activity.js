@@ -37,6 +37,7 @@ import healthkit from '../utils/health';
 import { syncProfilePatch, readCachedProfile } from '../utils/profileSync';
 import { ACHIEVEMENTS, getUnlockedSync, subscribe as subscribeAchievements, prime as primeAchievements } from '../utils/achievements';
 import { Icon } from '../components/Icons';
+import { useEffortPromo, EffortPromoBanner, EffortPromoWalkthrough } from '../components/EffortPromo';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -308,6 +309,10 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
   const [showRingDetail, setShowRingDetail] = useState(null);
   const [showGoalEditor, setShowGoalEditor] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  // Promo « charge d'entraînement » (2026-07-25) — bannière façon Apple,
+  // affichée jusqu'à fermeture ou fin du walkthrough.
+  const effortPromo = useEffortPromo();
+  const [showEffortWalkthrough, setShowEffortWalkthrough] = useState(false);
   const [celebratedDate, setCelebratedDate] = useState(null);
 
   // Header date appearance animation.
@@ -585,6 +590,15 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
           ) : null}
         </View>
 
+        {/* Promo effort / charge d'entraînement — dismissible, une seule fois */}
+        {effortPromo.visible ? (
+          <EffortPromoBanner
+            lang={lang}
+            onOpen={function () { setShowEffortWalkthrough(true); }}
+            onDismiss={function () { effortPromo.dismiss(); }}
+          />
+        ) : null}
+
         {/* HK not authorised — empty state with CTA */}
         {hkChecked && !hkAuthorized ? (
           <View style={{ paddingHorizontal: 22, marginBottom: 24 }}>
@@ -810,6 +824,12 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
           </GlassButton>
         </View>
       </ScrollView>
+
+      <EffortPromoWalkthrough
+        visible={showEffortWalkthrough}
+        lang={lang}
+        onDone={function () { setShowEffortWalkthrough(false); effortPromo.dismiss(); }}
+      />
 
       <RingDetailSheet
         visible={!!showRingDetail}
