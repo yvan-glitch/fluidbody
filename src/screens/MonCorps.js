@@ -50,6 +50,7 @@ import { getThisWeekSchedule } from '../utils/weeklySchedule';
 import SeanceCarouselRow from '../components/SeanceCarouselRow';
 import DownloadButton from '../components/DownloadButton';
 import { primeDownloadsCache, subscribeDownloads } from '../utils/downloadsCache';
+import { primeDurationsCache, subscribeDurations, getRealDurationLabel } from '../utils/videoDurations';
 import { pickSessionImage } from '../components/tv/tvImagePool';
 import { primeFavoritesCache } from '../utils/favorites';
 import { getDailyQuote } from '../constants/sabrinaQuotes';
@@ -473,6 +474,14 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
   const [showDemoLimit, setShowDemoLimit] = useState(false);
   const [resumeIndices, setResumeIndices] = useState(() => new Set());
 
+  // Durées réelles des vidéos (cache rempli à la 1re lecture) — force un
+  // re-render quand une nouvelle durée arrive pour corriger le chip.
+  const [, setDurVersion] = useState(0);
+  useEffect(function() {
+    primeDurationsCache();
+    return subscribeDurations(function() { setDurVersion(function(v) { return v + 1; }); });
+  }, []);
+
   var ppMedusas = useRef([
     { baseX: SW - 80, baseY: 40, size: 70, dx: new Animated.Value(0), dy: new Animated.Value(0) },
     { baseX: 20, baseY: SH * 0.06, size: 54, dx: new Animated.Value(0), dy: new Animated.Value(0) },
@@ -713,7 +722,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                       <Text style={{ fontSize: IS_TV ? 30 : 16, fontWeight: IS_TV ? '500' : '600', color: '#ffffff', marginBottom: IS_TV ? 10 : 6, letterSpacing: IS_TV ? -0.3 : 0 }} numberOfLines={1}>{titre}</Text>
                       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                         <Text style={{ fontSize: IS_TV ? 13 : 10, paddingHorizontal: IS_TV ? 12 : 8, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(0,189,208,0.15)', color: '#00BDD0', letterSpacing: 0.5 }}>{tr.etapes[etape] || etape}</Text>
-                        <Text style={{ fontSize: IS_TV ? 13 : 10, paddingHorizontal: IS_TV ? 12 : 8, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)', color: '#ffffff' }}>{duree}</Text>
+                        <Text style={{ fontSize: IS_TV ? 13 : 10, paddingHorizontal: IS_TV ? 12 : 8, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)', color: '#ffffff' }}>{getRealDurationLabel(pilier.key, i, duree)}</Text>
                         {i === 0 && !isSubscriber ? (
                           <Text style={{ fontSize: IS_TV ? 12 : 9, paddingHorizontal: IS_TV ? 11 : 7, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(0,189,208,0.2)', color: '#00BDD0', fontWeight: '700', letterSpacing: 0.5 }}>{tr.gratuit_badge || 'GRATUIT'}</Text>
                         ) : null}

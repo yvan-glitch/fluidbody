@@ -55,7 +55,7 @@ function HeartIcon({ size = 13, color = '#FF3B4F' }) {
  * @param {function?} props.onPress       Optional tap handler (future summary sheet).
  * @param {Object?}   props.style         Container override (eg. top/right positioning).
  */
-export default function HeartRatePill({ bpm, isLive, birthDateIso, onPress, style }) {
+export default function HeartRatePill({ bpm, isLive, birthDateIso, onPress, style, large }) {
   const pulse = useRef(new Animated.Value(1)).current;
   const loopRef = useRef(null);
 
@@ -108,16 +108,16 @@ export default function HeartRatePill({ bpm, isLive, birthDateIso, onPress, styl
         contentStyle={{
           flexDirection: 'row',
           alignItems: 'center',
-          paddingHorizontal: 12,
-          height: 30,
+          paddingHorizontal: large ? 14 : 12,
+          height: large ? 38 : 30,
         }}
       >
         <Animated.View style={{ transform: [{ scale: pulse }] }}>
-          <HeartIcon size={13} color={isLive ? '#FF3B4F' : 'rgba(255,80,90,0.55)'} />
+          <HeartIcon size={large ? 17 : 13} color={isLive ? '#FF3B4F' : 'rgba(255,80,90,0.55)'} />
         </Animated.View>
         <Text style={{
           marginLeft: 6,
-          fontSize: 15,
+          fontSize: large ? 20 : 15,
           fontWeight: '700',
           color: numberColor,
           fontVariant: ['tabular-nums'],
@@ -127,7 +127,7 @@ export default function HeartRatePill({ bpm, isLive, birthDateIso, onPress, styl
         </Text>
         <Text style={{
           marginLeft: 3,
-          fontSize: 10,
+          fontSize: large ? 12 : 10,
           fontWeight: '600',
           color: 'rgba(255,255,255,0.55)',
           letterSpacing: 0.4,

@@ -92,23 +92,73 @@ async function downloadVideo(pilierKey, seanceIndex, onProgress, quality) {
     const tempPath = FileSystem.cacheDirectory + 'dl_temp_' + dlKey + '.mp4';
     const encPath = getEncPath(pilierKey, seanceIndex);
 
-    // Download with progress
-    const downloadResumable = FileSystem.createDownloadResumable(
-      mp4Url, tempPath, {},
-      function(downloadProgress) {
-        if (onProgress && downloadProgress.totalBytesExpectedToWrite > 0) {
-          onProgress(downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite);
+    // Download with progress.
+    // Fix 2026-07-25 : sur New Architecture, le callback de progression de
+    // createDownloadResumable peut lever « Exception in HostFunction:
+    // unordered_map::at: key not found » (registre natif du subscriber).
+    // Plan A = resumable avec progression ; si cette erreur précise sort,
+    // plan B = downloadAsync simple (pas de callback natif) avec une
+    // progression simulée par polling de la taille du fichier temporaire.
+    let result = null;
+    try {
+      const downloadResumable = FileSystem.createDownloadResumable(
+        mp4Url, tempPath, {},
+        function(downloadProgress) {
+          if (onProgress && downloadProgress.totalBytesExpectedToWrite > 0) {
+            onProgress(downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite);
+          }
         }
+      );
+      result = await downloadResumable.downloadAsync();
+    } catch (dlErr) {
+      const isNitroMapErr = String((dlErr && dlErr.message) || '').indexOf('unordered_map') !== -1;
+      if (!isNitroMapErr) throw dlErr;
+      try {
+        const Sentry = require('@sentry/react-native');
+        Sentry.captureException(dlErr);
+      } catch (se) {}
+      try { await FileSystem.deleteAsync(tempPath, { idempotent: true }); } catch (de) {}
+      // Progression simulée : poll la taille du temp toutes les 500 ms.
+      let pollHandle = null;
+      if (onProgress) {
+        pollHandle = setInterval(async function() {
+          try {
+            const info = await FileSystem.getInfoAsync(tempPath);
+            if (info && info.exists && info.size > 0) {
+              // Sans totalBytes connu : approche asymptotique vers 90%.
+              const mb = info.size / (1024 * 1024);
+              onProgress(Math.min(0.9, mb / (mb + 8)));
+            }
+          } catch (pe) {}
+        }, 500);
       }
-    );
-
-    const result = await downloadResumable.downloadAsync();
+      try {
+        result = await FileSystem.downloadAsync(mp4Url, tempPath);
+      } finally {
+        if (pollHandle) clearInterval(pollHandle);
+      }
+      if (onProgress) onProgress(1);
+    }
     if (!result || !result.uri) throw new Error('Download failed');
 
     if (DLCrypto.isAvailable()) {
       // FORMAT v3 — AES-256-CTR en flux, clé Keychain. Mémoire bornée
       // (chunks), taille fichier ≈ taille vidéo + 20 octets d'en-tête.
-      await DLCrypto.encryptFileToV3(tempPath, encPath);
+      try {
+        await DLCrypto.encryptFileToV3(tempPath, encPath);
+      } catch (cryptoErr) {
+        // Fix 2026-07-25 : vu en prod sur device — « Exception in
+        // HostFunction: unordered_map::at: key not found » (buffer natif
+        // étranger côté Nitro). Plutôt que d'échouer le téléchargement,
+        // on retombe sur le XOR v2 ; le fichier sera migré en v3 à la
+        // première lecture (chemin de migration existant).
+        try {
+          const Sentry = require('@sentry/react-native');
+          Sentry.captureException(cryptoErr);
+        } catch (se) {}
+        try { await FileSystem.deleteAsync(encPath, { idempotent: true }); } catch (de) {}
+        await encryptV2Legacy(tempPath, encPath);
+      }
     } else {
       await encryptV2Legacy(tempPath, encPath);
     }
@@ -188,7 +238,19 @@ async function getLocalVideoUri(pilierKey, seanceIndex) {
     // Fichier v3 sans crypto natif (Expo Go) : illisible par design.
     if (!DLCrypto.isAvailable()) return null;
     try { await FileSystem.deleteAsync(tempPathV3, { idempotent: true }); } catch (e) {}
-    const ok = await DLCrypto.decryptV3ToFile(encPath, tempPathV3);
+    // try/catch (fix 25/07) : même famille d'erreurs Nitro que l'encrypt
+    // (« unordered_map::at ») — on renvoie null (l'UI propose de re-télécharger)
+    // plutôt que de crasher la lecture.
+    let ok = false;
+    try {
+      ok = await DLCrypto.decryptV3ToFile(encPath, tempPathV3);
+    } catch (cryptoErr) {
+      try {
+        const Sentry = require('@sentry/react-native');
+        Sentry.captureException(cryptoErr);
+      } catch (se) {}
+      ok = false;
+    }
     return ok ? tempPathV3 : null;
   }
 

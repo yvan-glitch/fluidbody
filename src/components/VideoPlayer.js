@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Pressable, Animated, Dimensions, StyleSheet, AppState, Alert, Platform, PanResponder } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, Animated, Dimensions, StyleSheet, AppState, Alert, Platform, PanResponder, Easing } from 'react-native';
 import { Video, ResizeMode, Audio } from 'expo-av';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 // expo-screen-orientation: native module manquant sur tvOS, lazy require avec fallback
@@ -12,11 +12,42 @@ import { VideoPlaceholderMeduse } from './Meduse';
 import Skeleton from './Skeleton';
 import LiquidGlassCapsule from './LiquidGlassCapsule';
 import { Icon } from './Icons';
-import HeartRatePill from './HeartRatePill';
+// (HeartRatePill remplacée le 25/07 par la ligne BPM du HUD façon Watch —
+// composant conservé dans src/components/ si besoin ailleurs.)
+
+// Cœur rouge qui bat au rythme réel du BPM (repris de HeartRatePill).
+// Grisé et immobile quand le signal est absent ou stale.
+function PulsingHeart({ bpm, isLive, size = 19 }) {
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!bpm || !isLive) { pulse.setValue(1); return undefined; }
+    const cycleMs = Math.max(280, Math.min(1500, Math.round(60000 / bpm)));
+    const upMs = Math.max(100, Math.round(cycleMs * 0.35));
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.15, duration: upMs, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1.0, duration: cycleMs - upMs, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => { try { loop.stop(); } catch (e) {} };
+  }, [bpm, isLive, pulse]);
+  return (
+    <Animated.View style={{ transform: [{ scale: pulse }] }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Path
+          d="M12 21s-7-4.6-9.4-9.1C.8 8.5 2.7 5 6 5c2 0 3.4 1 4 2.4C10.6 6 12 5 14 5c3.3 0 5.2 3.5 3.4 6.9C19 16.4 12 21 12 21Z"
+          fill={bpm != null && isLive ? '#FF3B4F' : 'rgba(255,80,90,0.45)'}
+        />
+      </Svg>
+    </Animated.View>
+  );
+}
 import { GlassView, GlassButton, GLASS_RADII, GLASS_EASING, GLASS_DURATIONS } from './ui';
 import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { breadcrumb } from '../utils/breadcrumb';
 import { hapticLight } from '../utils';
+import { saveVideoDurationMin } from '../utils/videoDurations';
 import useLiveHeartRate from '../hooks/useLiveHeartRate';
 import { recordSessionHour, cancelPauseActiveNotifications } from '../utils/notifications';
 import { IS_TV, tvFocusProps } from '../utils/platformTV';
@@ -602,6 +633,9 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     maybePersistProgress(s);
     if (hasRealVideo && !hasRestoredRef.current && s.isLoaded && s.durationMillis && pilier?.key != null && seanceIndex != null) {
       hasRestoredRef.current = true;
+      // Mémorise la durée réelle pour corriger le libellé des cards
+      // (les durées de data.js sont saisies à la main et peuvent dériver).
+      try { saveVideoDurationMin(pilier.key, seanceIndex, s.durationMillis); } catch (e) {}
       loadVideoResume(pilier.key, seanceIndex, uriRef.current, s.durationMillis).then((pos) => {
         if (pos != null && videoRef.current) {
           videoRef.current.setPositionAsync(pos).then(() => {
@@ -798,7 +832,20 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   var timerStr = String(timerMin).padStart(2, '0') + ':' + String(timerSec).padStart(2, '0');
 
   return (
-    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, backgroundColor: '#000', width: dims.width, height: dims.height }}>
+    <View
+      // FIX 25/07 : plus de width/height figés — au lancement (rotation
+      // portrait→paysage), Dimensions pouvait livrer les dims portrait
+      // avec un écran déjà paysage → bande noire à gauche + zone blanche
+      // à droite. absoluteFill suit toujours l'écran ; onLayout resynchronise
+      // dims (utilisé par la méduse placeholder et le fallback barW).
+      onLayout={(e) => {
+        const l = e.nativeEvent.layout;
+        if (l && l.width && (Math.abs(l.width - dims.width) > 1 || Math.abs(l.height - dims.height) > 1)) {
+          setDims({ width: l.width, height: l.height });
+        }
+      }}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, backgroundColor: '#000' }}
+    >
       {hasRealVideo && !uri && !videoLoadFailed ? (
         <Skeleton style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} radius={0} />
       ) : null}
@@ -807,7 +854,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
           key={videoResetKey}
           ref={videoRef}
           source={{ uri }}
-          style={{ position: 'absolute', top: 0, left: 0, width: dims.width, height: dims.height }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           resizeMode={videoFill ? ResizeMode.COVER : ResizeMode.CONTAIN}
           shouldPlay={introN <= 0 && preSeanceConfirmed}
           rate={playbackRate}
@@ -820,8 +867,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             position: 'absolute',
             top: 0,
             left: 0,
-            width: dims.width,
-            height: dims.height,
+            right: 0,
+            bottom: 0,
             backgroundColor: '#000',
           }}
         />
@@ -831,8 +878,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             position: 'absolute',
             top: 0,
             left: 0,
-            width: dims.width,
-            height: dims.height,
+            right: 0,
+            bottom: 0,
             backgroundColor: '#000',
             alignItems: 'center',
             justifyContent: 'center',
@@ -866,57 +913,81 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         </View>
       ) : null}
 
-      {/* ── HUD séance (redesign 2026-07-25, carte blanche Yvan) ──
-          Une seule rangée de capsules Liquid Glass assorties à la
-          HeartRatePill : à gauche anneau de progression + décompte +
-          kcal, à droite le cœur en direct. Remplace l'ancienne boîte
-          noire top-left et les 3 anneaux décoratifs (le 3e était figé
-          à 92% — dette visuelle). */}
+      {/* ── HUD séance v3 « façon Apple Watch Entraînement » (25/07, demande
+          Yvan) ── bloc empilé top-left : décompte + mini anneau lime, BPM +
+          cœur battant, kcal + label rouge. Anneaux d'activité top-right
+          (3e anneau bleu = progression réelle de la séance). La ligne BPM est
+          toujours montée quand la préf HR est active : « -- » grisé sans
+          signal (sinon l'utilisateur croit la fonction disparue). */}
       {!videoLoadFailed && !isTheory && !showControls && (
-        <View pointerEvents="box-none" style={{ position: 'absolute', top: 50, left: 16, right: 16, zIndex: 210, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View pointerEvents="none">
-            <GlassView
-              intensity={70}
-              tint="dark"
-              forceDark
-              borderRadius={GLASS_RADII.pill}
-              highlight
-              bevel
-              elevated
-              contentStyle={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, height: 30 }}
-            >
-              {/* Anneau de progression de la séance (remplit en lime) */}
-              <Svg width={16} height={16} viewBox="0 0 20 20">
-                <Circle cx="10" cy="10" r="8" stroke="rgba(174,239,77,0.25)" strokeWidth={2.5} fill="none" />
+        <>
+        <View pointerEvents="none" style={{ position: 'absolute', top: 50, left: 16, zIndex: 210 }}>
+          {/* Cadre Liquid Glass (25/07) : mêmes tokens que les contrôles du
+              player (GlassView intensity 70 dark + highlight/bevel/elevated).
+              Un seul blur monté pendant la lecture — OK perf (cf. règle
+              « pas de multiples BlurView », ici hors ScrollView). */}
+          <GlassView
+            intensity={70}
+            tint="dark"
+            forceDark
+            borderRadius={18}
+            highlight
+            bevel
+            elevated
+            contentStyle={{ paddingHorizontal: 14, paddingVertical: 10, minWidth: 122 }}
+          >
+            {/* Ligne 1 : décompte + mini anneau de progression */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ fontSize: 27, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -0.5 }}>{timerStr}</Text>
+              <Svg width={17} height={17} viewBox="0 0 20 20">
+                <Circle cx="10" cy="10" r="8" stroke="rgba(174,239,77,0.25)" strokeWidth={3} fill="none" />
                 <Circle
                   cx="10" cy="10" r="8"
-                  stroke="#AEEF4D" strokeWidth={2.5} fill="none" strokeLinecap="round"
+                  stroke="#AEEF4D" strokeWidth={3} fill="none" strokeLinecap="round"
                   strokeDasharray={2 * Math.PI * 8}
                   strokeDashoffset={2 * Math.PI * 8 * (1 - (status.durationMillis ? progress : Math.min(elapsedSec / ((parseInt(duree) || 15) * 60), 1)))}
                   transform="rotate(-90 10 10)"
                 />
               </Svg>
-              <Text style={{ marginLeft: 7, fontSize: 15, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -0.3 }}>{timerStr}</Text>
-              {/* Séparateur */}
-              <View style={{ width: 1, height: 14, backgroundColor: 'rgba(255,255,255,0.18)', marginHorizontal: 10 }} />
-              {/* Flamme + kcal */}
-              <Svg width={12} height={12} viewBox="0 0 24 24">
-                <Path
-                  d="M12 23c-4.97 0-9-3.58-9-8 0-3.07 1.63-5.61 3.4-7.6.7-.78 2.1-.29 2.1.77 0 .9.75 1.58 1.6 1.4 1.9-.4 2.9-3.02 1.9-7.07-.23-.94.8-1.67 1.6-1.13C17.4 3.8 21 8.5 21 15c0 4.42-4.03 8-9 8Z"
-                  fill="#FF6B3D"
-                />
-              </Svg>
-              <Text style={{ marginLeft: 5, fontSize: 15, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -0.3 }}>{Math.round(elapsedSec / 60 * 5)}</Text>
-              <Text style={{ marginLeft: 3, fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.4 }}>kcal</Text>
-            </GlassView>
-          </View>
-          {/* HR pill : mêmes hauteur/style que la capsule de gauche. Reste
-              montée quand le signal devient stale (opacity 50% — voir
-              HeartRatePill) pour la continuité visuelle. */}
-          {hrEnabled && hr.bpm != null && (
-            <HeartRatePill bpm={hr.bpm} isLive={hr.isLive} birthDateIso={effectiveBirthDate} />
-          )}
+            </View>
+            {/* Ligne 2 : BPM + cœur battant */}
+            {hrEnabled && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <Text style={{ fontSize: 27, fontWeight: '700', color: hr.bpm != null ? '#ffffff' : 'rgba(255,255,255,0.45)', fontVariant: ['tabular-nums'], letterSpacing: -0.5 }}>{hr.bpm != null ? String(hr.bpm) : '--'}</Text>
+                <PulsingHeart bpm={hr.bpm} isLive={hr.isLive} size={19} />
+              </View>
+            )}
+            {/* Ligne 3 : kcal */}
+            <Text style={{ fontSize: 24, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -0.5, marginTop: 2 }}>
+              {Math.round(elapsedSec / 60 * 5)}
+              <Text style={{ fontSize: 15, fontWeight: '800', color: '#FF3B30' }}>KCAL</Text>
+            </Text>
+          </GlassView>
         </View>
+        {/* Anneaux d'activité top-right (façon Watch), dans le même cadre
+            Liquid Glass que le bloc stats. */}
+        <View pointerEvents="none" style={{ position: 'absolute', top: 50, right: 16, zIndex: 210 }}>
+          <GlassView
+            intensity={70}
+            tint="dark"
+            forceDark
+            borderRadius={18}
+            highlight
+            bevel
+            elevated
+            contentStyle={{ padding: 9, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Svg width={56} height={56} viewBox="0 0 44 44">
+              <Circle cx="22" cy="22" r="19" stroke="rgba(255,59,48,0.3)" strokeWidth={3.5} fill="none" />
+              <Circle cx="22" cy="22" r="19" stroke="#FF3B30" strokeWidth={3.5} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 19} strokeDashoffset={2 * Math.PI * 19 * (1 - Math.min(elapsedSec / 60 * 5 / 400, 1))} transform="rotate(-90 22 22)" />
+              <Circle cx="22" cy="22" r="13.5" stroke="rgba(48,209,88,0.3)" strokeWidth={3.5} fill="none" />
+              <Circle cx="22" cy="22" r="13.5" stroke="#30D158" strokeWidth={3.5} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 13.5} strokeDashoffset={2 * Math.PI * 13.5 * (1 - Math.min(elapsedSec / 60 / 30, 1))} transform="rotate(-90 22 22)" />
+              <Circle cx="22" cy="22" r="8" stroke="rgba(10,132,255,0.3)" strokeWidth={3.5} fill="none" />
+              <Circle cx="22" cy="22" r="8" stroke="#0A84FF" strokeWidth={3.5} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 8} strokeDashoffset={2 * Math.PI * 8 * (1 - (status.durationMillis ? progress : Math.min(elapsedSec / ((parseInt(duree) || 15) * 60), 1)))} transform="rotate(-90 22 22)" />
+            </Svg>
+          </GlassView>
+        </View>
+        </>
       )}
 
       {hasRealVideo && !videoLoadFailed && !showControls && (

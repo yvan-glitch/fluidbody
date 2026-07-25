@@ -109,6 +109,18 @@ function toUint8(buf) {
   return new Uint8Array(buf.buffer ? buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length) : buf);
 }
 
+// Copie DÉFENSIVE dans un Uint8Array possédé par JS (fix 2026-07-25).
+// Les buffers rendus par expo-file-system (readBytes) et quick-crypto
+// (update/final) sont adossés à des ArrayBuffer natifs de leurs modules
+// respectifs ; les passer directement d'un module à l'autre peut lever
+// « Exception in HostFunction: unordered_map::at: key not found » (le
+// registre Nitro ne connaît pas le buffer étranger). Une copie JS pure
+// coupe toute dépendance native. Coût : ~2 copies de 4 MB par chunk,
+// négligeable devant l'I/O.
+function ownedCopy(buf) {
+  return new Uint8Array(toUint8(buf));
+}
+
 // Laisse respirer le thread JS entre deux chunks (UI/progress).
 function tick() {
   return new Promise(function (resolve) { setTimeout(resolve, 0); });
@@ -129,18 +141,18 @@ export async function encryptFileToV3(srcUri, destUri) {
   const outHandle = dest.open();
   try {
     outHandle.writeBytes(new Uint8Array(MAGIC));
-    outHandle.writeBytes(iv);
+    outHandle.writeBytes(ownedCopy(iv));
     const total = inHandle.size || 0;
     let done = 0;
     while (done < total) {
       const chunk = inHandle.readBytes(Math.min(CHUNK_SIZE, total - done));
       if (!chunk || chunk.length === 0) break;
       done += chunk.length;
-      outHandle.writeBytes(toUint8(cipher.update(chunk)));
+      outHandle.writeBytes(ownedCopy(cipher.update(ownedCopy(chunk))));
       if (done < total) await tick();
     }
     const fin = cipher.final();
-    if (fin && fin.length) outHandle.writeBytes(toUint8(fin));
+    if (fin && fin.length) outHandle.writeBytes(ownedCopy(fin));
   } finally {
     try { inHandle.close(); } catch (e) {}
     try { outHandle.close(); } catch (e) {}
@@ -155,7 +167,7 @@ export async function decryptV3ToFile(srcUri, destUri) {
   const inHandle = src.open();
   let outHandle = null;
   try {
-    const header = inHandle.readBytes(V3_HEADER_LENGTH);
+    const header = ownedCopy(inHandle.readBytes(V3_HEADER_LENGTH));
     if (!hasV3Magic(header) || header.length < V3_HEADER_LENGTH) return false;
     const iv = header.slice(4, 20);
     const decipher = QuickCrypto.createDecipheriv('aes-256-ctr', key, iv);
@@ -171,11 +183,11 @@ export async function decryptV3ToFile(srcUri, destUri) {
       const chunk = inHandle.readBytes(Math.min(CHUNK_SIZE, total - done));
       if (!chunk || chunk.length === 0) break;
       done += chunk.length;
-      outHandle.writeBytes(toUint8(decipher.update(chunk)));
+      outHandle.writeBytes(ownedCopy(decipher.update(ownedCopy(chunk))));
       if (done < total) await tick();
     }
     const fin = decipher.final();
-    if (fin && fin.length) outHandle.writeBytes(toUint8(fin));
+    if (fin && fin.length) outHandle.writeBytes(ownedCopy(fin));
     return true;
   } finally {
     try { inHandle.close(); } catch (e) {}
