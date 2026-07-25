@@ -25,16 +25,30 @@ import { hapticLight } from '../utils';
 const PROMO_KEY = 'fluid_effort_promo_done_v1';
 const LIME = '#AEEF4D';
 
+// La bannière vit sur DEUX écrans (Activité + accueil Pour vous) et les tabs
+// restent montés — un simple state local ne suffirait pas (fermer sur l'un
+// la laisserait visible sur l'autre jusqu'au restart). Pub-sub module-level :
+// dismiss() notifie toutes les instances du hook.
+let promoDismissed = false;
+const promoListeners = new Set();
+
 export function useEffortPromo() {
   const [visible, setVisible] = useState(false);
   useEffect(function () {
-    if (Platform.OS !== 'ios') return;
-    AsyncStorage.getItem(PROMO_KEY).then(function (v) {
-      if (v !== '1') setVisible(true);
-    }).catch(function () {});
+    if (Platform.OS !== 'ios') return undefined;
+    if (!promoDismissed) {
+      AsyncStorage.getItem(PROMO_KEY).then(function (v) {
+        if (v === '1') { promoDismissed = true; promoListeners.forEach(function (fn) { fn(); }); }
+        else if (!promoDismissed) setVisible(true);
+      }).catch(function () {});
+    }
+    const onDismiss = function () { setVisible(false); };
+    promoListeners.add(onDismiss);
+    return function () { promoListeners.delete(onDismiss); };
   }, []);
   function dismiss() {
-    setVisible(false);
+    promoDismissed = true;
+    promoListeners.forEach(function (fn) { fn(); });
     AsyncStorage.setItem(PROMO_KEY, '1').catch(function () {});
   }
   return { visible: visible, dismiss: dismiss };
@@ -83,10 +97,10 @@ function EffortBars({ highlight }) {
   );
 }
 
-export function EffortPromoBanner({ lang, onOpen, onDismiss }) {
+export function EffortPromoBanner({ lang, onOpen, onDismiss, pad }) {
   const tr = T[lang] || T.fr;
   return (
-    <View style={{ paddingHorizontal: 22, marginBottom: 18 }}>
+    <View style={{ paddingHorizontal: pad != null ? pad : 22, marginBottom: 18 }}>
       <GlassView intensity={0} borderRadius={18} contentStyle={{ padding: 16 }}>
         <TouchableOpacity
           onPress={onDismiss}

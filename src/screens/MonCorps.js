@@ -52,6 +52,7 @@ import DownloadButton from '../components/DownloadButton';
 import { primeDownloadsCache, subscribeDownloads } from '../utils/downloadsCache';
 import { primeDurationsCache, subscribeDurations, getRealDurationLabel } from '../utils/videoDurations';
 import { pickSessionImage } from '../components/tv/tvImagePool';
+import { useEffortPromo, EffortPromoBanner, EffortPromoWalkthrough } from '../components/EffortPromo';
 import { primeFavoritesCache } from '../utils/favorites';
 import { getDailyQuote } from '../constants/sabrinaQuotes';
 import { Icon } from '../components/Icons';
@@ -1312,6 +1313,10 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   // chaque changement d'onglet (le ScrollView est remonté avec key={mcTab},
   // son offset repart à 0 — un lastY périmé déclencherait un faux masquage).
   var headerTranslateY = useRef(chromeAnim.interpolate({ inputRange: [0, 1], outputRange: [-220, 0] })).current;
+  // Promo « charge d'entraînement » — même bannière que sur Activité, même
+  // flag partagé (fermée à un endroit = fermée partout, via pub-sub).
+  var effortPromo = useEffortPromo();
+  var [showEffortWalkthrough, setShowEffortWalkthrough] = useState(false);
   var onChromeScroll = useMemo(function() { return createChromeScrollHandler(); }, [mcTab]);
   useEffect(function() { showChrome(); }, [mcTab]);
   var mcTabLabels = { pour_vous: tr.tab_pour_vous, explorer: tr.tab_explorer, programmes: tr.tab_programmes, live: tr.live_title || 'Live', recherche: tr.tab_recherche };
@@ -1486,6 +1491,17 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         onScroll={onChromeScroll}
         scrollEventThrottle={16}
       >
+        {/* Promo effort / charge d'entraînement — aussi sur l'écran
+            d'ouverture (demande Yvan 25/07), onglet Pour vous uniquement.
+            pad=0 : le contentContainer a déjà paddingHorizontal 16. */}
+        {mcTab === 'pour_vous' && !IS_TV && effortPromo.visible ? (
+          <EffortPromoBanner
+            lang={lang}
+            pad={0}
+            onOpen={function() { setShowEffortWalkthrough(true); }}
+            onDismiss={function() { effortPromo.dismiss(); }}
+          />
+        ) : null}
         {/* Active algorithmic program banner. Visible across all MonCorps
             tabs so the user always sees their journey. Tap → MyPrograms. */}
         {activeProgram && (function() {
@@ -2285,6 +2301,11 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           );
         })()}
       </ScrollView>
+      <EffortPromoWalkthrough
+        visible={showEffortWalkthrough}
+        lang={lang}
+        onDone={function() { setShowEffortWalkthrough(false); effortPromo.dismiss(); }}
+      />
       {openPilier && (IS_TV ? (
         <PilierPanelTV pilier={openPilier} done={done[openPilier.key] || Array(20).fill(false)} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); setOpenInitialIdx(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} saveHealthKitWorkout={saveHealthKitWorkout} initialSeanceIdx={openInitialIdx} />
       ) : (
