@@ -67,3 +67,6 @@ fluidbody-privacy/
 
 # Clé API App Store Connect (dossier local, jamais commiter)
 KEY/
+
+# Builds locaux EAS (ne jamais commiter les binaires)
+*.ipa
