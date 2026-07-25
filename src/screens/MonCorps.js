@@ -1709,31 +1709,6 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 {glassCell(mosaicImages[5], halfW, rowH1, 'm5')}
                 {glassCell(mosaicImages[6], halfW, rowH1, 'm6')}
               </View>
-              {/* Titre + sous-titre façon Fitness+ (« Des exercices pour tout
-                  le monde ») : directement sous le collage, centré, sans
-                  carte — le CTA abonnement suit dans le même bloc. */}
-              <View style={{ paddingTop: 22, paddingBottom: 8, paddingHorizontal: 16, alignItems: 'center' }}>
-                <Text style={{ fontSize: 27, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.4, lineHeight: 32, marginBottom: 8 }}>{tr.paywall_title}</Text>
-                <Text style={{ fontSize: 14, fontWeight: '400', color: 'rgba(255,255,255,0.65)', textAlign: 'center', lineHeight: 20, marginBottom: 6 }}>{tr.paywall_sub}</Text>
-                <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.78)', textAlign: 'center', letterSpacing: 0.2, marginBottom: 16 }}>{heroMetaIPhone}</Text>
-                {!isSubscriber ? (
-                  <View style={{ alignSelf: 'stretch' }}>
-                    <View style={{ marginBottom: 12 }}>
-                      <GlassButton
-                        onPress={function() { onActivateSubscription && onActivateSubscription(); }}
-                        textColor="#AEEF4D"
-                        textStyle={{ fontSize: 17, fontWeight: '700' }}
-                      >
-                        {tr.paywall_start}
-                      </GlassButton>
-                    </View>
-                    <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginBottom: 6 }}>{"CHF 12.90" + (tr.paywall_per_month || '/mois')}</Text>
-                    <TouchableOpacity onPress={function() { onActivateSubscription && onActivateSubscription(); }} activeOpacity={0.8}>
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>{tr.paywall_yearly_link}</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : null}
-              </View>
               {/* Rangée "Mes favoris" iPhone (Lot 2 Speir-inspired) — hidden
                   si l'utilisateur n'a aucun cœur. Tap → ouvre la séance
                   directement via setOpenInitialIdx + setOpenPilier. */}
@@ -1753,6 +1728,25 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   onItemPress={function(it) { setOpenInitialIdx(it.idx); setOpenPilier(it.pilier); }}
                 />
               ) : null}
+              <LinearGradient colors={["rgba(28,28,30,0.3)", "rgba(28,28,30,0.88)", "rgba(28,28,30,0.95)"]} locations={[0, 0.4, 1]} style={{ borderRadius: 16, marginTop: 14, paddingTop: 60, paddingBottom: 24, paddingHorizontal: 20, alignItems: "center" }}>
+                <Text style={{ fontSize: 23, fontWeight: "700", color: "#ffffff", textAlign: "center", marginBottom: 6 }}>{tr.paywall_title}</Text>
+                <Text style={{ fontSize: 14, fontWeight: "400", color: "rgba(255,255,255,0.65)", textAlign: "center", lineHeight: 19, marginBottom: 8 }}>{tr.paywall_sub}</Text>
+                {/* Métadata catalogue (Lot 3) — X séances · Y min/h · Avec Sabrina */}
+                <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.78)', textAlign: 'center', letterSpacing: 0.2, marginBottom: 18 }}>{heroMetaIPhone}</Text>
+                <View style={{ alignSelf: "stretch", marginBottom: 12 }}>
+                  <GlassButton
+                    onPress={function() { onActivateSubscription && onActivateSubscription(); }}
+                    textColor="#AEEF4D"
+                    textStyle={{ fontSize: 17, fontWeight: '700' }}
+                  >
+                    {tr.paywall_start}
+                  </GlassButton>
+                </View>
+                <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>{"CHF 12.90" + (tr.paywall_per_month || '/mois')}</Text>
+                <TouchableOpacity onPress={function() { onActivateSubscription && onActivateSubscription(); }} activeOpacity={0.8}>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: "rgba(255,255,255,0.8)" }}>{tr.paywall_yearly_link}</Text>
+                </TouchableOpacity>
+              </LinearGradient>
             </View>
           );
         })()}
