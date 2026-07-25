@@ -701,7 +701,10 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                   end={{ x: 1, y: 1 }}
                   style={{ flex: 1, paddingHorizontal: IS_TV ? 30 : 16, paddingTop: IS_TV ? 18 : 8, paddingBottom: IS_TV ? 20 : 12 }}
                 >
-                  <Text style={{ fontSize: IS_TV ? 14 : 10, fontWeight: '900', color: '#ffffff', alignSelf: 'flex-end', marginBottom: 6 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, color: '#AEEF4D' }}>+</AnimatedPlus></Text>
+                  {/* marginRight quand le bouton download (absolute top-right,
+                      30px + 8px de marge) est affiché — sinon le watermark
+                      passe dessous (retour Yvan 25/07). */}
+                  <Text style={{ fontSize: IS_TV ? 14 : 10, fontWeight: '900', color: '#ffffff', alignSelf: 'flex-end', marginBottom: 6, marginRight: (!IS_TV && !noVideo && !locked) ? 34 : 0 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, color: '#AEEF4D' }}>+</AnimatedPlus></Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <View style={{ width: IS_TV ? 72 : 40, height: IS_TV ? 72 : 40, borderRadius: IS_TV ? 36 : 20, backgroundColor: isDone ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.15)', borderWidth: IS_TV ? 1.5 : 0, borderColor: isDone ? 'rgba(174,239,77,0.55)' : 'transparent', alignItems: 'center', justifyContent: 'center', marginRight: IS_TV ? 22 : 14 }}>
                       <Text style={{ fontSize: IS_TV ? 34 : 18, color: isDone ? '#AEEF4D' : '#ffffff' }}>{isDone ? '\u2713' : '\u25B6'}</Text>

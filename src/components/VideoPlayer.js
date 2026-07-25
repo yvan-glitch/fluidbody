@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Pressable, Animated, Dimensions, StyleSheet, AppState, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, Animated, Dimensions, StyleSheet, AppState, Alert, Platform, PanResponder } from 'react-native';
 import { Video, ResizeMode, Audio } from 'expo-av';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 // expo-screen-orientation: native module manquant sur tvOS, lazy require avec fallback
@@ -277,6 +277,60 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   var [ccText, setCcText] = useState(null);
   var [showCcPicker, setShowCcPicker] = useState(false);
   var [playbackRate, setPlaybackRate] = useState(1.0);
+
+  // ── Scrubbing de la barre de progression (retour Yvan 25/07) ──
+  // On remplace le simple onPress par un PanResponder : le doigt peut
+  // glisser le long de la barre, l'UI suit en direct (scrubRatio) et le
+  // seek réel (setPositionAsync) n'est fait qu'au relâchement — évite de
+  // spammer expo-av pendant le drag. Les handlers ne touchent que des refs
+  // et des setState (stables), donc la closure du 1er render suffit.
+  const seekBarWRef = useRef(1);
+  const scrubRatioRef = useRef(null);
+  const [scrubRatio, setScrubRatio] = useState(null); // null = pas de scrub
+
+  function updateScrub(x) {
+    const w = seekBarWRef.current || 1;
+    const r = Math.max(0, Math.min(1, x / w));
+    scrubRatioRef.current = r;
+    setScrubRatio(r);
+  }
+  function commitScrub() {
+    const r = scrubRatioRef.current;
+    scrubRatioRef.current = null;
+    setScrubRatio(null);
+    const dur = lastStatusRef.current && lastStatusRef.current.durationMillis;
+    if (r != null && dur) {
+      try { videoRef.current?.setPositionAsync(r * dur); } catch (e) {}
+    }
+  }
+  // ── Double-tap → vidéo plein écran (retour Yvan 25/07) ──
+  // CONTAIN (par défaut, bandes noires) ⇄ COVER (remplit l'écran, léger
+  // crop). Détection maison : 2 taps < 300 ms. Le 1er tap déclenche
+  // quand même l'affichage/masquage des contrôles (comme YouTube) —
+  // acceptable et évite de retarder chaque tap simple de 300 ms.
+  const [videoFill, setVideoFill] = useState(false);
+  const lastTapAtRef = useRef(0);
+  function handleScreenTap(singleTapAction) {
+    const now = Date.now();
+    if (now - lastTapAtRef.current < 300) {
+      lastTapAtRef.current = 0;
+      hapticLight();
+      setVideoFill(function (v) { return !v; });
+      return;
+    }
+    lastTapAtRef.current = now;
+    if (singleTapAction) singleTapAction();
+  }
+
+  const seekPan = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: function () { return true; },
+    onMoveShouldSetPanResponder: function () { return true; },
+    onPanResponderTerminationRequest: function () { return false; },
+    onPanResponderGrant: function (e) { bumpTimer(); updateScrub(e.nativeEvent.locationX); },
+    onPanResponderMove: function (e) { bumpTimer(); updateScrub(e.nativeEvent.locationX); },
+    onPanResponderRelease: function () { commitScrub(); },
+    onPanResponderTerminate: function () { commitScrub(); },
+  })).current;
 
   // Fetch a fresh signed MP4 URL whenever we need one (initial mount or after
   // a forced reset). If the session is downloaded locally, decrypt-to-temp
@@ -728,8 +782,19 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   const thumbSize = 16;
   const thumbLeft = Math.max(0, Math.min(barW - thumbSize, progress * barW - thumbSize / 2));
 
-  var timerMin = Math.floor(elapsedSec / 60);
-  var timerSec = elapsedSec % 60;
+  // Minuteur en DÉCOMPTE (retour Yvan 25/07) : on affiche le temps restant.
+  // Source de vérité = position réelle de la vidéo quand elle est chargée
+  // (suit les seeks / vitesses de lecture) ; sinon fallback sur la durée
+  // annoncée de la séance moins le temps écoulé.
+  var timerTotalSec = status.durationMillis
+    ? Math.round(status.durationMillis / 1000)
+    : (parseInt(duree) || 15) * 60;
+  var timerPosSec = (status.durationMillis && status.positionMillis != null)
+    ? Math.floor(status.positionMillis / 1000)
+    : elapsedSec;
+  var timerRemainSec = Math.max(0, timerTotalSec - timerPosSec);
+  var timerMin = Math.floor(timerRemainSec / 60);
+  var timerSec = timerRemainSec % 60;
   var timerStr = String(timerMin).padStart(2, '0') + ':' + String(timerSec).padStart(2, '0');
 
   return (
@@ -743,7 +808,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
           ref={videoRef}
           source={{ uri }}
           style={{ position: 'absolute', top: 0, left: 0, width: dims.width, height: dims.height }}
-          resizeMode={ResizeMode.CONTAIN}
+          resizeMode={videoFill ? ResizeMode.COVER : ResizeMode.CONTAIN}
           shouldPlay={introN <= 0 && preSeanceConfirmed}
           rate={playbackRate}
           shouldCorrectPitch={true}
@@ -801,44 +866,57 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         </View>
       ) : null}
 
+      {/* ── HUD séance (redesign 2026-07-25, carte blanche Yvan) ──
+          Une seule rangée de capsules Liquid Glass assorties à la
+          HeartRatePill : à gauche anneau de progression + décompte +
+          kcal, à droite le cœur en direct. Remplace l'ancienne boîte
+          noire top-left et les 3 anneaux décoratifs (le 3e était figé
+          à 92% — dette visuelle). */}
       {!videoLoadFailed && !isTheory && !showControls && (
-        <>
-        <View pointerEvents="none" style={{ position: 'absolute', top: 50, left: 16, zIndex: 210 }}>
-          <View style={{ backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 16, padding: 12, minWidth: 110 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-              <Text style={{ fontSize: 28, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -1 }}>{timerStr}</Text>
-              <View style={{ width: 18, height: 18, marginLeft: 2 }}>
-                <Svg width={18} height={18} viewBox="0 0 18 18">
-                  <Circle cx="9" cy="9" r="7" stroke="rgba(174,239,77,0.3)" strokeWidth={2} fill="none" />
-                  <Path d={'M9 2a7 7 0 0 1 ' + (Math.min(elapsedSec / ((parseInt(duree) || 15) * 60), 1) > 0.5 ? '0 14' : (7 * Math.sin(Math.min(elapsedSec / ((parseInt(duree) || 15) * 60), 1) * Math.PI * 2)).toFixed(1) + ' ' + (7 - 7 * Math.cos(Math.min(elapsedSec / ((parseInt(duree) || 15) * 60), 1) * Math.PI * 2)).toFixed(1))} stroke="#AEEF4D" strokeWidth={2} fill="none" strokeLinecap="round" />
-                </Svg>
-              </View>
-            </View>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'] }}>{Math.round(elapsedSec / 60 * 5)}<Text style={{ fontSize: 14, fontWeight: '800', color: '#FF3B30' }}> KCAL</Text></Text>
+        <View pointerEvents="box-none" style={{ position: 'absolute', top: 50, left: 16, right: 16, zIndex: 210, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View pointerEvents="none">
+            <GlassView
+              intensity={70}
+              tint="dark"
+              forceDark
+              borderRadius={GLASS_RADII.pill}
+              highlight
+              bevel
+              elevated
+              contentStyle={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, height: 30 }}
+            >
+              {/* Anneau de progression de la séance (remplit en lime) */}
+              <Svg width={16} height={16} viewBox="0 0 20 20">
+                <Circle cx="10" cy="10" r="8" stroke="rgba(174,239,77,0.25)" strokeWidth={2.5} fill="none" />
+                <Circle
+                  cx="10" cy="10" r="8"
+                  stroke="#AEEF4D" strokeWidth={2.5} fill="none" strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 8}
+                  strokeDashoffset={2 * Math.PI * 8 * (1 - (status.durationMillis ? progress : Math.min(elapsedSec / ((parseInt(duree) || 15) * 60), 1)))}
+                  transform="rotate(-90 10 10)"
+                />
+              </Svg>
+              <Text style={{ marginLeft: 7, fontSize: 15, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -0.3 }}>{timerStr}</Text>
+              {/* Séparateur */}
+              <View style={{ width: 1, height: 14, backgroundColor: 'rgba(255,255,255,0.18)', marginHorizontal: 10 }} />
+              {/* Flamme + kcal */}
+              <Svg width={12} height={12} viewBox="0 0 24 24">
+                <Path
+                  d="M12 23c-4.97 0-9-3.58-9-8 0-3.07 1.63-5.61 3.4-7.6.7-.78 2.1-.29 2.1.77 0 .9.75 1.58 1.6 1.4 1.9-.4 2.9-3.02 1.9-7.07-.23-.94.8-1.67 1.6-1.13C17.4 3.8 21 8.5 21 15c0 4.42-4.03 8-9 8Z"
+                  fill="#FF6B3D"
+                />
+              </Svg>
+              <Text style={{ marginLeft: 5, fontSize: 15, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -0.3 }}>{Math.round(elapsedSec / 60 * 5)}</Text>
+              <Text style={{ marginLeft: 3, fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.4 }}>kcal</Text>
+            </GlassView>
           </View>
-        </View>
-        {/* HR pill (top-right). Shows when (a) display flag on, (b) at least
-            one BPM sample has come through HealthKit. Pill stays mounted
-            across stale (isLive=false) for visual continuity but goes 50%
-            opacity — see HeartRatePill. */}
-        {hrEnabled && hr.bpm != null && (
-          <View pointerEvents="box-none" style={{ position: 'absolute', top: 50, right: 16, zIndex: 220 }}>
+          {/* HR pill : mêmes hauteur/style que la capsule de gauche. Reste
+              montée quand le signal devient stale (opacity 50% — voir
+              HeartRatePill) pour la continuité visuelle. */}
+          {hrEnabled && hr.bpm != null && (
             <HeartRatePill bpm={hr.bpm} isLive={hr.isLive} birthDateIso={effectiveBirthDate} />
-          </View>
-        )}
-        <View pointerEvents="none" style={{ position: 'absolute', top: (hrEnabled && hr.bpm != null) ? 90 : 50, right: 16, zIndex: 210 }}>
-          <View style={{ width: 44, height: 44 }}>
-            <Svg width={44} height={44} viewBox="0 0 44 44">
-              <Circle cx="22" cy="22" r="19" stroke="rgba(255,59,48,0.3)" strokeWidth={3} fill="none" />
-              <Circle cx="22" cy="22" r="19" stroke="#FF3B30" strokeWidth={3} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 19} strokeDashoffset={2 * Math.PI * 19 * (1 - Math.min(elapsedSec / 60 * 5 / 400, 1))} transform="rotate(-90 22 22)" />
-              <Circle cx="22" cy="22" r="14" stroke="rgba(48,209,88,0.3)" strokeWidth={3} fill="none" />
-              <Circle cx="22" cy="22" r="14" stroke="#30D158" strokeWidth={3} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 14} strokeDashoffset={2 * Math.PI * 14 * (1 - Math.min(elapsedSec / 60 / 30, 1))} transform="rotate(-90 22 22)" />
-              <Circle cx="22" cy="22" r="9" stroke="rgba(10,132,255,0.3)" strokeWidth={3} fill="none" />
-              <Circle cx="22" cy="22" r="9" stroke="#0A84FF" strokeWidth={3} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 9} strokeDashoffset={2 * Math.PI * 9 * 0.92} transform="rotate(-90 22 22)" />
-            </Svg>
-          </View>
+          )}
         </View>
-        </>
       )}
 
       {hasRealVideo && !videoLoadFailed && !showControls && (
@@ -899,12 +977,12 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
       )}
 
       {!videoLoadFailed && !showControls && (
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={revealControls} android_ripple={null} />
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={() => handleScreenTap(revealControls)} android_ripple={null} />
       )}
 
       {!videoLoadFailed && showControls && (
         <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFillObject, { opacity: controlsOpacity }]}>
-          <Pressable style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)' }]} onPress={hideControls} android_ripple={null} />
+          <Pressable style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)' }]} onPress={() => handleScreenTap(hideControls)} android_ripple={null} />
           <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
             {/* Top-left : X + PiP/fullscreen — capsule Liquid Glass */}
             <View pointerEvents="box-none" style={{ position: 'absolute', top: 50, left: 16 }}>
@@ -1056,24 +1134,28 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                     paddingVertical: IS_TV ? 14 : 6,
                   }}
                 >
-                  <Text style={{ fontSize: IS_TV ? 18 : 11, fontWeight: '500', color: '#ffffff', minWidth: IS_TV ? 70 : 44, fontVariant: ['tabular-nums'], letterSpacing: IS_TV ? 0.5 : 0 }}>{formatTimeCode(status.positionMillis)}</Text>
-                  <Pressable
+                  <Text style={{ fontSize: IS_TV ? 18 : 11, fontWeight: '500', color: '#ffffff', minWidth: IS_TV ? 70 : 44, fontVariant: ['tabular-nums'], letterSpacing: IS_TV ? 0.5 : 0 }}>{formatTimeCode(scrubRatio != null && status.durationMillis ? scrubRatio * status.durationMillis : status.positionMillis)}</Text>
+                  {/* Barre scrubbable : tap OU glisser (PanResponder). La
+                      largeur réelle vient d'onLayout (l'ancien code divisait
+                      par dims.width-40 alors que la barre est plus étroite →
+                      taps imprécis). Pendant le drag, l'UI suit scrubRatio ;
+                      le seek est commité au relâchement. */}
+                  <View
+                    {...seekPan.panHandlers}
                     accessibilityLabel="Barre de progression de la vidéo"
                     accessibilityRole="adjustable"
-                    onPress={async (e) => {
-                      bumpTimer();
-                      if (!status.durationMillis) return;
-                      const w = e.nativeEvent.target ? barW : barW;
-                      const ratio = Math.max(0, Math.min(1, e.nativeEvent.locationX / w));
-                      await videoRef.current?.setPositionAsync(ratio * status.durationMillis);
-                    }}
-                    style={{ flex: 1, height: IS_TV ? 32 : 24, justifyContent: 'center' }}
+                    onLayout={(e) => { seekBarWRef.current = e.nativeEvent.layout.width; }}
+                    style={{ flex: 1, height: IS_TV ? 32 : 28, justifyContent: 'center' }}
                   >
                     <View style={{ height: IS_TV ? 6 : 3, borderRadius: IS_TV ? 3 : 1.5, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden' }}>
-                      <View style={{ width: (progress * 100) + '%', height: '100%', backgroundColor: '#ffffff' }} />
+                      <View style={{ width: (((scrubRatio != null ? scrubRatio : progress)) * 100) + '%', height: '100%', backgroundColor: '#ffffff' }} />
                     </View>
-                  </Pressable>
-                  <Text style={{ fontSize: IS_TV ? 18 : 11, fontWeight: '500', color: '#ffffff', minWidth: IS_TV ? 70 : 44, textAlign: 'right', fontVariant: ['tabular-nums'], letterSpacing: IS_TV ? 0.5 : 0 }}>{formatRemaining(status.positionMillis, status.durationMillis)}</Text>
+                    {/* Poignée — affordance visuelle du drag (grossit pendant le scrub) */}
+                    {!IS_TV && (
+                      <View pointerEvents="none" style={{ position: 'absolute', left: ((scrubRatio != null ? scrubRatio : progress) * 100) + '%', top: '50%', width: scrubRatio != null ? 16 : 11, height: scrubRatio != null ? 16 : 11, marginLeft: scrubRatio != null ? -8 : -5.5, marginTop: scrubRatio != null ? -8 : -5.5, borderRadius: 8, backgroundColor: '#ffffff', shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } }} />
+                    )}
+                  </View>
+                  <Text style={{ fontSize: IS_TV ? 18 : 11, fontWeight: '500', color: '#ffffff', minWidth: IS_TV ? 70 : 44, textAlign: 'right', fontVariant: ['tabular-nums'], letterSpacing: IS_TV ? 0.5 : 0 }}>{formatRemaining(scrubRatio != null && status.durationMillis ? scrubRatio * status.durationMillis : status.positionMillis, status.durationMillis)}</Text>
                 </GlassView>
               )}
               {(progress >= 0.8 || !hasRealVideo || elapsedSec >= 60) && (
