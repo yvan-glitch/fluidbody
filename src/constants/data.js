@@ -1611,7 +1611,11 @@ export const SABRINA_QUOTES = {
 // Reste en stock : p8 office (+ programs mal-de-dos & core-plancher) —
 // shooting à prévoir.
 export const PILIER_IMAGES = {
-  p1: require("../../assets/piliers/epaules.jpg"),
+  // p1 : epaules.jpg abandonnée (retour Yvan 25/07 : « la tête à Sabrina
+  // est coupée » sur la 1re photo de la mosaïque). sabrina_2 = même thème
+  // épaules/nuque, tête visible. sabrina_2 sort donc des variantes p1
+  // (remplacée par sabrina_10) pour ne pas dupliquer la mosaïque.
+  p1: require("../../assets/coach/sabrina_2.jpg"),
   // Catégories : retour aux photos D'ORIGINE (stock incluses) — demande
   // Yvan 25/07 soir : « réutilise les photos même génériques, c'était
   // beaucoup mieux, même parfait », puis « même pour le golf ». Fichiers
@@ -1637,7 +1641,7 @@ export const PILIER_IMAGES = {
 // variantes, pour ne pas dupliquer la mosaïque sur le même écran, et varie
 // selon l'index de séance (stable au re-render).
 export const PILIER_IMAGE_VARIANTS = {
-  p1: [PILIER_IMAGES.p1, require("../../assets/coach/sabrina_2.jpg"), require("../../assets/coach/sabrina_3.jpg")],
+  p1: [PILIER_IMAGES.p1, require("../../assets/coach/sabrina_3.jpg"), require("../../assets/coach/sabrina_10.jpg")],
   p2: [PILIER_IMAGES.p2, require("../../assets/coach/sabrina_11.jpg"), require("../../assets/coach/sabrina_14.jpg")],
   p3: [PILIER_IMAGES.p3, require("../../assets/coach/sabrina_5.jpg"), require("../../assets/coach/sabrina_6.jpg"), require("../../assets/coach/sabrina_15.jpg")],
   p4: [PILIER_IMAGES.p4, require("../../assets/coach/sabrina_4.jpg"), require("../../assets/coach/sabrina_13.jpg")],
