@@ -1612,19 +1612,22 @@ export const SABRINA_QUOTES = {
 // shooting à prévoir.
 export const PILIER_IMAGES = {
   p1: require("../../assets/piliers/epaules.jpg"),
-  // Canoniques p2/p5 RESTAURÉES telles qu'avant le 25/07 soir (demande
-  // Yvan : « pour les catégories remets exactement comme avant ») — le
-  // problème des 3 quasi-doublons ne concernait que la mosaïque Pour toi,
-  // qui n'utilise plus ces canoniques (requires directs dans MonCorps).
-  p2: require("../../assets/coach/sabrina_10.jpg"),
+  // Catégories : retour aux photos D'ORIGINE (stock incluses) — demande
+  // Yvan 25/07 soir : « réutilise les photos même génériques, c'était
+  // beaucoup mieux, même parfait ». Les fichiers piliers/mobilite, eldoa,
+  // menopause et mat_pilates ont été restaurés depuis git (versions stock
+  // pré-9753ce4/81c93cc). Exception : golf.jpg reste la photo de Noa
+  // (choix explicite de Yvan). Les photos Sabrina restent utilisées par
+  // la mosaïque Pour toi (requires directs) et les variantes de séances.
+  p2: require("../../assets/piliers/dos.jpg"),
   p3: require("../../assets/piliers/mobilite.jpg"),
-  p4: require("../../assets/coach/sabrina_16.jpg"),
+  p4: require("../../assets/piliers/posture.jpg"),
   p5: require("../../assets/piliers/eldoa.jpg"),
   p6: require("../../assets/piliers/golf.jpg"),
   p7: require("../../assets/piliers/mat_pilates.jpg"),
   p8: require("../../assets/piliers/office.jpg"),
   p9: require("../../assets/piliers/menopause.jpg"),
-  sdj: require("../../assets/coach/sabrina_beach.jpg"),
+  sdj: require("../../assets/piliers/seance_du_jour.jpg"),
 };
 
 // Variantes d'images par pilier (2026-07-25, retour Yvan : « 2 photos
@@ -1636,8 +1639,8 @@ export const PILIER_IMAGES = {
 export const PILIER_IMAGE_VARIANTS = {
   p1: [PILIER_IMAGES.p1, require("../../assets/coach/sabrina_3.jpg")],
   p2: [PILIER_IMAGES.p2, require("../../assets/coach/sabrina_11.jpg")],
-  // NB : sabrina_2, sabrina_5, sabrina_6, sabrina_14 et sabrina_15 sont
-  // réservées à la mosaïque Pour toi (MonCorps) — pas en variantes.
+  // NB : sabrina_2, _5, _6, _14, _15 et _16 sont réservées à la mosaïque
+  // Pour toi (MonCorps) — pas en variantes.
   p3: [PILIER_IMAGES.p3],
   p4: [PILIER_IMAGES.p4, require("../../assets/coach/sabrina_4.jpg")],
   p5: [PILIER_IMAGES.p5, require("../../assets/coach/sabrina_12.jpg")],

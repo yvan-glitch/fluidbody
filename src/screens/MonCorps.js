@@ -1589,7 +1589,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           // _15), jamais servies par getSeanceImage.
           var mosaicImages = [
             PILIER_IMAGES.p1, require('../../assets/coach/sabrina_2.jpg'),
-            require('../../assets/coach/sabrina_15.jpg'), require('../../assets/coach/sabrina_14.jpg'), PILIER_IMAGES.p9,
+            require('../../assets/coach/sabrina_15.jpg'), require('../../assets/coach/sabrina_14.jpg'), require('../../assets/coach/sabrina_16.jpg'),
             require('../../assets/coach/sabrina_5.jpg'), require('../../assets/coach/sabrina_6.jpg'),
           ];
           // Style Fitness+ (demande Yvan 25/07, capture fournie) : cells
