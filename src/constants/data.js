@@ -1614,11 +1614,11 @@ export const PILIER_IMAGES = {
   p1: require("../../assets/piliers/epaules.jpg"),
   // Catégories : retour aux photos D'ORIGINE (stock incluses) — demande
   // Yvan 25/07 soir : « réutilise les photos même génériques, c'était
-  // beaucoup mieux, même parfait ». Les fichiers piliers/mobilite, eldoa,
-  // menopause et mat_pilates ont été restaurés depuis git (versions stock
-  // pré-9753ce4/81c93cc). Exception : golf.jpg reste la photo de Noa
-  // (choix explicite de Yvan). Les photos Sabrina restent utilisées par
-  // la mosaïque Pour toi (requires directs) et les variantes de séances.
+  // beaucoup mieux, même parfait », puis « même pour le golf ». Fichiers
+  // piliers/mobilite, eldoa, menopause, mat_pilates, golf + programs/*
+  // restaurés depuis git (versions pré-4712e14/9753ce4/81c93cc/051d07f).
+  // Les photos Sabrina restent utilisées par les VARIANTES de séances
+  // (PILIER_IMAGE_VARIANTS ci-dessous).
   p2: require("../../assets/piliers/dos.jpg"),
   p3: require("../../assets/piliers/mobilite.jpg"),
   p4: require("../../assets/piliers/posture.jpg"),
@@ -1637,21 +1637,15 @@ export const PILIER_IMAGES = {
 // variantes, pour ne pas dupliquer la mosaïque sur le même écran, et varie
 // selon l'index de séance (stable au re-render).
 export const PILIER_IMAGE_VARIANTS = {
-  p1: [PILIER_IMAGES.p1, require("../../assets/coach/sabrina_3.jpg")],
-  p2: [PILIER_IMAGES.p2, require("../../assets/coach/sabrina_11.jpg")],
-  // NB : sabrina_2, _5, _6, _14, _15 et _16 sont réservées à la mosaïque
-  // Pour toi (MonCorps) — pas en variantes.
-  p3: [PILIER_IMAGES.p3],
-  p4: [PILIER_IMAGES.p4, require("../../assets/coach/sabrina_4.jpg")],
-  p5: [PILIER_IMAGES.p5, require("../../assets/coach/sabrina_12.jpg")],
+  p1: [PILIER_IMAGES.p1, require("../../assets/coach/sabrina_2.jpg"), require("../../assets/coach/sabrina_3.jpg")],
+  p2: [PILIER_IMAGES.p2, require("../../assets/coach/sabrina_11.jpg"), require("../../assets/coach/sabrina_14.jpg")],
+  p3: [PILIER_IMAGES.p3, require("../../assets/coach/sabrina_5.jpg"), require("../../assets/coach/sabrina_6.jpg"), require("../../assets/coach/sabrina_15.jpg")],
+  p4: [PILIER_IMAGES.p4, require("../../assets/coach/sabrina_4.jpg"), require("../../assets/coach/sabrina_13.jpg")],
+  p5: [PILIER_IMAGES.p5, require("../../assets/coach/sabrina_14.jpg"), require("../../assets/coach/sabrina_12.jpg")],
   p6: [PILIER_IMAGES.p6],
-  // Ordre voulu : la card gratuite p7_10 (1+(10%3)=2) doit tomber sur le
-  // trampoline (très distinct), pas sur souplesse.jpg (même scène chalet que
-  // mat_pilates.jpg affichée juste en dessous dans Explorer).
-  p7: [PILIER_IMAGES.p7, require("../../assets/programs/souplesse.jpg"), require("../../assets/coach/sabrina_trampoline.jpg"), require("../../assets/programs/reveil-matinal.jpg")],
+  p7: [PILIER_IMAGES.p7, require("../../assets/coach/sabrina_trampoline.jpg"), require("../../assets/programs/souplesse.jpg"), require("../../assets/programs/reveil-matinal.jpg")],
   p8: [PILIER_IMAGES.p8],
-  // NB : pas sabrina_16 ici — c'est l'image mosaïque de p4 (doublon écran).
-  p9: [PILIER_IMAGES.p9, require("../../assets/coach/sabrina_13.jpg")],
+  p9: [PILIER_IMAGES.p9, require("../../assets/coach/sabrina_1.jpg"), require("../../assets/coach/sabrina_16.jpg")],
 };
 
 export function getSeanceImage(pilierKey, idx) {

@@ -1580,17 +1580,15 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           var thirdW = Math.floor((fullW - gridGap * 2) / 3);
           var rowH1 = Math.floor(halfW * 0.72);
           var rowH2 = Math.floor(thirdW * 0.82);
-          // Mosaïque décorative (aucun onPress) — retour Sabrina 25/07 :
-          // « pas d'homogénéité ». 100 % série STUDIO (lumière claire, tons
-          // marine/blanc/bois), sélection dynamique (mouvement plutôt que
-          // portraits assis) ; golf/chalet restent sur les cards Explorer.
-          // Invariant anti-doublon : uniquement des canoniques PILIER_IMAGES
-          // ou des photos retirées des variantes (sabrina_2, _5, _6, _14,
-          // _15), jamais servies par getSeanceImage.
+          // Mosaïque décorative (aucun onPress) = photos piliers D'ORIGINE
+          // (stock pro, golf inclus) — demande finale Yvan 25/07 soir après
+          // plusieurs allers-retours : les anciennes photos étaient
+          // « parfaites ». Le voile sombre (glassCell) + le bloc abonnement
+          // fondu (layout Fitness+) sont conservés.
           var mosaicImages = [
-            PILIER_IMAGES.p1, require('../../assets/coach/sabrina_2.jpg'),
-            require('../../assets/coach/sabrina_15.jpg'), require('../../assets/coach/sabrina_14.jpg'), require('../../assets/coach/sabrina_16.jpg'),
-            require('../../assets/coach/sabrina_5.jpg'), require('../../assets/coach/sabrina_6.jpg'),
+            PILIER_IMAGES.p1, PILIER_IMAGES.p2,
+            PILIER_IMAGES.p3, PILIER_IMAGES.p4, PILIER_IMAGES.p5,
+            PILIER_IMAGES.p6, PILIER_IMAGES.p7,
           ];
           // Style Fitness+ (demande Yvan 25/07, capture fournie) : cells
           // nues — pas de bordure verre ni de reflet, juste l'image avec un
