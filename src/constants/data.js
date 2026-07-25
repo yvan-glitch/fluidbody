@@ -1611,11 +1611,12 @@ export const SABRINA_QUOTES = {
 // Reste en stock : p8 office (+ programs mal-de-dos & core-plancher) —
 // shooting à prévoir.
 export const PILIER_IMAGES = {
-  // p1 : epaules.jpg abandonnée (retour Yvan 25/07 : « la tête à Sabrina
-  // est coupée » sur la 1re photo de la mosaïque). sabrina_2 = même thème
-  // épaules/nuque, tête visible. sabrina_2 sort donc des variantes p1
-  // (remplacée par sabrina_10) pour ne pas dupliquer la mosaïque.
-  p1: require("../../assets/coach/sabrina_2.jpg"),
+  // p1 : sabrina_balle.jpg (demande Yvan 25/07 soir : « photo dynamique »
+  // pour la case haut-gauche de la mosaïque) — Sabrina lance le gros
+  // ballon, recadrée ~1.39:1 (ratio cell mosaïque) depuis MC-2328.jpg.
+  // Historique : epaules.jpg (tête coupée) → sabrina_2 → sabrina_balle.
+  // sabrina_2 reste hors variantes p1 (remplacée par sabrina_10).
+  p1: require("../../assets/coach/sabrina_balle.jpg"),
   // Catégories : retour aux photos D'ORIGINE (stock incluses) — demande
   // Yvan 25/07 soir : « réutilise les photos même génériques, c'était
   // beaucoup mieux, même parfait », puis « même pour le golf ». Fichiers
