@@ -30,6 +30,7 @@ import PostSessionReflection from '../components/PostSessionReflection';
 import DailyIntentionPrompt from '../components/DailyIntentionPrompt';
 import StreakCelebration from '../components/StreakCelebration';
 import { getTodayIntention, getPilierKeyForIntention, findIntention } from '../utils/dailyIntention';
+import { chromeAnim, createChromeScrollHandler, showChrome } from '../utils/chromeScroll';
 import { shouldCelebrate, markCelebrated } from '../utils/streakMilestones';
 import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
@@ -1294,6 +1295,13 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   // et l'icône recherche du header TV est conservée. Bonus : 3 onglets =
   // capsule entière visible sans scroll horizontal.
   var MC_TABS = ['pour_vous', 'explorer', 'programmes' /* , 'live', 'recherche' */];
+  // chromeScroll : le header (scrim + logo + capsule) sort par le haut quand
+  // on scrolle vers le bas, revient au scroll vers le haut. Handler recréé à
+  // chaque changement d'onglet (le ScrollView est remonté avec key={mcTab},
+  // son offset repart à 0 — un lastY périmé déclencherait un faux masquage).
+  var headerTranslateY = useRef(chromeAnim.interpolate({ inputRange: [0, 1], outputRange: [-220, 0] })).current;
+  var onChromeScroll = useMemo(function() { return createChromeScrollHandler(); }, [mcTab]);
+  useEffect(function() { showChrome(); }, [mcTab]);
   var mcTabLabels = { pour_vous: tr.tab_pour_vous, explorer: tr.tab_explorer, programmes: tr.tab_programmes, live: tr.live_title || 'Live', recherche: tr.tab_recherche };
   var piliers = getPiliers(lang);
   var recommendedPiliers = tensionIdxs.map(function(i) { return ZONE_TO_PILIER[i]; });
@@ -1348,7 +1356,15 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad1-" + i} delay={b.delay + 2000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.35))} size={b.size} duration={b.duration} />; })}
         {IS_IPAD && BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-ipad2-" + i} delay={b.delay + 5000} x={Math.max(0, Math.min(SW - 8, b.x + SW * 0.65))} size={b.size} duration={b.duration} />; })}
       </View>
-      {!IS_TV && (<Fragment>
+      {!IS_TV && (
+      /* Bloc header animé (chromeScroll) : scrim + logo + capsule sortent
+         ensemble par le haut au scroll vers le bas, reviennent au scroll
+         vers le haut. Les enfants gardent leurs positions absolues — le
+         wrapper est à top:0 donc leurs coordonnées sont inchangées. */
+      <Animated.View
+        pointerEvents="box-none"
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 200, zIndex: 10, transform: [{ translateY: headerTranslateY }] }}
+      >
       {/* Scrim header : dégradé fond → transparent sous logo + onglets.
           Sans lui, le contenu défile derrière la rangée logo (transparente)
           et se superpose au wordmark / pastille / prénom — illisible
@@ -1452,12 +1468,14 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           </LiquidGlassCapsule>
         </ScrollView>
       </View>
-      </Fragment>)}
+      </Animated.View>)}
       <ScrollView
         key={mcTab}
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 3 }}
         contentContainerStyle={{ paddingTop: 190, paddingBottom: 110, paddingHorizontal: 16, width: '100%', maxWidth: IS_IPAD ? CONTENT_MAX_W : undefined, alignSelf: 'center' }}
         showsVerticalScrollIndicator={false}
+        onScroll={onChromeScroll}
+        scrollEventThrottle={16}
       >
         {/* Active algorithmic program banner. Visible across all MonCorps
             tabs so the user always sees their journey. Tap → MyPrograms. */}

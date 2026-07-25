@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
+import { createChromeScrollHandler } from '../utils/chromeScroll';
 import { Text, StyleSheet, View, TouchableOpacity, ScrollView, Share, Alert, Modal, Dimensions, TextInput, Platform, Linking } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import GlassButton from '../components/GlassButton';
@@ -70,6 +71,8 @@ let _PairAppleTV = null;
 
 function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onOpenStatistics, onOpenSabrina, onOpenDownloads, onOpenPreferences, onOpenAchievements, onEditProfile, profileRefreshKey, onAccountDeleted }) {
   var tr = T[lang] || T['fr'];
+  // chromeScroll : masque la barre d'onglets au scroll vers le bas.
+  var onChromeScroll = useRef(createChromeScrollHandler()).current;
   var themeCtx = useTheme();
   var theme = themeCtx.theme;
   var setThemeMode = themeCtx.setMode;
@@ -613,7 +616,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
       </View>
       <FloatingMedusas />
-      <ScrollView contentContainerStyle={{ paddingTop: 62, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingTop: 62, paddingBottom: 100 }} showsVerticalScrollIndicator={false} onScroll={onChromeScroll} scrollEventThrottle={16}>
         {!supaUser && onCreateAccount && (
           <TouchableOpacity
             onPress={onCreateAccount}

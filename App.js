@@ -45,6 +45,7 @@ function sentryCapture(error, ctx) {
   } catch (e) {}
 }
 import { withTimeout } from './src/utils/withTimeout';
+import { chromeAnim, showChrome } from './src/utils/chromeScroll';
 import { breadcrumb } from './src/utils/breadcrumb';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -306,7 +307,14 @@ const CustomTabBar = memo(function CustomTabBar({ state, descriptors, navigation
   useEffect(function() {
     currentIdx.current = state.index;
     Animated.spring(indicatorX, { toValue: state.index * tabW + pad, useNativeDriver: true, damping: 18, stiffness: 180, mass: 0.8 }).start();
+    // Changement d'onglet → la barre revient toujours (sinon on atterrit sur
+    // un écran sans barre si on avait scrollé avant de naviguer).
+    showChrome();
   }, [state.index]);
+
+  // Masquage au scroll (chromeScroll) : translateY vers le bas de quoi sortir
+  // entièrement de l'écran (barre 60 + bottom 24 + marge ombre).
+  var chromeTranslateY = useRef(chromeAnim.interpolate({ inputRange: [0, 1], outputRange: [BAR_H + 40, 0] })).current;
 
   var panResponder = useRef(PanResponder.create({
     onStartShouldSetPanResponder: function() { return true; },
@@ -330,7 +338,7 @@ const CustomTabBar = memo(function CustomTabBar({ state, descriptors, navigation
   })).current;
 
   return (
-    <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: BAR_H, zIndex: 1000 }} {...panResponder.panHandlers}>
+    <Animated.View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, height: BAR_H, zIndex: 1000, transform: [{ translateY: chromeTranslateY }] }} {...panResponder.panHandlers}>
       <GlassView
         intensity={80}
         borderRadius={BAR_H / 2}
@@ -371,7 +379,7 @@ const CustomTabBar = memo(function CustomTabBar({ state, descriptors, navigation
         })}
         </View>
       </GlassView>
-    </View>
+    </Animated.View>
   );
 });
 

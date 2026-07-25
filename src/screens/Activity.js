@@ -19,6 +19,7 @@
 //   stat). Streak is persisted both locally and remotely via profileSync.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createChromeScrollHandler } from '../utils/chromeScroll';
 import { View, Text, ScrollView, Pressable, Animated, Easing, RefreshControl, Dimensions, StyleSheet, Modal, TextInput, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Polyline } from 'react-native-svg';
@@ -279,6 +280,8 @@ function GoalEditorSheet({ visible, goals, onClose, onSave, tr, colors }) {
 // ───────── Main screen ─────────
 export default function ActivityScreen({ lang, supabase, supaUser, done }) {
   const tr = T[lang] || T.fr;
+  // chromeScroll : masque la barre d'onglets au scroll vers le bas.
+  const onChromeScroll = useRef(createChromeScrollHandler()).current;
   const insets = useSafeAreaInsets();
   const themeCtx = useTheme();
   const theme = themeCtx.theme;
@@ -548,6 +551,8 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
         contentContainerStyle={{ paddingTop: 56 + insets.top, paddingBottom: 140 }}
         refreshControl={<RefreshControl tintColor={colors.text} refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
+        onScroll={onChromeScroll}
+        scrollEventThrottle={16}
       >
         {/* Header: title + date stepper + streak */}
         <View style={{ paddingHorizontal: 22, marginBottom: 18 }}>

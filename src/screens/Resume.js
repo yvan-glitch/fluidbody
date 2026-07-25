@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createChromeScrollHandler } from '../utils/chromeScroll';
 import {
   View, Text, TouchableOpacity, TextInput, ScrollView,
   Dimensions, StyleSheet, Animated, Easing,
@@ -417,6 +418,8 @@ function WeeklySummary({ lang }) {
 
 function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCreateAccount, onOpenStatistics }) {
   var tr = T[lang] || T['fr'];
+  // chromeScroll : masque la barre d'onglets au scroll vers le bas.
+  var onChromeScroll = useRef(createChromeScrollHandler()).current;
   var piliers = getPiliers(lang);
   var [meduseName, setMeduseName] = useState('');
   var [showNameInput, setShowNameInput] = useState(false);
@@ -465,7 +468,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
         {BULLES.map(function(b, i) { return <Bulle key={i} {...b} />; })}
       </View>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }} scrollEventThrottle={16} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }} scrollEventThrottle={16} showsVerticalScrollIndicator={false} onScroll={onChromeScroll}>
         <View style={{ paddingTop: 62, paddingHorizontal: 20, marginBottom: 20 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View>

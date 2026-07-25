@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { createChromeScrollHandler } from '../utils/chromeScroll';
 import { Text, StyleSheet, View, TouchableOpacity, ScrollView, TextInput, Dimensions, Modal, Animated, RefreshControl } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -508,6 +509,8 @@ function SeanceCard({ entry, width, height = 170, lang, labels, onPress, favorit
 
 function Biblio({ lang, isSubscriber, onActivateSubscription }) {
   const tr = T[lang] || T['fr'];
+  // chromeScroll : masque la barre d'onglets au scroll vers le bas.
+  const onChromeScroll = useRef(createChromeScrollHandler()).current;
   const [openArticle, setOpenArticle] = useState(null);
   const [openFiche, setOpenFiche] = useState(null);
   const [openTheoryPilier, setOpenTheoryPilier] = useState(null);
@@ -790,6 +793,8 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
         style={{ flex: 1, zIndex: 2 }}
         contentContainerStyle={{ paddingBottom: 50 }}
         showsVerticalScrollIndicator={false}
+        onScroll={onChromeScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
