@@ -51,7 +51,6 @@ import SeanceCarouselRow from '../components/SeanceCarouselRow';
 import DownloadButton from '../components/DownloadButton';
 import { primeDownloadsCache, subscribeDownloads } from '../utils/downloadsCache';
 import { primeDurationsCache, subscribeDurations, getRealDurationLabel } from '../utils/videoDurations';
-import { pickSessionImage } from '../components/tv/tvImagePool';
 import { useEffortPromo, EffortPromoBanner, EffortPromoWalkthrough } from '../components/EffortPromo';
 import { primeFavoritesCache } from '../utils/favorites';
 import { getDailyQuote } from '../constants/sabrinaQuotes';
@@ -1622,7 +1621,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               key: 'wk_' + e.dayIdx + '_' + e.pilier.key + '_' + e.idx,
               title: e.seance[0],
               subtitle: e.seance[1] + ' · ' + e.pilier.label,
-              image: pickSessionImage(e.pilier.key, e.idx),
+              image: PILIER_IMAGES[e.pilier.key],
               badge: { label: e.dayLabel, tone: 'white' },
               pilier: e.pilier,
               idx: e.idx,
@@ -1644,7 +1643,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               key: 'fav_' + id,
               title: s[0],
               subtitle: s[1] + ' · ' + pil.label,
-              image: pickSessionImage(pk, sIdx),
+              image: PILIER_IMAGES[pk],
               badge: pickBadge({ pilierKey: pk, idx: sIdx, lang: lang, isFavorite: true }),
               pilier: pil,
               idx: sIdx,
