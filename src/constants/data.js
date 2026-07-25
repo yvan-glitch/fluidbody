@@ -1635,7 +1635,9 @@ export const PILIER_IMAGES = {
 export const PILIER_IMAGE_VARIANTS = {
   p1: [PILIER_IMAGES.p1, require("../../assets/coach/sabrina_2.jpg"), require("../../assets/coach/sabrina_3.jpg")],
   p2: [PILIER_IMAGES.p2, require("../../assets/coach/sabrina_11.jpg"), require("../../assets/coach/sabrina_10.jpg")],
-  p3: [PILIER_IMAGES.p3, require("../../assets/coach/sabrina_6.jpg"), require("../../assets/coach/sabrina_15.jpg")],
+  // NB : sabrina_15 et sabrina_1 sont réservées à la mosaïque Pour toi
+  // (MonCorps) — ne pas les remettre en variantes.
+  p3: [PILIER_IMAGES.p3, require("../../assets/coach/sabrina_6.jpg")],
   p4: [PILIER_IMAGES.p4, require("../../assets/coach/sabrina_4.jpg")],
   p5: [PILIER_IMAGES.p5, require("../../assets/piliers/eldoa.jpg"), require("../../assets/coach/sabrina_12.jpg")],
   p6: [PILIER_IMAGES.p6],
@@ -1645,7 +1647,7 @@ export const PILIER_IMAGE_VARIANTS = {
   p7: [PILIER_IMAGES.p7, require("../../assets/programs/souplesse.jpg"), require("../../assets/coach/sabrina_trampoline.jpg"), require("../../assets/programs/reveil-matinal.jpg")],
   p8: [PILIER_IMAGES.p8],
   // NB : pas sabrina_16 ici — c'est l'image mosaïque de p4 (doublon écran).
-  p9: [PILIER_IMAGES.p9, require("../../assets/coach/sabrina_1.jpg"), require("../../assets/coach/sabrina_13.jpg")],
+  p9: [PILIER_IMAGES.p9, require("../../assets/coach/sabrina_13.jpg")],
 };
 
 export function getSeanceImage(pilierKey, idx) {

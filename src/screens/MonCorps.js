@@ -1580,10 +1580,17 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           var thirdW = Math.floor((fullW - gridGap * 2) / 3);
           var rowH1 = Math.floor(halfW * 0.72);
           var rowH2 = Math.floor(thirdW * 0.82);
+          // Mosaïque décorative (aucun onPress) — retour Sabrina 25/07 :
+          // « pas d'homogénéité ». On la limite à la série STUDIO (lumière
+          // claire, tons marine/blanc/bois) : exit golf (extérieur) et chalet
+          // (contre-jour sombre), qui restent sur leurs pilier cards Explorer.
+          // Invariant anti-doublon : uniquement des canoniques PILIER_IMAGES
+          // ou des photos retirées des variantes (sabrina_15, sabrina_1),
+          // jamais servies par getSeanceImage (cards Cette semaine/favoris).
           var mosaicImages = [
-            PILIER_IMAGES.p1, PILIER_IMAGES.p2,
-            PILIER_IMAGES.p3, PILIER_IMAGES.p4, PILIER_IMAGES.p5,
-            PILIER_IMAGES.p6, PILIER_IMAGES.p7,
+            PILIER_IMAGES.p1, PILIER_IMAGES.p4,
+            require('../../assets/coach/sabrina_15.jpg'), PILIER_IMAGES.p5, PILIER_IMAGES.p9,
+            PILIER_IMAGES.p2, require('../../assets/coach/sabrina_1.jpg'),
           ];
           // Style Fitness+ (demande Yvan 25/07, capture fournie) : cells
           // nues — pas de bordure verre ni de reflet, juste l'image avec un
