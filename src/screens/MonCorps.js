@@ -1585,12 +1585,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           // marine/blanc/bois), sélection dynamique (mouvement plutôt que
           // portraits assis) ; golf/chalet restent sur les cards Explorer.
           // Invariant anti-doublon : uniquement des canoniques PILIER_IMAGES
-          // ou des photos retirées des variantes (sabrina_2, sabrina_6,
-          // sabrina_15), jamais servies par getSeanceImage.
+          // ou des photos retirées des variantes (sabrina_2, _5, _6, _14,
+          // _15), jamais servies par getSeanceImage.
           var mosaicImages = [
             PILIER_IMAGES.p1, require('../../assets/coach/sabrina_2.jpg'),
-            require('../../assets/coach/sabrina_15.jpg'), PILIER_IMAGES.p5, PILIER_IMAGES.p9,
-            PILIER_IMAGES.p2, require('../../assets/coach/sabrina_6.jpg'),
+            require('../../assets/coach/sabrina_15.jpg'), require('../../assets/coach/sabrina_14.jpg'), PILIER_IMAGES.p9,
+            require('../../assets/coach/sabrina_5.jpg'), require('../../assets/coach/sabrina_6.jpg'),
           ];
           // Style Fitness+ (demande Yvan 25/07, capture fournie) : cells
           // nues — pas de bordure verre ni de reflet, juste l'image avec un

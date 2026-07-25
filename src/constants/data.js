@@ -1612,13 +1612,14 @@ export const SABRINA_QUOTES = {
 // shooting à prévoir.
 export const PILIER_IMAGES = {
   p1: require("../../assets/piliers/epaules.jpg"),
-  // p2/p5 (2026-07-25, retour Yvan) : epaules.jpg, sabrina_10 et eldoa.jpg
-  // sont la même série « mains sur l'épaule » → 3 quasi-doublons dans la
-  // mosaïque. p1 garde la série (thème épaule) ; p2 et p5 changent de photo.
-  p2: require("../../assets/coach/sabrina_5.jpg"),
+  // Canoniques p2/p5 RESTAURÉES telles qu'avant le 25/07 soir (demande
+  // Yvan : « pour les catégories remets exactement comme avant ») — le
+  // problème des 3 quasi-doublons ne concernait que la mosaïque Pour toi,
+  // qui n'utilise plus ces canoniques (requires directs dans MonCorps).
+  p2: require("../../assets/coach/sabrina_10.jpg"),
   p3: require("../../assets/piliers/mobilite.jpg"),
   p4: require("../../assets/coach/sabrina_16.jpg"),
-  p5: require("../../assets/coach/sabrina_14.jpg"),
+  p5: require("../../assets/piliers/eldoa.jpg"),
   p6: require("../../assets/piliers/golf.jpg"),
   p7: require("../../assets/piliers/mat_pilates.jpg"),
   p8: require("../../assets/piliers/office.jpg"),
@@ -1634,12 +1635,12 @@ export const PILIER_IMAGES = {
 // selon l'index de séance (stable au re-render).
 export const PILIER_IMAGE_VARIANTS = {
   p1: [PILIER_IMAGES.p1, require("../../assets/coach/sabrina_3.jpg")],
-  p2: [PILIER_IMAGES.p2, require("../../assets/coach/sabrina_11.jpg"), require("../../assets/coach/sabrina_10.jpg")],
-  // NB : sabrina_2, sabrina_6 et sabrina_15 sont réservées à la mosaïque
-  // Pour toi (MonCorps) — ne pas les remettre en variantes.
+  p2: [PILIER_IMAGES.p2, require("../../assets/coach/sabrina_11.jpg")],
+  // NB : sabrina_2, sabrina_5, sabrina_6, sabrina_14 et sabrina_15 sont
+  // réservées à la mosaïque Pour toi (MonCorps) — pas en variantes.
   p3: [PILIER_IMAGES.p3],
   p4: [PILIER_IMAGES.p4, require("../../assets/coach/sabrina_4.jpg")],
-  p5: [PILIER_IMAGES.p5, require("../../assets/piliers/eldoa.jpg"), require("../../assets/coach/sabrina_12.jpg")],
+  p5: [PILIER_IMAGES.p5, require("../../assets/coach/sabrina_12.jpg")],
   p6: [PILIER_IMAGES.p6],
   // Ordre voulu : la card gratuite p7_10 (1+(10%3)=2) doit tomber sur le
   // trampoline (très distinct), pas sur souplesse.jpg (même scène chalet que
