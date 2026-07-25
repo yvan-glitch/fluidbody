@@ -1546,7 +1546,9 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         {mcTab === 'explorer' && sdj && (
           <TouchableOpacity onPress={function() { if (onTryFreeSession) onTryFreeSession(); }} activeOpacity={0.9} style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#AEEF4D' }}>
             <View style={{ height: ipadH(110) }}>
-              <Image source={PILIER_IMAGES[sdj.pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-sdj-' + sdj.pilier.key} style={StyleSheet.absoluteFill} />
+              {/* getSeanceImage (pas PILIER_IMAGES) : évite la même photo que
+                  la card gratuite p2 et la pilier card juste en dessous. */}
+              <Image source={getSeanceImage(sdj.pilier.key, sdj.idx)} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-sdj-' + sdj.pilier.key + '-' + sdj.idx} style={StyleSheet.absoluteFill} />
               <LinearGradient colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.85)']} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
                 <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
                   <Text style={{ fontSize: 20, color: '#000000' }}>{'\u25B6'}</Text>
@@ -2120,7 +2122,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                           style={{ width: freeCardW, height: freeCardH, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)' }}
                         >
                           <View style={{ flex: 1 }}>
-                            <Image source={PILIER_IMAGES[it.pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-it-' + it.pilier.key} style={StyleSheet.absoluteFill} />
+                            <Image source={getSeanceImage(it.pilier.key, it.idx)} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-it-' + it.pilier.key + '-' + it.idx} style={StyleSheet.absoluteFill} />
                             <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.18)', 'rgba(0,0,0,0.38)', 'rgba(0,0,0,0.60)', 'rgba(0,0,0,0.80)', 'rgba(0,0,0,0.92)']} locations={[0, 0.3, 0.5, 0.7, 0.85, 1]} style={{ flex: 1, padding: IS_TV ? 22 : 16, justifyContent: 'space-between' }}>
                               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <View style={{ backgroundColor: '#AEEF4D', borderRadius: IS_TV ? 10 : 8, paddingHorizontal: IS_TV ? 12 : 9, paddingVertical: IS_TV ? 6 : 4 }}>

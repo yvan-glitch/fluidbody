@@ -1639,7 +1639,10 @@ export const PILIER_IMAGE_VARIANTS = {
   p4: [PILIER_IMAGES.p4, require("../../assets/coach/sabrina_4.jpg")],
   p5: [PILIER_IMAGES.p5, require("../../assets/piliers/eldoa.jpg"), require("../../assets/coach/sabrina_12.jpg")],
   p6: [PILIER_IMAGES.p6],
-  p7: [PILIER_IMAGES.p7, require("../../assets/coach/sabrina_trampoline.jpg"), require("../../assets/programs/souplesse.jpg"), require("../../assets/programs/reveil-matinal.jpg")],
+  // Ordre voulu : la card gratuite p7_10 (1+(10%3)=2) doit tomber sur le
+  // trampoline (très distinct), pas sur souplesse.jpg (même scène chalet que
+  // mat_pilates.jpg affichée juste en dessous dans Explorer).
+  p7: [PILIER_IMAGES.p7, require("../../assets/programs/souplesse.jpg"), require("../../assets/coach/sabrina_trampoline.jpg"), require("../../assets/programs/reveil-matinal.jpg")],
   p8: [PILIER_IMAGES.p8],
   // NB : pas sabrina_16 ici — c'est l'image mosaïque de p4 (doublon écran).
   p9: [PILIER_IMAGES.p9, require("../../assets/coach/sabrina_1.jpg"), require("../../assets/coach/sabrina_13.jpg")],
