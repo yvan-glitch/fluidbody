@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import LiquidGlass from '../components/LiquidGlass';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES, FREE_MONTHLY_SELECTION } from '../constants/data';
+import { U_JELLY, U_WAVE, ZONE_TO_PILIER, T, PILIER_IMAGES, FREE_MONTHLY_SELECTION, getSeanceImage } from '../constants/data';
 import SeanceShareCard from '../components/SeanceShareCard';
 import BreathingCheckIn, { isBreathDoneToday } from '../components/BreathingCheckIn';
 import { Bulle, Rayon, MeduseCornerIcon, FloatingMedusas, BULLES, BULLES_MONCORPS } from '../components/Meduse';
@@ -1621,7 +1621,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               key: 'wk_' + e.dayIdx + '_' + e.pilier.key + '_' + e.idx,
               title: e.seance[0],
               subtitle: e.seance[1] + ' · ' + e.pilier.label,
-              image: PILIER_IMAGES[e.pilier.key],
+              image: getSeanceImage(e.pilier.key, e.idx),
               badge: { label: e.dayLabel, tone: 'white' },
               pilier: e.pilier,
               idx: e.idx,
@@ -1643,7 +1643,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               key: 'fav_' + id,
               title: s[0],
               subtitle: s[1] + ' · ' + pil.label,
-              image: PILIER_IMAGES[pk],
+              image: getSeanceImage(pk, sIdx),
               badge: pickBadge({ pilierKey: pk, idx: sIdx, lang: lang, isFavorite: true }),
               pilier: pil,
               idx: sIdx,

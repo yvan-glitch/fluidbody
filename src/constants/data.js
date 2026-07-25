@@ -1622,3 +1622,28 @@ export const PILIER_IMAGES = {
   p9: require("../../assets/piliers/menopause.jpg"),
   sdj: require("../../assets/coach/sabrina_beach.jpg"),
 };
+
+// Variantes d'images par pilier (2026-07-25, retour Yvan : « 2 photos
+// identiques sur le premier écran ») — uniquement de VRAIES photos du bon
+// thème. L'entrée [0] est l'image canonique (= PILIER_IMAGES, affichée dans
+// la mosaïque) ; getSeanceImage ne sert JAMAIS la [0] quand il y a des
+// variantes, pour ne pas dupliquer la mosaïque sur le même écran, et varie
+// selon l'index de séance (stable au re-render).
+export const PILIER_IMAGE_VARIANTS = {
+  p1: [PILIER_IMAGES.p1, require("../../assets/coach/sabrina_2.jpg"), require("../../assets/coach/sabrina_3.jpg")],
+  p2: [PILIER_IMAGES.p2, require("../../assets/coach/sabrina_11.jpg"), require("../../assets/coach/sabrina_14.jpg")],
+  p3: [PILIER_IMAGES.p3, require("../../assets/coach/sabrina_5.jpg"), require("../../assets/coach/sabrina_6.jpg"), require("../../assets/coach/sabrina_15.jpg")],
+  p4: [PILIER_IMAGES.p4, require("../../assets/coach/sabrina_4.jpg"), require("../../assets/coach/sabrina_13.jpg")],
+  p5: [PILIER_IMAGES.p5, require("../../assets/coach/sabrina_14.jpg"), require("../../assets/coach/sabrina_12.jpg")],
+  p6: [PILIER_IMAGES.p6],
+  p7: [PILIER_IMAGES.p7, require("../../assets/coach/sabrina_trampoline.jpg"), require("../../assets/programs/souplesse.jpg"), require("../../assets/programs/reveil-matinal.jpg")],
+  p8: [PILIER_IMAGES.p8],
+  p9: [PILIER_IMAGES.p9, require("../../assets/coach/sabrina_1.jpg"), require("../../assets/coach/sabrina_16.jpg")],
+};
+
+export function getSeanceImage(pilierKey, idx) {
+  const v = PILIER_IMAGE_VARIANTS[pilierKey];
+  if (!v || v.length === 0) return PILIER_IMAGES[pilierKey];
+  if (v.length === 1) return v[0];
+  return v[1 + (Math.abs(idx || 0) % (v.length - 1))];
+}
