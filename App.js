@@ -215,6 +215,12 @@ const HK_WRITE_PERMS = [
   'HKQuantityTypeIdentifierHeartRate',
   'HKWorkoutTypeIdentifier',
 ];
+// WorkoutEffortScore (évaluation d'effort post-séance → charge d'entraînement
+// Apple) n'existe qu'à partir d'iOS 18 — le référencer avant ferait échouer
+// toute la requestAuthorization.
+if (Platform.OS === 'ios' && parseInt(Platform.Version, 10) >= 18) {
+  HK_WRITE_PERMS.push('HKQuantityTypeIdentifierWorkoutEffortScore');
+}
 
 let hkInitialized = false;
 

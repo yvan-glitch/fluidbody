@@ -37,7 +37,13 @@ const ID = {
   DateOfBirth: 'HKCharacteristicTypeIdentifierDateOfBirth',
   BiologicalSex: 'HKCharacteristicTypeIdentifierBiologicalSex',
   Workout: 'HKWorkoutTypeIdentifier',
+  WorkoutEffortScore: 'HKQuantityTypeIdentifierWorkoutEffortScore',
 };
+
+// HKQuantityTypeIdentifierWorkoutEffortScore n'existe qu'à partir d'iOS 18 —
+// le référencer dans requestAuthorization sur iOS 17 ferait échouer TOUTE la
+// demande d'autorisations. Gate strict par version.
+const EFFORT_SCORE_AVAILABLE = Platform.OS === 'ios' && parseInt(Platform.Version, 10) >= 18;
 
 const READ_PERMS = [
   ID.HeartRate,
@@ -62,6 +68,7 @@ const WRITE_PERMS = [
   ID.Height,
   ID.Workout,
 ];
+if (EFFORT_SCORE_AVAILABLE) WRITE_PERMS.push(ID.WorkoutEffortScore);
 
 let initialised = false;
 let initInFlight = null;
@@ -222,6 +229,35 @@ export async function writeHeightCm(heightCm) {
 }
 
 /**
+ * Save a workout-effort score (échelle Apple 1-10) sur la plage horaire de la
+ * séance qui vient de se terminer. iOS 18+ uniquement (type inexistant avant).
+ *
+ * NB (2026-07-25) : kingstinct v14 n'expose pas encore
+ * `relateWorkoutEffortSample` (la liaison officielle score ↔ workout). On
+ * écrit donc le sample sur la même plage horaire que le workout — il apparaît
+ * dans Santé (« Effort d'exercice ») ; la liaison native viendra quand la lib
+ * l'ajoutera. Resolves `{ ok, reason?, error? }`.
+ */
+export async function writeWorkoutEffortScore(score, startDate, endDate) {
+  if (!EFFORT_SCORE_AVAILABLE) return { ok: false, reason: 'unsupported-ios' };
+  if (!isSupported()) return { ok: false, reason: 'unsupported' };
+  const v = Math.round(Number(score));
+  if (!isFinite(v) || v < 1 || v > 10) return { ok: false, reason: 'bad-score' };
+  try {
+    // Demande d'autorisation ciblée : no-op si déjà déterminée, sinon la
+    // feuille ne liste que ce type (utilisateurs existants post-OTA — leur
+    // init du lancement peut avoir précédé l'ajout du type à WRITE_PERMS).
+    await HK.requestAuthorization({ toShare: [ID.WorkoutEffortScore], toRead: [] });
+    const end = endDate instanceof Date ? endDate : new Date();
+    const start = startDate instanceof Date ? startDate : new Date(end.getTime() - 60000);
+    await HK.saveQuantitySample(ID.WorkoutEffortScore, 'appleEffortScore', v, start, end);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: 'save-error', error: e };
+  }
+}
+
+/**
  * Today's Activity-ring totals: { moveKcal, exerciseMin, standHours }.
  * Each metric is summed independently and resolves to 0 on any failure
  * so callers can render an empty state without branching.
@@ -369,6 +405,7 @@ export default {
   readLatestHeightCm,
   writeWeightKg,
   writeHeightCm,
+  writeWorkoutEffortScore,
   readActivitySummary,
   readDayDetails,
   readDayWorkouts,

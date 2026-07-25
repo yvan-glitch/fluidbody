@@ -53,6 +53,7 @@ import { recordSessionHour, cancelPauseActiveNotifications } from '../utils/noti
 import { IS_TV, tvFocusProps } from '../utils/platformTV';
 import { isDownloaded, getLocalVideoUri } from './DownloadManager';
 import { getCachedPref } from '../utils/userPreferences';
+import { writeWorkoutEffortScore } from '../utils/healthkit';
 
 // ── Small utilities (local copies to avoid circular deps) ──
 // Haptics are fired by GlassButton (FAIT) via `haptic="success"`, so
@@ -752,6 +753,47 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
 
   function getElapsedMinutes() { return Math.max(1, Math.round(elapsedSec / 60)); }
 
+  // ── Évaluation d'effort post-séance (2026-07-25) ──
+  // Affichée après « Terminé » (iPhone uniquement). 4 niveaux façon Apple
+  // Fitness (échelle 1-10 sous-jacente) : le score part vers HealthKit
+  // (WorkoutEffortScore, iOS 18+ — nourrit la charge d'entraînement) et vers
+  // un log local AsyncStorage pour Statistics / le générateur de programmes.
+  const [showEffort, setShowEffort] = useState(false);
+  const effortWindowRef = useRef(null);
+
+  async function logEffortLocally(score) {
+    try {
+      var raw = await AsyncStorage.getItem('fluid_efforts_v1');
+      var list = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(list)) list = [];
+      list.push({
+        d: new Date().toISOString(),
+        s: pilier?.key != null && seanceIndex != null ? pilier.key + '_' + seanceIndex : null,
+        e: score,
+        m: effortWindowRef.current ? effortWindowRef.current.minutes : null,
+      });
+      if (list.length > 300) list = list.slice(list.length - 300);
+      await AsyncStorage.setItem('fluid_efforts_v1', JSON.stringify(list));
+    } catch (e) {}
+  }
+
+  function chooseEffort(score) {
+    hapticLight();
+    var w = effortWindowRef.current;
+    // Fire-and-forget : ni l'échec HealthKit ni le log local ne doivent
+    // retarder la fermeture du player.
+    try { writeWorkoutEffortScore(score, w && w.start, w && w.end).catch(function () {}); } catch (e) {}
+    logEffortLocally(score);
+    breadcrumb('Effort rated', { score: score, pilier: pilier?.key, seanceIndex }, { category: 'video' });
+    setShowEffort(false);
+    onComplete();
+  }
+
+  function skipEffort() {
+    setShowEffort(false);
+    onComplete();
+  }
+
   // Start the live-HR polling session the FIRST time the video actually
   // reaches a playing state — not on mount. Otherwise we'd open a HealthKit
   // observer just for users scrolling through previews.
@@ -1259,7 +1301,21 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                       if (shouldCancel) {
                         cancelPauseActiveNotifications('next3h').catch(function() {});
                       }
-                      onComplete();
+                      // Évaluation d'effort post-séance (2026-07-25) : sur
+                      // iPhone on intercale l'écran « Comment c'était ? »
+                      // avant onComplete — le score nourrit la charge
+                      // d'entraînement Apple (iOS 18+) + nos stats locales.
+                      if (!IS_TV) {
+                        var effEnd = new Date();
+                        effortWindowRef.current = {
+                          start: new Date(effEnd.getTime() - getElapsedMinutes() * 60000),
+                          end: effEnd,
+                          minutes: getElapsedMinutes(),
+                        };
+                        setShowEffort(true);
+                      } else {
+                        onComplete();
+                      }
                     }}
                     textStyle={{
                       fontSize: 14,
@@ -1275,6 +1331,63 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             </View>
           </View>
         </Animated.View>
+      )}
+
+      {/* Overlay « Comment c'était ? » — évaluation d'effort post-séance.
+          Scrim opaque au-dessus de tout (la vidéo est terminée) ; le blur du
+          GlassView est OK ici (équivalent modal, pas de scroll). */}
+      {showEffort && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, backgroundColor: 'rgba(0,8,20,0.94)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+          <GlassView intensity={70} borderRadius={22} elevated contentStyle={{ width: '100%', maxWidth: 360, paddingHorizontal: 22, paddingVertical: 24 }}>
+            <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.3 }}>
+              {tr.effort_title || 'Comment c\'était ?'}
+            </Text>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', textAlign: 'center', lineHeight: 19, marginTop: 8, marginBottom: 18 }}>
+              {tr.effort_sub || 'Évalue ton effort — il compte dans ta charge d\'entraînement Apple Santé.'}
+            </Text>
+            {[
+              { score: 2, color: '#64D2FF', label: tr.effort_l1 || 'Tout en douceur' },
+              { score: 5, color: '#30D158', label: tr.effort_l2 || 'Modéré' },
+              { score: 7, color: '#FF9F0A', label: tr.effort_l3 || 'Soutenu' },
+              { score: 9, color: '#FF453A', label: tr.effort_l4 || 'Intense' },
+            ].map(function (lvl) {
+              return (
+                <TouchableOpacity
+                  key={lvl.score}
+                  onPress={function () { chooseEffort(lvl.score); }}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={lvl.label}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingVertical: 13,
+                    paddingHorizontal: 16,
+                    borderRadius: 14,
+                    marginBottom: 8,
+                    backgroundColor: 'rgba(255,255,255,0.06)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.14)',
+                  }}
+                >
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: lvl.color }} />
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#ffffff', flex: 1 }}>{lvl.label}</Text>
+                  {/* Jauge 1-10 discrète — repère l'échelle Apple sans la crier */}
+                  <View style={{ flexDirection: 'row', gap: 3 }}>
+                    {[0, 1, 2, 3].map(function (i) {
+                      var lit = i < Math.ceil(lvl.score / 2.5);
+                      return <View key={i} style={{ width: 4, height: 12 + i * 2, borderRadius: 2, alignSelf: 'flex-end', backgroundColor: lit ? lvl.color : 'rgba(255,255,255,0.18)' }} />;
+                    })}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity onPress={skipEffort} activeOpacity={0.7} style={{ paddingVertical: 12, alignItems: 'center' }} accessibilityRole="button">
+              <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.3 }}>{tr.effort_skip || 'Passer'}</Text>
+            </TouchableOpacity>
+          </GlassView>
+        </View>
       )}
     </View>
   );
