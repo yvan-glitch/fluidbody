@@ -1604,11 +1604,12 @@ export const SABRINA_QUOTES = {
   ],
 };
 
-// Remplacement des photos stock par les vraies photos studio Sabrina
-// (2026-07-25, validé par Yvan) — remap direct vers assets/coach/* déjà
-// bundlés (zéro poids ajouté). golf.jpg = photo de Noa (swing).
-// Restent en stock : p1 épaules (déjà photo studio), p5 eldoa, p7 mat,
-// p8 office (shooting à prévoir — v2 proposée en attente).
+// Remplacement des photos stock par les vraies photos de Sabrina
+// (2026-07-25, fournies/validées par Yvan) — mélange de remaps vers
+// assets/coach/* (déjà bundlés) et de fichiers piliers/* remplacés par
+// les nouvelles photos (chalet, studio). golf.jpg = photo de Noa (swing).
+// Reste en stock : p8 office (+ programs mal-de-dos & core-plancher) —
+// shooting à prévoir.
 export const PILIER_IMAGES = {
   p1: require("../../assets/piliers/epaules.jpg"),
   p2: require("../../assets/coach/sabrina_10.jpg"),
@@ -1618,6 +1619,6 @@ export const PILIER_IMAGES = {
   p6: require("../../assets/piliers/golf.jpg"),
   p7: require("../../assets/piliers/mat_pilates.jpg"),
   p8: require("../../assets/piliers/office.jpg"),
-  p9: require("../../assets/coach/sabrina_1.jpg"),
+  p9: require("../../assets/piliers/menopause.jpg"),
   sdj: require("../../assets/coach/sabrina_beach.jpg"),
 };
