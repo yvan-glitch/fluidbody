@@ -1612,10 +1612,13 @@ export const SABRINA_QUOTES = {
 // shooting à prévoir.
 export const PILIER_IMAGES = {
   p1: require("../../assets/piliers/epaules.jpg"),
-  p2: require("../../assets/coach/sabrina_10.jpg"),
+  // p2/p5 (2026-07-25, retour Yvan) : epaules.jpg, sabrina_10 et eldoa.jpg
+  // sont la même série « mains sur l'épaule » → 3 quasi-doublons dans la
+  // mosaïque. p1 garde la série (thème épaule) ; p2 et p5 changent de photo.
+  p2: require("../../assets/coach/sabrina_5.jpg"),
   p3: require("../../assets/piliers/mobilite.jpg"),
   p4: require("../../assets/coach/sabrina_16.jpg"),
-  p5: require("../../assets/piliers/eldoa.jpg"),
+  p5: require("../../assets/coach/sabrina_14.jpg"),
   p6: require("../../assets/piliers/golf.jpg"),
   p7: require("../../assets/piliers/mat_pilates.jpg"),
   p8: require("../../assets/piliers/office.jpg"),
@@ -1631,14 +1634,15 @@ export const PILIER_IMAGES = {
 // selon l'index de séance (stable au re-render).
 export const PILIER_IMAGE_VARIANTS = {
   p1: [PILIER_IMAGES.p1, require("../../assets/coach/sabrina_2.jpg"), require("../../assets/coach/sabrina_3.jpg")],
-  p2: [PILIER_IMAGES.p2, require("../../assets/coach/sabrina_11.jpg"), require("../../assets/coach/sabrina_14.jpg")],
-  p3: [PILIER_IMAGES.p3, require("../../assets/coach/sabrina_5.jpg"), require("../../assets/coach/sabrina_6.jpg"), require("../../assets/coach/sabrina_15.jpg")],
-  p4: [PILIER_IMAGES.p4, require("../../assets/coach/sabrina_4.jpg"), require("../../assets/coach/sabrina_13.jpg")],
-  p5: [PILIER_IMAGES.p5, require("../../assets/coach/sabrina_14.jpg"), require("../../assets/coach/sabrina_12.jpg")],
+  p2: [PILIER_IMAGES.p2, require("../../assets/coach/sabrina_11.jpg"), require("../../assets/coach/sabrina_10.jpg")],
+  p3: [PILIER_IMAGES.p3, require("../../assets/coach/sabrina_6.jpg"), require("../../assets/coach/sabrina_15.jpg")],
+  p4: [PILIER_IMAGES.p4, require("../../assets/coach/sabrina_4.jpg")],
+  p5: [PILIER_IMAGES.p5, require("../../assets/piliers/eldoa.jpg"), require("../../assets/coach/sabrina_12.jpg")],
   p6: [PILIER_IMAGES.p6],
   p7: [PILIER_IMAGES.p7, require("../../assets/coach/sabrina_trampoline.jpg"), require("../../assets/programs/souplesse.jpg"), require("../../assets/programs/reveil-matinal.jpg")],
   p8: [PILIER_IMAGES.p8],
-  p9: [PILIER_IMAGES.p9, require("../../assets/coach/sabrina_1.jpg"), require("../../assets/coach/sabrina_16.jpg")],
+  // NB : pas sabrina_16 ici — c'est l'image mosaïque de p4 (doublon écran).
+  p9: [PILIER_IMAGES.p9, require("../../assets/coach/sabrina_1.jpg"), require("../../assets/coach/sabrina_13.jpg")],
 };
 
 export function getSeanceImage(pilierKey, idx) {
