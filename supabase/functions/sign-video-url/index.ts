@@ -178,8 +178,11 @@ Deno.serve(async (req) => {
   // Séance 1 (index 0) gratuite pour TOUS — miroir de canAccessSeanceIndex côté
   // app (« séance 1 gratuite pour tous »). Sans ça, un utilisateur non abonné
   // se voit refuser la séance d'essai → vidéo « indisponible ».
+  // + Sélection gratuite du mois (2 vidéos) — miroir de FREE_MONTHLY_SELECTION
+  // dans src/constants/data.js. Garder les deux listes synchronisées.
+  const FREE_MONTHLY_IDS = new Set(["p2_0", "p7_10"]);
   const seanceIdx = parseInt(sessionId.split("_").pop() || "", 10);
-  const isFreeSeance = seanceIdx === 0;
+  const isFreeSeance = seanceIdx === 0 || FREE_MONTHLY_IDS.has(sessionId);
 
   // Entitlement: admin email → profiles.is_subscriber → live RC fallback.
   const email = (user.email || "").toLowerCase();

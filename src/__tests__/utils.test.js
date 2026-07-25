@@ -53,9 +53,10 @@ describe('canAccessSeanceIndex — règles du paywall', () => {
   });
 
   test('la sélection gratuite du mois débloque des séances pratiques précises', () => {
-    // FREE_MONTHLY_SELECTION contient p7_10 et p3_15 (pratiques normalement payantes)
+    // FREE_MONTHLY_SELECTION contient p7_10 (pratique normalement payante).
+    // p3_15 retirée le 2026-07-25 (passage 3 → 2 vidéos gratuites/mois).
     expect(canAccessSeanceIndex(10, false, 'p7')).toBe(true);
-    expect(canAccessSeanceIndex(15, false, 'p3')).toBe(true);
+    expect(canAccessSeanceIndex(15, false, 'p3')).toBe(false);
     // …mais pas leurs voisines
     expect(canAccessSeanceIndex(11, false, 'p7')).toBe(false);
     expect(canAccessSeanceIndex(16, false, 'p3')).toBe(false);

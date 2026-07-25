@@ -11,11 +11,14 @@ export const U_WAVE = '';
 
 export const FREE_SEANCE_INDEX = 0;
 
-// Sélection gratuite du mois — 3 séances accessibles sans abonnement
+// Sélection gratuite du mois — 2 vidéos accessibles sans abonnement
+// (décision séance Yvan/Sabrina 2026-07-25 : 3 → 2). Miroir serveur dans
+// supabase/functions/sign-video-url/index.ts (FREE_MONTHLY_IDS) — garder
+// les deux listes synchronisées, sinon la vidéo sera « indisponible »
+// pour les non-abonnés.
 export const FREE_MONTHLY_SELECTION = [
   { pilier: 'p2', idx: 0 },   // Dos · Comprendre — "Le dos expliqué"
   { pilier: 'p7', idx: 10 },  // Mat Pilates · Exécuter — "La série des 5"
-  { pilier: 'p3', idx: 15 },  // Mobilité · Évoluer — "Mobilité & Pilates I"
 ];
 
 export const ZONE_TO_PILIER = { 0: 'p2', 1: 'p1', 2: 'p3', 3: 'p4', 4: 'p5', 5: 'p6', 6: 'p8' };
