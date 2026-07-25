@@ -1599,6 +1599,10 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             return (
               <View key={key} style={{ width: w, height: h, borderRadius: 14, overflow: 'hidden' }}>
                 <Image source={src} contentFit="cover" transition={200} cachePolicy="memory-disk" style={{ flex: 1 }} />
+                {/* Voile sombre uniforme (référence Fitness+, retour Sabrina
+                    25/07) : c'est ce voile qui homogénéise l'expo et les
+                    couleurs des 7 photos, quel que soit le cliché. */}
+                <LinearGradient colors={['rgba(2,18,28,0.22)', 'rgba(2,18,28,0.52)']} style={StyleSheet.absoluteFill} pointerEvents="none" />
               </View>
             );
           };
