@@ -367,7 +367,7 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
   // ── Achievements live cache ──
   useEffect(function () {
     primeAchievements().then(function (ids) { setUnlockedIds(ids); }).catch(function () {});
-    var unsub = subscribeAchievements(function (ids) { setUnlockedIds(ids); });
+    const unsub = subscribeAchievements(function (ids) { setUnlockedIds(ids); });
     return unsub;
   }, []);
 
@@ -780,8 +780,8 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
           <GlassCard padding={14}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {ACHIEVEMENTS.map(function (a) {
-                var unlocked = unlockedIds.indexOf(a.id) !== -1;
-                var isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+                const unlocked = unlockedIds.indexOf(a.id) !== -1;
+                const isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
                 return (
                   <View
                     key={a.id}
@@ -810,7 +810,7 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
             </View>
             <Text style={{ marginTop: 14, fontSize: 11, color: colors.textTertiary, textAlign: 'center' }}>
               {(function () {
-                var isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+                const isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
                 return (isFrLang ? 'Débloqués · ' : 'Unlocked · ') + unlockedIds.length + ' / ' + ACHIEVEMENTS.length;
               })()}
             </Text>

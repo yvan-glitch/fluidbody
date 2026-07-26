@@ -40,7 +40,7 @@ const DEV_IMAGE = require('../../assets/yvan.webp');
 // PROFIL — Abonnement + Compte
 // ══════════════════════════════════
 function TimerIcon({ color, size }) {
-  var s = size || 22;
+  const s = size || 22;
   return (
     <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
       <Circle cx="12" cy="13" r="8" stroke={color} strokeWidth={1.6} />
@@ -53,7 +53,7 @@ function TimerIcon({ color, size }) {
 }
 
 function StatsBarsIcon({ color, size }) {
-  var s = size || 22;
+  const s = size || 22;
   return (
     <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
       <Path d="M4 20V12" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
@@ -70,22 +70,22 @@ function StatsBarsIcon({ color, size }) {
 let _PairAppleTV = null;
 
 function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout, onCreateAccount, isSubscriber, isAdmin, onRestorePurchases, onReset, onOpenTimer, onOpenStatistics, onOpenSabrina, onOpenDownloads, onOpenPreferences, onOpenAchievements, onEditProfile, profileRefreshKey, onAccountDeleted }) {
-  var tr = T[lang] || T['fr'];
+  const tr = T[lang] || T['fr'];
   // chromeScroll : masque la barre d'onglets au scroll vers le bas.
-  var onChromeScroll = useRef(createChromeScrollHandler()).current;
-  var themeCtx = useTheme();
-  var theme = themeCtx.theme;
-  var setThemeMode = themeCtx.setMode;
-  var themeMode = themeCtx.mode;
+  const onChromeScroll = useRef(createChromeScrollHandler()).current;
+  const themeCtx = useTheme();
+  const theme = themeCtx.theme;
+  const setThemeMode = themeCtx.setMode;
+  const themeMode = themeCtx.mode;
   // Section title accent colour — green on dark glass, the deeper accent
   // text token on light glass. Used by the small caps headings of each
   // settings section.
-  var sectionTitleColor = theme.colors.accentText;
-  var shareRef = useRef(null);
-  var [showCoachBio, setShowCoachBio] = useState(false);
-  var [showElementQuiz, setShowElementQuiz] = useState(false);
-  var [showDevBio, setShowDevBio] = useState(false);
-  var [showPairTv, setShowPairTv] = useState(false);
+  const sectionTitleColor = theme.colors.accentText;
+  const shareRef = useRef(null);
+  const [showCoachBio, setShowCoachBio] = useState(false);
+  const [showElementQuiz, setShowElementQuiz] = useState(false);
+  const [showDevBio, setShowDevBio] = useState(false);
+  const [showPairTv, setShowPairTv] = useState(false);
   function openPairAppleTV() {
     if (!_PairAppleTV) {
       try { _PairAppleTV = require('./PairAppleTV').default; }
@@ -93,53 +93,53 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     }
     setShowPairTv(true);
   }
-  var [notifHour, setNotifHour] = useState(7);
-  var [dailyEnabled, setDailyEnabled] = useState(true);
-  var [pauseEnabled, setPauseEnabled] = useState(true);
-  var [quoteEnabled, setQuoteEnabled] = useState(true);
-  var [quoteHour, setQuoteHour] = useState(8);
-  var [showHrEnabled, setShowHrEnabled] = useState(true);
-  var [storageUsed, setStorageUsed] = useState('0 B');
-  var [achievementsUnlockedCount, setAchievementsUnlockedCount] = useState(function () { return getUnlockedSync().length; });
-  var [hkAuthorized, setHkAuthorized] = useState(false);
+  const [notifHour, setNotifHour] = useState(7);
+  const [dailyEnabled, setDailyEnabled] = useState(true);
+  const [pauseEnabled, setPauseEnabled] = useState(true);
+  const [quoteEnabled, setQuoteEnabled] = useState(true);
+  const [quoteHour, setQuoteHour] = useState(8);
+  const [showHrEnabled, setShowHrEnabled] = useState(true);
+  const [storageUsed, setStorageUsed] = useState('0 B');
+  const [achievementsUnlockedCount, setAchievementsUnlockedCount] = useState(function () { return getUnlockedSync().length; });
+  const [hkAuthorized, setHkAuthorized] = useState(false);
   // Apple Calendar — auto-schedule sessions in iOS Calendar.
-  var [calSyncEnabled, setCalSyncEnabled] = useState(false);
-  var [calPreferredHour, setCalPreferredHour] = useState(18);
-  var [calDuration, setCalDuration] = useState(20);
-  var [calCalendarId, setCalCalendarId] = useState(null);
-  var [calCalendars, setCalCalendars] = useState([]);
-  var [calBusy, setCalBusy] = useState(false);
-  var [calPickerOpen, setCalPickerOpen] = useState(false);
-  var [profileData, setProfileData] = useState({ gender: null, birth_date: null, height_cm: null, weight_kg: null, practice_level: null, frequency: null, goals: [] });
-  var [profileEditMode, setProfileEditMode] = useState(false);
-  var [profileSaving, setProfileSaving] = useState(false);
-  var [editGender, setEditGender] = useState(null);
-  var [editD, setEditD] = useState('');
-  var [editM, setEditM] = useState('');
-  var [editY, setEditY] = useState('');
-  var [editHeight, setEditHeight] = useState('');
-  var [editWeight, setEditWeight] = useState('');
+  const [calSyncEnabled, setCalSyncEnabled] = useState(false);
+  const [calPreferredHour, setCalPreferredHour] = useState(18);
+  const [calDuration, setCalDuration] = useState(20);
+  const [calCalendarId, setCalCalendarId] = useState(null);
+  const [calCalendars, setCalCalendars] = useState([]);
+  const [calBusy, setCalBusy] = useState(false);
+  const [calPickerOpen, setCalPickerOpen] = useState(false);
+  const [profileData, setProfileData] = useState({ gender: null, birth_date: null, height_cm: null, weight_kg: null, practice_level: null, frequency: null, goals: [] });
+  const [profileEditMode, setProfileEditMode] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [editGender, setEditGender] = useState(null);
+  const [editD, setEditD] = useState('');
+  const [editM, setEditM] = useState('');
+  const [editY, setEditY] = useState('');
+  const [editHeight, setEditHeight] = useState('');
+  const [editWeight, setEditWeight] = useState('');
   // Parrainage : code généré paresseusement la 1ère fois qu'on monte ce
   // screen avec un user connecté. Les stats peuvent évoluer (un filleul
   // qui paie pendant la session courante), donc on re-fetch sur
   // profileRefreshKey (le même signal utilisé par le bloc « infos »).
-  var [referralCode, setReferralCode] = useState(null);
-  var [referralStats, setReferralStats] = useState({ referrals_count: 0, free_days_earned: 0, free_days_used: 0, free_days_available: 0 });
-  var [referralCopiedToast, setReferralCopiedToast] = useState(false);
+  const [referralCode, setReferralCode] = useState(null);
+  const [referralStats, setReferralStats] = useState({ referrals_count: 0, free_days_earned: 0, free_days_used: 0, free_days_available: 0 });
+  const [referralCopiedToast, setReferralCopiedToast] = useState(false);
   // Easter egg — 5 taps on the avatar pill within 3s, admin-only. Opens the
   // "Coach mode" debug panel.
-  var [coachModeVisible, setCoachModeVisible] = useState(false);
-  var [coachModeStats, setCoachModeStats] = useState(null);
-  var tapCountRef = useRef(0);
-  var tapTimerRef = useRef(null);
+  const [coachModeVisible, setCoachModeVisible] = useState(false);
+  const [coachModeStats, setCoachModeStats] = useState(null);
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef(null);
   // Account deletion (Apple guideline 5.1.1(v)) — double-confirm flow.
   // Step 1: native Alert "Are you sure?" → continue opens the typed-confirm
   // modal. Step 2: user must type the localized confirmation word
   // (FR: SUPPRIMER, EN: DELETE) before the final destructive button is
   // active. Loading state disables everything during the RPC round trip.
-  var [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  var [deleteConfirmInput, setDeleteConfirmInput] = useState('');
-  var [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   function handleAvatarTap() {
     if (!isAdmin) return;
@@ -149,7 +149,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     if (tapCountRef.current >= 5) {
       tapCountRef.current = 0;
       try {
-        var H = require('expo-haptics');
+        const H = require('expo-haptics');
         H.notificationAsync(H.NotificationFeedbackType.Success);
       } catch (e) {}
       openCoachMode();
@@ -158,15 +158,15 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
 
   async function openCoachMode() {
     try {
-      var keys = await AsyncStorage.getAllKeys();
-      var fluidKeys = keys.filter(function(k) { return k.startsWith('fluid'); });
-      var totalDone = done ? Object.values(done).flat().filter(Boolean).length : 0;
+      const keys = await AsyncStorage.getAllKeys();
+      const fluidKeys = keys.filter(function(k) { return k.startsWith('fluid'); });
+      const totalDone = done ? Object.values(done).flat().filter(Boolean).length : 0;
       // Sum the per-day exercise minutes for context.
-      var exerciseKeys = fluidKeys.filter(function(k) { return k.startsWith('fluid_exercise_'); });
-      var totalMin = 0;
-      for (var i = 0; i < exerciseKeys.length; i++) {
+      const exerciseKeys = fluidKeys.filter(function(k) { return k.startsWith('fluid_exercise_'); });
+      let totalMin = 0;
+      for (let i = 0; i < exerciseKeys.length; i++) {
         try {
-          var raw = await AsyncStorage.getItem(exerciseKeys[i]);
+          const raw = await AsyncStorage.getItem(exerciseKeys[i]);
           totalMin += raw ? parseInt(raw, 10) || 0 : 0;
         } catch (e) {}
       }
@@ -203,8 +203,8 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
 
   // Step 2: only enabled once the typed word matches (case-insensitive).
   async function confirmDeleteAccount() {
-    var expected = (tr.delete_account_type_word || 'SUPPRIMER').trim();
-    var typed = (deleteConfirmInput || '').trim();
+    const expected = (tr.delete_account_type_word || 'SUPPRIMER').trim();
+    const typed = (deleteConfirmInput || '').trim();
     if (typed.toUpperCase() !== expected.toUpperCase()) {
       Alert.alert(
         tr.delete_account_error_title || 'Erreur',
@@ -238,7 +238,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
         ]
       );
     } catch (e) {
-      var msg = (e && e.message) ? e.message : null;
+      const msg = (e && e.message) ? e.message : null;
       Alert.alert(
         tr.delete_account_error_title || 'Suppression impossible',
         (tr.delete_account_error_message || 'Une erreur est survenue.') + (msg ? '\n\n(' + msg + ')' : '')
@@ -253,7 +253,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   }
   async function coachActionForceBreath() {
     try {
-      var k = 'fluid_breath_' + new Date().toISOString().slice(0, 10);
+      const k = 'fluid_breath_' + new Date().toISOString().slice(0, 10);
       await AsyncStorage.setItem(k, '1');
       Alert.alert('Coach mode', 'Respiration du jour marquée comme faite.');
     } catch (e) {}
@@ -270,7 +270,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     AsyncStorage.getItem('fluid_quote_hour').then(function(v) { if (v) setQuoteHour(parseInt(v) || 8); });
     AsyncStorage.getItem('fluid_show_hr').then(function(v) { setShowHrEnabled(v !== 'false'); });
     try {
-      var { getStorageUsed, formatBytes } = require('../components/DownloadManager');
+      const { getStorageUsed, formatBytes } = require('../components/DownloadManager');
       getStorageUsed().then(function(s) { setStorageUsed(formatBytes(s)); });
     } catch(e) {}
     if (Platform.OS === 'ios') {
@@ -300,7 +300,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   // the badge count in Profil in sync without forcing a manual refresh.
   useEffect(function () {
     setAchievementsUnlockedCount(getUnlockedSync().length);
-    var unsub = subscribeAchievements(function (ids) {
+    const unsub = subscribeAchievements(function (ids) {
       setAchievementsUnlockedCount((ids && ids.length) || 0);
     });
     return unsub;
@@ -362,7 +362,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
       return;
     }
     if (__DEV__) console.log('[Profil] fetching profile for user.id:', supaUser.id);
-    var cancelled = false;
+    let cancelled = false;
     supabase.from('profiles').select('prenom, gender, birth_date, height_cm, weight_kg, practice_level, frequency, goals').eq('id', supaUser.id).maybeSingle().then(function(res) {
       if (cancelled) return;
       if (__DEV__) console.log('[Profil] fetched res:', JSON.stringify({ data: res?.data || null, error: res?.error?.message || null }));
@@ -391,7 +391,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   // d'édition rafraîchisse les compteurs si un filleul vient de payer.
   useEffect(function() {
     if (!supabase || !supaUser) return;
-    var cancelled = false;
+    let cancelled = false;
     getMyReferralCode(supabase).then(function(code) {
       if (!cancelled) setReferralCode(code || null);
     });
@@ -404,7 +404,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   function startProfileEdit() {
     setEditGender(profileData.gender || null);
     if (profileData.birth_date && /^\d{4}-\d{2}-\d{2}$/.test(profileData.birth_date)) {
-      var parts = profileData.birth_date.split('-');
+      const parts = profileData.birth_date.split('-');
       setEditY(parts[0]); setEditM(parts[1]); setEditD(parts[2]);
     } else { setEditY(''); setEditM(''); setEditD(''); }
     setEditHeight(profileData.height_cm != null ? String(profileData.height_cm) : '');
@@ -413,37 +413,37 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   }
 
   async function saveProfileEdit() {
-    var dd = parseInt(editD, 10), mm = parseInt(editM, 10), yy = parseInt(editY, 10);
-    var birth = null;
+    const dd = parseInt(editD, 10), mm = parseInt(editM, 10), yy = parseInt(editY, 10);
+    let birth = null;
     // Birth date validation: must be a real calendar date (Date roundtrip),
     // not in the future, and the user must be at least 13 years old. Empty
     // is allowed (clears the field).
-    var birthProvided = !!(editD || editM || editY);
+    const birthProvided = !!(editD || editM || editY);
     if (birthProvided) {
-      var validShape = dd && mm && yy && yy >= 1900 && yy <= new Date().getFullYear() && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31;
+      const validShape = dd && mm && yy && yy >= 1900 && yy <= new Date().getFullYear() && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31;
       if (!validShape) {
         Alert.alert('FluidBody', tr.profile_birth_invalid || 'Date de naissance invalide');
         return;
       }
-      var probe = new Date(yy, mm - 1, dd);
+      const probe = new Date(yy, mm - 1, dd);
       if (probe.getFullYear() !== yy || probe.getMonth() !== mm - 1 || probe.getDate() !== dd) {
         Alert.alert('FluidBody', tr.profile_birth_invalid || 'Date de naissance invalide');
         return;
       }
-      var today = new Date();
+      const today = new Date();
       if (probe.getTime() > today.getTime()) {
         Alert.alert('FluidBody', tr.profile_birth_future || 'La date de naissance ne peut pas être dans le futur');
         return;
       }
-      var minAdult = new Date(today.getFullYear() - 13, today.getMonth(), today.getDate());
+      const minAdult = new Date(today.getFullYear() - 13, today.getMonth(), today.getDate());
       if (probe.getTime() > minAdult.getTime()) {
         Alert.alert('FluidBody', tr.profile_birth_under_age || 'Tu dois avoir au moins 13 ans');
         return;
       }
       birth = yy + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
     }
-    var h = parseInt(editHeight, 10);
-    var w = parseInt(editWeight, 10);
+    const h = parseInt(editHeight, 10);
+    const w = parseInt(editWeight, 10);
     if (editHeight.trim() !== '' && (!isFinite(h) || h < 120 || h > 220)) {
       Alert.alert('FluidBody', tr.profile_height_invalid || 'La taille doit être entre 120 et 220 cm');
       return;
@@ -452,7 +452,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
       Alert.alert('FluidBody', tr.profile_weight_invalid || 'Le poids doit être entre 30 et 200 kg');
       return;
     }
-    var next = {
+    const next = {
       gender: editGender || null,
       birth_date: birth,
       height_cm: isFinite(h) && h >= 120 && h <= 220 ? h : null,
@@ -501,7 +501,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   }
   function goalsLabel(arr) {
     if (!Array.isArray(arr) || arr.length === 0) return tr.profile_not_set || 'Non renseigné';
-    var map = {
+    const map = {
       tone: tr.onb_goal_tone || 'Tonifier',
       flex: tr.onb_goal_flex || 'Souplesse',
       posture: tr.onb_goal_posture || 'Posture',
@@ -512,20 +512,20 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   }
   function formatBirth(iso) {
     if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return tr.profile_not_set || 'Non renseigné';
-    var p = iso.split('-');
+    const p = iso.split('-');
     return p[2] + '/' + p[1] + '/' + p[0];
   }
-  var totalDoneVal = done ? Object.values(done).flat().filter(Boolean).length : 0;
-  var pctVal = Math.round(totalDoneVal / 160 * 100);
-  var piliers = getPiliers(lang);
-  var bestPilier = piliers.reduce(function(best, p) { var c = (done[p.key] || []).filter(Boolean).length; return c > best.count ? { p: p, count: c } : best; }, { p: piliers[0], count: 0 });
+  const totalDoneVal = done ? Object.values(done).flat().filter(Boolean).length : 0;
+  const pctVal = Math.round(totalDoneVal / 160 * 100);
+  const piliers = getPiliers(lang);
+  const bestPilier = piliers.reduce(function(best, p) { const c = (done[p.key] || []).filter(Boolean).length; return c > best.count ? { p: p, count: c } : best; }, { p: piliers[0], count: 0 });
 
   async function copyReferralCode() {
     if (!referralCode) return;
-    try { var H = require('expo-haptics'); H.selectionAsync(); } catch (e) {}
+    try { const H = require('expo-haptics'); H.selectionAsync(); } catch (e) {}
     if (_Clipboard) {
       try {
-        var fn = _Clipboard.setStringAsync || _Clipboard.setString;
+        const fn = _Clipboard.setStringAsync || _Clipboard.setString;
         if (fn) await fn(referralCode);
         setReferralCopiedToast(true);
         setTimeout(function() { setReferralCopiedToast(false); }, 1600);
@@ -534,7 +534,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     }
     // Fallback : ouvre la feuille de partage avec le seul code, l'user
     // pourra le copier depuis là. Pas idéal mais 0 dépendance.
-    var msg = typeof tr.referral_share_message === 'function'
+    const msg = typeof tr.referral_share_message === 'function'
       ? tr.referral_share_message(referralCode)
       : referralCode;
     Share.share({ message: msg }).catch(function() {});
@@ -542,8 +542,8 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
 
   function shareReferralCode() {
     if (!referralCode) return;
-    try { var H = require('expo-haptics'); H.selectionAsync(); } catch (e) {}
-    var msg = typeof tr.referral_share_message === 'function'
+    try { const H = require('expo-haptics'); H.selectionAsync(); } catch (e) {}
+    const msg = typeof tr.referral_share_message === 'function'
       ? tr.referral_share_message(referralCode)
       : ('FluidBody+ · ' + referralCode);
     Share.share({ message: msg }).catch(function() {});
@@ -552,7 +552,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   async function shareWithCard() {
     if (shareRef.current) {
       try {
-        var uri = await shareRef.current.capture({ format: 'png', quality: 1 });
+        const uri = await shareRef.current.capture({ format: 'png', quality: 1 });
         Share.share({ url: uri, message: 'FluidBody+ Pilates\nhttps://apps.apple.com/app/fluidbody/id6761364962' }).catch(function() {});
         return;
       } catch(e) {}
@@ -562,7 +562,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   // Section labels for the regrouped iPhone Profile (Coach / Activité /
   // Réglages / Compte / À propos). Each row pairs a localized label with
   // the icon key from src/components/Icons.js — emoji-free.
-  var SECTION_LABELS = {
+  const SECTION_LABELS = {
     coach:    { iconKey: 'user',        fr: 'Ta coach', en: 'Your coach', es: 'Tu coach',     it: 'La tua coach' },
     activity: { iconKey: 'bar_chart',   fr: 'Mon activité', en: 'My activity', es: 'Mi actividad', it: 'La mia attività' },
     settings: { iconKey: 'gear',        fr: 'Réglages',     en: 'Settings',    es: 'Ajustes',      it: 'Impostazioni' },
@@ -570,12 +570,12 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     about:    { iconKey: 'info',        fr: 'À propos',     en: 'About',       es: 'Acerca de',    it: 'Informazioni' },
   };
   function sectionLabel(key) {
-    var row = SECTION_LABELS[key];
+    const row = SECTION_LABELS[key];
     if (!row) return '';
     return row[lang] || row.fr;
   }
   function sectionIconKey(key) {
-    var row = SECTION_LABELS[key];
+    const row = SECTION_LABELS[key];
     return row ? row.iconKey : null;
   }
   function SectionHeader(props) {
@@ -846,7 +846,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             Ouvre la page dédiée du site (FR ou EN selon la langue). */}
         <GlassCard
           onPress={function() {
-            var url = (lang === 'fr') ? 'https://espace-pilates.ch/magicdays' : 'https://espace-pilates.ch/en/magicdays';
+            const url = (lang === 'fr') ? 'https://espace-pilates.ch/magicdays' : 'https://espace-pilates.ch/en/magicdays';
             Linking.openURL(url).catch(function() {});
           }}
           accessibilityLabel={tr.magicdays_title || 'Magic Days'}
@@ -1076,7 +1076,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               accessibilityRole="switch"
               accessibilityState={{ checked: dailyEnabled }}
               onPress={function() {
-                var next = !dailyEnabled;
+                const next = !dailyEnabled;
                 setDailyEnabled(next);
                 AsyncStorage.setItem('fluid_notif_daily_enabled', String(next));
               }}
@@ -1090,7 +1090,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.notif_hour_label || 'Heure du rappel'}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <TouchableOpacity disabled={!dailyEnabled} onPress={function() {
-                var h = Math.max(5, notifHour - 1);
+                const h = Math.max(5, notifHour - 1);
                 setNotifHour(h);
                 AsyncStorage.setItem('fluid_notif_hour', String(h));
               }} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
@@ -1098,7 +1098,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               </TouchableOpacity>
               <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text, minWidth: 50, textAlign: 'center' }}>{notifHour}h00</Text>
               <TouchableOpacity disabled={!dailyEnabled} onPress={function() {
-                var h = Math.min(22, notifHour + 1);
+                const h = Math.min(22, notifHour + 1);
                 setNotifHour(h);
                 AsyncStorage.setItem('fluid_notif_hour', String(h));
               }} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
@@ -1113,7 +1113,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 2 }}>{tr.notif_pause_sub || '9h-17h en semaine'}</Text>
             </View>
             <TouchableOpacity onPress={function() {
-              var next = !pauseEnabled;
+              const next = !pauseEnabled;
               setPauseEnabled(next);
               AsyncStorage.setItem('fluid_notif_pause_enabled', String(next));
             }} style={{ width: 50, height: 28, borderRadius: 14, backgroundColor: pauseEnabled ? '#AEEF4D' : 'rgba(255,255,255,0.15)', justifyContent: 'center', paddingHorizontal: 2 }}>
@@ -1124,7 +1124,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: quoteEnabled ? 16 : 0 }}>
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary, flex: 1, paddingRight: 12 }}>{tr.notif_quote_label || 'Phrase du jour de Sabrina'}</Text>
             <TouchableOpacity onPress={function() {
-              var next = !quoteEnabled;
+              const next = !quoteEnabled;
               setQuoteEnabled(next);
               AsyncStorage.setItem('fluid_quote_enabled', String(next));
             }} style={{ width: 50, height: 28, borderRadius: 14, backgroundColor: quoteEnabled ? '#AEEF4D' : 'rgba(255,255,255,0.15)', justifyContent: 'center', paddingHorizontal: 2 }}>
@@ -1137,7 +1137,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.notif_quote_hour_label || 'Heure de la phrase'}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <TouchableOpacity onPress={function() {
-                  var h = Math.max(5, quoteHour - 1);
+                  const h = Math.max(5, quoteHour - 1);
                   setQuoteHour(h);
                   AsyncStorage.setItem('fluid_quote_hour', String(h));
                 }} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
@@ -1145,7 +1145,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 </TouchableOpacity>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text, minWidth: 50, textAlign: 'center' }}>{quoteHour}h00</Text>
                 <TouchableOpacity onPress={function() {
-                  var h = Math.min(22, quoteHour + 1);
+                  const h = Math.min(22, quoteHour + 1);
                   setQuoteHour(h);
                   AsyncStorage.setItem('fluid_quote_hour', String(h));
                 }} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
@@ -1165,7 +1165,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                 <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 2 }}>{tr.show_hr_sub || 'Lit la fréquence via Apple Santé · pill discret en haut à droite'}</Text>
               </View>
               <TouchableOpacity onPress={function() {
-                var next = !showHrEnabled;
+                const next = !showHrEnabled;
                 setShowHrEnabled(next);
                 AsyncStorage.setItem('fluid_show_hr', String(next));
               }} style={{ width: 50, height: 28, borderRadius: 14, backgroundColor: showHrEnabled ? '#AEEF4D' : 'rgba(255,255,255,0.15)', justifyContent: 'center', paddingHorizontal: 2 }}>
@@ -1226,14 +1226,14 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                   <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>{tr.calendar_preferred_time || 'Heure préférée'}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <TouchableOpacity onPress={function() {
-                      var h = Math.max(5, calPreferredHour - 1);
+                      const h = Math.max(5, calPreferredHour - 1);
                       updateCalendarPref({ preferredHour: h });
                     }} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
                       <Text style={{ fontSize: 18, color: '#AEEF4D', fontWeight: '700' }}>{'−'}</Text>
                     </TouchableOpacity>
                     <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text, minWidth: 50, textAlign: 'center' }}>{calPreferredHour}h00</Text>
                     <TouchableOpacity onPress={function() {
-                      var h = Math.min(22, calPreferredHour + 1);
+                      const h = Math.min(22, calPreferredHour + 1);
                       updateCalendarPref({ preferredHour: h });
                     }} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(174,239,77,0.12)', alignItems: 'center', justifyContent: 'center' }}>
                       <Text style={{ fontSize: 18, color: '#AEEF4D', fontWeight: '700' }}>+</Text>
@@ -1245,7 +1245,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                   <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 10 }}>{tr.calendar_default_duration || 'Durée par défaut'}</Text>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     {[15, 20, 30, 45].map(function(d) {
-                      var active = calDuration === d;
+                      const active = calDuration === d;
                       return (
                         <TouchableOpacity
                           key={'cal-dur-' + d}
@@ -1273,7 +1273,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                       >
                         <Text style={{ fontSize: 13, color: '#AEEF4D', fontWeight: '700' }} numberOfLines={1}>
                           {(function() {
-                            var c = calCalendars.find(function(x) { return x.id === calCalendarId; });
+                            const c = calCalendars.find(function(x) { return x.id === calCalendarId; });
                             return (c && c.title) || (tr.calendar_default_calendar || 'Par défaut');
                           })()}
                         </Text>
@@ -1283,7 +1283,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                     {calPickerOpen && (
                       <View style={{ marginTop: 10, gap: 6 }}>
                         {calCalendars.map(function(c) {
-                          var active = c.id === calCalendarId;
+                          const active = c.id === calCalendarId;
                           return (
                             <TouchableOpacity
                               key={c.id}
@@ -1320,13 +1320,13 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
             <Text style={{ fontSize: 13, fontWeight: '700', color: sectionTitleColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.appearance_section || 'Apparence'}</Text>
             <View style={{ flexDirection: 'row', borderRadius: 14, padding: 4, backgroundColor: theme.mode === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: theme.colors.hairline }}>
               {THEME_MODES.map(function(m) {
-                var active = themeMode === m;
-                var label = (
+                const active = themeMode === m;
+                const label = (
                   m === 'auto' ? (tr.appearance_auto || 'Automatique')
                   : m === 'light' ? (tr.appearance_light || 'Clair')
                   : (tr.appearance_dark || 'Sombre')
                 );
-                var iconKey = m === 'auto' ? 'auto_theme' : m === 'light' ? 'sun' : 'moon';
+                const iconKey = m === 'auto' ? 'auto_theme' : m === 'light' ? 'sun' : 'moon';
                 return (
                   <TouchableOpacity
                     key={m}
@@ -1374,7 +1374,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               { text: tr.reset_cancel || 'Annuler', style: 'cancel' },
               { text: tr.dl_delete_all || 'Tout supprimer', style: 'destructive', onPress: async function() {
                 try {
-                  var { deleteAllDownloads } = require('../components/DownloadManager');
+                  const { deleteAllDownloads } = require('../components/DownloadManager');
                   await deleteAllDownloads();
                   setStorageUsed('0 B');
                 } catch(e) {}
@@ -1483,7 +1483,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                     { key: 'male', label: tr.profile_gender_male || 'Homme' },
                     { key: 'other', label: tr.profile_gender_other || 'Autre' },
                   ].map(function(g) {
-                    var active = editGender === g.key;
+                    const active = editGender === g.key;
                     return (
                       <TouchableOpacity key={g.key} activeOpacity={0.85} onPress={function() { setEditGender(g.key); }} style={{ flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: active ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.12)' }}>
                         <Text style={{ fontSize: 13, fontWeight: active ? '700' : '500', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.78)' }}>{g.label}</Text>
@@ -1873,7 +1873,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
       {showPairTv && _PairAppleTV ? (
         <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={function() { setShowPairTv(false); }}>
           {(function() {
-            var Comp = _PairAppleTV;
+            const Comp = _PairAppleTV;
             return (
               <Comp
                 lang={lang}

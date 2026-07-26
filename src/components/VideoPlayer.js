@@ -69,13 +69,13 @@ function hasProtectedVideo(flag) {
   return !!flag;
 }
 
-var RATE_OPTIONS = [0.75, 1.0, 1.25, 1.5];
+const RATE_OPTIONS = [0.75, 1.0, 1.25, 1.5];
 
 // Garde-fou juridique pré-séance : confirmation unique par session (process
 // en mémoire, PAS de persistance AsyncStorage → réaffiché à chaque cold start,
 // une seule fois ensuite). Partagé entre tous les montages de VideoPlayer pour
 // ne pas réafficher l'alerte à chaque séance lancée dans la même session.
-var _preSeanceConfirmedThisSession = false;
+let _preSeanceConfirmedThisSession = false;
 
 // ── Étape colors (also kept in App.js for PilierPanel) ──
 
@@ -132,22 +132,22 @@ async function loadVideoResume(pilierKey, seanceIndex, currentUri, currentDurati
 
 // ── Subtitles (VTT) ──
 
-var SUBTITLE_LANGS = [
+const SUBTITLE_LANGS = [
   { code: 'fr', label: 'Français' }, { code: 'en', label: 'English' },
 ];
 
 function parseVtt(text) {
   if (!text) return [];
-  var cues = [];
-  var blocks = text.replace(/\r\n/g, '\n').split('\n\n');
+  const cues = [];
+  const blocks = text.replace(/\r\n/g, '\n').split('\n\n');
   blocks.forEach(function(block) {
-    var lines = block.trim().split('\n');
-    for (var i = 0; i < lines.length; i++) {
+    const lines = block.trim().split('\n');
+    for (let i = 0; i < lines.length; i++) {
       if (lines[i].indexOf('-->') !== -1) {
-        var times = lines[i].split('-->');
-        var start = vttTimeToMs(times[0].trim());
-        var end = vttTimeToMs(times[1].trim());
-        var txt = lines.slice(i + 1).join('\n').replace(/<[^>]+>/g, '').trim();
+        const times = lines[i].split('-->');
+        const start = vttTimeToMs(times[0].trim());
+        const end = vttTimeToMs(times[1].trim());
+        const txt = lines.slice(i + 1).join('\n').replace(/<[^>]+>/g, '').trim();
         if (txt && !isNaN(start) && !isNaN(end)) cues.push({ start: start, end: end, text: txt });
         break;
       }
@@ -157,7 +157,7 @@ function parseVtt(text) {
 }
 
 function vttTimeToMs(t) {
-  var parts = t.split(':');
+  const parts = t.split(':');
   if (parts.length === 3) return (parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseFloat(parts[2])) * 1000;
   if (parts.length === 2) return (parseInt(parts[0]) * 60 + parseFloat(parts[1])) * 1000;
   return parseFloat(t) * 1000;
@@ -165,7 +165,7 @@ function vttTimeToMs(t) {
 
 function getCurrentCue(cues, posMs) {
   if (!cues || !cues.length) return null;
-  for (var i = 0; i < cues.length; i++) {
+  for (let i = 0; i < cues.length; i++) {
     if (posMs >= cues[i].start && posMs <= cues[i].end) return cues[i].text;
   }
   return null;
@@ -302,13 +302,13 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   const uriRef = useRef(uri);
   uriRef.current = uri;
   const lastPersistAtRef = useRef(0);
-  var [ccEnabled, setCcEnabled] = useState(false);
-  var [volume, setVolume] = useState(1);
-  var [ccLang, setCcLang] = useState(lang || 'fr');
-  var [ccCues, setCcCues] = useState([]);
-  var [ccText, setCcText] = useState(null);
-  var [showCcPicker, setShowCcPicker] = useState(false);
-  var [playbackRate, setPlaybackRate] = useState(1.0);
+  const [ccEnabled, setCcEnabled] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [ccLang, setCcLang] = useState(lang || 'fr');
+  const [ccCues, setCcCues] = useState([]);
+  const [ccText, setCcText] = useState(null);
+  const [showCcPicker, setShowCcPicker] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
 
   // ── Scrubbing de la barre de progression (retour Yvan 25/07) ──
   // On remplace le simple onPress par un PanResponder : le doigt peut
@@ -662,8 +662,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   }
 
   async function cyclePlaybackRate() {
-    var idx = RATE_OPTIONS.indexOf(playbackRate);
-    var next = RATE_OPTIONS[(idx + 1) % RATE_OPTIONS.length];
+    const idx = RATE_OPTIONS.indexOf(playbackRate);
+    const next = RATE_OPTIONS[(idx + 1) % RATE_OPTIONS.length];
     setPlaybackRate(next);
     if (videoRef.current) {
       try { await videoRef.current.setRateAsync(next, true); } catch(e) {}
@@ -690,9 +690,9 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     return `\u2212${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   }
 
-  var playingRef = useRef(false);
-  var elapsedRef = useRef(0);
-  var lastTickRef = useRef(Date.now());
+  const playingRef = useRef(false);
+  const elapsedRef = useRef(0);
+  const lastTickRef = useRef(Date.now());
   var [elapsedSec, setElapsedSec] = useState(0);
 
   useEffect(function() {
@@ -701,10 +701,10 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   }, [status.isPlaying]);
 
   useEffect(function() {
-    var interval = setInterval(function() {
+    const interval = setInterval(function() {
       if (playingRef.current) {
-        var now = Date.now();
-        var delta = Math.floor((now - lastTickRef.current) / 1000);
+        const now = Date.now();
+        const delta = Math.floor((now - lastTickRef.current) / 1000);
         if (delta > 0) {
           elapsedRef.current += delta;
           lastTickRef.current = now;
@@ -745,11 +745,11 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   // Petit « 3·2·1 » plein écran avant le début. Il retient aussi la lecture
   // vidéo (cf. shouldPlay={introN <= 0}) pour que la séance démarre pile à 0.
   // Sauté pour les contenus théoriques (Comprendre / Ressentir).
-  var [introN, setIntroN] = useState(isTheory ? 0 : 3);
+  const [introN, setIntroN] = useState(isTheory ? 0 : 3);
   useEffect(function() {
     if (!preSeanceConfirmed) return;
     if (introN <= 0) return;
-    var t = setTimeout(function() { setIntroN(function(n) { return n - 1; }); }, 900);
+    const t = setTimeout(function() { setIntroN(function(n) { return n - 1; }); }, 900);
     return function() { clearTimeout(t); };
   }, [introN, preSeanceConfirmed]);
 
@@ -765,8 +765,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
 
   async function logEffortLocally(score) {
     try {
-      var raw = await AsyncStorage.getItem('fluid_efforts_v1');
-      var list = raw ? JSON.parse(raw) : [];
+      const raw = await AsyncStorage.getItem('fluid_efforts_v1');
+      let list = raw ? JSON.parse(raw) : [];
       if (!Array.isArray(list)) list = [];
       list.push({
         d: new Date().toISOString(),
@@ -781,7 +781,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
 
   function chooseEffort(score) {
     hapticLight();
-    var w = effortWindowRef.current;
+    const w = effortWindowRef.current;
     // Fire-and-forget : ni l'échec HealthKit ni le log local ne doivent
     // retarder la fermeture du player.
     try { writeWorkoutEffortScore(score, w && w.start, w && w.end).catch(function () {}); } catch (e) {}
@@ -824,16 +824,16 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   async function saveExerciseTime(minutes) {
     breadcrumb('Completed session', { pilier: pilier?.key, seanceIndex, minutes }, { category: 'video' });
     try {
-      var key = 'fluid_exercise_' + new Date().toISOString().slice(0, 10);
-      var raw = await AsyncStorage.getItem(key);
-      var total = raw ? parseInt(raw) : 0;
+      const key = 'fluid_exercise_' + new Date().toISOString().slice(0, 10);
+      const raw = await AsyncStorage.getItem(key);
+      const total = raw ? parseInt(raw) : 0;
       await AsyncStorage.setItem(key, String(total + minutes));
     } catch(e) {}
     // Feed the smart-notification preferred-hour learner so future reminders
     // land near the user's actual training time.
     try { recordSessionHour(new Date()); } catch (e) {}
     // Stop HR session first, capture summary, then forward to the workout save.
-    var summary = null;
+    let summary = null;
     if (hrStartedRef.current) {
       try { summary = hr.stop(); } catch (e) {}
       hrStartedRef.current = false;
@@ -844,7 +844,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
       // 0.06 * avgBpm × min reste un proxy grossier mais corrige les sessions
       // intenses (Pilates avancé sur reformer ≈ 6 kcal/min, vs 3 kcal/min en
       // séance Comprendre).
-      var extras = null;
+      let extras = null;
       if (summary && Number.isFinite(summary.avgBpm) && summary.avgBpm > 0) {
         extras = { energyBurned: Math.round(minutes * Math.max(3, summary.avgBpm * 0.06)) };
       }
@@ -864,16 +864,16 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   // Source de vérité = position réelle de la vidéo quand elle est chargée
   // (suit les seeks / vitesses de lecture) ; sinon fallback sur la durée
   // annoncée de la séance moins le temps écoulé.
-  var timerTotalSec = status.durationMillis
+  const timerTotalSec = status.durationMillis
     ? Math.round(status.durationMillis / 1000)
     : (parseInt(duree) || 15) * 60;
-  var timerPosSec = (status.durationMillis && status.positionMillis != null)
+  const timerPosSec = (status.durationMillis && status.positionMillis != null)
     ? Math.floor(status.positionMillis / 1000)
     : elapsedSec;
-  var timerRemainSec = Math.max(0, timerTotalSec - timerPosSec);
-  var timerMin = Math.floor(timerRemainSec / 60);
-  var timerSec = timerRemainSec % 60;
-  var timerStr = String(timerMin).padStart(2, '0') + ':' + String(timerSec).padStart(2, '0');
+  const timerRemainSec = Math.max(0, timerTotalSec - timerPosSec);
+  const timerMin = Math.floor(timerRemainSec / 60);
+  const timerSec = timerRemainSec % 60;
+  const timerStr = String(timerMin).padStart(2, '0') + ':' + String(timerSec).padStart(2, '0');
 
   return (
     <View
@@ -1052,7 +1052,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         <Pressable onPress={function() { setShowCcPicker(false); }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 230, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'flex-end', paddingTop: 100, paddingRight: 20 }}>
           <View style={{ backgroundColor: 'rgba(28,28,30,0.95)', borderRadius: 14, padding: 8, width: 160 }}>
             {SUBTITLE_LANGS.map(function(sl) {
-              var active = ccLang === sl.code;
+              const active = ccLang === sl.code;
               return (
                 <TouchableOpacity key={sl.code} onPress={function() { setCcLang(sl.code); setShowCcPicker(false); bumpTimer(); }} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, backgroundColor: active ? 'rgba(174,239,77,0.15)' : 'transparent' }}>
                   <Text style={{ fontSize: 14, color: active ? '#AEEF4D' : '#ffffff' }}>{sl.label}</Text>
@@ -1294,8 +1294,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                       // real video, treat as an active break and suppress the
                       // next 3h of "pause active" reminders. Theory sessions
                       // (no real video) don't qualify.
-                      var lastSt = lastStatusRef.current;
-                      var shouldCancel =
+                      const lastSt = lastStatusRef.current;
+                      const shouldCancel =
                         hasRealVideo
                         && lastSt
                         && lastSt.durationMillis > 0
@@ -1308,7 +1308,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                       // avant onComplete — le score nourrit la charge
                       // d'entraînement Apple (iOS 18+) + nos stats locales.
                       if (!IS_TV) {
-                        var effEnd = new Date();
+                        const effEnd = new Date();
                         effortWindowRef.current = {
                           start: new Date(effEnd.getTime() - getElapsedMinutes() * 60000),
                           end: effEnd,
@@ -1378,7 +1378,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                   {/* Jauge 1-10 discrète — repère l'échelle Apple sans la crier */}
                   <View style={{ flexDirection: 'row', gap: 3 }}>
                     {[0, 1, 2, 3].map(function (i) {
-                      var lit = i < Math.ceil(lvl.score / 2.5);
+                      const lit = i < Math.ceil(lvl.score / 2.5);
                       return <View key={i} style={{ width: 4, height: 12 + i * 2, borderRadius: 2, alignSelf: 'flex-end', backgroundColor: lit ? lvl.color : 'rgba(255,255,255,0.18)' }} />;
                     })}
                   </View>

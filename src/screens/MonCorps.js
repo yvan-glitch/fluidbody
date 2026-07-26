@@ -80,7 +80,7 @@ function sentryCaptureSafe(error, ctx) {
 // SchedulableTriggerInputTypes, qui est le seul format stable.
 // Fallback string si la constante manque (safe).
 function trigWeekly(weekday, hour, minute) {
-  var TYPES = Notifications && Notifications.SchedulableTriggerInputTypes;
+  const TYPES = Notifications && Notifications.SchedulableTriggerInputTypes;
   return { type: (TYPES && TYPES.WEEKLY) || 'weekly', weekday: weekday, hour: hour, minute: minute };
 }
 
@@ -122,15 +122,15 @@ const ETAPE_COLORS = {
   'Évoluer': 'rgba(185,135,255,0.9)',
 };
 
-var JOUR_LABELS = { fr: ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'], en: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], de: ['Mo','Di','Mi','Do','Fr','Sa','So'], pt: ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'], zh: ['一','二','三','四','五','六','日'], ja: ['月','火','水','木','金','土','日'], ko: ['월','화','수','목','금','토','일'], es: ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'], it: ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'] };
+const JOUR_LABELS = { fr: ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'], en: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], de: ['Mo','Di','Mi','Do','Fr','Sa','So'], pt: ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'], zh: ['一','二','三','四','五','六','日'], ja: ['月','火','水','木','金','土','日'], ko: ['월','화','수','목','금','토','일'], es: ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'], it: ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'] };
 
-var LIVE_SCHEDULE = [
+const LIVE_SCHEDULE = [
   { id: 1, title: 'Mat Pilates', coach: 'Sabrina', day: 1, time: '18:00', duration: '45 min' },
   { id: 2, title: 'Stretching Dos', coach: 'Sabrina', day: 3, time: '12:00', duration: '30 min' },
   { id: 3, title: 'Core & Plancher', coach: 'Sabrina', day: 5, time: '18:00', duration: '45 min' },
 ];
-var DAY_FULL_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-var DAY_FULL_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_FULL_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+const DAY_FULL_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 // Parse "15 min" / "1'59''" / "2'29''" \u2192 integer minutes (rounded up to 1).
 function parseDurationMinutes(label) {
@@ -483,7 +483,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
     return subscribeDurations(function() { setDurVersion(function(v) { return v + 1; }); });
   }, []);
 
-  var ppMedusas = useRef([
+  const ppMedusas = useRef([
     { baseX: SW - 80, baseY: 40, size: 70, dx: new Animated.Value(0), dy: new Animated.Value(0) },
     { baseX: 20, baseY: SH * 0.06, size: 54, dx: new Animated.Value(0), dy: new Animated.Value(0) },
     { baseX: SW * 0.4, baseY: SH * 0.1, size: 42, dx: new Animated.Value(0), dy: new Animated.Value(0) },
@@ -496,10 +496,10 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
     ppMedusas.forEach(function(m, idx) {
       function drift() {
         if (!mounted) return;
-        var toX = 10 + Math.random() * (SW - m.size - 20);
-        var toY = 40 + Math.random() * (SH - m.size - 140);
-        var dur = 10000 + Math.random() * 6000;
-        var p = Animated.parallel([
+        const toX = 10 + Math.random() * (SW - m.size - 20);
+        const toY = 40 + Math.random() * (SH - m.size - 140);
+        const dur = 10000 + Math.random() * 6000;
+        const p = Animated.parallel([
           Animated.timing(m.dx, { toValue: toX - m.baseX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
           Animated.timing(m.dy, { toValue: toY - m.baseY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
         ]);
@@ -679,7 +679,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                 // Badge top-left (REPRENDRE / NOUVEAU / FAVORI). On désactive
                 // "PROGRAMME" à l'intérieur d'un pilier (redondant : toutes
                 // les séances du pilier le porteraient).
-                var b = pickBadge({ pilierKey: pilier.key, idx: i, lang: lang, isResume: resumeIndices.has(i), isProgram: false });
+                const b = pickBadge({ pilierKey: pilier.key, idx: i, lang: lang, isResume: resumeIndices.has(i), isProgram: false });
                 return b && !noVideo ? (
                   <View style={{ position: 'absolute', top: IS_TV ? 14 : 8, left: IS_TV ? 14 : 8, zIndex: 4 }}>
                     <SessionBadge label={b.label} tone={b.tone} />
@@ -799,22 +799,22 @@ function MetricTile({ children }) {
 
 async function scheduleProgNotifications(prog, idx, lang) {
   if (!Notifications) return [];
-  var status = await safeNativeCall('notif.requestPermissionsAsync.progSave', function() { return Notifications.requestPermissionsAsync(); }, null);
+  const status = await safeNativeCall('notif.requestPermissionsAsync.progSave', function() { return Notifications.requestPermissionsAsync(); }, null);
   if (!status || status.status !== 'granted') return [];
-  var tr = T[lang] || T['fr'];
-  var pilierNames = getPiliers(lang).filter(function(p) { return prog.piliers.includes(p.key); }).map(function(p) { return p.label; });
-  var pilierStr = pilierNames.join(', ');
-  var hour = prog.notifHour || 8;
-  var ids = [];
-  var selectedDays = prog.selectedDays || [1, 2, 3, 4, 5];
-  for (var d = 0; d < selectedDays.length; d++) {
-    var weekday = selectedDays[d] + 1;
+  const tr = T[lang] || T['fr'];
+  const pilierNames = getPiliers(lang).filter(function(p) { return prog.piliers.includes(p.key); }).map(function(p) { return p.label; });
+  const pilierStr = pilierNames.join(', ');
+  const hour = prog.notifHour || 8;
+  const ids = [];
+  const selectedDays = prog.selectedDays || [1, 2, 3, 4, 5];
+  for (let d = 0; d < selectedDays.length; d++) {
+    let weekday = selectedDays[d] + 1;
     if (weekday > 7) weekday = 1;
     // Garde-fous : si les valeurs sont corrompues, on saute pour \u00E9viter
     // une NSException c\u00F4t\u00E9 natif (cf. crash build #43 sur iOS 26.5).
     if (typeof weekday !== 'number' || weekday < 1 || weekday > 7) continue;
     if (typeof hour !== 'number' || hour < 0 || hour > 23) continue;
-    var id = await safeNativeCall('notif.schedule.prog', (function(wd_, hr_, body_) { return function() {
+    const id = await safeNativeCall('notif.schedule.prog', (function(wd_, hr_, body_) { return function() {
       return Notifications.scheduleNotificationAsync({
         content: { title: 'FluidBody+ \uD83D\uDCAA', body: body_, sound: true },
         trigger: trigWeekly(wd_, hr_, 0),
@@ -827,7 +827,7 @@ async function scheduleProgNotifications(prog, idx, lang) {
 
 async function cancelProgNotifications(notifIds) {
   if (!Notifications || !notifIds) return;
-  for (var i = 0; i < notifIds.length; i++) {
+  for (let i = 0; i < notifIds.length; i++) {
     await safeNativeCall('notif.cancelScheduled.prog', (function(id_) { return function() {
       return Notifications.cancelScheduledNotificationAsync(id_);
     }; })(notifIds[i]), null);
@@ -835,20 +835,20 @@ async function cancelProgNotifications(notifIds) {
 }
 
 function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
-  var tr = T[lang] || T["fr"];
-  var piliers = getPiliers(lang);
-  var [selected, setSelected] = useState([]);
-  var [duree, setDuree] = useState(1);
-  var [jours, setJours] = useState(3);
-  var [saved, setSaved] = useState(false);
-  var [notifHour, setNotifHour] = useState(8);
-  var [selectedDays, setSelectedDays] = useState([1, 2, 3, 4, 5]);
+  const tr = T[lang] || T["fr"];
+  const piliers = getPiliers(lang);
+  const [selected, setSelected] = useState([]);
+  const [duree, setDuree] = useState(1);
+  const [jours, setJours] = useState(3);
+  const [saved, setSaved] = useState(false);
+  const [notifHour, setNotifHour] = useState(8);
+  const [selectedDays, setSelectedDays] = useState([1, 2, 3, 4, 5]);
   // FIX rules-of-hooks (2026-07-23) : le early-return était AVANT les hooks →
   // « Rendered more hooks than during the previous render » à l'ouverture.
   if (!visible) return null;
-  var dureeOptions = ['10 min', '15 min', '20 min', '30 min', '45 min'];
-  var joursOptions = [2, 3, 4, 5, 6, 7];
-  var jourLabels = JOUR_LABELS[lang] || JOUR_LABELS.fr;
+  const dureeOptions = ['10 min', '15 min', '20 min', '30 min', '45 min'];
+  const joursOptions = [2, 3, 4, 5, 6, 7];
+  const jourLabels = JOUR_LABELS[lang] || JOUR_LABELS.fr;
 
   function togglePilier(key) {
     setSelected(function(prev) { return prev.includes(key) ? prev.filter(function(k) { return k !== key; }) : [...prev, key]; });
@@ -861,12 +861,12 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
   async function saveProg() {
     try {
       diag('saveProg', 'start');
-      var prog = { piliers: selected, duree: dureeOptions[duree], jours: joursOptions[jours - 2 < 0 ? 0 : jours - 2], date: new Date().toISOString(), notifHour: notifHour, selectedDays: selectedDays };
+      const prog = { piliers: selected, duree: dureeOptions[duree], jours: joursOptions[jours - 2 < 0 ? 0 : jours - 2], date: new Date().toISOString(), notifHour: notifHour, selectedDays: selectedDays };
       // Persist FIRST, so even if notification scheduling later throws and
       // somehow corrupts the bridge, the program is on disk.
       try {
-        var raw = await AsyncStorage.getItem('fluid_custom_programs');
-        var list = raw ? JSON.parse(raw) : [];
+        const raw = await AsyncStorage.getItem('fluid_custom_programs');
+        const list = raw ? JSON.parse(raw) : [];
         list.push(prog);
         await AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(list));
         diag('saveProg.persistAsyncStorage', 'done');
@@ -886,7 +886,7 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
               prog.notifIds = ids;
               AsyncStorage.getItem('fluid_custom_programs').then(function(raw2) {
                 try {
-                  var list2 = raw2 ? JSON.parse(raw2) : [];
+                  const list2 = raw2 ? JSON.parse(raw2) : [];
                   if (list2.length) {
                     list2[list2.length - 1].notifIds = ids;
                     AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(list2));
@@ -931,7 +931,7 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
           <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_select_piliers}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 }}>
             {piliers.map(function(p) {
-              var active = selected.includes(p.key);
+              const active = selected.includes(p.key);
               return (
                 <TouchableOpacity key={p.key} onPress={function() { togglePilier(p.key); }} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, borderWidth: 1.5, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(174,239,77,0.12)' : 'rgba(0,18,32,0.6)' }}>
                   <View style={{ width: 32, height: 32, borderRadius: 16, overflow: 'hidden' }}>
@@ -946,7 +946,7 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
           <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_duree_label}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 28 }} contentContainerStyle={{ gap: 10 }}>
             {dureeOptions.map(function(d, i) {
-              var active = duree === i;
+              const active = duree === i;
               return (
                 <TouchableOpacity key={i} onPress={function() { setDuree(i); }} style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(174,239,77,0.12)' : 'rgba(0,18,32,0.6)' }}>
                   <Text style={{ fontSize: 14, color: active ? '#AEEF4D' : 'rgba(255,255,255,0.6)' }}>{d}</Text>
@@ -958,7 +958,7 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
           <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_jours_label}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 36 }} contentContainerStyle={{ gap: 10 }}>
             {joursOptions.map(function(j) {
-              var active = jours === j;
+              const active = jours === j;
               return (
                 <TouchableOpacity key={j} onPress={function() { setJours(j); }} style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(174,239,77,0.12)' : 'rgba(0,18,32,0.6)', alignItems: 'center', justifyContent: 'center' }}>
                   <Text style={{ fontSize: 16, fontWeight: '600', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.6)' }}>{j}</Text>
@@ -970,7 +970,7 @@ function CreateProgramScreen({ visible, onClose, lang, onSaved }) {
           <Text style={{ fontSize: 14, fontWeight: '600', color: '#AEEF4D', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>{tr.prog_notif_days || 'Jours de rappel'}</Text>
           <View style={{ flexDirection: 'row', gap: 6, marginBottom: 28, flexWrap: 'wrap' }}>
             {[1, 2, 3, 4, 5, 6, 0].map(function(d, i) {
-              var active = selectedDays.includes(d);
+              const active = selectedDays.includes(d);
               return (
                 <TouchableOpacity key={d} onPress={function() { toggleDay(d); }} style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.15)', backgroundColor: active ? 'rgba(174,239,77,0.12)' : 'rgba(0,18,32,0.6)', alignItems: 'center', justifyContent: 'center' }}>
                   <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.6)' }}>{jourLabels[i]}</Text>
@@ -1003,7 +1003,7 @@ const PILIER_LABEL_IDX = { p1: 0, p2: 1, p3: 2, p4: 3, p5: 4, p6: 5, p7: 6, p8: 
 
 
 function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout, supabase, supaUser, onOpenProfile }) {
-  var tr = T[lang] || T["fr"];
+  const tr = T[lang] || T["fr"];
   // Précharge le cache favoris : cœurs visibles (Bibliothèque TV, badges
   // iPhone) + rangée "Mes favoris" (TV + iPhone Pour vous).
   useEffect(function() { primeFavoritesCache(); }, []);
@@ -1011,27 +1011,27 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   // download dans PilierPanel et la section Hors-ligne reflètent l'état
   // dès le premier rendu.
   useEffect(function() { if (!IS_TV) primeDownloadsCache(); }, []);
-  var theme = useTheme().theme;
-  var navigation = useSafeNavigation();
-  var [openPilier, setOpenPilier] = useState(null);
-  var [openInitialIdx, setOpenInitialIdx] = useState(null);
-  var [openEducationPilier, setOpenEducationPilier] = useState(null);
-  var [mcTab, setMcTab] = useState('pour_vous');
-  var [bilanEditMode, setBilanEditMode] = useState(!Array.isArray(tensionIdxs) || tensionIdxs.length === 0);
-  var [showCreateProg, setShowCreateProg] = useState(false);
-  var [savedPrograms, setSavedPrograms] = useState([]);
-  var [searchQuery, setSearchQuery] = useState('');
-  var [searchEtape, setSearchEtape] = useState(null);
+  const theme = useTheme().theme;
+  const navigation = useSafeNavigation();
+  const [openPilier, setOpenPilier] = useState(null);
+  const [openInitialIdx, setOpenInitialIdx] = useState(null);
+  const [openEducationPilier, setOpenEducationPilier] = useState(null);
+  const [mcTab, setMcTab] = useState('pour_vous');
+  const [bilanEditMode, setBilanEditMode] = useState(!Array.isArray(tensionIdxs) || tensionIdxs.length === 0);
+  const [showCreateProg, setShowCreateProg] = useState(false);
+  const [savedPrograms, setSavedPrograms] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchEtape, setSearchEtape] = useState(null);
   // Défi 7 jours « Libère ton dos » — cf. src/constants/challenge.js (flag enabled).
-  var [showChallenge, setShowChallenge] = useState(false);
+  const [showChallenge, setShowChallenge] = useState(false);
   // Duration filter — partagé entre l'onglet Explorer et Recherche.
   // Buckets : '5' (<=5min), '10' (6-10min), '1520' (15-20min), 'long' (>20min).
-  var [durationFilter, setDurationFilter] = useState(null);
+  const [durationFilter, setDurationFilter] = useState(null);
 
   // Helpers durée — partagés entre Explorer / Recherche.
   function _matchesDurationBucket(durationLabel, bucket) {
     if (!bucket) return true;
-    var m = parseDurationMinutes(durationLabel);
+    const m = parseDurationMinutes(durationLabel);
     if (!m && m !== 0) return false;
     if (bucket === '5') return m > 0 && m <= 5;
     if (bucket === '10') return m > 5 && m <= 10;
@@ -1042,19 +1042,19 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   // PERF (2026-07-23) : les calculs des onglets Recherche et Explorer sont
   // mémoïsés — avant, la double boucle piliers × séances (~160 items) était
   // reconstruite dans le render à CHAQUE frappe clavier et à chaque re-render.
-  var catalogV = useCatalogVersion(); // re-render quand la liste des vidéos remote arrive
-  var searchResults = useMemo(function() {
-    var seancesData = getSeances(lang);
-    var results = [];
+  const catalogV = useCatalogVersion(); // re-render quand la liste des vidéos remote arrive
+  const searchResults = useMemo(function() {
+    const seancesData = getSeances(lang);
+    const results = [];
     getPiliers(lang).forEach(function(p) {
-      var ps = seancesData[p.key] || [];
+      const ps = seancesData[p.key] || [];
       ps.forEach(function(s, idx) {
         if (!isSeanceVisible(p.key, idx)) return;
-        var titre = s[0] || '';
-        var etape = s[2] || '';
-        var matchQuery = !searchQuery || titre.toLowerCase().includes(searchQuery.toLowerCase());
-        var matchEtape = !searchEtape || etape === searchEtape;
-        var matchDur = _matchesDurationBucket(s[1], durationFilter);
+        const titre = s[0] || '';
+        const etape = s[2] || '';
+        const matchQuery = !searchQuery || titre.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchEtape = !searchEtape || etape === searchEtape;
+        const matchDur = _matchesDurationBucket(s[1], durationFilter);
         if (matchQuery && matchEtape && matchDur) {
           results.push({ seance: s, idx: idx, pilier: p });
         }
@@ -1063,12 +1063,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
     return results;
   }, [lang, searchQuery, searchEtape, durationFilter, catalogV]);
 
-  var explorerData = useMemo(function() {
-    var seancesData = getSeances(lang);
-    var piliersAll = getPiliers(lang);
-    var freeItems = (FREE_MONTHLY_SELECTION || []).map(function(item) {
-      var p = piliersAll.find(function(x) { return x.key === item.pilier; });
-      var seance = (seancesData[item.pilier] || [])[item.idx];
+  const explorerData = useMemo(function() {
+    const seancesData = getSeances(lang);
+    const piliersAll = getPiliers(lang);
+    const freeItems = (FREE_MONTHLY_SELECTION || []).map(function(item) {
+      const p = piliersAll.find(function(x) { return x.key === item.pilier; });
+      const seance = (seancesData[item.pilier] || [])[item.idx];
       if (!p || !seance) return null;
       return { pilier: p, idx: item.idx, titre: seance[0], duree: seance[1], etape: seance[2] };
     }).filter(Boolean).filter(function (it) {
@@ -1076,11 +1076,11 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
     });
     // Filter piliers to those containing at least one session matching the duration bucket.
     // En mode App Store (HIDE_UNFILMED), un pilier sans aucune vidéo disparaît.
-    var piliersFiltered = piliersAll.filter(function (p) {
+    const piliersFiltered = piliersAll.filter(function (p) {
       if (!pilierHasContent(p.key, seancesData)) return false;
       if (!durationFilter) return true;
-      var ps = seancesData[p.key] || [];
-      for (var i = 0; i < ps.length; i++) {
+      const ps = seancesData[p.key] || [];
+      for (let i = 0; i < ps.length; i++) {
         if (!isSeanceVisible(p.key, i)) continue;
         if (_matchesDurationBucket(ps[i] && ps[i][1], durationFilter)) return true;
       }
@@ -1089,18 +1089,18 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
     return { freeItems: freeItems, piliersFiltered: piliersFiltered };
   }, [lang, durationFilter, catalogV]);
 
-  var DURATION_CHIPS = [
+  const DURATION_CHIPS = [
     { key: '5', labelFr: '5 min', labelEn: '5 min' },
     { key: '10', labelFr: '10 min', labelEn: '10 min' },
     { key: '1520', labelFr: '15-20 min', labelEn: '15-20 min' },
     { key: 'long', labelFr: '20 min +', labelEn: '20 min +' },
   ];
   function DurationChipsRow() {
-    var isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+    const isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
     return (
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8, paddingRight: 6 }}>
         {DURATION_CHIPS.map(function (c) {
-          var active = durationFilter === c.key;
+          const active = durationFilter === c.key;
           return (
             <TouchableOpacity
               key={c.key}
@@ -1146,47 +1146,47 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       </ScrollView>
     );
   }
-  var [showBreathing, setShowBreathing] = useState(false);
-  var [breathDoneToday, setBreathDoneToday] = useState(false);
+  const [showBreathing, setShowBreathing] = useState(false);
+  const [breathDoneToday, setBreathDoneToday] = useState(false);
   // Algorithmic programs: active row pulled from Supabase + screens
   // (MyPrograms list / ProgramBuilder flow). Both render inline rather
   // than as Modals so the existing tab bar stays hidden — same pattern
   // as the existing CreateProgramScreen modal swap, just full-screen.
-  var [activeProgram, setActiveProgram] = useState(null);
-  var [showMyPrograms, setShowMyPrograms] = useState(false);
-  var [showProgramBuilder, setShowProgramBuilder] = useState(false);
-  var [programRefreshTick, setProgramRefreshTick] = useState(0);
+  const [activeProgram, setActiveProgram] = useState(null);
+  const [showMyPrograms, setShowMyPrograms] = useState(false);
+  const [showProgramBuilder, setShowProgramBuilder] = useState(false);
+  const [programRefreshTick, setProgramRefreshTick] = useState(0);
   // F1 — intention du jour (recommandation pilier). Le prompt cold-start
   // "Comment veux-tu te sentir aujourd'hui ?" a été RETIRÉ (retour Yvan
   // 26/07 : il chevauchait l'écran de connexion Apple Watch au premier
   // lancement). On lit seulement une intention déjà stockée.
-  var [todayIntention, setTodayIntentionState] = useState(null);
+  const [todayIntention, setTodayIntentionState] = useState(null);
   // F3 — milestone de streak fêtée (3/7/14/21/30/50/100).
-  var [celebratedStreakN, setCelebratedStreakN] = useState(null);
+  const [celebratedStreakN, setCelebratedStreakN] = useState(null);
   // Speir-inspired Lots iPhone — favoris live-updatable pour les rangées
   // "Mes favoris" + badges sur les cards. `favVersion` force un rerender
   // de la branche Pour vous quand un cœur est toggle ailleurs.
-  var [favVersion, setFavVersion] = useState(0);
+  const [favVersion, setFavVersion] = useState(0);
   // Section Hors-ligne iPhone : version cache téléchargements pour
   // rerender quand une séance est téléchargée/supprimée.
-  var [dlVersion, setDlVersion] = useState(0);
+  const [dlVersion, setDlVersion] = useState(0);
 
   useEffect(function() { diag('MonCorps.mount', 'start'); loadSavedPrograms(); diag('MonCorps.mount', 'done'); }, []);
 
   useEffect(function() {
     if (IS_TV) return undefined; // TV : déjà câblé via TwoColLandingTV.
-    var unsub = subscribeFavorites(function() { setFavVersion(function(v) { return v + 1; }); });
+    const unsub = subscribeFavorites(function() { setFavVersion(function(v) { return v + 1; }); });
     return function() { try { if (unsub) unsub(); } catch (e) {} };
   }, []);
 
   useEffect(function() {
     if (IS_TV) return undefined; // TV : pas de downloads.
-    var unsub = subscribeDownloads(function() { setDlVersion(function(v) { return v + 1; }); });
+    const unsub = subscribeDownloads(function() { setDlVersion(function(v) { return v + 1; }); });
     return function() { try { if (unsub) unsub(); } catch (e) {} };
   }, []);
 
   useEffect(function() {
-    var cancelled = false;
+    let cancelled = false;
     getTodayIntention().then(function(intent) {
       if (cancelled) return;
       if (intent) setTodayIntentionState(intent);
@@ -1199,7 +1199,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   // c'est le cas, on l'affiche puis on marque comme célébrée pour ne pas
   // re-afficher à chaque ouverture du même nombre.
   useEffect(function() {
-    var cancelled = false;
+    let cancelled = false;
     if (!streak) return undefined;
     shouldCelebrate(streak).then(function(go) {
       if (cancelled || !go) return;
@@ -1210,7 +1210,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   }, [streak]);
 
   useEffect(function() {
-    var cancelled = false;
+    let cancelled = false;
     if (!supabase || !supaUser) { setActiveProgram(null); return; }
     getActiveProgram(supabase, supaUser.id).then(function(p) {
       if (!cancelled) setActiveProgram(p || null);
@@ -1230,47 +1230,47 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       if (raw) { try { setSavedPrograms(JSON.parse(raw)); } catch(e) {} }
       else {
         AsyncStorage.getItem('fluid_custom_program').then(function(old) {
-          if (old) { try { var p = JSON.parse(old); setSavedPrograms([p]); AsyncStorage.setItem('fluid_custom_programs', JSON.stringify([p])); } catch(e) {} }
+          if (old) { try { const p = JSON.parse(old); setSavedPrograms([p]); AsyncStorage.setItem('fluid_custom_programs', JSON.stringify([p])); } catch(e) {} }
         });
       }
     });
   }
   function deleteSavedProgram(idx) {
-    var prog = savedPrograms[idx];
+    const prog = savedPrograms[idx];
     if (prog && prog.notifIds) cancelProgNotifications(prog.notifIds);
     if (prog && prog.calendarProgramId) {
       try { calendarUtil.unscheduleProgram(prog.calendarProgramId); } catch(e) {}
     }
-    var updated = savedPrograms.filter(function(_, i) { return i !== idx; });
+    const updated = savedPrograms.filter(function(_, i) { return i !== idx; });
     setSavedPrograms(updated);
     AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(updated));
   }
 
   async function handleScheduleProgramInCalendar(idx) {
     if (Platform.OS !== 'ios') return;
-    var prog = savedPrograms[idx];
+    const prog = savedPrograms[idx];
     if (!prog) return;
     try {
-      var prefs = await calendarUtil.getCalendarPrefs();
+      const prefs = await calendarUtil.getCalendarPrefs();
       if (!prefs || !prefs.enabled) {
-        var granted = await calendarUtil.requestCalendarPermission();
+        const granted = await calendarUtil.requestCalendarPermission();
         if (!granted) {
           Alert.alert('FluidBody', tr.calendar_permission_denied || "Permission refusée. Ouvre Réglages > Confidentialité > Calendriers pour autoriser Fluidbody.");
           return;
         }
         await calendarUtil.setCalendarPrefs({ enabled: true });
       }
-      var calendarProgramId = prog.calendarProgramId || ('prog_' + (prog.date || Date.now()) + '_' + idx);
-      var pilierLabelFor = function(k) {
-        var p = getPiliers(lang).find(function(x) { return x.key === k; });
+      const calendarProgramId = prog.calendarProgramId || ('prog_' + (prog.date || Date.now()) + '_' + idx);
+      const pilierLabelFor = function(k) {
+        const p = getPiliers(lang).find(function(x) { return x.key === k; });
         return (p && p.label) || k;
       };
-      var titleTemplate = function(pillarLabel) {
-        var tpl = tr.calendar_event_title_template;
+      const titleTemplate = function(pillarLabel) {
+        const tpl = tr.calendar_event_title_template;
         if (typeof tpl === 'function') return tpl(pillarLabel);
         return 'Fluidbody : ' + pillarLabel;
       };
-      var res = await calendarUtil.scheduleProgram({
+      const res = await calendarUtil.scheduleProgram({
         program: prog,
         programId: calendarProgramId,
         weeks: 4,
@@ -1280,7 +1280,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       // Persist the calendarProgramId on the program so we can unschedule later.
       if (!prog.calendarProgramId) {
         prog.calendarProgramId = calendarProgramId;
-        var updated = savedPrograms.slice();
+        const updated = savedPrograms.slice();
         updated[idx] = Object.assign({}, prog);
         setSavedPrograms(updated);
         AsyncStorage.setItem('fluid_custom_programs', JSON.stringify(updated));
@@ -1295,12 +1295,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
 
   async function handleUnscheduleProgramInCalendar(idx) {
     if (Platform.OS !== 'ios') return;
-    var prog = savedPrograms[idx];
+    const prog = savedPrograms[idx];
     if (!prog || !prog.calendarProgramId) return;
     try {
-      var n = await calendarUtil.unscheduleProgram(prog.calendarProgramId);
-      var updated = savedPrograms.slice();
-      var copy = Object.assign({}, prog);
+      const n = await calendarUtil.unscheduleProgram(prog.calendarProgramId);
+      const updated = savedPrograms.slice();
+      const copy = Object.assign({}, prog);
       delete copy.calendarProgramId;
       updated[idx] = copy;
       setSavedPrograms(updated);
@@ -1312,27 +1312,27 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   // avec Bibliothèque/Pour toi) — l'écran reste rendu si mcTab === 'recherche'
   // et l'icône recherche du header TV est conservée. Bonus : 3 onglets =
   // capsule entière visible sans scroll horizontal.
-  var MC_TABS = ['pour_vous', 'explorer', 'programmes' /* , 'live', 'recherche' */];
+  const MC_TABS = ['pour_vous', 'explorer', 'programmes' /* , 'live', 'recherche' */];
   // chromeScroll : le header (scrim + logo + capsule) sort par le haut quand
   // on scrolle vers le bas, revient au scroll vers le haut. Handler recréé à
   // chaque changement d'onglet (le ScrollView est remonté avec key={mcTab},
   // son offset repart à 0 — un lastY périmé déclencherait un faux masquage).
-  var headerTranslateY = useRef(chromeAnim.interpolate({ inputRange: [0, 1], outputRange: [-220, 0] })).current;
+  const headerTranslateY = useRef(chromeAnim.interpolate({ inputRange: [0, 1], outputRange: [-220, 0] })).current;
   // Promo « charge d'entraînement » — même bannière que sur Activité, même
   // flag partagé (fermée à un endroit = fermée partout, via pub-sub).
-  var effortPromo = useEffortPromo();
-  var [showEffortWalkthrough, setShowEffortWalkthrough] = useState(false);
-  var onChromeScroll = useMemo(function() { return createChromeScrollHandler(); }, [mcTab]);
+  const effortPromo = useEffortPromo();
+  const [showEffortWalkthrough, setShowEffortWalkthrough] = useState(false);
+  const onChromeScroll = useMemo(function() { return createChromeScrollHandler(); }, [mcTab]);
   useEffect(function() { showChrome(); }, [mcTab]);
-  var mcTabLabels = { pour_vous: tr.tab_pour_vous, explorer: tr.tab_explorer, programmes: tr.tab_programmes, live: tr.live_title || 'Live', recherche: tr.tab_recherche };
-  var piliers = getPiliers(lang);
-  var recommendedPiliers = tensionIdxs.map(function(i) { return ZONE_TO_PILIER[i]; });
-  var effectiveRecommended = recommendedPiliers.length > 0 ? recommendedPiliers : [];
-  var sdj = getSeanceDuJour(done, tensionIdxs, lang);
+  const mcTabLabels = { pour_vous: tr.tab_pour_vous, explorer: tr.tab_explorer, programmes: tr.tab_programmes, live: tr.live_title || 'Live', recherche: tr.tab_recherche };
+  const piliers = getPiliers(lang);
+  const recommendedPiliers = tensionIdxs.map(function(i) { return ZONE_TO_PILIER[i]; });
+  const effectiveRecommended = recommendedPiliers.length > 0 ? recommendedPiliers : [];
+  const sdj = getSeanceDuJour(done, tensionIdxs, lang);
 
-  var sortedPiliers = [...piliers].sort(function(a, b) {
-    var aRec = effectiveRecommended.includes(a.key) ? 0 : 1;
-    var bRec = effectiveRecommended.includes(b.key) ? 0 : 1;
+  const sortedPiliers = [...piliers].sort(function(a, b) {
+    const aRec = effectiveRecommended.includes(a.key) ? 0 : 1;
+    const bRec = effectiveRecommended.includes(b.key) ? 0 : 1;
     return aRec - bRec;
   });
 
@@ -1465,7 +1465,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               translucide sans bordure. Zéro BlurView ici = perf OK. */}
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {MC_TABS.map(function(t) {
-              var active = mcTab === t;
+              const active = mcTab === t;
               return (
                 <TouchableOpacity
                   key={t}
@@ -1511,12 +1511,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             tabs so the user always sees their journey. Tap → MyPrograms. */}
         {activeProgram && (function() {
           try {
-            var stats = getProgramStats(activeProgram);
-            var nextS = stats.nextSession;
-            var nextPil = nextS && piliers.find(function(p) { return p.key === nextS.pilier_key; });
-            var nextLabel = nextPil ? nextPil.label : (nextS ? nextS.pilier_key : '');
-            var nextEtape = nextS && ((tr.etapes && tr.etapes[nextS.etape]) || nextS.etape);
-            var wkLabel = (tr.program_week_label || 'Semaine') + ' ' + stats.currentWeek + '/' + activeProgram.duration_weeks;
+            const stats = getProgramStats(activeProgram);
+            const nextS = stats.nextSession;
+            const nextPil = nextS && piliers.find(function(p) { return p.key === nextS.pilier_key; });
+            const nextLabel = nextPil ? nextPil.label : (nextS ? nextS.pilier_key : '');
+            const nextEtape = nextS && ((tr.etapes && tr.etapes[nextS.etape]) || nextS.etape);
+            const wkLabel = (tr.program_week_label || 'Semaine') + ' ' + stats.currentWeek + '/' + activeProgram.duration_weeks;
             return (
               <TouchableOpacity
                 onPress={function() { hapticLight(); setShowMyPrograms(true); }}
@@ -1580,18 +1580,18 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             // tab pour éviter un double rendu / des focusables fantômes.
             return null;
           }
-          var gridGap = 6;
-          var fullW = CW - 32;
-          var halfW = Math.floor((fullW - gridGap) / 2);
-          var thirdW = Math.floor((fullW - gridGap * 2) / 3);
-          var rowH1 = Math.floor(halfW * 0.72);
-          var rowH2 = Math.floor(thirdW * 0.82);
+          const gridGap = 6;
+          const fullW = CW - 32;
+          const halfW = Math.floor((fullW - gridGap) / 2);
+          const thirdW = Math.floor((fullW - gridGap * 2) / 3);
+          const rowH1 = Math.floor(halfW * 0.72);
+          const rowH2 = Math.floor(thirdW * 0.82);
           // Mosaïque décorative (aucun onPress) = photos piliers D'ORIGINE
           // (stock pro, golf inclus) — demande finale Yvan 25/07 soir après
           // plusieurs allers-retours : les anciennes photos étaient
           // « parfaites ». Le voile sombre (glassCell) + le bloc abonnement
           // fondu (layout Fitness+) sont conservés.
-          var mosaicImages = [
+          const mosaicImages = [
             PILIER_IMAGES.p1, PILIER_IMAGES.p2,
             PILIER_IMAGES.p3, PILIER_IMAGES.p4, PILIER_IMAGES.p5,
             PILIER_IMAGES.p6, PILIER_IMAGES.p7,
@@ -1599,7 +1599,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           // Style Fitness+ (demande Yvan 25/07, capture fournie) : cells
           // nues — pas de bordure verre ni de reflet, juste l'image avec un
           // radius modéré, collage serré.
-          var glassCell = function(src, w, h, key) {
+          const glassCell = function(src, w, h, key) {
             return (
               <View key={key} style={{ width: w, height: h, borderRadius: 14, overflow: 'hidden' }}>
                 <Image source={src} contentFit="cover" transition={200} cachePolicy="memory-disk" style={{ flex: 1 }} />
@@ -1610,9 +1610,9 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               </View>
             );
           };
-          var intent = todayIntention ? findIntention(todayIntention) : null;
-          var intentPilierKey = todayIntention ? getPilierKeyForIntention(todayIntention) : null;
-          var intentPilier = intentPilierKey ? piliers.find(function(p) { return p.key === intentPilierKey; }) : null;
+          const intent = todayIntention ? findIntention(todayIntention) : null;
+          const intentPilierKey = todayIntention ? getPilierKeyForIntention(todayIntention) : null;
+          const intentPilier = intentPilierKey ? piliers.find(function(p) { return p.key === intentPilierKey; }) : null;
 
           // (La section "Hors-ligne" a déménagé dans Profil > Mes téléchargements
           // pour ne pas surcharger Pour vous.)
@@ -1621,14 +1621,14 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           // Hidden si 0 favori. favVersion (dans une useEffect ailleurs) force
           // un rerender quand un cœur est toggle.
           // eslint-disable-next-line no-unused-vars
-          var _favTick = favVersion;
-          var seancesByKey = getSeances(lang);
+          const _favTick = favVersion;
+          const seancesByKey = getSeances(lang);
 
           // Rangée "Cette semaine" iPhone (Lot 4) — 7 séances suggérées sur
           // les 7 prochains jours. Biais intention si l'utilisateur a une
           // intention du jour. Cards avec badge LUN/MAR/... en top-left.
-          var weekSchedule = getThisWeekSchedule(piliers, seancesByKey, { intentionKey: todayIntention, lang: lang });
-          var weekItems = weekSchedule.map(function(e) {
+          const weekSchedule = getThisWeekSchedule(piliers, seancesByKey, { intentionKey: todayIntention, lang: lang });
+          const weekItems = weekSchedule.map(function(e) {
             return {
               key: 'wk_' + e.dayIdx + '_' + e.pilier.key + '_' + e.idx,
               title: e.seance[0],
@@ -1639,17 +1639,17 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               idx: e.idx,
             };
           });
-          var favItems = [];
-          var favIds = getCachedFavorites() || [];
-          for (var i = 0; i < favIds.length; i++) {
-            var id = favIds[i];
-            var us = id.lastIndexOf('_');
+          const favItems = [];
+          const favIds = getCachedFavorites() || [];
+          for (let i = 0; i < favIds.length; i++) {
+            const id = favIds[i];
+            const us = id.lastIndexOf('_');
             if (us < 1) continue;
             var pk = id.slice(0, us);
-            var sIdx = parseInt(id.slice(us + 1), 10);
+            const sIdx = parseInt(id.slice(us + 1), 10);
             if (Number.isNaN(sIdx)) continue;
-            var pil = piliers.find(function(p) { return p.key === pk; });
-            var s = pil && seancesByKey[pk] && seancesByKey[pk][sIdx];
+            const pil = piliers.find(function(p) { return p.key === pk; });
+            const s = pil && seancesByKey[pk] && seancesByKey[pk][sIdx];
             if (!pil || !s) continue;
             favItems.push({
               key: 'fav_' + id,
@@ -1684,9 +1684,9 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               {/* Défi 7 jours « Libère ton dos » — n'apparaît que quand
                   CHALLENGE_7J.enabled est true (vidéos en ligne). */}
               {CHALLENGE_7J.enabled ? (function() {
-                var cdCount = challengeDoneCount(done);
-                var cdNext = challengeNextDay(done);
-                var cdDone = cdNext === -1;
+                const cdCount = challengeDoneCount(done);
+                const cdNext = challengeNextDay(done);
+                const cdDone = cdNext === -1;
                 return (
                   <TouchableOpacity
                     onPress={function() { hapticLight(); setShowChallenge(true); }}
@@ -1773,7 +1773,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         {mcTab === 'programmes' && (
           <View key="programmes">
             {tr.ob_zones && tr.ob_zones.length > 0 && (function() {
-              var hasZones = Array.isArray(tensionIdxs) && tensionIdxs.length > 0;
+              const hasZones = Array.isArray(tensionIdxs) && tensionIdxs.length > 0;
               if (bilanEditMode) {
                 return (
                   <View style={{ marginBottom: 24 }}>
@@ -1783,15 +1783,15 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     </View>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 16, paddingHorizontal: 8 }}>
                       {tr.ob_zones.map(function(zone, idx) {
-                        var active = (tensionIdxs || []).indexOf(idx) !== -1;
+                        const active = (tensionIdxs || []).indexOf(idx) !== -1;
                         return (
                           <TouchableOpacity
                             key={idx}
                             activeOpacity={0.85}
                             onPress={function() {
                               if (!onTensionChange) return;
-                              var cur = Array.isArray(tensionIdxs) ? tensionIdxs : [];
-                              var next = cur.indexOf(idx) !== -1 ? cur.filter(function(x) { return x !== idx; }) : cur.concat([idx]);
+                              const cur = Array.isArray(tensionIdxs) ? tensionIdxs : [];
+                              const next = cur.indexOf(idx) !== -1 ? cur.filter(function(x) { return x !== idx; }) : cur.concat([idx]);
                               onTensionChange(next);
                             }}
                             style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 22, backgroundColor: active ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.1)' }}
@@ -1812,7 +1812,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                         </TouchableOpacity>
                       ) : (
                         <TouchableOpacity
-                          onPress={function() { var p = piliers.find(function(x) { return x.key === 'p7'; }); if (p) setOpenPilier(p); }}
+                          onPress={function() { const p = piliers.find(function(x) { return x.key === 'p7'; }); if (p) setOpenPilier(p); }}
                           activeOpacity={0.7}
                           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8 }}
                         >
@@ -1824,8 +1824,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   </View>
                 );
               }
-              var seenKeys = {};
-              var recommendedPiliers = (tensionIdxs || []).map(function(i) { return ZONE_TO_PILIER[i]; })
+              const seenKeys = {};
+              const recommendedPiliers = (tensionIdxs || []).map(function(i) { return ZONE_TO_PILIER[i]; })
                 .filter(function(k) { if (!k || seenKeys[k]) return false; seenKeys[k] = true; return true; })
                 .map(function(k) { return piliers.find(function(p) { return p.key === k; }); })
                 .filter(Boolean);
@@ -1840,8 +1840,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     </TouchableOpacity>
                   </View>
                   {recommendedPiliers.map(function(p) {
-                    var descIdx = PILIER_LABEL_IDX[p.key];
-                    var desc = (tr.piliers_desc && tr.piliers_desc[descIdx]) || '';
+                    const descIdx = PILIER_LABEL_IDX[p.key];
+                    const desc = (tr.piliers_desc && tr.piliers_desc[descIdx]) || '';
                     return (
                       <View key={'rec-' + p.key} style={{ marginBottom: 10, position: 'relative' }}>
                         <TouchableOpacity
@@ -1890,7 +1890,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>{tr.prog_reveil_duree || '7 JOURS · 10 MIN/JOUR'}</Text>
                   </View>
                   <TouchableOpacity
-                    onPress={function() { var p = piliers.find(function(x) { return x.key === 'p4'; }); if (p) setOpenPilier(p); }}
+                    onPress={function() { const p = piliers.find(function(x) { return x.key === 'p4'; }); if (p) setOpenPilier(p); }}
                     activeOpacity={0.8}
                     style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
                   >
@@ -1911,7 +1911,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>{tr.prog_dos_duree || '21 JOURS · 15 MIN/JOUR'}</Text>
                   </View>
                   <TouchableOpacity
-                    onPress={function() { var p = piliers.find(function(x) { return x.key === 'p2'; }); if (p) setOpenPilier(p); }}
+                    onPress={function() { const p = piliers.find(function(x) { return x.key === 'p2'; }); if (p) setOpenPilier(p); }}
                     activeOpacity={0.8}
                     style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
                   >
@@ -1932,7 +1932,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>{tr.prog_posttravail_duree || '5 JOURS · 15 MIN/JOUR'}</Text>
                   </View>
                   <TouchableOpacity
-                    onPress={function() { var p = piliers.find(function(x) { return x.key === 'p1'; }); if (p) setOpenPilier(p); }}
+                    onPress={function() { const p = piliers.find(function(x) { return x.key === 'p1'; }); if (p) setOpenPilier(p); }}
                     activeOpacity={0.8}
                     style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
                   >
@@ -1953,7 +1953,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>{tr.prog_core_duree || '14 JOURS · 12 MIN/JOUR'}</Text>
                   </View>
                   <TouchableOpacity
-                    onPress={function() { var p = piliers.find(function(x) { return x.key === 'p7'; }); if (p) setOpenPilier(p); }}
+                    onPress={function() { const p = piliers.find(function(x) { return x.key === 'p7'; }); if (p) setOpenPilier(p); }}
                     activeOpacity={0.8}
                     style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
                   >
@@ -1974,7 +1974,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     <Text style={{ fontSize: 11, fontWeight: "700", color: "#AEEF4D", letterSpacing: 1 }}>{tr.prog_souplesse_duree || '14 JOURS · 20 MIN/JOUR'}</Text>
                   </View>
                   <TouchableOpacity
-                    onPress={function() { var p = piliers.find(function(x) { return x.key === 'p3'; }); if (p) setOpenPilier(p); }}
+                    onPress={function() { const p = piliers.find(function(x) { return x.key === 'p3'; }); if (p) setOpenPilier(p); }}
                     activeOpacity={0.8}
                     style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
                   >
@@ -1994,7 +1994,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff", letterSpacing: 1 }}>{tr.prog_debuter_duree}</Text>
                 </View>
                 <TouchableOpacity
-                  onPress={function() { var p = piliers.find(function(x) { return x.key === 'p1'; }); if (p) setOpenPilier(p); }}
+                  onPress={function() { const p = piliers.find(function(x) { return x.key === 'p1'; }); if (p) setOpenPilier(p); }}
                   activeOpacity={0.8}
                   style={{ alignSelf: "stretch", height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
                 >
@@ -2058,7 +2058,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               <View style={{ marginTop: 24 }}>
                 <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', marginBottom: 14 }}>{tr.prog_mes_programmes || 'Mes programmes'}</Text>
                 {savedPrograms.map(function(prog, idx) {
-                  var progPiliers = getPiliers(lang).filter(function(p) { return prog.piliers.includes(p.key); });
+                  const progPiliers = getPiliers(lang).filter(function(p) { return prog.piliers.includes(p.key); });
                   return (
                     <View key={idx} style={{ backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 16, marginBottom: 12 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -2110,21 +2110,21 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           </View>
         )}
         {mcTab === 'explorer' && (function() {
-          var seancesData = getSeances(lang);
+          const seancesData = getSeances(lang);
           // Sur Apple TV (1920×1080 ou plus), une card occupant 45 % de la
           // largeur écran est trop grande et perd le confort de scan visuel
           // à 2-3 m. On bascule à des dims pensées pour le focus engine.
-          var cardH = IS_TV ? 320 : Math.floor(CW * 0.45);
+          const cardH = IS_TV ? 320 : Math.floor(CW * 0.45);
           // Cards gratuites iPhone : 2 cards côte à côte qui tiennent
           // ENTIÈREMENT dans l'écran (retour Yvan 25/07 : « ça sort de
           // l'écran »). Largeur = (CW − 2×16 padding − 12 gap) / 2 ; s'il y
           // a plus de 2 séances gratuites un jour, le ScrollView reprend
           // son rôle avec 2 cards visibles.
-          var freeCardW = IS_TV ? 380 : Math.floor((CW - 16 * 2 - 12) / 2);
-          var freeCardH = IS_TV ? 440 : Math.round(freeCardW * 1.3);
+          const freeCardW = IS_TV ? 380 : Math.floor((CW - 16 * 2 - 12) / 2);
+          const freeCardH = IS_TV ? 440 : Math.round(freeCardW * 1.3);
           // PERF : mémoïsés en tête de composant (explorerData).
-          var freeItems = explorerData.freeItems;
-          var piliersFiltered = explorerData.piliersFiltered;
+          const freeItems = explorerData.freeItems;
+          const piliersFiltered = explorerData.piliersFiltered;
           return (
             <View key="explorer-sections">
               <DurationChipsRow />
@@ -2177,11 +2177,11 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 </Text>
               ) : null}
               {piliersFiltered.map(function(p, pi) {
-                var ps = seancesData[p.key] || [];
-                var doneCount = done[p.key] ? done[p.key].filter(Boolean).length : 0;
+                const ps = seancesData[p.key] || [];
+                const doneCount = done[p.key] ? done[p.key].filter(Boolean).length : 0;
                 // Sur TV : si pas de bandeau "gratuit du mois" au-dessus, la
                 // première pilier card prend le focus initial.
-                var preferred = pi === 0 && freeItems.length === 0;
+                const preferred = pi === 0 && freeItems.length === 0;
                 return (
                   <FocusableCard
                     key={"exp-" + p.key}
@@ -2215,8 +2215,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             </View>
             <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 20 }}>{tr.live_subtitle || 'Rejoins Sabrina en live chaque semaine'}</Text>
             {LIVE_SCHEDULE.map(function(cls) {
-              var dayFull = lang === 'en' ? DAY_FULL_EN : DAY_FULL_FR;
-              var isToday = cls.day === new Date().getDay();
+              const dayFull = lang === 'en' ? DAY_FULL_EN : DAY_FULL_FR;
+              const isToday = cls.day === new Date().getDay();
               return (
                 <View key={cls.id} style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 14, borderWidth: 1, borderColor: isToday ? '#AEEF4D' : 'rgba(174,239,77,0.15)' }}>
                   <View style={{ height: ipadH(150) }}>
@@ -2257,8 +2257,8 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           </View>
         )}
         {mcTab === 'recherche' && (function() {
-          var halfW = (CW - 52) / 2;
-          var allResults = searchResults; // PERF : mémoïsé en tête de composant.
+          const halfW = (CW - 52) / 2;
+          const allResults = searchResults; // PERF : mémoïsé en tête de composant.
           return (
             <View>
               {/* Search bar — Liquid Glass capsule */}
@@ -2280,7 +2280,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               {/* Étape filter chips */}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
                 {['Comprendre', 'Ressentir', 'Préparer', 'Exécuter', 'Évoluer'].map(function(etape) {
-                  var active = searchEtape === etape;
+                  const active = searchEtape === etape;
                   return (
                     <TouchableOpacity key={etape} onPress={function() { setSearchEtape(active ? null : etape); }}
                       style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.08)', marginRight: 8 }}>
@@ -2295,11 +2295,11 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               {/* Grid 2 colonnes avec photos */}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
                 {allResults.map(function(r, i) {
-                  var s = r.seance;
-                  var titre = s[0] || '';
-                  var duree = s[1] || '';
-                  var etape = s[2] || '';
-                  var etapeColor = ETAPE_COLORS[etape] || 'rgba(255,255,255,0.5)';
+                  const s = r.seance;
+                  const titre = s[0] || '';
+                  const duree = s[1] || '';
+                  const etape = s[2] || '';
+                  const etapeColor = ETAPE_COLORS[etape] || 'rgba(255,255,255,0.5)';
                   return (
                     <TouchableOpacity key={r.pilier.key + '-' + r.idx + '-' + i} activeOpacity={0.88} onPress={function() { setOpenPilier(r.pilier); }}
                       style={{ width: halfW, height: ipadH(140), borderRadius: 14, overflow: 'hidden', marginBottom: 2 }}>
@@ -2343,7 +2343,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         lang={lang}
         onClose={function() { setOpenEducationPilier(null); }}
         onOpenSeance={function(pilierKey, idx) {
-          var target = piliers.find(function(x) { return x.key === pilierKey; });
+          const target = piliers.find(function(x) { return x.key === pilierKey; });
           if (!target) return;
           setOpenInitialIdx(typeof idx === 'number' ? idx : null);
           setOpenPilier(target);
@@ -2358,7 +2358,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         isSubscriber={isSubscriber}
         onActivateSubscription={onActivateSubscription}
         onOpenSeance={function(pilierKey, idx) {
-          var target = piliers.find(function(x) { return x.key === pilierKey; });
+          const target = piliers.find(function(x) { return x.key === pilierKey; });
           if (!target) return;
           setShowChallenge(false);
           setOpenInitialIdx(typeof idx === 'number' ? idx : null);
@@ -2394,7 +2394,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           piliers={piliers}
           lang={lang}
           seancesByKey={getSeances(lang)}
-          onPrimary={function() { var f = (sdj && sdj.pilier) || piliers[0]; if (f) setOpenPilier(f); }}
+          onPrimary={function() { const f = (sdj && sdj.pilier) || piliers[0]; if (f) setOpenPilier(f); }}
           onOpenPilier={setOpenPilier}
           onOpenSeance={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }}
           onResume={function(p, idx) { setOpenInitialIdx(typeof idx === 'number' ? idx : null); setOpenPilier(p); }}

@@ -343,8 +343,8 @@ function MeduseCornerIcon({ size = 50, breathCycleMs = null, breathMaxScale = 1.
     return () => { try { breathLoop.stop(); } catch (e) {} };
   }, [breathCycleMs, breath, breathMaxScale, focused]);
 
-  var mc = tint ? function(a) { return tint.replace('1)', a + ')').replace('rgb(', 'rgba('); } : blueMeduse;
-  var mcSolid = tint || MEDUSE_CORNER_BLUE;
+  const mc = tint ? function(a) { return tint.replace('1)', a + ')').replace('rgb(', 'rgba('); } : blueMeduse;
+  const mcSolid = tint || MEDUSE_CORNER_BLUE;
 
   return (
     <Animated.View style={{ width: size, height: size, overflow: 'visible', transform: [{ translateY: floatY }], alignItems: 'center', justifyContent: 'center' }}>
@@ -566,7 +566,7 @@ const BULLES_ONBOARDING = BULLES.slice(0, IS_ANDROID ? 5 : 12);
 // ══════════════════════════════════
 // MÉDUSE VIVANTE — évolue avec la progression
 // ══════════════════════════════════
-var MEDUSA_STATES = [
+const MEDUSA_STATES = [
   { name: 'dormante', nameEn: 'dormant', min: 0, color: 'rgba(200,210,230,1)', opacity: 0.35, size: 60, breath: 8000, glowR: 0, particles: 0 },
   { name: 'éveillée', nameEn: 'awakened', min: 11, color: 'rgba(0,189,208,1)', opacity: 0.6, size: 75, breath: 5000, glowR: 0, particles: 0 },
   { name: 'active', nameEn: 'active', min: 31, color: 'rgba(0,220,240,1)', opacity: 0.8, size: 90, breath: 3000, glowR: 30, particles: 3 },
@@ -574,7 +574,7 @@ var MEDUSA_STATES = [
   { name: 'légendaire', nameEn: 'legendary', min: 91, color: 'rgba(255,215,0,1)', opacity: 1, size: 120, breath: 1500, glowR: 70, particles: 8 },
 ];
 
-var MEDUSA_STATE_NAMES = {
+const MEDUSA_STATE_NAMES = {
   fr: ['Dormante', 'Éveillée', 'Active', 'Rayonnante', 'Légendaire'],
   en: ['Dormant', 'Awakened', 'Active', 'Radiant', 'Legendary'],
   de: ['Schlafend', 'Erwacht', 'Aktiv', 'Strahlend', 'Legendär'],
@@ -587,8 +587,8 @@ var MEDUSA_STATE_NAMES = {
 };
 
 function getMeduseState(pct, streak) {
-  var score = Math.min(100, pct * 0.7 + Math.min(streak, 14) * 2);
-  for (var i = MEDUSA_STATES.length - 1; i >= 0; i--) {
+  const score = Math.min(100, pct * 0.7 + Math.min(streak, 14) * 2);
+  for (let i = MEDUSA_STATES.length - 1; i >= 0; i--) {
     if (score >= MEDUSA_STATES[i].min) return i;
   }
   return 0;
@@ -596,36 +596,36 @@ function getMeduseState(pct, streak) {
 
 // ── LivingMedusa ──
 function LivingMedusa({ pct, streak, lang, showLabel }) {
-  var stateIdx = getMeduseState(pct, streak || 0);
-  var ms = MEDUSA_STATES[stateIdx];
-  var names = MEDUSA_STATE_NAMES[lang] || MEDUSA_STATE_NAMES.fr;
-  var floatAnim = useRef(new Animated.Value(0)).current;
-  var glowAnim = useRef(new Animated.Value(0)).current;
-  var [particles, setParticles] = useState([]);
-  var focused = useScreenFocused();
+  const stateIdx = getMeduseState(pct, streak || 0);
+  const ms = MEDUSA_STATES[stateIdx];
+  const names = MEDUSA_STATE_NAMES[lang] || MEDUSA_STATE_NAMES.fr;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+  const [particles, setParticles] = useState([]);
+  const focused = useScreenFocused();
 
   useEffect(function() {
     if (!focused) return;
-    var loops = [];
-    var floatLoop = Animated.loop(Animated.sequence([
+    const loops = [];
+    const floatLoop = Animated.loop(Animated.sequence([
       Animated.timing(floatAnim, { toValue: 1, duration: ms.breath, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       Animated.timing(floatAnim, { toValue: 0, duration: ms.breath, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ]));
     floatLoop.start(); loops.push(floatLoop);
     if (ms.glowR > 0) {
-      var glowLoop = Animated.loop(Animated.sequence([
+      const glowLoop = Animated.loop(Animated.sequence([
         Animated.timing(glowAnim, { toValue: 1, duration: ms.breath * 0.8, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         Animated.timing(glowAnim, { toValue: 0, duration: ms.breath * 0.8, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ]));
       glowLoop.start(); loops.push(glowLoop);
     }
     if (!IS_ANDROID && ms.particles > 0) {
-      var pts = [];
-      for (var i = 0; i < ms.particles; i++) {
+      const pts = [];
+      for (let i = 0; i < ms.particles; i++) {
         pts.push({ angle: (i / ms.particles) * Math.PI * 2, dist: ms.size * 0.5 + 10 + Math.random() * 20, speed: 2000 + Math.random() * 3000, anim: new Animated.Value(0) });
       }
       pts.forEach(function(p) {
-        var pLoop = Animated.loop(Animated.sequence([
+        const pLoop = Animated.loop(Animated.sequence([
           Animated.timing(p.anim, { toValue: 1, duration: p.speed, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
           Animated.timing(p.anim, { toValue: 0, duration: p.speed, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         ]));
@@ -638,9 +638,9 @@ function LivingMedusa({ pct, streak, lang, showLabel }) {
     };
   }, [stateIdx, focused]);
 
-  var translateY = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 10] });
-  var scale = floatAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.95, 1.05, 0.95] });
-  var glowOpacity = ms.glowR > 0 ? glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.4] }) : 0;
+  const translateY = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 10] });
+  const scale = floatAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.95, 1.05, 0.95] });
+  const glowOpacity = ms.glowR > 0 ? glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.4] }) : 0;
 
   return (
     <View style={{ alignItems: 'center' }}>
@@ -651,12 +651,12 @@ function LivingMedusa({ pct, streak, lang, showLabel }) {
         {particles.map(function(p, i) {
           // Particles : transform-only motion (native driver compatible).
           // Static left/top anchors at the orbit position; dx/dy add the orbital wobble.
-          var pSize = stateIdx >= 4 ? 5 : 4;
-          var baseX = Math.cos(p.angle) * p.dist;
-          var baseY = Math.sin(p.angle) * p.dist;
-          var dx = p.anim.interpolate({ inputRange: [0, 1], outputRange: [0, Math.cos(p.angle) * 8] });
-          var dy = p.anim.interpolate({ inputRange: [0, 1], outputRange: [0, Math.sin(p.angle) * 8] });
-          var po = p.anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.2, 0.8, 0.2] });
+          const pSize = stateIdx >= 4 ? 5 : 4;
+          const baseX = Math.cos(p.angle) * p.dist;
+          const baseY = Math.sin(p.angle) * p.dist;
+          const dx = p.anim.interpolate({ inputRange: [0, 1], outputRange: [0, Math.cos(p.angle) * 8] });
+          const dy = p.anim.interpolate({ inputRange: [0, 1], outputRange: [0, Math.sin(p.angle) * 8] });
+          const po = p.anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.2, 0.8, 0.2] });
           return (
             <Animated.View
               key={i}
@@ -689,7 +689,7 @@ function LivingMedusa({ pct, streak, lang, showLabel }) {
 // pilotés par Animated.Value). 5 méduses au lieu de 7 ; rotation/pulse retirés
 // (la MeduseCornerIcon interne respire déjà via son propre breath loop).
 function FloatingMedusas({ topInset = 200, bottomInset = 140 } = {}) {
-  var meds = useRef([
+  const meds = useRef([
     { baseX: 20,          baseY: Math.max(topInset, SH * 0.28), size: 80 },
     { baseX: SW * 0.65,   baseY: Math.max(topInset, SH * 0.32), size: 68 },
     { baseX: SW * 0.30,   baseY: Math.max(topInset, SH * 0.50), size: 74 },
@@ -703,28 +703,28 @@ function FloatingMedusas({ topInset = 200, bottomInset = 140 } = {}) {
       sway: new Animated.Value(0),
     });
   })).current;
-  var focused = useScreenFocused();
+  const focused = useScreenFocused();
 
   useEffect(function() {
     if (!focused) return;
-    var mounted = true;
-    var timeouts = [];
-    var loops = [];
-    var currentDrifts = [];
+    let mounted = true;
+    const timeouts = [];
+    const loops = [];
+    const currentDrifts = [];
 
     meds.forEach(function(m, i) {
       // Drift : delta translateX/Y dans une zone autour de la base. Native driver OK.
-      var delay = 300 + i * 500;
+      const delay = 300 + i * 500;
       function drift() {
         if (!mounted) return;
-        var maxY = SH - m.size - bottomInset;
-        var range = Math.max(60, maxY - topInset);
-        var targetX = 10 + Math.random() * (SW - m.size - 20);
-        var targetY = topInset + Math.random() * range;
-        var dx = targetX - m.baseX;
-        var dy = targetY - m.baseY;
-        var dur = 12000 + Math.random() * 10000;
-        var p = Animated.parallel([
+        const maxY = SH - m.size - bottomInset;
+        const range = Math.max(60, maxY - topInset);
+        const targetX = 10 + Math.random() * (SW - m.size - 20);
+        const targetY = topInset + Math.random() * range;
+        const dx = targetX - m.baseX;
+        const dy = targetY - m.baseY;
+        const dur = 12000 + Math.random() * 10000;
+        const p = Animated.parallel([
           Animated.timing(m.driftX, { toValue: dx, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
           Animated.timing(m.driftY, { toValue: dy, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
         ]);
@@ -734,18 +734,18 @@ function FloatingMedusas({ topInset = 200, bottomInset = 140 } = {}) {
       timeouts.push(setTimeout(drift, delay));
 
       // Bob vertical
-      var bobDur = 2400 + i * 380;
-      var bobLoop = Animated.loop(Animated.sequence([
+      const bobDur = 2400 + i * 380;
+      const bobLoop = Animated.loop(Animated.sequence([
         Animated.timing(m.bob, { toValue: 1, duration: bobDur, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         Animated.timing(m.bob, { toValue: 0, duration: bobDur, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ]));
       bobLoop.start(); loops.push(bobLoop);
 
       // Sway horizontal léger (décalé)
-      var swayDur = 3200 + i * 450;
+      const swayDur = 3200 + i * 450;
       timeouts.push(setTimeout(function() {
         if (!mounted) return;
-        var swayLoop = Animated.loop(Animated.sequence([
+        const swayLoop = Animated.loop(Animated.sequence([
           Animated.timing(m.sway, { toValue: 1, duration: swayDur, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
           Animated.timing(m.sway, { toValue: 0, duration: swayDur, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         ]));
@@ -762,10 +762,10 @@ function FloatingMedusas({ topInset = 200, bottomInset = 140 } = {}) {
   }, [focused]);
 
   return meds.map(function(m, i) {
-    var bobAmp = 8 + i * 2;
-    var swayAmp = 5 + i * 1.5;
-    var bobTY = m.bob.interpolate({ inputRange: [0, 1], outputRange: [-bobAmp, bobAmp] });
-    var swayTX = m.sway.interpolate({ inputRange: [0, 1], outputRange: [-swayAmp, swayAmp] });
+    const bobAmp = 8 + i * 2;
+    const swayAmp = 5 + i * 1.5;
+    const bobTY = m.bob.interpolate({ inputRange: [0, 1], outputRange: [-bobAmp, bobAmp] });
+    const swayTX = m.sway.interpolate({ inputRange: [0, 1], outputRange: [-swayAmp, swayAmp] });
     return (
       <Animated.View
         key={'bg-m-' + i}

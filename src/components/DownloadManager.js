@@ -356,7 +356,7 @@ async function deleteAllDownloads() {
 // Get total storage used by downloads
 async function getStorageUsed() {
   const downloads = await getDownloads();
-  var total = 0;
+  let total = 0;
   Object.values(downloads).forEach(function(d) { if (d.size) total += d.size; });
   return total;
 }

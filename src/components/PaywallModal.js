@@ -244,7 +244,7 @@ function TVPaywallFallback({ onClose, onRefresh, lang }) {
 
 export default function PaywallModal({ visible, onClose, lang, packagesByProductId, loadingPrices, disabled, onBuyMonthly, onBuyYearly, onRestore, freeDaysAvailable, isSubscriber, onTvRefreshSubscriber }) {
   // FIX rules-of-hooks (2026-07-23) : hooks avant tout early-return.
-  var theme = useTheme().theme;
+  const theme = useTheme().theme;
   const [selected, setSelected] = useState('yearly');
 
   // Apple TV : court-circuit safety. Règle « jamais de paywall TV » —
@@ -261,39 +261,39 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
     );
   }
 
-  var tr = T[lang] || T['fr'];
-  var isLight = theme.mode === 'light';
-  var isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+  const tr = T[lang] || T['fr'];
+  const isLight = theme.mode === 'light';
+  const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
 
   // Texte légal d'abonnement adapté à la plateforme : sur Android l'abonnement
   // se gère dans Google Play (et non dans les Réglages Apple). On force ces
   // libellés selon Platform.OS (les chaînes de data.js sont rédigées « Apple »).
-  var isAndroidStore = Platform.OS === 'android';
-  var paywallCancelPill = isFr
+  const isAndroidStore = Platform.OS === 'android';
+  const paywallCancelPill = isFr
     ? (isAndroidStore ? 'Annulable depuis Google Play' : 'Annulable depuis Réglages Apple')
     : (isAndroidStore ? 'Cancel anytime in Google Play' : 'Cancel anytime in Apple Settings');
-  var paywallFounderLegal = isFr
+  const paywallFounderLegal = isFr
     ? (isAndroidStore ? 'Aucun engagement, annulable à tout moment dans Google Play' : 'Aucun engagement, annulable à tout moment depuis tes Réglages Apple')
     : (isAndroidStore ? 'No commitment, cancel anytime in Google Play' : 'No commitment, cancel anytime from your Apple Settings');
-  var paywallFullLegal = isFr
+  const paywallFullLegal = isFr
     ? (isAndroidStore
         ? "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période. Le paiement est débité via votre compte Google Play. Gérez ou annulez dans Google Play > Abonnements."
         : "L'abonnement se renouvelle automatiquement sauf annulation au moins 24h avant la fin de la période. Le paiement est débité via votre compte Apple. Gérez ou annulez dans Réglages > Apple ID > Abonnements.")
     : (isAndroidStore
         ? 'The subscription renews automatically unless cancelled at least 24h before the end of the period. Payment is charged to your Google Play account. Manage or cancel in Google Play > Subscriptions.'
         : 'The subscription renews automatically unless cancelled at least 24h before the end of the period. Payment is charged to your Apple account. Manage or cancel in Settings > Apple ID > Subscriptions.');
-  var monthlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.monthly];
-  var yearlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.yearly];
+  const monthlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.monthly];
+  const yearlyPkg = packagesByProductId && packagesByProductId[PRODUCT_IDS.yearly];
   // (2026-07-23) Prix ENTIÈREMENT localisés via RevenueCat/StoreKit :
   // - grand prix de la carte = prix d'INTRO App Store si défini (12.90/99 en
   //   Suisse), sinon prix standard ;
   // - « Puis X » = prix standard localisé (avant : « Puis 24.90 CHF » codé en
   //   dur → incohérent pour tout client hors storefront suisse).
   // Fallbacks CHF conservés pour l'affichage hors-ligne / packages absents.
-  var monthlyIntroStr = (monthlyPkg && monthlyPkg.product && monthlyPkg.product.introPrice && monthlyPkg.product.introPrice.priceString) || null;
-  var yearlyIntroStr = (yearlyPkg && yearlyPkg.product && yearlyPkg.product.introPrice && yearlyPkg.product.introPrice.priceString) || null;
-  var monthlyStdStr = getRcPriceString(monthlyPkg) || null;
-  var yearlyStdStr = getRcPriceString(yearlyPkg) || null;
+  const monthlyIntroStr = (monthlyPkg && monthlyPkg.product && monthlyPkg.product.introPrice && monthlyPkg.product.introPrice.priceString) || null;
+  const yearlyIntroStr = (yearlyPkg && yearlyPkg.product && yearlyPkg.product.introPrice && yearlyPkg.product.introPrice.priceString) || null;
+  const monthlyStdStr = getRcPriceString(monthlyPkg) || null;
+  const yearlyStdStr = getRcPriceString(yearlyPkg) || null;
   // (2026-07-24) Si le produit live n'a PAS d'offre d'introduction dans App
   // Store Connect, StoreKit renvoie introPrice = null → on masquait le
   // problème en retombant sur le prix standard, ce qui affichait
@@ -302,17 +302,17 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   // mois », « puis X », pill éco) n'apparaît QUE si l'intro existe côté store.
   // Package absent (offline / Expo Go) → on garde la copy founder par défaut
   // (marché CHF connu, config cible avec intro).
-  var monthlyHasIntro = monthlyPkg ? !!monthlyIntroStr : true;
-  var yearlyHasIntro = yearlyPkg ? !!yearlyIntroStr : true;
-  var monthlyPriceRaw = monthlyIntroStr || monthlyStdStr || 'CHF 12.90';
-  var yearlyPriceRaw = yearlyIntroStr || yearlyStdStr || 'CHF 99.00';
-  var monthlyDisplay = withPeriod(monthlyPriceRaw, isFr ? '/mois' : '/mo');
-  var yearlyDisplay = withPeriod(yearlyPriceRaw, isFr ? '/an' : '/yr');
+  const monthlyHasIntro = monthlyPkg ? !!monthlyIntroStr : true;
+  const yearlyHasIntro = yearlyPkg ? !!yearlyIntroStr : true;
+  const monthlyPriceRaw = monthlyIntroStr || monthlyStdStr || 'CHF 12.90';
+  const yearlyPriceRaw = yearlyIntroStr || yearlyStdStr || 'CHF 99.00';
+  const monthlyDisplay = withPeriod(monthlyPriceRaw, isFr ? '/mois' : '/mo');
+  const yearlyDisplay = withPeriod(yearlyPriceRaw, isFr ? '/an' : '/yr');
   // Small print « Puis X/mois » — uniquement si une intro existe réellement.
-  var thenMonthlyText = !monthlyHasIntro ? null : (monthlyStdStr
+  const thenMonthlyText = !monthlyHasIntro ? null : (monthlyStdStr
     ? ((isFr ? 'Puis ' : 'Then ') + monthlyStdStr + (isFr ? '/mois' : '/month'))
     : (tr.paywall_founder_then_monthly || (isFr ? 'Puis 24.90 CHF/mois' : 'Then 24.90 CHF/month')));
-  var thenYearlyText = !yearlyHasIntro ? null : (yearlyStdStr
+  const thenYearlyText = !yearlyHasIntro ? null : (yearlyStdStr
     ? ((isFr ? 'Puis ' : 'Then ') + yearlyStdStr + (isFr ? '/an' : '/yr'))
     : (tr.paywall_founder_then_yearly || (isFr ? 'Puis 199 CHF/an' : 'Then 199 CHF/year')));
 
@@ -375,7 +375,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   //
   // Signature : (key, label, introSub, priceText, thenText, savingsLabel).
   function planPill(key, label, introSub, priceText, thenText, savingsLabel) {
-    var active = selected === key;
+    const active = selected === key;
     return (
       <GlassPressable
         key={key}
@@ -450,7 +450,7 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   // Hero absorber: in dark mode we dip to pitch black so the hero image
   // bleeds into the page; in light mode we land on the page bg colour to
   // keep the surrounding glass card legible above it.
-  var heroAbsorber = isLight
+  const heroAbsorber = isLight
     ? ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.10)', theme.colors.bg]
     : ['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.55)', '#000000'];
 

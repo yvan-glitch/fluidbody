@@ -15,8 +15,8 @@ const CARD_H = Math.floor(CARD_W * 0.75);
 // optional "Recommandé pour toi" badge is itself a glass pill.
 
 export default function PilierCard({ pilier, doneCount, onPress, recommended, lang, imageKey }) {
-  var tr = T[lang] || T["fr"];
-  var imgSrc = PILIER_IMAGES[imageKey || pilier.key];
+  const tr = T[lang] || T["fr"];
+  const imgSrc = PILIER_IMAGES[imageKey || pilier.key];
   return (
     <GlassPressable
       onPress={function() { onPress(pilier); }}

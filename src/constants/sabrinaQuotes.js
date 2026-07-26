@@ -35,9 +35,9 @@ const QUOTES = [
 ];
 
 function dayOfYear(date) {
-  var d = date || new Date();
-  var start = new Date(d.getFullYear(), 0, 0);
-  var diff = d - start;
+  const d = date || new Date();
+  const start = new Date(d.getFullYear(), 0, 0);
+  const diff = d - start;
   return Math.floor(diff / 86400000);
 }
 

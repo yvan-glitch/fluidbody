@@ -85,10 +85,10 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
     floatingMedusas.forEach(function(m, idx) {
       function drift() {
         if (!mounted) return;
-        var toX = 10 + Math.random() * (SW - m.size - 20);
-        var toY = 60 + Math.random() * (SH - m.size - 160);
-        var dur = 12000 + Math.random() * 8000;
-        var p = Animated.parallel([
+        const toX = 10 + Math.random() * (SW - m.size - 20);
+        const toY = 60 + Math.random() * (SH - m.size - 160);
+        const dur = 12000 + Math.random() * 8000;
+        const p = Animated.parallel([
           Animated.timing(m.dx, { toValue: toX - m.baseX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
           Animated.timing(m.dy, { toValue: toY - m.baseY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
         ]);

@@ -133,7 +133,7 @@ export default function TheorieDetailScreen({ pilier, items, lang, isSubscriber,
                       lang={lang}
                       size={32}
                       disabled={locked}
-                      durationMin={(function() { var m = String(duree || '').match(/\d+/); return m ? parseInt(m[0], 10) : null; })()}
+                      durationMin={(function() { const m = String(duree || '').match(/\d+/); return m ? parseInt(m[0], 10) : null; })()}
                     />
                   </View>
                 ) : null}

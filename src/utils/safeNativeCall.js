@@ -48,7 +48,7 @@ function _captureNative(name, error) {
 export function diag(step, phase) {
   if (!DIAGNOSTIC_NATIVE_CALLS) return;
   try {
-    var suffix = phase ? ' ' + phase : '';
+    const suffix = phase ? ' ' + phase : '';
     // eslint-disable-next-line no-console
     console.log('[FLDB-DIAG] ' + step + suffix);
   } catch (_) {}
@@ -61,7 +61,7 @@ export function diag(step, phase) {
 export function safeNativeCall(name, fn, fallback) {
   diag(name, 'start');
   try {
-    var result = fn();
+    const result = fn();
     if (result && typeof result.then === 'function') {
       return result.then(
         function (value) { diag(name, 'done'); return value; },

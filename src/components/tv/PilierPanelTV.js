@@ -49,7 +49,7 @@ const ETAPE_TINT = {
 };
 
 function parseMin(d) {
-  var m = String(d || '').match(/\d+/);
+  const m = String(d || '').match(/\d+/);
   return m ? parseInt(m[0], 10) : 0;
 }
 

@@ -248,24 +248,24 @@ function saveHealthKitWorkout(durationMinutes, extras) {
   if (HEALTHKIT_DISABLED) return;
   if (!HK || !hkInitialized || Platform.OS !== 'ios') return;
   try {
-    var endDate = new Date();
-    var startDate = new Date(endDate.getTime() - durationMinutes * 60000);
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - durationMinutes * 60000);
     // Calories : si la live HR a tourné, on a une estimation plus juste via avg HR.
     // Sinon on garde l'estimation forfaitaire 5 kcal/min (Pilates léger).
-    var calories = (extras && Number.isFinite(extras.energyBurned))
+    const calories = (extras && Number.isFinite(extras.energyBurned))
       ? Math.max(1, Math.round(extras.energyBurned))
       : Math.round(durationMinutes * 5);
     // Quantities échantillonnées pendant le workout : energy burned. On
     // pourrait aussi pousser les HR samples ici mais ils sont déjà côté
     // HealthKit (authored par le device source) — éviter les doublons.
-    var quantities = [{
+    const quantities = [{
       startDate: startDate,
       endDate: endDate,
       quantityType: 'HKQuantityTypeIdentifierActiveEnergyBurned',
       quantity: calories,
       unit: 'kcal',
     }];
-    var totals = { energyBurned: calories };
+    const totals = { energyBurned: calories };
     HK.saveWorkoutSample(WORKOUT_ACTIVITY_PILATES, quantities, startDate, endDate, totals)
       .then(function () {
         if (__DEV__) devLog('HealthKit workout saved:', durationMinutes + 'min, ' + calories + 'cal');
@@ -301,17 +301,17 @@ function tabBarIconTint(color) {
 // PERF : mémoïsé — la barre (et son BlurView intensity 80) ne re-rend plus à
 // chaque setState de MainApp, seulement quand l'état de navigation change.
 const CustomTabBar = memo(function CustomTabBar({ state, descriptors, navigation }) {
-  var theme = useTheme().theme;
-  var tabCount = state.routes.length;
-  var barW = SW - 40;
-  var tabW = barW / tabCount;
-  var pad = 5;
-  var pillW = tabW - pad * 2;
-  var pillH = 50;
-  var BAR_H = 60;
-  var indicatorX = useRef(new Animated.Value(state.index * tabW + pad)).current;
-  var currentIdx = useRef(state.index);
-  var dragStartX = useRef(0);
+  const theme = useTheme().theme;
+  const tabCount = state.routes.length;
+  const barW = SW - 40;
+  const tabW = barW / tabCount;
+  const pad = 5;
+  const pillW = tabW - pad * 2;
+  const pillH = 50;
+  const BAR_H = 60;
+  const indicatorX = useRef(new Animated.Value(state.index * tabW + pad)).current;
+  const currentIdx = useRef(state.index);
+  const dragStartX = useRef(0);
 
   useEffect(function() {
     currentIdx.current = state.index;
@@ -323,9 +323,9 @@ const CustomTabBar = memo(function CustomTabBar({ state, descriptors, navigation
 
   // Masquage au scroll (chromeScroll) : translateY vers le bas de quoi sortir
   // entièrement de l'écran (barre 60 + bottom 24 + marge ombre).
-  var chromeTranslateY = useRef(chromeAnim.interpolate({ inputRange: [0, 1], outputRange: [BAR_H + 40, 0] })).current;
+  const chromeTranslateY = useRef(chromeAnim.interpolate({ inputRange: [0, 1], outputRange: [BAR_H + 40, 0] })).current;
 
-  var panResponder = useRef(PanResponder.create({
+  const panResponder = useRef(PanResponder.create({
     onStartShouldSetPanResponder: function() { return true; },
     onMoveShouldSetPanResponder: function(_, g) { return Math.abs(g.dx) > 8; },
     onPanResponderGrant: function(_, g) {
@@ -333,12 +333,12 @@ const CustomTabBar = memo(function CustomTabBar({ state, descriptors, navigation
       indicatorX.stopAnimation();
     },
     onPanResponderMove: function(_, g) {
-      var newX = Math.max(pad, Math.min(dragStartX.current + g.dx, (tabCount - 1) * tabW + pad));
+      const newX = Math.max(pad, Math.min(dragStartX.current + g.dx, (tabCount - 1) * tabW + pad));
       indicatorX.setValue(newX);
     },
     onPanResponderRelease: function(_, g) {
-      var rawX = dragStartX.current + g.dx;
-      var newIdx = Math.round(Math.max(0, Math.min(rawX / tabW, tabCount - 1)));
+      const rawX = dragStartX.current + g.dx;
+      const newIdx = Math.round(Math.max(0, Math.min(rawX / tabW, tabCount - 1)));
       if (newIdx !== currentIdx.current) {
         navigation.navigate(state.routes[newIdx].name);
       }
@@ -363,14 +363,14 @@ const CustomTabBar = memo(function CustomTabBar({ state, descriptors, navigation
         </Animated.View>
         <View accessibilityRole="tablist" style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
         {state.routes.map(function(route, index) {
-          var options = descriptors[route.key].options;
-          var isFocused = state.index === index;
-          var color = isFocused ? theme.colors.accentText : theme.colors.textSecondary;
-          var onPress = function() {
-            var event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+          const options = descriptors[route.key].options;
+          const isFocused = state.index === index;
+          const color = isFocused ? theme.colors.accentText : theme.colors.textSecondary;
+          const onPress = function() {
+            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
           };
-          var IconComp = options.tabBarIcon;
+          const IconComp = options.tabBarIcon;
           return (
             <TouchableOpacity
               key={route.key}
@@ -393,8 +393,8 @@ const CustomTabBar = memo(function CustomTabBar({ state, descriptors, navigation
 });
 
 function TabIconResume({ color, size }) {
-  var c = tabBarIconTint(color);
-  var s = size ?? 22;
+  const c = tabBarIconTint(color);
+  const s = size ?? 22;
   return (
     <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
@@ -425,8 +425,8 @@ function TabIconBiblio({ color, size }) {
 }
 
 function TabIconActivity({ color, size }) {
-  var c = tabBarIconTint(color);
-  var s = size ?? 22;
+  const c = tabBarIconTint(color);
+  const s = size ?? 22;
   // Three concentric circles, Apple Fitness style — keeps Apple's red/green/
   // blue palette so the icon reads correctly in both light and dark themes.
   return (
@@ -441,8 +441,8 @@ function TabIconActivity({ color, size }) {
 }
 
 function TabIconProfil({ color, size }) {
-  var c = tabBarIconTint(color);
-  var s = size ?? 22;
+  const c = tabBarIconTint(color);
+  const s = size ?? 22;
   return (
     <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
@@ -555,10 +555,10 @@ function renderCustomTabBar(props) { return <CustomTabBar {...props} />; }
 // ══════════════════════════════════
 function SeanceDetailModal({ visible, onClose, sdj, lang, onPlay }) {
   if (!visible || !sdj || !Array.isArray(sdj.seance)) return null;
-  var tr = T[lang] || T["fr"];
-  var titre = sdj.seance[0] || '';
-  var duree = sdj.seance[1] || '';
-  var etape = sdj.seance[2] || '';
+  const tr = T[lang] || T["fr"];
+  const titre = sdj.seance[0] || '';
+  const duree = sdj.seance[1] || '';
+  const etape = sdj.seance[2] || '';
   return (
     <Modal visible animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: "#000000" }}>
@@ -974,10 +974,10 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
     floatingMedusas.forEach(function(m, i) {
       function drift() {
         if (!mounted) return;
-        var toX = 10 + Math.random() * (SW - m.size - 20);
-        var toY = 60 + Math.random() * (SH - m.size - 160);
-        var dur = 12000 + Math.random() * 8000;
-        var p = Animated.parallel([
+        const toX = 10 + Math.random() * (SW - m.size - 20);
+        const toY = 60 + Math.random() * (SH - m.size - 160);
+        const dur = 12000 + Math.random() * 8000;
+        const p = Animated.parallel([
           Animated.timing(m.dx, { toValue: toX - m.baseX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
           Animated.timing(m.dy, { toValue: toY - m.baseY, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
         ]);
@@ -1287,15 +1287,15 @@ if (Notifications) {
 // natif (cf. crash build #43, EXC_BAD_ACCESS dans NSException→JSError
 // converter, dladdr sur callStackReturnAddresses). Helpers ci-dessous.
 function _trigDaily(hour, minute) {
-  var TYPES = Notifications && Notifications.SchedulableTriggerInputTypes;
+  const TYPES = Notifications && Notifications.SchedulableTriggerInputTypes;
   return { type: (TYPES && TYPES.DAILY) || 'daily', hour: hour, minute: minute };
 }
 function _trigWeekly(weekday, hour, minute) {
-  var TYPES = Notifications && Notifications.SchedulableTriggerInputTypes;
+  const TYPES = Notifications && Notifications.SchedulableTriggerInputTypes;
   return { type: (TYPES && TYPES.WEEKLY) || 'weekly', weekday: weekday, hour: hour, minute: minute };
 }
 function _trigTimeInterval(seconds, repeats) {
-  var TYPES = Notifications && Notifications.SchedulableTriggerInputTypes;
+  const TYPES = Notifications && Notifications.SchedulableTriggerInputTypes;
   return { type: (TYPES && TYPES.TIME_INTERVAL) || 'timeInterval', seconds: seconds, repeats: !!repeats };
 }
 
@@ -1311,14 +1311,14 @@ async function setupNotifications(lang = 'fr') {
     // 14-day session-hour median (falls back to 18h when we don't have
     // enough data). Once the user picks an hour from Settings the explicit
     // value wins.
-    var rawHour = await AsyncStorage.getItem('fluid_notif_hour');
-    var savedHour = rawHour != null && rawHour !== '' ? parseInt(rawHour) : await getPreferredHour();
+    const rawHour = await AsyncStorage.getItem('fluid_notif_hour');
+    let savedHour = rawHour != null && rawHour !== '' ? parseInt(rawHour) : await getPreferredHour();
     if (!Number.isFinite(savedHour) || savedHour < 0 || savedHour > 23) savedHour = 18;
-    var pauseEnabled = (await AsyncStorage.getItem('fluid_notif_pause_enabled')) !== 'false';
-    var quoteEnabled = (await AsyncStorage.getItem('fluid_quote_enabled')) !== 'false';
-    var quoteHour = parseInt(await AsyncStorage.getItem('fluid_quote_hour')) || 8;
+    const pauseEnabled = (await AsyncStorage.getItem('fluid_notif_pause_enabled')) !== 'false';
+    const quoteEnabled = (await AsyncStorage.getItem('fluid_quote_enabled')) !== 'false';
+    const quoteHour = parseInt(await AsyncStorage.getItem('fluid_quote_hour')) || 8;
     // Master toggle pour le rappel quotidien (default ON).
-    var dailyEnabled = (await AsyncStorage.getItem('fluid_notif_daily_enabled')) !== 'false';
+    const dailyEnabled = (await AsyncStorage.getItem('fluid_notif_daily_enabled')) !== 'false';
     if (dailyEnabled) {
       await safeNativeCall('notif.schedule.dailyMain', function() {
         return Notifications.scheduleNotificationAsync({
@@ -1333,10 +1333,10 @@ async function setupNotifications(lang = 'fr') {
     }
     // Phrase du jour — Sabrina : rotation quotidienne, re-schedulée à chaque ouverture
     if (quoteEnabled) {
-      var quotes = SABRINA_QUOTES[lang] || SABRINA_QUOTES['fr'];
+      const quotes = SABRINA_QUOTES[lang] || SABRINA_QUOTES['fr'];
       if (quotes && quotes.length) {
-        var d = new Date();
-        var idx = (d.getDate() + d.getMonth() * 31) % quotes.length;
+        const d = new Date();
+        const idx = (d.getDate() + d.getMonth() * 31) % quotes.length;
         await safeNativeCall('notif.schedule.quote', function() {
           return Notifications.scheduleNotificationAsync({
             content: { title: tr.notif_quote_title || 'Phrase du jour', body: quotes[idx], sound: false },
@@ -1350,8 +1350,8 @@ async function setupNotifications(lang = 'fr') {
     // layer can identify them via getAllScheduledNotificationsAsync() and
     // cancel selectively when HealthKit reports the user is already active.
     if (pauseEnabled) {
-      for (var h = 9; h <= 17; h++) {
-        for (var wd = 2; wd <= 6; wd++) {
+      for (let h = 9; h <= 17; h++) {
+        for (let wd = 2; wd <= 6; wd++) {
           await safeNativeCall('notif.schedule.pause', (function(wd_, h_) { return function() {
             return Notifications.scheduleNotificationAsync({
               content: {
@@ -1375,7 +1375,7 @@ async function sendWelcomeNotification(prenom, lang = 'fr') {
     const WELCOME_KEY = 'fluid_welcome_notif_sent';
     if (await AsyncStorage.getItem(WELCOME_KEY)) return;
     const perm = await safeNativeCall('notif.getPermissionsAsync.welcome', function() { return Notifications.getPermissionsAsync(); }, null);
-    var granted = perm && perm.status === 'granted';
+    let granted = perm && perm.status === 'granted';
     if (!granted) {
       const req = await safeNativeCall('notif.requestPermissionsAsync.welcome', function() { return Notifications.requestPermissionsAsync(); }, null);
       granted = req && req.status === 'granted';
@@ -1611,7 +1611,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     // already proven stable post-Kingstinct migration but we keep it off
     // the first paint to be safe.
     diag('mainapp.initHealthKit.deferred', 'scheduled');
-    var hkTimer = setTimeout(function() {
+    const hkTimer = setTimeout(function() {
       diag('mainapp.initHealthKit.deferred', 'fired');
       try { initHealthKit(); } catch (e) { if (__DEV__) console.warn('initHealthKit throw:', e); }
     }, 400);
@@ -1625,7 +1625,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     // Audit sécu 26/07 : purge des MP4 déchiffrés temporaires des sessions
     // précédentes (rien n'est en lecture au boot, delete sans race). Différé
     // pour ne pas concurrencer le premier rendu.
-    var sweepTimer = setTimeout(function() {
+    const sweepTimer = setTimeout(function() {
       try { sweepTempVideos(); } catch (e) {}
     }, 3000);
     return function() { try { clearTimeout(sweepTimer); } catch (e) {} };
@@ -1756,20 +1756,20 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     async function loadData() {
       try {
         // Vérification abonnement : RevenueCat d'abord, cache AsyncStorage en fallback offline
-        var subVerified = false;
+        let subVerified = false;
         if (Purchases && !rcDisabled) {
-          var info = await safeNativeCall('rc.getCustomerInfo.loadData', function() { return Purchases.getCustomerInfo(); }, null);
+          const info = await safeNativeCall('rc.getCustomerInfo.loadData', function() { return Purchases.getCustomerInfo(); }, null);
           if (info) {
             subVerified = !!(info?.entitlements?.active?.[RC_ENTITLEMENT_ID]);
             try { await AsyncStorage.setItem(FLUID_SUB_KEY, subVerified ? 'true' : 'false'); } catch (e) {}
           } else {
             // RC threw or returned nothing → fall back to cache
-            var cachedRcFallback = await AsyncStorage.getItem(FLUID_SUB_KEY);
+            const cachedRcFallback = await AsyncStorage.getItem(FLUID_SUB_KEY);
             subVerified = cachedRcFallback === 'true';
           }
         } else {
           // Offline fallback : cache local (non fiable, mais mieux que rien)
-          var cachedOffline = await AsyncStorage.getItem(FLUID_SUB_KEY);
+          const cachedOffline = await AsyncStorage.getItem(FLUID_SUB_KEY);
           subVerified = cachedOffline === 'true';
         }
         if (subVerified) setIsSubscriber(true);
@@ -1807,7 +1807,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     // mitigation for the build #46 crash on iOS 26.4.2 where an NSException
     // thrown during this very burst kills the converter.
     diag('mainapp.mount.deferred', 'scheduled');
-    var deferTimer = setTimeout(function() {
+    const deferTimer = setTimeout(function() {
       diag('mainapp.mount.deferred', 'fired');
       loadData();
       setupNotifications(lang);
@@ -1824,17 +1824,17 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   // today's remaining "pause active" notifs if the user has already moved
   // enough. Throttled to one HK probe every 30 min to keep the bridge cool.
   useEffect(function() {
-    var THROTTLE_MS = 30 * 60 * 1000;
-    var THROTTLE_KEY = 'fluid_last_activity_check';
+    const THROTTLE_MS = 30 * 60 * 1000;
+    const THROTTLE_KEY = 'fluid_last_activity_check';
     async function maybeSuppress(source) {
       try {
-        var lastRaw = await AsyncStorage.getItem(THROTTLE_KEY);
-        var last = lastRaw ? parseInt(lastRaw, 10) : 0;
+        const lastRaw = await AsyncStorage.getItem(THROTTLE_KEY);
+        const last = lastRaw ? parseInt(lastRaw, 10) : 0;
         if (Number.isFinite(last) && Date.now() - last < THROTTLE_MS) return;
         await AsyncStorage.setItem(THROTTLE_KEY, String(Date.now()));
-        var probe = await isUserAlreadyActive();
+        const probe = await isUserAlreadyActive();
         if (!probe || !probe.active) return;
-        var count = await cancelPauseActiveNotifications('today');
+        const count = await cancelPauseActiveNotifications('today');
         if (__DEV__) devLog('[SmartNotif] ' + source + ' - cancelled ' + count + ' pause notifs (reason: ' + probe.reason + ')', probe.values);
       } catch (e) {
         if (__DEV__) devWarn('[SmartNotif] maybeSuppress error', e);
@@ -1842,8 +1842,8 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     }
     // Run once on mount (covers cold-start case) — deferred so it doesn't
     // pile on top of the existing 800ms setup burst.
-    var bootTimer = setTimeout(function() { maybeSuppress('boot'); }, 1600);
-    var sub = AppState.addEventListener('change', function(next) {
+    const bootTimer = setTimeout(function() { maybeSuppress('boot'); }, 1600);
+    const sub = AppState.addEventListener('change', function(next) {
       if (next === 'active') { maybeSuppress('foreground'); }
     });
     return function() {
@@ -1954,8 +1954,8 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
 
   const resetAllData = useStableCallback(async function() {
     try {
-      var keys = await AsyncStorage.getAllKeys();
-      var fluidKeys = keys.filter(function(k) { return k.startsWith('fluid') || k === DONE_KEY || k === 'is_subscription_active'; });
+      const keys = await AsyncStorage.getAllKeys();
+      const fluidKeys = keys.filter(function(k) { return k.startsWith('fluid') || k === DONE_KEY || k === 'is_subscription_active'; });
       if (fluidKeys.length > 0) await AsyncStorage.multiRemove(fluidKeys);
     } catch(e) {}
     setDone({ p1: Array(20).fill(false), p2: Array(20).fill(false), p3: Array(20).fill(false), p4: Array(20).fill(false), p5: Array(20).fill(false), p6: Array(20).fill(false), p7: Array(20).fill(false), p8: Array(20).fill(false) });
@@ -1987,21 +1987,21 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     if (wasDone) return; // Décocher : rien d'autre à déclencher.
     // First séance modal
     if (!supaUser) {
-      var prevTotal = Object.values(done).flat().filter(Boolean).length;
+      const prevTotal = Object.values(done).flat().filter(Boolean).length;
       if (prevTotal === 0) {
         setTimeout(function() { setShowFirstSeanceModal(true); }, 1500);
       }
     }
     // Milestone celebrations
-    var MILESTONES = [5, 7, 10, 15, 20, 25, 30, 35, 40, 100];
-    var PUSH_MILESTONES = [7, 30, 100];
-    var newTotal = 0;
+    const MILESTONES = [5, 7, 10, 15, 20, 25, 30, 35, 40, 100];
+    const PUSH_MILESTONES = [7, 30, 100];
+    let newTotal = 0;
     Object.values(next).forEach(function(arr) {
       if (arr) arr.forEach(function(v) { if (v) newTotal++; });
     });
     if (MILESTONES.includes(newTotal)) {
       AsyncStorage.getItem('fluid_milestones_seen').then(function(raw) {
-        var seen = raw ? JSON.parse(raw) : [];
+        const seen = raw ? JSON.parse(raw) : [];
         if (!seen.includes(newTotal)) {
           seen.push(newTotal);
           AsyncStorage.setItem('fluid_milestones_seen', JSON.stringify(seen)).catch(function() {});
@@ -2016,10 +2016,10 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     (async function() {
       // Calendar heatmap
       try {
-        var calKey = 'fluid_activity_calendar';
-        var calRaw = await AsyncStorage.getItem(calKey);
-        var cal = calRaw ? JSON.parse(calRaw) : {};
-        var todayCal = new Date().toISOString().slice(0, 10);
+        const calKey = 'fluid_activity_calendar';
+        const calRaw = await AsyncStorage.getItem(calKey);
+        const cal = calRaw ? JSON.parse(calRaw) : {};
+        const todayCal = new Date().toISOString().slice(0, 10);
         cal[todayCal] = (cal[todayCal] || 0) + 1;
         await AsyncStorage.setItem(calKey, JSON.stringify(cal));
       } catch(e) {}
@@ -2058,7 +2058,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       // la célébration de séance se terminer. No-op tant que expo-store-review
       // n'est pas dans le build natif (safe-require).
       if (!MILESTONES.includes(newTotal)) {
-        var streakForReview = parseInt(await AsyncStorage.getItem(STREAK_KEY) || '0') || streak;
+        const streakForReview = parseInt(await AsyncStorage.getItem(STREAK_KEY) || '0') || streak;
         setTimeout(function() {
           maybeAskForReview({ totalDone: newTotal, streak: streakForReview }).catch(function() {});
         }, 2600);
@@ -2323,9 +2323,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         </Modal>
       )}
       {newAchievement ? (function () {
-        var meta = getAchievementById(newAchievement);
+        const meta = getAchievementById(newAchievement);
         if (!meta) return null;
-        var isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+        const isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
         return (
           <Modal visible={true} transparent animationType="fade" statusBarTranslucent>
             <View style={{ flex: 1, backgroundColor: 'rgba(0,14,24,0.92)', justifyContent: 'center', alignItems: 'center' }}>
@@ -2464,7 +2464,7 @@ function WelcomeIntroScreen({ onDone, lang }) {
         <Text style={{ fontSize: 22, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.3, marginBottom: 20, paddingHorizontal: 8 }}>{tr.ob_tensions || 'Où ressens-tu des tensions ?'}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 28, paddingHorizontal: 8 }}>
           {zones.map(function(zone, idx) {
-            var active = selectedIdxs.indexOf(idx) !== -1;
+            const active = selectedIdxs.indexOf(idx) !== -1;
             return (
               <TouchableOpacity
                 key={idx}
@@ -2752,8 +2752,8 @@ function App() {
     function finishLoading() {
       // Splash minimum = 2000 ms (reduit de 3000 le 2026-07-07 : l'app parait
       // nettement plus fluide au demarrage, la meduse reste bien visible).
-      var elapsed = Date.now() - splashStart;
-      var remain = Math.max(0, 2000 - elapsed);
+      const elapsed = Date.now() - splashStart;
+      const remain = Math.max(0, 2000 - elapsed);
       if (remain === 0) setLoading(false);
       else setTimeout(function() { setLoading(false); }, remain);
     }
@@ -2849,7 +2849,7 @@ function App() {
   useEffect(function() {
     function handleUrl(url) {
       if (!url) return;
-      var code = parseReferralCodeFromUrl(url);
+      const code = parseReferralCodeFromUrl(url);
       if (!code) return;
       if (__DEV__) devLog('referral deep link, code captured:', code);
       savePendingReferralCode(code);
@@ -2857,7 +2857,7 @@ function App() {
     try {
       RNLinking.getInitialURL().then(handleUrl).catch(function() {});
     } catch (e) {}
-    var sub = null;
+    let sub = null;
     try {
       sub = RNLinking.addEventListener('url', function(evt) { handleUrl(evt?.url); });
     } catch (e) {}

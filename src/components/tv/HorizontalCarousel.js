@@ -59,7 +59,7 @@ export default function HorizontalCarousel({
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
           {Array.from({ length: dotCount }).map(function (_, i) {
-            var on = i === activeDot;
+            const on = i === activeDot;
             return (
               <View
                 key={i}

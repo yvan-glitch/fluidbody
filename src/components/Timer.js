@@ -14,7 +14,7 @@ import { Bulle, FloatingMedusas, BULLES } from './Meduse';
 import { Icon } from './Icons';
 
 // ── Optional native modules ──
-var HapticsMod = null;
+let HapticsMod = null;
 try { HapticsMod = require('expo-haptics'); } catch(e) {}
 
 function hapticSuccess() {
@@ -22,33 +22,33 @@ function hapticSuccess() {
   try { void HapticsMod.notificationAsync(HapticsMod.NotificationFeedbackType.Success); } catch (e) {}
 }
 
-var AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-var TIMER_BEEP = null;
+let TIMER_BEEP = null;
 try { TIMER_BEEP = require('../../assets/timer-beep.mp3'); } catch(e) {}
 
 function StretchTimerModal({ visible, onClose, lang }) {
-  var tr = T[lang] || T['fr'];
-  var [duration, setDuration] = useState(30);
-  var [reps, setReps] = useState(1);
-  var [phase, setPhase] = useState('idle');
-  var [remaining, setRemaining] = useState(0);
-  var [currentRep, setCurrentRep] = useState(1);
-  var [paused, setPaused] = useState(false);
-  var intervalRef = useRef(null);
-  var startRef = useRef(0);
-  var elapsedBeforePause = useRef(0);
-  var progressAnim = useRef(new Animated.Value(1)).current;
-  var soundRef = useRef(null);
+  const tr = T[lang] || T['fr'];
+  const [duration, setDuration] = useState(30);
+  const [reps, setReps] = useState(1);
+  const [phase, setPhase] = useState('idle');
+  const [remaining, setRemaining] = useState(0);
+  const [currentRep, setCurrentRep] = useState(1);
+  const [paused, setPaused] = useState(false);
+  const intervalRef = useRef(null);
+  const startRef = useRef(0);
+  const elapsedBeforePause = useRef(0);
+  const progressAnim = useRef(new Animated.Value(1)).current;
+  const soundRef = useRef(null);
 
-  var durations = [15, 30, 45, 60, 90, 120, 180, 300];
-  var durLabels = { 15: '15s', 30: '30s', 45: '45s', 60: '1 min', 90: '1m30', 120: '2 min', 180: '3 min', 300: '5 min' };
+  const durations = [15, 30, 45, 60, 90, 120, 180, 300];
+  const durLabels = { 15: '15s', 30: '30s', 45: '45s', 60: '1 min', 90: '1m30', 120: '2 min', 180: '3 min', 300: '5 min' };
 
   async function playBeep() {
     try {
       if (soundRef.current) { await soundRef.current.unloadAsync().catch(function() {}); }
       if (TIMER_BEEP) {
-        var result = await Audio.Sound.createAsync(TIMER_BEEP);
+        const result = await Audio.Sound.createAsync(TIMER_BEEP);
         soundRef.current = result.sound;
         await result.sound.setVolumeAsync(1.0);
         await result.sound.playAsync();
@@ -69,15 +69,15 @@ function StretchTimerModal({ visible, onClose, lang }) {
     Animated.timing(progressAnim, { toValue: 0, duration: dur * 1000, easing: Easing.linear, useNativeDriver: false }).start();
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(function() {
-      var elapsed = elapsedBeforePause.current + Math.floor((Date.now() - startRef.current) / 1000);
-      var rem = dur - elapsed;
+      const elapsed = elapsedBeforePause.current + Math.floor((Date.now() - startRef.current) / 1000);
+      const rem = dur - elapsed;
       if (rem <= 0) {
         clearInterval(intervalRef.current);
         setRemaining(0);
         playBeep();
         if (rep < reps) {
           setPhase('rest');
-          var restCount = 6;
+          let restCount = 6;
           setRemaining(restCount);
           var restInterval = setInterval(function() {
             restCount--;
@@ -106,18 +106,18 @@ function StretchTimerModal({ visible, onClose, lang }) {
   function resumeTimer() {
     setPaused(false);
     startRef.current = Date.now();
-    var rem = remaining;
+    const rem = remaining;
     Animated.timing(progressAnim, { toValue: 0, duration: rem * 1000, easing: Easing.linear, useNativeDriver: false }).start();
     intervalRef.current = setInterval(function() {
-      var elapsed = elapsedBeforePause.current + Math.floor((Date.now() - startRef.current) / 1000);
-      var r = duration - elapsed;
+      const elapsed = elapsedBeforePause.current + Math.floor((Date.now() - startRef.current) / 1000);
+      const r = duration - elapsed;
       if (r <= 0) {
         clearInterval(intervalRef.current);
         setRemaining(0);
         playBeep();
         if (currentRep < reps) {
           setPhase('rest');
-          var rc = 6; setRemaining(rc);
+          let rc = 6; setRemaining(rc);
           var ri = setInterval(function() { rc--; setRemaining(rc); if (rc <= 0) { clearInterval(ri); runCycle(duration, currentRep + 1); } }, 1000);
           intervalRef.current = ri;
         } else { setPhase('done'); }
@@ -137,12 +137,12 @@ function StretchTimerModal({ visible, onClose, lang }) {
 
   useEffect(function() { return function() { if (intervalRef.current) clearInterval(intervalRef.current); if (soundRef.current) soundRef.current.unloadAsync().catch(function() {}); }; }, []);
 
-  var circR = 100;
-  var circC = 2 * Math.PI * circR;
-  var dashOffset = progressAnim.interpolate({ inputRange: [0, 1], outputRange: [circC, 0] });
-  var remMin = Math.floor(remaining / 60);
-  var remSec = remaining % 60;
-  var isActive = phase === 'running' || phase === 'rest';
+  const circR = 100;
+  const circC = 2 * Math.PI * circR;
+  const dashOffset = progressAnim.interpolate({ inputRange: [0, 1], outputRange: [circC, 0] });
+  const remMin = Math.floor(remaining / 60);
+  const remSec = remaining % 60;
+  const isActive = phase === 'running' || phase === 'rest';
 
   if (!visible) return null;
   return (
@@ -188,7 +188,7 @@ function StretchTimerModal({ visible, onClose, lang }) {
                 <Text style={{ fontSize: 11, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>{tr.timer_duree || 'Durée'}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20, maxHeight: 40 }} contentContainerStyle={{ gap: 8 }}>
                   {durations.map(function(d) {
-                    var active = duration === d;
+                    const active = duration === d;
                     return (
                       <TouchableOpacity key={d} onPress={function() { setDuration(d); }} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: active ? '#AEEF4D' : 'rgba(255,255,255,0.12)', backgroundColor: active ? 'rgba(174,239,77,0.15)' : 'transparent' }}>
                         <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#AEEF4D' : 'rgba(255,255,255,0.4)' }}>{durLabels[d]}</Text>

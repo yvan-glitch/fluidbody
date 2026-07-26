@@ -32,7 +32,7 @@ const TEXT_SHADOW = { textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 8, t
 const SABRINA_ABOUT = require('../../../assets/coach/sabrina_8.jpg');
 
 function parseMin(d) {
-  var m = String(d || '').match(/\d+/);
+  const m = String(d || '').match(/\d+/);
   return m ? parseInt(m[0], 10) : 0;
 }
 
@@ -190,7 +190,7 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
           {tr.prog_section_title || 'Vos programmes sur mesure'}
         </Text>
         <View style={wideCardStyle}>
-          <FocusableSurface focusPreferred={wideFocus} height={220} onPress={function () { var p = pilierByKey('p1'); if (p) onOpenPilier(p); }}>
+          <FocusableSurface focusPreferred={wideFocus} height={220} onPress={function () { const p = pilierByKey('p1'); if (p) onOpenPilier(p); }}>
             <Image source={PILIER_IMAGES.p1} contentFit="cover" transition={200} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
             <LinearGradient colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.85)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
             <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 44 }}>
@@ -207,7 +207,7 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
           {tr.prog_custom_title || 'Créez votre propre programme'}
         </Text>
         <View style={wideCardStyle}>
-          <FocusableSurface focusPreferred={false} height={200} glowColor="#B16CFF" onPress={function () { var p = pilierByKey('p7'); if (p) onOpenPilier(p); }}>
+          <FocusableSurface focusPreferred={false} height={200} glowColor="#B16CFF" onPress={function () { const p = pilierByKey('p7'); if (p) onOpenPilier(p); }}>
             <LinearGradient colors={['#7A5CFF', '#B16CFF']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
             <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 44 }}>
               <Text style={[{ fontSize: 38, fontWeight: '800', color: '#ffffff', letterSpacing: -0.6, marginBottom: 8 }, TEXT_SHADOW]}>{tr.prog_custom_card || 'Programme personnalisé'}</Text>
@@ -219,7 +219,7 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
 
         {/* 4b — À propos de Sabrina (max 1200) */}
         <View style={wideCardStyle}>
-          <FocusableSurface focusPreferred={false} height={220} onPress={function () { var p = pilierByKey('p7'); if (p) onOpenPilier(p); }}>
+          <FocusableSurface focusPreferred={false} height={220} onPress={function () { const p = pilierByKey('p7'); if (p) onOpenPilier(p); }}>
             <Image source={SABRINA_ABOUT} contentFit="cover" transition={200} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} />
             <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.9)']} locations={[0, 0.45, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
             <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 44, maxWidth: '70%' }}>

@@ -29,24 +29,24 @@ const { width: SW } = Dimensions.get('window');
 // CALENDRIER HEATMAP + RECOMMANDATION
 // ══════════════════════════════════
 function ActivityCalendar({ lang }) {
-  var [history, setHistory] = useState({});
+  const [history, setHistory] = useState({});
   useEffect(function() {
     AsyncStorage.getItem('fluid_activity_calendar').then(function(raw) {
       if (raw) try { setHistory(JSON.parse(raw)); } catch(e) {}
     });
   }, []);
-  var today = new Date();
-  var todayKey = today.toISOString().slice(0, 10);
-  var days = [];
-  for (var i = 27; i >= 0; i--) {
-    var d = new Date(today); d.setDate(d.getDate() - i);
-    var key = d.toISOString().slice(0, 10);
+  const today = new Date();
+  const todayKey = today.toISOString().slice(0, 10);
+  const days = [];
+  for (let i = 27; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
     days.push({ key: key, day: d.getDate(), dow: d.getDay(), count: history[key] || 0, isToday: key === todayKey });
   }
-  var dayLabels = { fr: ['L','M','M','J','V','S','D'], en: ['M','T','W','T','F','S','S'] };
-  var labels = dayLabels[lang] || dayLabels.fr;
-  var gap = 6;
-  var cellSize = Math.floor((SW - 80 - gap * 6) / 7);
+  const dayLabels = { fr: ['L','M','M','J','V','S','D'], en: ['M','T','W','T','F','S','S'] };
+  const labels = dayLabels[lang] || dayLabels.fr;
+  const gap = 6;
+  const cellSize = Math.floor((SW - 80 - gap * 6) / 7);
   return (
     <View>
       <View style={{ flexDirection: 'row', marginBottom: 8, gap: gap }}>
@@ -54,7 +54,7 @@ function ActivityCalendar({ lang }) {
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: gap }}>
         {days.map(function(d) {
-          var bg, borderColor, borderWidth, textColor, dotColor, glow;
+          let bg, borderColor, borderWidth, textColor, dotColor, glow;
           if (d.count === 0) {
             bg = 'rgba(255,255,255,0.04)';
             borderColor = d.isToday ? '#AEEF4D' : 'rgba(255,255,255,0.10)';
@@ -63,7 +63,7 @@ function ActivityCalendar({ lang }) {
             dotColor = null;
             glow = null;
           } else {
-            var intensity = d.count >= 3 ? 1 : d.count === 2 ? 0.75 : 0.5;
+            const intensity = d.count >= 3 ? 1 : d.count === 2 ? 0.75 : 0.5;
             bg = 'rgba(174,239,77,' + intensity + ')';
             borderColor = 'rgba(255,255,255,0.45)';
             borderWidth = 1.5;
@@ -166,7 +166,7 @@ const SILHOUETTE_PATH = [
 // Anchor points — body landmarks for measurement / "active zone" indicators.
 // Mapped onto the existing pilier zone keys so the pulse follows the same
 // "this zone has activity" semantic the rest of the screen uses.
-var BODY_ANCHORS = [
+const BODY_ANCHORS = [
   { cx: 50, cy: 28,  r: 2.6, zone: 'p1' }, // cou
   { cx: 30, cy: 50,  r: 3.0, zone: 'p1' }, // épaule gauche
   { cx: 70, cy: 50,  r: 3.0, zone: 'p1' }, // épaule droite
@@ -184,10 +184,10 @@ var BODY_ANCHORS = [
 ];
 
 function BodyMapVisual({ done, lang }) {
-  var piliers = getPiliers(lang);
+  const piliers = getPiliers(lang);
   function zoneColor(key) {
-    var count = Math.min((done[key] || []).filter(Boolean).length, 5);
-    var p = count / 5;
+    const count = Math.min((done[key] || []).filter(Boolean).length, 5);
+    const p = count / 5;
     if (p === 0) return 'rgba(255,70,70,0.3)';
     if (p < 0.4) return 'rgba(255,140,60,0.45)';
     if (p < 0.8) return 'rgba(255,210,60,0.5)';
@@ -195,20 +195,20 @@ function BodyMapVisual({ done, lang }) {
     return 'rgba(174,239,77,0.8)';
   }
   function zonePct(key) { return (Math.min((done[key] || []).filter(Boolean).length, 5) / 5 * 100).toFixed(0); }
-  var tr = T[lang] || T['fr'];
+  const tr = T[lang] || T['fr'];
 
   // Shared pulse value (0→1→0) drives the glow halo on active anchor points.
   // Single Animated.Value + native driver keeps the per-anchor cost flat.
-  var pulse = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
   useEffect(function() {
-    var loop = Animated.loop(Animated.sequence([
+    const loop = Animated.loop(Animated.sequence([
       Animated.timing(pulse, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       Animated.timing(pulse, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ]));
     loop.start();
     return function() { try { loop.stop(); pulse.removeAllListeners(); } catch (e) {} };
   }, []);
-  var pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.85] });
+  const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.85] });
 
   return (
     <View style={{ alignItems: 'center' }}>
@@ -297,7 +297,7 @@ function BodyMapVisual({ done, lang }) {
             {/* Anchor points — small luminous dots at body landmarks.
                 Active zones (any done count > 0) get a soft pulsing halo. */}
             {BODY_ANCHORS.map(function(a, i) {
-              var isActive = ((done[a.zone] || []).filter(Boolean).length) > 0;
+              const isActive = ((done[a.zone] || []).filter(Boolean).length) > 0;
               return (
                 <G key={'anc-' + i}>
                   {isActive ? (
@@ -372,24 +372,24 @@ function BodyMapVisual({ done, lang }) {
 // strictly week-scoped (sessions + minutes over the last 7 days) so the
 // two cards answer different questions.
 function WeeklySummary({ lang }) {
-  var [weekSessions, setWeekSessions] = useState(0);
-  var [weekMinutes, setWeekMinutes] = useState(0);
-  var tr = T[lang] || T['fr'];
+  const [weekSessions, setWeekSessions] = useState(0);
+  const [weekMinutes, setWeekMinutes] = useState(0);
+  const tr = T[lang] || T['fr'];
 
   useEffect(function() {
     async function load() {
-      var today = new Date();
-      var sessions = 0;
-      var minutes = 0;
+      const today = new Date();
+      let sessions = 0;
+      let minutes = 0;
       try {
-        var cal = await AsyncStorage.getItem('fluid_activity_calendar');
-        var parsed = cal ? JSON.parse(cal) : {};
-        for (var i = 0; i < 7; i++) {
-          var d = new Date(today);
+        const cal = await AsyncStorage.getItem('fluid_activity_calendar');
+        const parsed = cal ? JSON.parse(cal) : {};
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(today);
           d.setDate(d.getDate() - i);
-          var key = d.toISOString().split('T')[0];
+          const key = d.toISOString().split('T')[0];
           if (parsed[key]) sessions += parsed[key];
-          var mins = await AsyncStorage.getItem('fluid_exercise_' + key);
+          const mins = await AsyncStorage.getItem('fluid_exercise_' + key);
           if (mins) minutes += parseInt(mins) || 0;
         }
       } catch(e) {}
@@ -417,18 +417,18 @@ function WeeklySummary({ lang }) {
 }
 
 function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCreateAccount, onOpenStatistics }) {
-  var tr = T[lang] || T['fr'];
+  const tr = T[lang] || T['fr'];
   // chromeScroll : masque la barre d'onglets au scroll vers le bas.
-  var onChromeScroll = useRef(createChromeScrollHandler()).current;
-  var piliers = getPiliers(lang);
-  var [meduseName, setMeduseName] = useState('');
-  var [showNameInput, setShowNameInput] = useState(false);
-  var [nameInput, setNameInput] = useState('');
+  const onChromeScroll = useRef(createChromeScrollHandler()).current;
+  const piliers = getPiliers(lang);
+  const [meduseName, setMeduseName] = useState('');
+  const [showNameInput, setShowNameInput] = useState(false);
+  const [nameInput, setNameInput] = useState('');
   useEffect(function() {
     AsyncStorage.getItem('fluid_meduse_name').then(function(n) { setMeduseName(n || ''); setNameInput(''); setShowNameInput(false); });
   }, [done]);
   function saveMeduseName() {
-    var name = nameInput.trim();
+    const name = nameInput.trim();
     if (!name) return;
     setMeduseName(name);
     setShowNameInput(false);
@@ -436,28 +436,28 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
   }
   // PERF (2026-07-23) : totalDone / recentSeances / sortedPiliers étaient
   // recalculés à chaque render — mémoïsés sur leurs vraies dépendances.
-  var totalDone = useMemo(function() { return Object.values(done).flat().filter(Boolean).length; }, [done]);
-  var totalDoneCapped = Math.min(totalDone, 40);
-  var pct = Math.round(totalDoneCapped / 40 * 100);
-  var recommendedPiliers = useMemo(function() { return (tensionIdxs || []).map(function(i) { return ZONE_TO_PILIER[i]; }); }, [tensionIdxs]);
+  const totalDone = useMemo(function() { return Object.values(done).flat().filter(Boolean).length; }, [done]);
+  const totalDoneCapped = Math.min(totalDone, 40);
+  const pct = Math.round(totalDoneCapped / 40 * 100);
+  const recommendedPiliers = useMemo(function() { return (tensionIdxs || []).map(function(i) { return ZONE_TO_PILIER[i]; }); }, [tensionIdxs]);
 
-  var now = new Date();
-  var dayNames = { fr: ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'], en: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'], es: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'], it: ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'] };
-  var monthNames = { fr: ['jan.','fév.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'], en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], es: ['ene.','feb.','mar.','abr.','may.','jun.','jul.','ago.','sep.','oct.','nov.','dic.'], it: ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'] };
-  var dn = (dayNames[lang] || dayNames.fr)[now.getDay()];
-  var mn = (monthNames[lang] || monthNames.fr)[now.getMonth()];
-  var dateStr = dn + ' ' + now.getDate() + ' ' + mn;
+  const now = new Date();
+  const dayNames = { fr: ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'], en: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'], es: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'], it: ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'] };
+  const monthNames = { fr: ['jan.','fév.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'], en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], es: ['ene.','feb.','mar.','abr.','may.','jun.','jul.','ago.','sep.','oct.','nov.','dic.'], it: ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'] };
+  const dn = (dayNames[lang] || dayNames.fr)[now.getDay()];
+  const mn = (monthNames[lang] || monthNames.fr)[now.getMonth()];
+  const dateStr = dn + ' ' + now.getDate() + ' ' + mn;
 
-  var recentSeances = useMemo(function() {
-    var rs = [];
+  const recentSeances = useMemo(function() {
+    const rs = [];
     piliers.forEach(function(p) {
-      var d = done[p.key];
+      const d = done[p.key];
       if (d) d.forEach(function(v, i) { if (v === true || v === 'true') rs.push({ pilier: p, idx: i }); });
     });
     return rs.slice(-5).reverse();
   }, [done, lang]);
 
-  var sortedPiliers = useMemo(function() {
+  const sortedPiliers = useMemo(function() {
     return [].concat(piliers).sort(function(a, b) { return (recommendedPiliers.includes(a.key) ? 0 : 1) - (recommendedPiliers.includes(b.key) ? 0 : 1); });
   }, [lang, recommendedPiliers]);
 
@@ -508,13 +508,13 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
         ) : null}
 
         {(function() {
-          var stIdx = getMeduseState(pct, streak);
-          var ms = MEDUSA_STATES[stIdx];
-          var names = MEDUSA_STATE_NAMES[lang] || MEDUSA_STATE_NAMES.fr;
-          var score = Math.min(100, pct * 0.7 + Math.min(streak || 0, 14) * 2);
-          var nextState = stIdx < MEDUSA_STATES.length - 1 ? MEDUSA_STATES[stIdx + 1] : null;
-          var progressToNext = nextState ? Math.min(1, (score - ms.min) / (nextState.min - ms.min)) : 1;
-          var motivTexts = {
+          const stIdx = getMeduseState(pct, streak);
+          const ms = MEDUSA_STATES[stIdx];
+          const names = MEDUSA_STATE_NAMES[lang] || MEDUSA_STATE_NAMES.fr;
+          const score = Math.min(100, pct * 0.7 + Math.min(streak || 0, 14) * 2);
+          const nextState = stIdx < MEDUSA_STATES.length - 1 ? MEDUSA_STATES[stIdx + 1] : null;
+          const progressToNext = nextState ? Math.min(1, (score - ms.min) / (nextState.min - ms.min)) : 1;
+          const motivTexts = {
             fr: ['Fais 3 séances pour l\'éveiller !', 'Continue pour la rendre active !', 'Elle brille de plus en plus !', 'Presque rayonnante, encore un effort !', 'Maîtrise totale atteinte !'],
             en: ['Do 3 sessions to awaken her!', 'Keep going to make her active!', 'She shines more and more!', 'Almost radiant, one more push!', 'Total mastery achieved!'],
             de: ['Mache 3 Sitzungen, um sie zu wecken!', 'Weiter so, um sie aktiv zu machen!', 'Sie strahlt immer mehr!', 'Fast strahlend, noch eine Anstrengung!', 'Totale Meisterschaft erreicht!'],
@@ -525,7 +525,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
             es: ['¡Haz 3 sesiones para despertarla!', '¡Sigue para activarla!', '¡Brilla cada vez más!', '¡Casi radiante, un esfuerzo más!', '¡Dominio total!'],
             it: ['Fai 3 sessioni per svegliarla!', 'Continua per renderla attiva!', 'Brilla sempre di più!', 'Quasi radiante, ancora uno sforzo!', 'Padronanza totale!'],
           };
-          var motiv = (motivTexts[lang] || motivTexts.fr)[stIdx];
+          const motiv = (motivTexts[lang] || motivTexts.fr)[stIdx];
           return (
             <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20, marginBottom: 16, alignItems: 'center' }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16, alignSelf: 'flex-start' }}>{meduseName || (tr.meduse_card_title || 'Ta méduse')}</Text>
@@ -593,11 +593,11 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
         </View>
 
         {(function() {
-          var streakStatus = 'safe';
+          const streakStatus = 'safe';
           if (streak > 0) {
-            var allDoneToday = Object.values(done).flat().filter(Boolean).length;
+            const allDoneToday = Object.values(done).flat().filter(Boolean).length;
           }
-          var atRisk = streak > 0 && totalDone > 0;
+          const atRisk = streak > 0 && totalDone > 0;
           return atRisk && streak >= 2 ? (
             <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(255,150,0,0.08)', borderWidth: 1, borderColor: 'rgba(255,180,60,0.4)', borderRadius: 12, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <Icon name="flame" size={24} color="#FFB43C" />
@@ -615,17 +615,17 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
         </View>
 
         {(function() {
-          var weekGoal = 3;
-          var now = new Date();
-          var startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay() + 1);
-          var weekDone = 0;
-          for (var d = 0; d < 7; d++) {
-            var day = new Date(startOfWeek); day.setDate(startOfWeek.getDate() + d);
-            var key = day.toISOString().slice(0, 10);
+          const weekGoal = 3;
+          const now = new Date();
+          const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay() + 1);
+          let weekDone = 0;
+          for (let d = 0; d < 7; d++) {
+            const day = new Date(startOfWeek); day.setDate(startOfWeek.getDate() + d);
+            const key = day.toISOString().slice(0, 10);
           }
-          var allDone = Object.values(done).flat();
+          const allDone = Object.values(done).flat();
           weekDone = Math.min(totalDone, weekGoal);
-          var weekPct = Math.min(1, weekDone / weekGoal);
+          const weekPct = Math.min(1, weekDone / weekGoal);
           return (
             <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
               <View style={{ width: 50, height: 50, alignItems: 'center', justifyContent: 'center' }}>
@@ -667,9 +667,9 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
         <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 20 }}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>{tr.par_pilier}</Text>
           {sortedPiliers.map(function(p, idx) {
-            var count = Math.min((done[p.key] || []).filter(function(v) { return v === true || v === 'true'; }).length, 5);
-            var pct2 = Math.round(count / 5 * 100);
-            var isRec = recommendedPiliers.includes(p.key);
+            const count = Math.min((done[p.key] || []).filter(function(v) { return v === true || v === 'true'; }).length, 5);
+            const pct2 = Math.round(count / 5 * 100);
+            const isRec = recommendedPiliers.includes(p.key);
             return (
               <View key={p.key} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: idx < sortedPiliers.length - 1 ? 0.5 : 0, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
                 <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', marginRight: 12, borderWidth: 1.5, borderColor: '#AEEF4D' }}>
