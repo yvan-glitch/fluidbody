@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-FluidBody is a **Pilates/wellness mobile app** built with React Native + Expo (SDK 54). It targets iOS and Android with support for iPad scaling. The app is in French by default but supports 4 languages (fr, en, es, it) with auto-detection from device locale.
+FluidBody is a **Pilates/wellness mobile app** built with React Native + Expo (SDK 54). It targets iOS and Android with support for iPad scaling. The app is in French by default and supports 2 languages (fr, en) with auto-detection from device locale (`SUPPORTED_APP_LANGS` in App.js; es/it devices fall back to fr). Les blocs es/it n'existent PAS dans `T` (data.js), contrairement à ce que d'anciennes notes affirmaient.
 
 ## Development Commands
 
@@ -92,6 +92,20 @@ Premium Bunny CDN URLs are **never** bundled. Flow:
 Session id convention: `${pilierKey}_${seanceIndex}` — matches the existing
 `DownloadManager` key. Same id is used for HLS, MP4 download, and VTT
 subtitles; the edge function picks the asset suffix from `kind`.
+
+Gratuité (26/07/2026, client `canAccessSeanceIndex` et serveur alignés) :
+index 0 de chaque pilier + sélection du mois (`FREE_MONTHLY_SELECTION`,
+2 vidéos, miroir serveur `FREE_MONTHLY_IDS`) + toute la théorie
+Comprendre/Ressentir (indices 0-4 de chaque pilier, miroir serveur
+`FREE_THEORY_IDS`). Toute modif doit être faite des DEUX côtés.
+
+Visibilité catalogue (26/07/2026) : `src/utils/catalogVisibility.js` est la
+source de vérité « cette séance a-t-elle une vidéo / faut-il la montrer ».
+Fusionne les flags bundle (s[3]) avec la table `video_assets` (colonne
+session_id lisible par le client, refresh au boot, cache AsyncStorage) : une
+vidéo liée en DB apparaît sans OTA. Interrupteur `HIDE_UNFILMED` (false en
+beta ; true = mode soumission App Store, séances sans vidéo masquées,
+piliers vides retirés). Ne JAMAIS renuméroter les index de séances.
 
 Setup:
 - Bunny dashboard: enable Token Authentication on the pull zone (see

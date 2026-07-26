@@ -17,7 +17,8 @@
 // Format fichier v3 : magic "FBV3" (4 octets) + IV (16 octets) + ciphertext.
 //
 // Limite résiduelle assumée : pendant la lecture, un MP4 déchiffré temporaire
-// existe dans cacheDirectory (nettoyé par cleanupTempVideo + purge cache OS).
+// existe dans cacheDirectory (purgé au démarrage suivant par sweepTempVideos
+// dans DownloadManager ; pas de delete au unmount, race avec expo-av).
 // La seule protection au-delà est un vrai DRM (FairPlay), hors scope.
 //
 // Expo Go : quick-crypto (natif) absent → isAvailable() === false et
