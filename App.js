@@ -146,6 +146,7 @@ import {
 import { isUserAlreadyActive } from './src/utils/activityCheck';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
 import { primeCatalogVisibility } from './src/utils/catalogVisibility';
+import { makeAppleNonce } from './src/utils/appleNonce';
 import { creditReferralOnPaid, getReferralStats, parseReferralCodeFromUrl, savePendingReferralCode } from './src/utils/referrals';
 import { safeNativeCall, safeNativeFire, diag } from './src/utils/safeNativeCall';
 import { maybeAskForReview } from './src/utils/reviewPrompt';
@@ -684,11 +685,13 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
     }
     setLoading(true); setError('');
     try {
+      const nonce = await makeAppleNonce(); // null si crypto indisponible → sans nonce
       const credential = await withTimeout(AppleAuth.signInAsync({
         requestedScopes: [
           AppleAuth.AppleAuthenticationScope.FULL_NAME,
           AppleAuth.AppleAuthenticationScope.EMAIL,
         ],
+        ...(nonce ? { nonce: nonce.hashed } : {}),
       }), 45000, 'appleSheet');
       if (!credential.identityToken) {
         const msg = tr.err_apple_token_missing || 'Apple identity token manquant.';
@@ -698,6 +701,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
       const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken,
+        ...(nonce ? { nonce: nonce.raw } : {}),
       }), 15000, 'appleSignIn');
       if (err) {
         setError(err.message); Alert.alert('Apple Sign In : Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase');
@@ -1028,15 +1032,17 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
     if (!appleAvailable) { Alert.alert('FluidBody+', tr.auth_apple_unavailable || 'Sign in with Apple est disponible sur iOS uniquement.'); return; }
     setLoading(true); setError('');
     try {
+      const nonce = await makeAppleNonce(); // null si crypto indisponible → sans nonce
       const credential = await withTimeout(AppleAuth.signInAsync({
         requestedScopes: [AppleAuth.AppleAuthenticationScope.FULL_NAME, AppleAuth.AppleAuthenticationScope.EMAIL],
+        ...(nonce ? { nonce: nonce.hashed } : {}),
       }), 45000, 'appleSheet');
       if (!credential.identityToken) {
         const msg = tr.err_apple_token_missing || 'Apple identity token manquant.';
         setError(msg); Alert.alert('Apple Sign In', msg);
         setLoading(false); return;
       }
-      const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken }), 15000, 'appleSignIn');
+      const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken, ...(nonce ? { nonce: nonce.raw } : {}) }), 15000, 'appleSignIn');
       if (err) {
         setError(err.message); Alert.alert('Apple Sign In : Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase');
         setLoading(false); return;

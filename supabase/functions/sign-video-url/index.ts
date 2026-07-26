@@ -181,8 +181,28 @@ Deno.serve(async (req) => {
   // + Sélection gratuite du mois (2 vidéos) — miroir de FREE_MONTHLY_SELECTION
   // dans src/constants/data.js. Garder les deux listes synchronisées.
   const FREE_MONTHLY_IDS = new Set(["p2_0", "p7_10"]);
+  // + Théorie (étapes Comprendre/Ressentir) gratuite pour tous — décision
+  // produit du 26/07 : aligne le serveur sur canAccessSeanceIndex (le client
+  // affichait la théorie déverrouillée mais le serveur répondait 403).
+  // Liste générée depuis SEANCES_FR (étape en position 2 du tuple) ; à
+  // régénérer si la structure du catalogue change :
+  //   node -e "voir AUDIT-SECURITE-2026-07-26.md" — aujourd'hui ce sont les
+  //   indices 0-4 de chaque pilier p1..p9.
+  const FREE_THEORY_IDS = new Set([
+    "p1_0","p1_1","p1_2","p1_3","p1_4",
+    "p2_0","p2_1","p2_2","p2_3","p2_4",
+    "p3_0","p3_1","p3_2","p3_3","p3_4",
+    "p4_0","p4_1","p4_2","p4_3","p4_4",
+    "p5_0","p5_1","p5_2","p5_3","p5_4",
+    "p6_0","p6_1","p6_2","p6_3","p6_4",
+    "p7_0","p7_1","p7_2","p7_3","p7_4",
+    "p8_0","p8_1","p8_2","p8_3","p8_4",
+    "p9_0","p9_1","p9_2","p9_3","p9_4",
+  ]);
   const seanceIdx = parseInt(sessionId.split("_").pop() || "", 10);
-  const isFreeSeance = seanceIdx === 0 || FREE_MONTHLY_IDS.has(sessionId);
+  const isFreeSeance = seanceIdx === 0
+    || FREE_MONTHLY_IDS.has(sessionId)
+    || FREE_THEORY_IDS.has(sessionId);
 
   // Entitlement: admin email → profiles.is_subscriber → live RC fallback.
   const email = (user.email || "").toLowerCase();

@@ -10,6 +10,7 @@ import AnimatedPlus from '../components/AnimatedPlus';
 import GlassButton from '../components/GlassButton';
 import LivingBackground from '../components/LivingBackground';
 import { withTimeout } from '../utils/withTimeout';
+import { makeAppleNonce } from '../utils/appleNonce';
 import { reportError } from '../utils/reportError';
 
 let AppleAuth = null;
@@ -128,15 +129,17 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
     if (!termsAccepted) { setError(tr.ob_auth_terms_required || 'Tu dois accepter les CGU pour continuer.'); return; }
     setLoading(true); setError('');
     try {
+      const nonce = await makeAppleNonce(); // null si crypto indisponible → sans nonce
       const credential = await withTimeout(AppleAuth.signInAsync({
         requestedScopes: [AppleAuth.AppleAuthenticationScope.FULL_NAME, AppleAuth.AppleAuthenticationScope.EMAIL],
+        ...(nonce ? { nonce: nonce.hashed } : {}),
       }), 45000, 'appleSheet');
       if (!credential.identityToken) {
         const msg = 'Apple identity token manquant.';
         setError(msg); Alert.alert('Apple Sign In', msg);
         setLoading(false); return;
       }
-      const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken }), 15000, 'appleSignIn');
+      const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken, ...(nonce ? { nonce: nonce.raw } : {}) }), 15000, 'appleSignIn');
       if (err) {
         setError(err.message); Alert.alert('Apple Sign In : Supabase', err.message || 'Erreur Supabase');
         setLoading(false); return;

@@ -252,10 +252,27 @@ async function handlePoll(body: {
     .eq("nonce", nonce);
   if (consumeErr) return json({ error: "consume-failed" }, 500);
 
+  // Audit 26/07 : la TV affiche une confirmation « Se connecter comme
+  // {prenom} ? » avant d'activer la session — contre le scénario où un
+  // tiers photographie le QR et appaire la TV sur SON compte. On joint
+  // donc le prénom du compte redeemé (best-effort, null si absent).
+  let prenom: string | null = null;
+  try {
+    const { data: prof } = await adminClient
+      .from("profiles")
+      .select("prenom")
+      .eq("id", pairing.redeemed_user_id)
+      .maybeSingle();
+    prenom = prof?.prenom ?? null;
+  } catch (_) {
+    // best-effort
+  }
+
   return json({
     ok: true,
     status: "ready",
     user_id: pairing.redeemed_user_id,
+    prenom,
     access_token: pairing.access_token,
     refresh_token: pairing.refresh_token,
   });

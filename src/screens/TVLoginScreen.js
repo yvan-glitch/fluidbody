@@ -42,9 +42,15 @@ export default function TVLoginScreen({ lang, onSignedIn }) {
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
 
   const [pairing, setPairing] = useState(null);
-  const [status, setStatus] = useState('loading'); // loading | active | error | expired
+  const [status, setStatus] = useState('loading'); // loading | active | confirm | error | expired
   const [errorMsg, setErrorMsg] = useState('');
   const [retryFocused, setRetryFocused] = useState(false);
+  // Sécu 26/07 : session en attente de confirmation. On n'appelle
+  // setSession qu'après validation explicite sur la TV — contre le
+  // scénario « quelqu'un photographie le QR et appaire SON compte ».
+  const [pendingSession, setPendingSession] = useState(null); // { access_token, refresh_token, prenom }
+  const [confirmFocused, setConfirmFocused] = useState(false);
+  const [cancelFocused, setCancelFocused] = useState(false);
   const pollTimer = useRef(null);
   const hardTimer = useRef(null);
   const mountedRef = useRef(true);
@@ -88,18 +94,14 @@ export default function TVLoginScreen({ lang, onSignedIn }) {
       if (!mountedRef.current) return;
       if (res?.status === 'ready' && res.access_token && res.refresh_token) {
         clearTimers();
-        try {
-          if (supabase) {
-            await supabase.auth.setSession({
-              access_token: res.access_token,
-              refresh_token: res.refresh_token,
-            });
-          }
-          if (onSignedIn) onSignedIn();
-        } catch (e) {
-          setStatus('error');
-          setErrorMsg(isFr ? 'Erreur de session' : 'Session error');
-        }
+        // On n'active PAS la session tout de suite : confirmation à l'écran
+        // d'abord (le prénom vient de l'edge function, best-effort).
+        setPendingSession({
+          access_token: res.access_token,
+          refresh_token: res.refresh_token,
+          prenom: res.prenom || null,
+        });
+        setStatus('confirm');
         return;
       }
       // status 'pending' → re-poll
@@ -115,6 +117,32 @@ export default function TVLoginScreen({ lang, onSignedIn }) {
       // Erreur réseau transitoire : on retente quand même
       scheduleNextPoll(p);
     }
+  }
+
+  async function confirmSession() {
+    const s = pendingSession;
+    if (!s) return;
+    try {
+      if (supabase) {
+        await supabase.auth.setSession({
+          access_token: s.access_token,
+          refresh_token: s.refresh_token,
+        });
+      }
+      setPendingSession(null);
+      if (onSignedIn) onSignedIn();
+    } catch (e) {
+      setPendingSession(null);
+      setStatus('error');
+      setErrorMsg(isFr ? 'Erreur de session' : 'Session error');
+    }
+  }
+
+  function cancelSession() {
+    // Les tokens ont déjà été effacés côté serveur (consommés au poll) :
+    // les jeter ici suffit. On régénère un nouveau code.
+    setPendingSession(null);
+    bootstrap();
   }
 
   useEffect(() => {
@@ -203,6 +231,63 @@ export default function TVLoginScreen({ lang, onSignedIn }) {
               {isFr ? 'Code valide 5 minutes' : 'Code valid for 5 minutes'}
             </Text>
           </>
+        )}
+
+        {status === 'confirm' && pendingSession && (
+          <View style={{ alignItems: 'center', paddingVertical: 40, paddingHorizontal: 24 }}>
+            <View style={{ marginBottom: 16 }}>
+              <Icon name="user" size={48} color="#AEEF4D" strokeWidth={2} />
+            </View>
+            <Text style={styles.errorTitle}>
+              {isFr
+                ? (pendingSession.prenom
+                    ? `Se connecter comme ${pendingSession.prenom} ?`
+                    : 'Se connecter avec ce compte ?')
+                : (pendingSession.prenom
+                    ? `Sign in as ${pendingSession.prenom}?`
+                    : 'Sign in with this account?')}
+            </Text>
+            <Text style={styles.errorDetail}>
+              {isFr
+                ? 'Vérifie que c\'est bien ton compte avant de valider.'
+                : 'Make sure this is your account before confirming.'}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 20 }}>
+              <TouchableOpacity
+                {...tvFocusProps(true)}
+                onPress={confirmSession}
+                onFocus={() => setConfirmFocused(true)}
+                onBlur={() => setConfirmFocused(false)}
+                activeOpacity={0.8}
+                style={[
+                  styles.retryBtn,
+                  confirmFocused ? TV_FOCUS_RING : null,
+                  confirmFocused ? { transform: [{ scale: 1.06 }] } : null,
+                ]}
+              >
+                <Text style={styles.retryBtnText}>
+                  {isFr ? 'Oui, me connecter' : 'Yes, sign me in'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                {...tvFocusProps(false)}
+                onPress={cancelSession}
+                onFocus={() => setCancelFocused(true)}
+                onBlur={() => setCancelFocused(false)}
+                activeOpacity={0.8}
+                style={[
+                  styles.retryBtn,
+                  { backgroundColor: 'rgba(255,255,255,0.14)' },
+                  cancelFocused ? TV_FOCUS_RING : null,
+                  cancelFocused ? { transform: [{ scale: 1.06 }] } : null,
+                ]}
+              >
+                <Text style={[styles.retryBtnText, { color: '#FFFFFF' }]}>
+                  {isFr ? 'Non, annuler' : 'No, cancel'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
 
         {(status === 'error' || status === 'expired') && (
