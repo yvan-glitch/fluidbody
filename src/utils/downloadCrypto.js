@@ -84,24 +84,35 @@ export function isAvailable() {
 }
 
 // --- clé par appareil ---
+// Audit sécu 26/07 : la promesse en cours est mémoïsée (pattern inflight)
+// pour empêcher deux appels concurrents de générer deux clés dont la seconde
+// écraserait la première dans le Keychain — un fichier tout juste chiffré
+// serait alors devenu illisible.
 let _cachedKey = null;
-export async function getOrCreateKey() {
-  if (_cachedKey) return _cachedKey;
-  if (!SecureStore || !QuickCrypto) throw new Error('Secure crypto unavailable');
-  const stored = await SecureStore.getItemAsync(KEYCHAIN_KEY);
-  if (stored) {
-    const bytes = hexToBytes(stored);
-    if (bytes && bytes.length === 32) { _cachedKey = bytes; return bytes; }
-    // Valeur corrompue — on régénère (les .enc v3 existants deviennent
-    // illisibles → re-téléchargement, cas pathologique acceptable).
-  }
-  const raw = QuickCrypto.randomBytes(32);
-  const key = new Uint8Array(raw.buffer ? raw.buffer.slice(raw.byteOffset, raw.byteOffset + 32) : raw);
-  await SecureStore.setItemAsync(KEYCHAIN_KEY, bytesToHex(key), {
-    keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
-  });
-  _cachedKey = key;
-  return key;
+let _keyInflight = null;
+export function getOrCreateKey() {
+  if (_cachedKey) return Promise.resolve(_cachedKey);
+  if (_keyInflight) return _keyInflight;
+  _keyInflight = (async function () {
+    if (!SecureStore || !QuickCrypto) throw new Error('Secure crypto unavailable');
+    const stored = await SecureStore.getItemAsync(KEYCHAIN_KEY);
+    if (stored) {
+      const bytes = hexToBytes(stored);
+      if (bytes && bytes.length === 32) { _cachedKey = bytes; return bytes; }
+      // Valeur corrompue — on régénère (les .enc v3 existants deviennent
+      // illisibles → re-téléchargement, cas pathologique acceptable).
+    }
+    const raw = QuickCrypto.randomBytes(32);
+    const key = new Uint8Array(raw.buffer ? raw.buffer.slice(raw.byteOffset, raw.byteOffset + 32) : raw);
+    await SecureStore.setItemAsync(KEYCHAIN_KEY, bytesToHex(key), {
+      keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+    });
+    _cachedKey = key;
+    return key;
+  })();
+  _keyInflight.catch(function () { _keyInflight = null; });
+  _keyInflight.then(function () { _keyInflight = null; });
+  return _keyInflight;
 }
 
 function toUint8(buf) {

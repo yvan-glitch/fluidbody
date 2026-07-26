@@ -89,10 +89,10 @@ async function purgeExpired(): Promise<void> {
 }
 
 async function handleInit(): Promise<Response> {
-  // Petit GC opportuniste : 1 fois sur 10, on purge les vieilles lignes.
-  if (Math.random() < 0.1) {
-    purgeExpired();
-  }
+  // GC opportuniste à chaque init (audit 26/07 : avant 1 fois sur 10, trop
+  // rare avec le faible trafic pour purger les tokens dormants à temps).
+  // Fire-and-forget, n'ajoute pas de latence à la réponse.
+  purgeExpired();
 
   const nonce = randomCode(12);
   const tv_secret = randomCode(16);
@@ -107,7 +107,9 @@ async function handleInit(): Promise<Response> {
     });
 
   if (error) {
-    return json({ error: "init-failed", detail: error.message }, 500);
+    // Audit 26/07 : pas de error.message vers un appelant anonyme (fuite
+    // d'infos de schéma Postgres).
+    return json({ error: "init-failed" }, 500);
   }
 
   return json({
@@ -169,7 +171,7 @@ async function handleRedeem(req: Request, body: {
       refresh_token: refreshToken,
     })
     .eq("nonce", nonce);
-  if (updErr) return json({ error: "update-failed", detail: updErr.message }, 500);
+  if (updErr) return json({ error: "update-failed" }, 500);
 
   return json({ ok: true, user_id: user.id });
 }
@@ -216,6 +218,15 @@ async function handlePoll(body: {
     .eq("nonce", nonce);
 
   if (new Date(pairing.expires_at).getTime() < Date.now()) {
+    // Audit 26/07 : nuller les tokens dès l'expiration. Sans ça, si la TV
+    // ne repollait jamais ensuite (crash, réseau), un refresh_token longue
+    // durée pouvait dormir en clair dans la table jusqu'à la purge.
+    if (pairing.access_token || pairing.refresh_token) {
+      await adminClient
+        .from("tv_pairings")
+        .update({ access_token: null, refresh_token: null })
+        .eq("nonce", nonce);
+    }
     return json({ error: "expired" }, 410);
   }
 

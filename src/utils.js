@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { T, PILIERS_BASE, SEANCES_FR, SEANCES_EN, ZONE_TO_PILIER, FREE_MONTHLY_SELECTION } from './constants/data';
 import { safeNativeFire } from './utils/safeNativeCall';
-import { isSeanceVisible } from './utils/catalogVisibility';
+import { isSeanceVisible, hasVideo } from './utils/catalogVisibility';
 
 const FREE_MONTHLY_SET = new Set((FREE_MONTHLY_SELECTION || []).map(function(s) { return s.pilier + '_' + s.idx; }));
 import { VIDEO_RESUME_PREFIX } from './components/VideoPlayer';
@@ -51,7 +51,10 @@ function isComingSoon(pilierKey, idx) {
   // p9 Ménopause : 15 séances structurées dans le code, contenu vidéo en
   // attente de tournage avec Sabrina. Centralisé ici pour pouvoir relâcher
   // par batch quand les vidéos arriveront.
-  if (pilierKey === 'p9') return true;
+  // Audit 26/07 : une séance qui a réellement sa vidéo (flag bundle ou
+  // video_assets remote) n'est jamais « Bientôt » — p9_5 Réveil hormonal
+  // était badgée Bientôt alors que sa vidéo est en prod depuis le 25/07.
+  if (pilierKey === 'p9') return !hasVideo(pilierKey, idx);
   return false;
 }
 

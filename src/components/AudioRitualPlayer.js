@@ -50,7 +50,7 @@ const STRINGS = {
     loading: 'Loading…',
     play: 'Play',
     pause: 'Pause',
-    failed: 'Coming soon',
+    failed: 'Not available yet',
   },
 };
 

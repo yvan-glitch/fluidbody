@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Modal, Alert, Dimensions, Linking, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,7 +21,7 @@ import { Icon } from './Icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { IS_TV, tvFocusProps, TV_FOCUS_RING } from '../utils/platformTV';
 import { breadcrumb } from '../utils/breadcrumb';
-import { AquaticBackground, GlassCardTV } from './tv';
+import { AquaticBackground } from './tv';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 

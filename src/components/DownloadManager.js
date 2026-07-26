@@ -318,6 +318,26 @@ async function cleanupTempVideo(pilierKey, seanceIndex) {
   await FileSystem.deleteAsync(tempPath, { idempotent: true });
 }
 
+// Sweep au démarrage (audit sécu 26/07) : supprime tous les MP4 déchiffrés
+// temporaires (play_*.mp4, dl_temp_*.mp4) laissés par les lectures des
+// sessions précédentes. On ne peut pas les supprimer au unmount du player
+// (race avec expo-av qui lit encore le fichier), mais au boot rien n'est en
+// lecture : le nettoyage est sûr. Le player recrée le fichier à la demande
+// depuis le .enc. Sans ce sweep, une copie EN CLAIR de chaque vidéo premium
+// lue hors-ligne restait indéfiniment dans le cache.
+async function sweepTempVideos() {
+  try {
+    const dir = FileSystem.cacheDirectory;
+    if (!dir) return;
+    const names = await FileSystem.readDirectoryAsync(dir);
+    for (const n of names) {
+      if (/^play_.+\.mp4$/.test(n) || /^dl_temp_.+\.mp4$/.test(n)) {
+        try { await FileSystem.deleteAsync(dir + n, { idempotent: true }); } catch (e) {}
+      }
+    }
+  } catch (e) {}
+}
+
 // Delete a downloaded video
 async function deleteDownload(pilierKey, seanceIndex) {
   const encPath = getEncPath(pilierKey, seanceIndex);
@@ -355,6 +375,7 @@ export {
   isDownloaded,
   getLocalVideoUri,
   cleanupTempVideo,
+  sweepTempVideos,
   deleteDownload,
   deleteAllDownloads,
   getDownloads,

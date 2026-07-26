@@ -407,7 +407,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             if (!cancelled && !localUri) {
               Alert.alert(
                 'Téléchargement corrompu',
-                'Le fichier hors-ligne est illisible. Re-téléchargez la séance.\n\nDébug : ' + trace.join(' | ')
+                'Le fichier hors-ligne est illisible. Re-téléchargez la séance.'
+                  + (__DEV__ ? '\n\nDébug : ' + trace.join(' | ') : '')
               );
               setVideoLoadFailed(true);
               return;
@@ -427,7 +428,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         if (__DEV__) devWarn('VideoPlayer.urlResolve.ERR', msg);
         Alert.alert(
           'Vidéo indisponible',
-          'Impossible de charger la séance.\n\nDébug : ' + trace.join(' | ')
+          'Impossible de charger la séance.'
+            + (__DEV__ ? '\n\nDébug : ' + trace.join(' | ') : '')
         );
         setVideoLoadFailed(true);
       }

@@ -134,7 +134,8 @@ import ActivityScreen from './src/screens/Activity';
 import ProfileOnboardingScreen from './src/screens/ProfileOnboarding';
 import SabrinaProfileTVScreen, { SabrinaProfileModal } from './src/screens/SabrinaProfile';
 import { detectNewUnlocks, prime as primeAchievements, getAchievementById, recordPilierUsage, getRecentPiliers, clearAchievements } from './src/utils/achievements';
-import { flushPendingProfileSync, refreshFromRemote } from './src/utils/profileSync';
+import { flushPendingProfileSync, refreshFromRemote, clearCachedProfile } from './src/utils/profileSync';
+import { sweepTempVideos } from './src/components/DownloadManager';
 import {
   getPreferredHour,
   scheduleStreakProtectionToday,
@@ -1615,6 +1616,13 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     // Visibilité du catalogue : cache local immédiat + refresh Supabase
     // best-effort (liste des session_id ayant une vidéo). Fire and forget.
     try { primeCatalogVisibility(); } catch (e) {}
+    // Audit sécu 26/07 : purge des MP4 déchiffrés temporaires des sessions
+    // précédentes (rien n'est en lecture au boot, delete sans race). Différé
+    // pour ne pas concurrencer le premier rendu.
+    var sweepTimer = setTimeout(function() {
+      try { sweepTempVideos(); } catch (e) {}
+    }, 3000);
+    return function() { try { clearTimeout(sweepTimer); } catch (e) {} };
   }, []);
 
   const rcSupported = Platform.OS === 'ios';
@@ -1750,13 +1758,13 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
             try { await AsyncStorage.setItem(FLUID_SUB_KEY, subVerified ? 'true' : 'false'); } catch (e) {}
           } else {
             // RC threw or returned nothing → fall back to cache
-            var cached = await AsyncStorage.getItem(FLUID_SUB_KEY);
-            subVerified = cached === 'true';
+            var cachedRcFallback = await AsyncStorage.getItem(FLUID_SUB_KEY);
+            subVerified = cachedRcFallback === 'true';
           }
         } else {
           // Offline fallback : cache local (non fiable, mais mieux que rien)
-          var cached = await AsyncStorage.getItem(FLUID_SUB_KEY);
-          subVerified = cached === 'true';
+          var cachedOffline = await AsyncStorage.getItem(FLUID_SUB_KEY);
+          subVerified = cachedOffline === 'true';
         }
         if (subVerified) setIsSubscriber(true);
         const savedDone = await AsyncStorage.getItem(DONE_KEY);
@@ -2076,6 +2084,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     try {
       const { error } = await supabase.auth.signOut();
       if (error) { Alert.alert('FluidBody+', error.message || tr.err_signout || 'Erreur de déconnexion.'); return; }
+      // Audit sécu 26/07 : purge du profil caché (prénom, mensurations…) et
+      // de la file de sync en attente. Sans ça, sur un appareil partagé le
+      // compte suivant héritait des données perso du précédent, et la file
+      // pending (non scoppée à un user) pouvait pousser les données de
+      // l'ancien compte dans le profil du nouveau.
+      try { await clearCachedProfile(); } catch (e) {}
     } catch (e) {
       Alert.alert('FluidBody+', e?.message || tr.err_signout || 'Erreur de déconnexion.');
     }
@@ -2184,6 +2198,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           onLogout={async () => {
             if (!supabase) { Alert.alert('FluidBody+', tr.err_supabase_unavailable || 'Supabase indisponible.'); return; }
             try { await supabase.auth.signOut(); } catch (e) {}
+            try { await clearCachedProfile(); } catch (e) {}
           }}
         />
       ) : (

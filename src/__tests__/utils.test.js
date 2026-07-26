@@ -155,4 +155,8 @@ describe('isComingSoon', () => {
     expect(isComingSoon('p1', 0)).toBe(false);
     expect(isComingSoon('p7', 19)).toBe(false);
   });
+
+  test('une séance p9 qui a sa vidéo n\'est plus « Bientôt » (p9_5 Réveil hormonal)', () => {
+    expect(isComingSoon('p9', 5)).toBe(false);
+  });
 });
