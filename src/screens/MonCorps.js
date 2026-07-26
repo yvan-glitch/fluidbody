@@ -27,7 +27,6 @@ import LivingBackground from '../components/LivingBackground';
 import LiquidGlassCapsule from '../components/LiquidGlassCapsule';
 import VideoPlayer from '../components/VideoPlayer';
 import PostSessionReflection from '../components/PostSessionReflection';
-import DailyIntentionPrompt from '../components/DailyIntentionPrompt';
 import StreakCelebration from '../components/StreakCelebration';
 import { getTodayIntention, getPilierKeyForIntention, findIntention } from '../utils/dailyIntention';
 import { chromeAnim, createChromeScrollHandler, showChrome } from '../utils/chromeScroll';
@@ -1149,9 +1148,11 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   var [showMyPrograms, setShowMyPrograms] = useState(false);
   var [showProgramBuilder, setShowProgramBuilder] = useState(false);
   var [programRefreshTick, setProgramRefreshTick] = useState(0);
-  // F1 — intention du jour (cold-start prompt + recommandation pilier).
+  // F1 — intention du jour (recommandation pilier). Le prompt cold-start
+  // "Comment veux-tu te sentir aujourd'hui ?" a été RETIRÉ (retour Yvan
+  // 26/07 : il chevauchait l'écran de connexion Apple Watch au premier
+  // lancement). On lit seulement une intention déjà stockée.
   var [todayIntention, setTodayIntentionState] = useState(null);
-  var [showIntentionPrompt, setShowIntentionPrompt] = useState(false);
   // F3 — milestone de streak fêtée (3/7/14/21/30/50/100).
   var [celebratedStreakN, setCelebratedStreakN] = useState(null);
   // Speir-inspired Lots iPhone — favoris live-updatable pour les rangées
@@ -1180,10 +1181,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
     var cancelled = false;
     getTodayIntention().then(function(intent) {
       if (cancelled) return;
-      if (intent) { setTodayIntentionState(intent); return; }
-      // Pas d'intention pour aujourd'hui — petit délai pour ne pas afficher
-      // par-dessus l'éventuel onboarding/auth qui se monte juste après.
-      setTimeout(function() { if (!cancelled) setShowIntentionPrompt(true); }, 900);
+      if (intent) setTodayIntentionState(intent);
     }).catch(function() {});
     return function() { cancelled = true; };
   }, []);
@@ -2443,12 +2441,6 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       {IS_TV && showBreathing ? (
         <BreathingCheckIn visible onClose={function() { setShowBreathing(false); }} lang={lang} />
       ) : null}
-      <DailyIntentionPrompt
-        visible={showIntentionPrompt}
-        lang={lang}
-        onPicked={function(key) { setTodayIntentionState(key); setShowIntentionPrompt(false); }}
-        onClose={function() { setShowIntentionPrompt(false); }}
-      />
       <StreakCelebration
         visible={celebratedStreakN != null}
         streak={celebratedStreakN || 0}
