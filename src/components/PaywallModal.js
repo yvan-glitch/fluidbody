@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, Modal, Alert, Dimensions, Linking, StyleSheet, Animated, Easing, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, ScrollView, Modal, Alert, Dimensions, Linking, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedPlus from './AnimatedPlus';
@@ -47,48 +47,6 @@ function withPeriod(s, suffix) {
   return `${s}${suffix}`;
 }
 
-function localeFromLang(lang) {
-  const l = (lang || 'fr').toLowerCase();
-  if (l.indexOf('fr') === 0) return 'fr-FR';
-  if (l.indexOf('es') === 0) return 'es-ES';
-  if (l.indexOf('it') === 0) return 'it-IT';
-  return 'en-US';
-}
-
-// Animated count-up — feels alive, low cost. Lerps over 1.6s with an
-// out-easing so the last digits slow gracefully.
-function AnimatedCount({ to, style, lang }) {
-  const animRef = useRef(new Animated.Value(0)).current;
-  const [val, setVal] = useState(0);
-  useEffect(() => {
-    animRef.setValue(0);
-    const listenerId = animRef.addListener(({ value }) => {
-      setVal(Math.round(value * to));
-    });
-    Animated.timing(animRef, {
-      toValue: 1,
-      duration: 1600,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-    return () => animRef.removeListener(listenerId);
-  }, [to]);
-  return <Text style={style}>{val.toLocaleString(localeFromLang(lang))}</Text>;
-}
-
-// Live-ish active members counter. We don't have a backend signal yet so we
-// pick a stable, plausible number derived from the current half-hour so two
-// users at the same time see the same display.
-function liveMembersGuess() {
-  const now = new Date();
-  const halfHour = Math.floor(now.getHours() * 2 + now.getMinutes() / 30);
-  // Range 120 → 360 across the day, peaks around lunch + evening.
-  const base = 120;
-  const peakLunch = Math.max(0, 90 - Math.abs(halfHour - 26) * 6); // ~13h
-  const peakEvening = Math.max(0, 130 - Math.abs(halfHour - 39) * 7); // ~19h30
-  return Math.round(base + peakLunch + peakEvening + (halfHour % 7) * 4);
-}
-
 function TestimonialsCard({ testimonials, theme, sectionTitle }) {
   const [idx, setIdx] = useState(0);
   const opac = useRef(new Animated.Value(1)).current;
@@ -108,7 +66,7 @@ function TestimonialsCard({ testimonials, theme, sectionTitle }) {
         pendingSwap.current = null;
         setIdx((i) => (i + 1) % testimonials.length);
       }, 280);
-    }, 4200);
+    }, 7000);
     return () => {
       clearInterval(itv);
       if (pendingSwap.current) {
@@ -141,7 +99,7 @@ function TestimonialsCard({ testimonials, theme, sectionTitle }) {
               {t.text}
             </Text>
             <Text style={{ fontSize: 11, color: theme.colors.textSecondary, marginTop: 5, letterSpacing: 0.3 }}>
-              — {t.name}{t.age ? `, ${t.age}` : ''}
+              {t.name}{t.age ? `, ${t.age}` : ''}
             </Text>
           </View>
         </Animated.View>
@@ -184,12 +142,12 @@ function CompareTable({ features, theme, title, appLabel, studioLabel }) {
             <View style={{ width: 64, alignItems: 'center' }}>
               {f.app
                 ? <Icon name="check" size={16} color="#AEEF4D" strokeWidth={2.4} />
-                : <Text style={{ color: theme.colors.textTertiary, fontWeight: '700' }}>—</Text>}
+                : <Text style={{ color: theme.colors.textTertiary, fontWeight: '700' }}>-</Text>}
             </View>
             <View style={{ width: 80, alignItems: 'center' }}>
               {f.studio
                 ? <Icon name="check" size={16} color={theme.colors.accent} strokeWidth={2.4} />
-                : <Text style={{ color: theme.colors.textTertiary, fontWeight: '700' }}>—</Text>}
+                : <Text style={{ color: theme.colors.textTertiary, fontWeight: '700' }}>-</Text>}
             </View>
           </View>
         ))}
@@ -288,7 +246,6 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
   // FIX rules-of-hooks (2026-07-23) : hooks avant tout early-return.
   var theme = useTheme().theme;
   const [selected, setSelected] = useState('yearly');
-  const liveMembers = useMemo(liveMembersGuess, []);
 
   // Apple TV : court-circuit safety. Règle « jamais de paywall TV » —
   // un user payé sur iPhone qui paire sa TV doit voir l'app, pas le
@@ -380,13 +337,11 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
         'iPhone et Apple TV inclus',
         'Guidé par Sabrina, 30 ans de pratique',
         'Disponible en quatre langues',
-        'Sabrina IA personnalisée — à venir',
       ] : [
         '9 pillars of conscious Pilates',
         'iPhone and Apple TV included',
         'Guided by Sabrina, 30 years of practice',
         'Available in four languages',
-        'Personalised Sabrina AI — coming soon',
       ]);
 
   // Sur Android, l'app n'est ni sur iPhone ni sur Apple TV → on neutralise
@@ -544,13 +499,6 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               </View>
               <Text style={{ fontSize: 32, fontWeight: '800', color: '#ffffff', lineHeight: 38, letterSpacing: -0.6 }}>{heroTitle}</Text>
               <Text style={{ fontSize: 15, fontWeight: '400', color: 'rgba(255,255,255,0.78)', lineHeight: 22, letterSpacing: -0.1, marginTop: 12 }}>{heroSub}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#AEEF4D' }} />
-                <AnimatedCount to={liveMembers} lang={lang} style={{ fontSize: 14, fontWeight: '800', color: '#ffffff' }} />
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.78)', fontWeight: '500' }}>
-                  {tr.paywall_members_label || 'membres pratiquent en ce moment'}
-                </Text>
-              </View>
             </View>
           </View>
 
@@ -582,10 +530,10 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
                 </Text>
                 <Text style={{ fontSize: 13, fontWeight: '500', color: '#ffffff', lineHeight: 20, letterSpacing: -0.1 }}>
                   {isFr
-                    ? (('Mensuel — ' + monthlyPriceRaw + '/mois' + (monthlyHasIntro ? (' les 3 premiers mois, puis ' + (monthlyStdStr || '24.90 CHF')) : '') + '.')
-                       + '\n' + ('Annuel — ' + yearlyPriceRaw + (yearlyHasIntro ? (' la première année, puis ' + (yearlyStdStr || '199 CHF')) : ' par an') + '.'))
-                    : (('Monthly — ' + monthlyPriceRaw + '/mo' + (monthlyHasIntro ? (' for the first 3 months, then ' + (monthlyStdStr || '24.90 CHF')) : '') + '.')
-                       + '\n' + ('Yearly — ' + yearlyPriceRaw + (yearlyHasIntro ? (' the first year, then ' + (yearlyStdStr || '199 CHF')) : ' per year') + '.'))}
+                    ? (('Mensuel : ' + monthlyPriceRaw + '/mois' + (monthlyHasIntro ? (' les 3 premiers mois, puis ' + (monthlyStdStr || '24.90 CHF')) : '') + '.')
+                       + '\n' + ('Annuel : ' + yearlyPriceRaw + (yearlyHasIntro ? (' la première année, puis ' + (yearlyStdStr || '199 CHF')) : ' par an') + '.'))
+                    : (('Monthly: ' + monthlyPriceRaw + '/mo' + (monthlyHasIntro ? (' for the first 3 months, then ' + (monthlyStdStr || '24.90 CHF')) : '') + '.')
+                       + '\n' + ('Yearly: ' + yearlyPriceRaw + (yearlyHasIntro ? (' the first year, then ' + (yearlyStdStr || '199 CHF')) : ' per year') + '.'))}
                 </Text>
               </GlassView>
               {/* Bandeau bonus parrainage — uniquement si l'utilisateur a
@@ -699,8 +647,8 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
               </View>
               <Text style={{ fontSize: 11, fontWeight: '500', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 14, letterSpacing: 0.2 }}>
                 {tr.paywall_founder_urgency || (isFr
-                  ? 'Offre fondateur — pour les premiers membres'
-                  : 'Founder offer — for early members')}
+                  ? 'Offre fondateur : pour les premiers membres'
+                  : 'Founder offer: for early members')}
               </Text>
               <Text style={{ fontSize: 11, fontWeight: '400', color: theme.colors.textTertiary, textAlign: 'center', marginTop: 6, lineHeight: 16, letterSpacing: 0.1 }}>
                 {paywallFounderLegal}
