@@ -70,7 +70,7 @@ export default function LineChart({
     return (
       <View style={{ width: width, height: height, alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontStyle: 'italic' }}>
-          {emptyLabel || '—'}
+          {emptyLabel || '-'}
         </Text>
       </View>
     );

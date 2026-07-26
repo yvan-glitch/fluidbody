@@ -101,7 +101,7 @@ export default function PairAppleTV({ onClose, lang, supaUser }) {
       if (!supabase) throw new Error(isFr ? 'Supabase indisponible' : 'Supabase unavailable');
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token || !session?.refresh_token) {
-        throw new Error(isFr ? 'Session expirée — reconnecte-toi' : 'Session expired — sign in again');
+        throw new Error(isFr ? 'Session expirée, reconnecte-toi' : 'Session expired, sign in again');
       }
       await redeemPairing({
         nonce,

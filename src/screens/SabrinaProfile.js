@@ -266,8 +266,8 @@ export default function SabrinaProfile({ lang, onClose }) {
               }}
             >
               {isFr
-                ? 'La Tour-de-Peilz · Vaud · Suisse — studio fondé par Sabrina, où le Pilates conscient se vit chaque jour.'
-                : 'La Tour-de-Peilz · Vaud · Switzerland — Sabrina\'s studio, where conscious Pilates is lived every day.'}
+                ? 'La Tour-de-Peilz · Vaud · Suisse : studio fondé par Sabrina, où le Pilates conscient se vit chaque jour.'
+                : 'La Tour-de-Peilz · Vaud · Switzerland: Sabrina\'s studio, where conscious Pilates is lived every day.'}
             </Text>
           </View>
         </View>

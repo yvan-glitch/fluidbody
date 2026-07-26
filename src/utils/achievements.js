@@ -47,8 +47,8 @@ export const ACHIEVEMENTS = [
     iconKey: 'lightning',
     titleFr: 'Une semaine !',
     titleEn: 'One full week!',
-    descFr: '7 jours consécutifs — l\'habitude prend.',
-    descEn: '7 days in a row — the habit is forming.',
+    descFr: '7 jours consécutifs : l\'habitude prend.',
+    descEn: '7 days in a row: the habit is forming.',
   },
   {
     id: 'streak_30',

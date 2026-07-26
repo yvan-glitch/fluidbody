@@ -358,7 +358,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
 
   useEffect(function() {
     if (!supabase || !supaUser) {
-      if (__DEV__) console.log('[Profil] fetch skipped — supabase=' + !!supabase + ' supaUser=' + !!supaUser);
+      if (__DEV__) console.log('[Profil] fetch skipped - supabase=' + !!supabase + ' supaUser=' + !!supaUser);
       return;
     }
     if (__DEV__) console.log('[Profil] fetching profile for user.id:', supaUser.id);
@@ -494,8 +494,8 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
     return tr.profile_not_set || 'Non renseigné';
   }
   function frequencyLabel(key) {
-    if (key === '1-2') return tr.onb_frequency_low || '1–2 fois';
-    if (key === '3-4') return tr.onb_frequency_mid || '3–4 fois';
+    if (key === '1-2') return tr.onb_frequency_low || '1-2 fois';
+    if (key === '3-4') return tr.onb_frequency_mid || '3-4 fois';
     if (key === '5+') return tr.onb_frequency_high || '5+ fois';
     return tr.profile_not_set || 'Non renseigné';
   }
@@ -774,7 +774,7 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
                   {tr.referral_code_label || 'Ton code'}
                 </Text>
                 <Text selectable style={{ fontSize: 24, fontWeight: '800', color: '#AEEF4D', letterSpacing: 2, fontVariant: ['tabular-nums'] }}>
-                  {referralCode || '— — — —'}
+                  {referralCode || '- - - -'}
                 </Text>
                 <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 8 }}>
                   {referralCopiedToast

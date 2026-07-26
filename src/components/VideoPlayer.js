@@ -1343,7 +1343,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
               {tr.effort_title || 'Comment c\'était ?'}
             </Text>
             <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', textAlign: 'center', lineHeight: 19, marginTop: 8, marginBottom: 18 }}>
-              {tr.effort_sub || 'Évalue ton effort — il compte dans ta charge d\'entraînement Apple Santé.'}
+              {tr.effort_sub || 'Évalue ton effort : il compte dans ta charge d\'entraînement Apple Santé.'}
             </Text>
             {[
               { score: 2, color: '#64D2FF', label: tr.effort_l1 || 'Tout en douceur' },

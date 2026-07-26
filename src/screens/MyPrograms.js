@@ -234,7 +234,7 @@ export default function MyPrograms({ lang, supabase, supaUser, onClose, onOpenPr
               {tr.program_empty_title || 'No program yet'}
             </Text>
             <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 19, marginBottom: 18 }}>
-              {tr.program_empty_sub || 'Build your first personalised plan — pick your goals and we’ll lay out the sessions.'}
+              {tr.program_empty_sub || 'Build your first personalised plan: pick your goals and we’ll lay out the sessions.'}
             </Text>
             <GlassButton variant="accent" size="md" onPress={function () { _hapticSelection(); setShowBuilder(true); }}>
               {tr.program_create_btn || 'Create a program'}

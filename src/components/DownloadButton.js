@@ -160,7 +160,7 @@ export default function DownloadButton({ pilierKey, idx, lang, disabled, size = 
       activeOpacity={0.82}
       accessibilityRole="button"
       accessibilityLabel={
-        isDone ? (isFr ? 'Téléchargée — appuyer pour supprimer' : 'Downloaded — tap to delete')
+        isDone ? (isFr ? 'Téléchargée, appuyer pour supprimer' : 'Downloaded, tap to delete')
         : status === 'downloading' ? (isFr ? 'Téléchargement en cours' : 'Downloading')
         : (isFr ? 'Télécharger la séance' : 'Download session')
       }

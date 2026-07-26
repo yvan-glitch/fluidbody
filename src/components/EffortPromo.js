@@ -141,17 +141,17 @@ export function EffortPromoWalkthrough({ visible, lang, onDone }) {
     {
       illo: <LoadCurve width={170} height={70} />,
       title: tr.effort_w1_title || 'Consulte ta charge d\'entraînement',
-      sub: tr.effort_w1_sub || 'Bouger fait du bien — à condition de doser. La charge d\'entraînement d\'Apple Santé compare ton effort des 7 derniers jours à celui des 28 derniers, pour t\'aider à progresser sans te brusquer.',
+      sub: tr.effort_w1_sub || 'Bouger fait du bien, à condition de doser. La charge d\'entraînement d\'Apple Santé compare ton effort des 7 derniers jours à celui des 28 derniers, pour t\'aider à progresser sans te brusquer.',
     },
     {
       illo: <EffortBars highlight={2} />,
       title: tr.effort_w2_title || 'Évalue ton effort',
-      sub: tr.effort_w2_sub || 'À la fin de chaque séance, dis-nous comment c\'était : tout en douceur, modéré, soutenu ou intense. Ton ressenti est la mesure qui compte — c\'est lui qui nourrit ta charge.',
+      sub: tr.effort_w2_sub || 'À la fin de chaque séance, dis-nous comment c\'était : tout en douceur, modéré, soutenu ou intense. Ton ressenti est la mesure qui compte, c\'est lui qui nourrit ta charge.',
     },
     {
       illo: <EffortBars />,
       title: tr.effort_w3_title || 'Des stats qui te ressemblent',
-      sub: tr.effort_w3_sub || 'Retrouve ta charge dans l\'app Fitness d\'Apple, et bientôt tes ressentis dans tes statistiques FluidBody — pour des programmes ajustés à ton énergie réelle.',
+      sub: tr.effort_w3_sub || 'Retrouve ta charge dans l\'app Fitness d\'Apple, et bientôt tes ressentis dans tes statistiques FluidBody, pour des programmes ajustés à ton énergie réelle.',
     },
   ];
 

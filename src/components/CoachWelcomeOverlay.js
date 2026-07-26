@@ -184,7 +184,7 @@ export default function CoachWelcomeOverlay({ visible, onDone, lang, prenom }) {
                     fontSize: 11, color: 'rgba(255,255,255,0.45)', textAlign: 'center',
                     letterSpacing: 1.6, textTransform: 'uppercase', marginTop: 12,
                   }}>
-                    — {coachName}
+                    {coachName}
                   </Text>
                 </Animated.View>
               </View>

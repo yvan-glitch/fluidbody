@@ -470,7 +470,7 @@ export default function PilierEducation({ visible, pilier, lang, onClose, onOpen
                   onPress={hasSeance ? function() { handleMovementPress(mv); } : null}
                   style={{ marginBottom: 10 }}
                   accessibilityRole={hasSeance ? 'button' : 'text'}
-                  accessibilityLabel={mv.name + (hasSeance ? ' — ' + (tr.pilier_education_movement_open || 'Open') : ' — ' + (tr.pilier_education_movement_soon || 'Soon'))}
+                  accessibilityLabel={mv.name + (hasSeance ? ', ' + (tr.pilier_education_movement_open || 'Open') : ', ' + (tr.pilier_education_movement_soon || 'Soon'))}
                 >
                   <GlassView intensity={0} borderRadius={GLASS_RADII.card} contentStyle={{ padding: 16 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 10 }}>

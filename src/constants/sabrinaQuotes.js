@@ -29,7 +29,7 @@ const QUOTES = [
   "Sois doux avec toi avant d'être fort.",
   "Le Pilates ne demande pas de souplesse, il la construit.",
   "Habite ton corps comme on habite une maison.",
-  "Aujourd'hui n'est pas hier — ton corps non plus.",
+  "Aujourd'hui n'est pas hier, ton corps non plus.",
   "Reviens à ton souffle dès qu'il s'envole.",
   "La qualité d'un mouvement vaut mille répétitions.",
 ];

@@ -677,7 +677,7 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
               <View style={{ height: 1, backgroundColor: colors.hairline }} />
               <MetricRow icon="flame" label={tr.activity_total_kcal || 'Total calories'} value={details.totalKcal + ' kcal'} color={colors.text} />
               <View style={{ height: 1, backgroundColor: colors.hairline }} />
-              <MetricRow icon="heart" label={(tr.activity_avg_hr || 'Avg HR') + ' / ' + (tr.activity_max_hr || 'Max HR')} value={(details.avgHr || '–') + ' / ' + (details.maxHr || '–')} sub="bpm" color={colors.text} />
+              <MetricRow icon="heart" label={(tr.activity_avg_hr || 'Avg HR') + ' / ' + (tr.activity_max_hr || 'Max HR')} value={(details.avgHr || '-') + ' / ' + (details.maxHr || '-')} sub="bpm" color={colors.text} />
             </View>
           </GlassCard>
         </View>
@@ -704,7 +704,7 @@ export default function ActivityScreen({ lang, supabase, supaUser, done }) {
                         {(w.activity || 'Pilates').replace(/([A-Z])/g, ' $1').trim()}
                       </Text>
                       <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
-                        {shortTime(w.startDate)} · {w.durationMin || '–'} min{w.energyKcal != null ? ' · ' + w.energyKcal + ' kcal' : ''}
+                        {shortTime(w.startDate)} · {w.durationMin || '-'} min{w.energyKcal != null ? ' · ' + w.energyKcal + ' kcal' : ''}
                       </Text>
                     </View>
                   </View>

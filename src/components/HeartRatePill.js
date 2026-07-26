@@ -123,7 +123,7 @@ export default function HeartRatePill({ bpm, isLive, birthDateIso, onPress, styl
           fontVariant: ['tabular-nums'],
           letterSpacing: -0.3,
         }}>
-          {bpm != null ? String(bpm) : '—'}
+          {bpm != null ? String(bpm) : '-'}
         </Text>
         <Text style={{
           marginLeft: 3,

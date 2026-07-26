@@ -82,7 +82,7 @@ export default function ChallengeModal({ visible, onClose, lang, done, isSubscri
           <View style={{ paddingHorizontal: 20, marginTop: 24, gap: 10 }}>
             {CHALLENGE_7J.days.map(function (d, i) {
               const s = (seancesData[d.pilier] || [])[d.idx] || [];
-              const titre = s[0] || '—';
+              const titre = s[0] || '-';
               const duree = s[1] || '';
               const isDone = (function () { const arr = done && done[d.pilier]; const v = arr && arr[d.idx]; return v === true || v === 'true'; })();
               const isCurrent = i === nextDay;
@@ -93,7 +93,7 @@ export default function ChallengeModal({ visible, onClose, lang, done, isSubscri
                   disabled={isLockedSeq}
                   activeOpacity={0.85}
                   accessibilityRole="button"
-                  accessibilityLabel={(isFr ? 'Jour ' : 'Day ') + (i + 1) + ' — ' + titre}
+                  accessibilityLabel={(isFr ? 'Jour ' : 'Day ') + (i + 1) + ', ' + titre}
                   onPress={function () { hapticLight(); onOpenSeance && onOpenSeance(d.pilier, d.idx); }}
                   style={{
                     flexDirection: 'row', alignItems: 'center', gap: 14,
@@ -135,8 +135,8 @@ export default function ChallengeModal({ visible, onClose, lang, done, isSubscri
               </Text>
               <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center', lineHeight: 21, marginTop: 8 }}>
                 {tr.challenge_done_sub || (isFr
-                  ? 'Sept jours pour ton dos — il te remercie déjà.'
-                  : 'Seven days for your back — it already thanks you.')}
+                  ? 'Sept jours pour ton dos : il te remercie déjà.'
+                  : 'Seven days for your back: it already thanks you.')}
               </Text>
               {!isSubscriber ? (
                 <GlassButton

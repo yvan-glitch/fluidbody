@@ -138,7 +138,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
       }
       const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken }), 15000, 'appleSignIn');
       if (err) {
-        setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || 'Erreur Supabase');
+        setError(err.message); Alert.alert('Apple Sign In : Supabase', err.message || 'Erreur Supabase');
         setLoading(false); return;
       }
       const applePrenom = credential.fullName?.givenName || '';
@@ -160,7 +160,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
       } else if (e?.code !== 'ERR_REQUEST_CANCELED') {
         const msg = e?.message || tr.ob_auth_err_net || 'Erreur.';
         setError(msg);
-        Alert.alert('Apple Sign In — erreur', `${msg}\n\nCode: ${e?.code || 'n/a'}`);
+        Alert.alert('Apple Sign In : erreur', `${msg}\n\nCode: ${e?.code || 'n/a'}`);
       }
       setLoading(false);
     }
@@ -185,7 +185,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
       }
       const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'google', token: idToken }), 15000, 'googleSignIn');
       if (err) {
-        setError(err.message); Alert.alert('Google Sign In — Supabase', err.message || 'Erreur Supabase');
+        setError(err.message); Alert.alert('Google Sign In : Supabase', err.message || 'Erreur Supabase');
         setLoading(false); return;
       }
       const gName = res?.data?.user?.givenName || res?.user?.givenName || '';
@@ -209,7 +209,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
       } else {
         const msg = e?.message || tr.ob_auth_err_net || 'Erreur.';
         setError(msg);
-        Alert.alert('Google Sign In — erreur', `${msg}\n\nCode: ${code || 'n/a'}`);
+        Alert.alert('Google Sign In : erreur', `${msg}\n\nCode: ${code || 'n/a'}`);
       }
       setLoading(false);
     }

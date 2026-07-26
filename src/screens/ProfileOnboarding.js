@@ -595,7 +595,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
                       <Text style={{ fontSize: 36, fontWeight: '300', color: colors.text, letterSpacing: -1 }}>
                         {birthDate
                           ? (String(birthDate.getDate()).padStart(2, '0') + '/' + String(birthDate.getMonth() + 1).padStart(2, '0') + '/' + birthDate.getFullYear())
-                          : '— / — / ——'}
+                          : '- / - / --'}
                       </Text>
                       <Text style={{ fontSize: 12, color: colors.accentText, marginTop: 8 }}>
                         {birthDate ? (tr.profile_edit_btn || 'Edit') : (tr.onb_birth_pick || 'Pick a date')}
@@ -665,8 +665,8 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     {[
-                      { key: '1-2', label: tr.onb_frequency_low || '1–2 times' },
-                      { key: '3-4', label: tr.onb_frequency_mid || '3–4 times' },
+                      { key: '1-2', label: tr.onb_frequency_low || '1-2 times' },
+                      { key: '3-4', label: tr.onb_frequency_mid || '3-4 times' },
                       { key: '5+',  label: tr.onb_frequency_high || '5+ times' },
                     ].map(function (opt) {
                       const active = frequency === opt.key;

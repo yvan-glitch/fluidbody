@@ -35,7 +35,7 @@ export const RITUAL_CATEGORIES = {
   reveil: {
     keyFr: 'Réveil',
     keyEn: 'Morning',
-    description: 'Sortir du lit en douceur — 3 à 5 min',
+    description: 'Sortir du lit en douceur, 3 à 5 min',
     icon: 'sunrise',
     color: '#FFD27B', // warm yellow
   },
@@ -49,7 +49,7 @@ export const RITUAL_CATEGORIES = {
   endormissement: {
     keyFr: 'Endormissement',
     keyEn: 'Sleep',
-    description: 'Détente avant la nuit — scan corporel, respiration profonde',
+    description: 'Détente avant la nuit : scan corporel, respiration profonde',
     icon: 'moon',
     color: '#9B7BFF', // soft purple
   },
@@ -70,9 +70,9 @@ export const RITUAL_CATEGORIES = {
 export const RITUALS_FR = {
   respiration: [
     ['Cohérence cardiaque 5 min', "5'00''", 'respiration', false],
-    ['Respiration carrée — début', "3'30''", 'respiration', false],
+    ['Respiration carrée : début', "3'30''", 'respiration', false],
     ['4-7-8 pour s\'endormir', "4'15''", 'respiration', false],
-    ['Souffle de l\'ours — apaisement', "6'00''", 'respiration', false],
+    ['Souffle de l\'ours : apaisement', "6'00''", 'respiration', false],
   ],
   reveil: [
     ['Ouvrir le corps en 3 minutes', "3'00''", 'reveil', false],
@@ -99,9 +99,9 @@ export const RITUALS_FR = {
 export const RITUALS_EN = {
   respiration: [
     ['Coherent Breathing 5 min', "5'00''", 'respiration', false],
-    ['Box Breathing — beginner', "3'30''", 'respiration', false],
+    ['Box Breathing: beginner', "3'30''", 'respiration', false],
     ['4-7-8 for sleep', "4'15''", 'respiration', false],
-    ['Bear Breath — calming', "6'00''", 'respiration', false],
+    ['Bear Breath: calming', "6'00''", 'respiration', false],
   ],
   reveil: [
     ['Open your body in 3 min', "3'00''", 'reveil', false],

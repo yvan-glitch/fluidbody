@@ -71,7 +71,7 @@ export default function MiniRingsRow({
     const data = Array.isArray(week) ? week : [];
     if (data.length === 0) {
       return (
-        <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontStyle: 'italic' }}>—</Text>
+        <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontStyle: 'italic' }}>-</Text>
       );
     }
     return (
@@ -110,7 +110,7 @@ export default function MiniRingsRow({
   const buckets = Array.isArray(monthly) ? monthly : [];
   if (buckets.length === 0) {
     return (
-      <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontStyle: 'italic' }}>—</Text>
+      <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontStyle: 'italic' }}>-</Text>
     );
   }
   return (

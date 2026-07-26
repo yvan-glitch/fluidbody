@@ -52,8 +52,8 @@ function copyFor(lang, prenom) {
     eyebrow: isFr ? '14 MAI · UN JOUR SPÉCIAL' : '14 MAY · A SPECIAL DAY',
     title: named || (isFr ? 'Joyeux 14 mai.' : 'Happy 14 May.'),
     body: isFr
-      ? 'Aujourd\'hui, on prend un instant pour soi. Respire, sens ton corps, ouvre l\'espace. Merci d\'être là — Sabrina.'
-      : 'Today, take a moment for yourself. Breathe, feel your body, open space. Thank you for being here — Sabrina.',
+      ? 'Aujourd\'hui, on prend un instant pour soi. Respire, sens ton corps, ouvre l\'espace. Merci d\'être là. Sabrina.'
+      : 'Today, take a moment for yourself. Breathe, feel your body, open space. Thank you for being here. Sabrina.',
     cta: isFr ? 'Continuer' : 'Continue',
   };
 }

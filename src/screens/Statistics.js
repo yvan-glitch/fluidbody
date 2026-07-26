@@ -284,15 +284,15 @@ export default function StatisticsScreen({ lang, done, streak, supaUser, onClose
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 14 }}>
                   <View style={{ alignItems: 'center' }}>
-                    <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.text, fontVariant: ['tabular-nums'] }}>{hr.restingAvg != null ? hr.restingAvg : '—'}</Text>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.text, fontVariant: ['tabular-nums'] }}>{hr.restingAvg != null ? hr.restingAvg : '-'}</Text>
                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.stats_resting_hr || 'FC repos'}</Text>
                   </View>
                   <View style={{ alignItems: 'center' }}>
-                    <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.text, fontVariant: ['tabular-nums'] }}>{hr.activeAvg != null ? hr.activeAvg : '—'}</Text>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.text, fontVariant: ['tabular-nums'] }}>{hr.activeAvg != null ? hr.activeAvg : '-'}</Text>
                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.stats_active_hr || 'FC effort'}</Text>
                   </View>
                   <View style={{ alignItems: 'center' }}>
-                    <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.text, fontVariant: ['tabular-nums'] }}>{hr.maxOverall != null ? hr.maxOverall : '—'}</Text>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: theme.colors.text, fontVariant: ['tabular-nums'] }}>{hr.maxOverall != null ? hr.maxOverall : '-'}</Text>
                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, marginTop: 2 }}>{tr.stats_max_hr || 'FC max'}</Text>
                   </View>
                 </View>

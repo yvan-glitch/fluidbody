@@ -164,7 +164,7 @@ export async function scheduleSession(opts) {
   const dur = Math.max(5, parseInt(o.durationMin, 10) || 20);
   const endDate = new Date(startDate.getTime() + dur * 60 * 1000);
   const tag = tagFor(o.programId, o.sessionId);
-  const title = o.title || (o.pillarName ? ('Fluidbody — ' + o.pillarName) : 'Fluidbody');
+  const title = o.title || (o.pillarName ? ('Fluidbody : ' + o.pillarName) : 'Fluidbody');
   const notes = (o.notes ? (o.notes + '\n\n') : '') + tag;
   const eventId = await safeNativeCall('calendar.createEventAsync', function () {
     return Calendar.createEventAsync(calId, {
@@ -201,7 +201,7 @@ export async function scheduleProgram(opts) {
   const labelFor = typeof o.pillarLabelFor === 'function' ? o.pillarLabelFor : function (k) { return k; };
   const titleTemplate = typeof o.titleTemplate === 'function'
     ? o.titleTemplate
-    : function (pillarLabel) { return 'Fluidbody — ' + pillarLabel; };
+    : function (pillarLabel) { return 'Fluidbody : ' + pillarLabel; };
 
   // Build the list of { date, pillarKey, sessionId }.
   const slots = [];

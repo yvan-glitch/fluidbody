@@ -112,7 +112,7 @@ export async function startDownload(pilierKey, idx, quality) {
   }
   // Pas de double-launch sur un download déjà en cours.
   if (_cache[id] && _cache[id].status === 'downloading') {
-    devLog('startDownload', id, 'already downloading — no-op');
+    devLog('startDownload', id, 'already downloading - no-op');
     return false;
   }
 
@@ -123,7 +123,7 @@ export async function startDownload(pilierKey, idx, quality) {
       try {
         const state = await _NetInfo.fetch();
         const isWifi = state && state.type === 'wifi';
-        devLog('startDownload', id, 'wifiOnly check — type=', state && state.type);
+        devLog('startDownload', id, 'wifiOnly check - type=', state && state.type);
         if (!isWifi) {
           Alert.alert(
             'Téléchargement bloqué',
@@ -133,7 +133,7 @@ export async function startDownload(pilierKey, idx, quality) {
           return false;
         }
       } catch (e) {
-        devLog('startDownload', id, 'NetInfo.fetch threw — allowing download', e && e.message);
+        devLog('startDownload', id, 'NetInfo.fetch threw - allowing download', e && e.message);
       }
     } else {
       devLog('startDownload', id, 'NetInfo unavailable, ignoring wifiOnly pref');
@@ -151,7 +151,7 @@ export async function startDownload(pilierKey, idx, quality) {
         _notify();
       }
     }, quality);
-    devLog('startDownload', id, 'success — re-priming cache');
+    devLog('startDownload', id, 'success - re-priming cache');
     // Re-prime pour récupérer la taille finale + status 'done' depuis disque.
     await primeDownloadsCache();
     return true;
