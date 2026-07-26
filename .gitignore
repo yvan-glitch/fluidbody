@@ -77,3 +77,6 @@ eas-last-builds.json
 
 # Artefacts FUSE (suppression pendant qu un process tient le fichier)
 .fuse_hidden*
+
+# Sauvegardes git locales
+*.bundle
