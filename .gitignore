@@ -70,3 +70,10 @@ KEY/
 
 # Builds locaux EAS (ne jamais commiter les binaires)
 *.ipa
+
+# Logs de build EAS locaux (contiennent l Apple ID)
+eas-*.log
+eas-last-builds.json
+
+# Artefacts FUSE (suppression pendant qu un process tient le fichier)
+.fuse_hidden*
