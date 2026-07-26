@@ -4,7 +4,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedPlus from './AnimatedPlus';
 import LivingBackground from './LivingBackground';
-import { Bulle, FloatingMedusas, BULLES_ONBOARDING } from './Meduse';
+import { Bulle, FloatingMedusas, MeduseCourant, BULLES_ONBOARDING } from './Meduse';
 import { T, PILIER_IMAGES } from '../constants/data';
 import { LEGAL, getTermsUrl } from '../constants/legal';
 import {
@@ -734,6 +734,10 @@ export default function PaywallModal({ visible, onClose, lang, packagesByProduct
           </View>
 
         </ScrollView>
+        {/* Méduse d'avant-plan (26/07) : une seule, lente, au-dessus du hero.
+            pointerEvents none, native driver, bande haute pour ne jamais
+            gêner les prix ni les CTA. */}
+        <MeduseCourant topRatio={0.06} bottomRatio={0.26} opacity={0.15} size={50} />
       </View>
     </Modal>
   );

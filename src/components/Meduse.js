@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, AppState, Easing, Dimensions, View, Text, Platform } from 'react-native';
+import { Animated, AppState, Easing, Dimensions, View, Text, Platform, StyleSheet } from 'react-native';
 import Svg, { Path, Circle, Ellipse, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { NavigationContext } from '@react-navigation/native';
 
@@ -790,6 +790,114 @@ function FloatingMedusas({ topInset = 200, bottomInset = 140 } = {}) {
   });
 }
 
+// ── MeduseCourant ──
+// LA méduse d'avant-plan (26/07, demande Yvan : « rendre l'app plus vivante
+// comme la force de l'océan »). Une seule méduse, discrète (opacité ~0.16),
+// qui traverse lentement l'écran AU-DESSUS du contenu, comme un courant
+// marin. Règles :
+//   - pointerEvents="none" partout : elle n'intercepte jamais un tap ;
+//   - native driver uniquement (transform), zéro re-layout par frame ;
+//   - réservée aux écrans contemplatifs (paywall, post-séance, fin TV),
+//     JAMAIS dans les listes scrollables (règles perf du 07/07) ;
+//   - pause automatique quand l'écran perd le focus.
+// Kill switch : MEDUSE_COURANT_ENABLED ci-dessous.
+const MEDUSE_COURANT_ENABLED = true;
+
+function MeduseCourant({
+  size = 54,
+  opacity = 0.16,
+  tint = 'rgba(150,230,255,1)',
+  topRatio = 0.10,      // bande verticale où elle nage (ratios de la hauteur écran)
+  bottomRatio = 0.45,
+  crossingMs = 30000,   // durée d'une traversée
+  pauseMs = 9000,       // repos entre deux traversées
+  firstDelayMs = 2500,  // laisse l'écran s'installer avant la première
+} = {}) {
+  const progress = useRef(new Animated.Value(0)).current;
+  const bob = useRef(new Animated.Value(0)).current;
+  const [pass, setPass] = useState(function () {
+    return { key: 0, ltr: Math.random() < 0.5, y: 0 };
+  });
+  const focused = useScreenFocused();
+
+  useEffect(function () {
+    if (!MEDUSE_COURANT_ENABLED || !focused) return;
+    let mounted = true;
+    let timer = null;
+
+    // Respiration verticale légère pendant la traversée.
+    const bobLoop = Animated.loop(Animated.sequence([
+      Animated.timing(bob, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(bob, { toValue: 0, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ]));
+    bobLoop.start();
+
+    function launch(delay) {
+      timer = setTimeout(function () {
+        if (!mounted) return;
+        progress.setValue(0);
+        Animated.timing(progress, {
+          toValue: 1,
+          duration: crossingMs + Math.random() * 6000,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }).start(function (r) {
+          if (!mounted || !r.finished) return;
+          // Nouvelle traversée : direction et hauteur re-tirées au sort.
+          setPass(function (prev) {
+            return { key: prev.key + 1, ltr: Math.random() < 0.5, y: 0 };
+          });
+          launch(pauseMs + Math.random() * 8000);
+        });
+      }, delay);
+    }
+    launch(pass.key === 0 ? firstDelayMs : 400);
+
+    return function () {
+      mounted = false;
+      if (timer) clearTimeout(timer);
+      try { bobLoop.stop(); } catch (e) {}
+      progress.stopAnimation();
+    };
+    // pass.key relance l'effet à chaque nouvelle traversée programmée
+  }, [focused, pass.key]);
+
+  if (!MEDUSE_COURANT_ENABLED) return null;
+
+  const bandTop = SH * topRatio;
+  const bandRange = Math.max(40, SH * bottomRatio - bandTop - size);
+  // Hauteur stable par traversée : dérivée de key (déterministe entre renders).
+  const y = bandTop + ((pass.key * constants_GOLDEN) % 1) * bandRange;
+  const from = pass.ltr ? -size * 2 : SW + size * 2;
+  const to = pass.ltr ? SW + size * 2 : -size * 2;
+  const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [from, to] });
+  const bobTY = bob.interpolate({ inputRange: [0, 1], outputRange: [-7, 7] });
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: y,
+          left: 0,
+          opacity: opacity,
+          transform: [
+            { translateX: translateX },
+            { translateY: bobTY },
+            // Elle « regarde » dans sa direction de nage.
+            { scaleX: pass.ltr ? 1 : -1 },
+          ],
+        }}
+      >
+        <MeduseCornerIcon size={size} breathCycleMs={3000} breathMaxScale={1.3} tint={tint} />
+      </Animated.View>
+    </View>
+  );
+}
+// Nombre d'or : répartit les hauteurs successives sans jamais répéter la même.
+const constants_GOLDEN = 0.6180339887;
+
 // ── Exports ──
 // ── MeduseRainDrop ── une méduse qui tombe du haut
 function MeduseRainDrop({ x, size, duration, delay, opacity, tint }) {
@@ -901,6 +1009,7 @@ export {
   getMeduseState,
   LivingMedusa,
   FloatingMedusas,
+  MeduseCourant,
   MeduseRain,
   PluieBulles,
 };

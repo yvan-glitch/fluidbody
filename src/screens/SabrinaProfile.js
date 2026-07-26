@@ -24,6 +24,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LiquidGlass from '../components/LiquidGlass';
+import { MeduseCourant } from '../components/Meduse';
 
 import { T, SABRINA_QUOTES } from '../constants/data';
 import { IS_TV, tvFocusProps } from '../utils/platformTV';
@@ -272,6 +273,9 @@ export default function SabrinaProfile({ lang, onClose }) {
           </View>
         </View>
       </ScrollView>
+      {/* Méduse d'avant-plan (26/07) : on lit la bio de Sabrina, l'océan
+          continue de vivre doucement par-dessus. */}
+      <MeduseCourant topRatio={0.10} bottomRatio={0.50} opacity={0.14} size={48} crossingMs={34000} />
     </View>
   );
 }

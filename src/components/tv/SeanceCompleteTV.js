@@ -16,6 +16,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, Text, View, StyleSheet } from 'react-native';
 
 import AquaticBackground from './AquaticBackground';
+import { MeduseCourant } from '../Meduse';
 import GlassCardTV from './GlassCardTV';
 import { MeduseCornerIcon } from '../Meduse';
 import { IS_TV } from '../../utils/platformTV';
@@ -192,6 +193,10 @@ export default function SeanceCompleteTV({
           ) : null}
         </View>
       </View>
+      {/* Méduse d'avant-plan (26/07) : moment de fin de séance, une méduse
+          traverse lentement par-dessus la célébration. Bande haute pour ne
+          pas croiser les CTA focusables du bas. */}
+      <MeduseCourant topRatio={0.05} bottomRatio={0.30} opacity={0.18} size={90} crossingMs={26000} tint="rgba(0,220,255,1)" />
     </View>
   );
 }
