@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import healthkit from './health';
 import { getPiliers, getSeances } from '../utils';
 import { readCachedProfile } from './profileSync';
+import { countVisible } from './catalogVisibility';
 
 const CACHE_TTL_MS = 60 * 1000;
 const _cache = new Map(); // key -> { ts, value }
@@ -113,7 +114,7 @@ function computePiliersProgress(done, piliers, seances) {
   // 5 séances effective cap per pilier (matches the existing Progress UI
   // contract in MonCorps / Resume). We count any boolean-truthy entry.
   return piliers.map(function (p) {
-    const total = (seances[p.key] || []).length || 20;
+    const total = countVisible(seances[p.key] || [], p.key) || 20;
     const arr = done[p.key] || [];
     const doneCount = arr.filter(function (v) { return v === true || v === 'true'; }).length;
     const pct = total > 0 ? Math.min(100, Math.round((doneCount / total) * 100)) : 0;

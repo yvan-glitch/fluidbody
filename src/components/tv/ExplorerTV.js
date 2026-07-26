@@ -11,6 +11,7 @@ import { View, Text, ScrollView, Dimensions } from 'react-native';
 
 import TVCard16x9 from './TVCard16x9';
 import { PILIER_IMAGES } from '../../constants/data';
+import { countVisible, pilierHasContent } from '../../utils/catalogVisibility';
 
 const { width: SW } = Dimensions.get('window');
 const SIDE = 80;
@@ -31,8 +32,8 @@ export default function ExplorerTV({ piliers, seancesByKey, onOpenPilier, lang }
           {isFr ? 'Tous les piliers du Pilates conscient' : 'Every conscious-Pilates pillar'}
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: GAP, paddingHorizontal: SIDE }}>
-          {(piliers || []).map(function (p, i) {
-            const count = ((seancesByKey && seancesByKey[p.key]) || []).length;
+          {(piliers || []).filter(function (p) { return pilierHasContent(p.key, seancesByKey); }).map(function (p, i) {
+            const count = countVisible((seancesByKey && seancesByKey[p.key]) || [], p.key);
             return (
               <TVCard16x9
                 key={p.key}

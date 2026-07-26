@@ -144,6 +144,7 @@ import {
 } from './src/utils/notifications';
 import { isUserAlreadyActive } from './src/utils/activityCheck';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
+import { primeCatalogVisibility } from './src/utils/catalogVisibility';
 import { creditReferralOnPaid, getReferralStats, parseReferralCodeFromUrl, savePendingReferralCode } from './src/utils/referrals';
 import { safeNativeCall, safeNativeFire, diag } from './src/utils/safeNativeCall';
 import { maybeAskForReview } from './src/utils/reviewPrompt';
@@ -698,7 +699,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
         token: credential.identityToken,
       }), 15000, 'appleSignIn');
       if (err) {
-        setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase');
+        setError(err.message); Alert.alert('Apple Sign In : Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase');
         setLoading(false); return;
       }
       const applePrenom = credential.fullName?.givenName || '';
@@ -713,7 +714,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
       } else if (e?.code !== 'ERR_REQUEST_CANCELED') {
         const msg = e?.message || tr.ob_auth_err_net || 'Erreur Apple Sign In';
         setError(msg);
-        Alert.alert('Apple Sign In — erreur', `${msg}\n\nCode: ${e?.code || 'n/a'}`);
+        Alert.alert('Apple Sign In : erreur', `${msg}\n\nCode: ${e?.code || 'n/a'}`);
       }
       setLoading(false);
     }
@@ -733,7 +734,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
       const idToken = res?.data?.idToken || res?.idToken || null;
       if (!idToken) { const msg = tr.err_google_token_missing || 'Google : identity token manquant.'; setError(msg); Alert.alert('Google Sign In', msg); setLoading(false); return; }
       const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'google', token: idToken }), 15000, 'googleSignIn');
-      if (err) { setError(err.message); Alert.alert('Google Sign In — Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase'); setLoading(false); return; }
+      if (err) { setError(err.message); Alert.alert('Google Sign In : Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase'); setLoading(false); return; }
       const gName = res?.data?.user?.givenName || res?.user?.givenName || '';
       AsyncStorage.setItem(TERMS_ACCEPTED_STORAGE_KEY, String(LEGAL.termsVersion || '1.0')).catch(() => {});
       setLoading(false);
@@ -744,7 +745,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
       const code = e?.code;
       if (GoogleStatusCodes && code === GoogleStatusCodes.SIGN_IN_CANCELLED) { setLoading(false); return; }
       if (e?.message && e.message.indexOf('timeout') !== -1) { setError(tr.ob_auth_err_net || 'La connexion Google a pris trop de temps.'); }
-      else { const msg = e?.message || tr.ob_auth_err_net || 'Erreur.'; setError(msg); Alert.alert('Google Sign In — erreur', `${msg}\n\nCode: ${code || 'n/a'}`); }
+      else { const msg = e?.message || tr.ob_auth_err_net || 'Erreur.'; setError(msg); Alert.alert('Google Sign In : erreur', `${msg}\n\nCode: ${code || 'n/a'}`); }
       setLoading(false);
     }
   }
@@ -1036,7 +1037,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
       }
       const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken }), 15000, 'appleSignIn');
       if (err) {
-        setError(err.message); Alert.alert('Apple Sign In — Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase');
+        setError(err.message); Alert.alert('Apple Sign In : Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase');
         setLoading(false); return;
       }
       const applePrenom = credential.fullName?.givenName || '';
@@ -1060,7 +1061,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
       } else if (e?.code !== 'ERR_REQUEST_CANCELED') {
         const msg = e?.message || tr.ob_auth_err_net || 'Erreur Apple Sign In';
         setError(msg);
-        Alert.alert('Apple Sign In — erreur', `${msg}\n\nCode: ${e?.code || 'n/a'}`);
+        Alert.alert('Apple Sign In : erreur', `${msg}\n\nCode: ${e?.code || 'n/a'}`);
       }
       setLoading(false);
     }
@@ -1079,7 +1080,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
       const idToken = res?.data?.idToken || res?.idToken || null;
       if (!idToken) { const msg = tr.err_google_token_missing || 'Google : identity token manquant.'; setError(msg); Alert.alert('Google Sign In', msg); setLoading(false); return; }
       const { error: err } = await withTimeout(supabase.auth.signInWithIdToken({ provider: 'google', token: idToken }), 15000, 'googleSignIn');
-      if (err) { setError(err.message); Alert.alert('Google Sign In — Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase'); setLoading(false); return; }
+      if (err) { setError(err.message); Alert.alert('Google Sign In : Supabase', err.message || tr.err_supabase_generic || 'Erreur Supabase'); setLoading(false); return; }
       const gName = res?.data?.user?.givenName || res?.user?.givenName || '';
       if (gName) {
         try { await supabase.auth.updateUser({ data: { prenom: gName } }); } catch(_) {}
@@ -1093,7 +1094,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
       const code = e?.code;
       if (GoogleStatusCodes && code === GoogleStatusCodes.SIGN_IN_CANCELLED) { setLoading(false); return; }
       if (e?.message && e.message.indexOf('timeout') !== -1) { setError(tr.ob_auth_err_apple_timeout || 'La connexion Google a pris trop de temps.'); }
-      else { const msg = e?.message || tr.ob_auth_err_net || 'Erreur.'; setError(msg); Alert.alert('Google Sign In — erreur', `${msg}\n\nCode: ${code || 'n/a'}`); }
+      else { const msg = e?.message || tr.ob_auth_err_net || 'Erreur.'; setError(msg); Alert.alert('Google Sign In : erreur', `${msg}\n\nCode: ${code || 'n/a'}`); }
       setLoading(false);
     }
   }
@@ -1610,6 +1611,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     return function() { try { clearTimeout(hkTimer); } catch (e) {} };
   }, []);
 
+  useEffect(function() {
+    // Visibilité du catalogue : cache local immédiat + refresh Supabase
+    // best-effort (liste des session_id ayant une vidéo). Fire and forget.
+    try { primeCatalogVisibility(); } catch (e) {}
+  }, []);
+
   const rcSupported = Platform.OS === 'ios';
   const rcDisabled = !Purchases || !rcSupported || (Device && Device.isDevice === false);
 
@@ -1814,7 +1821,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         var probe = await isUserAlreadyActive();
         if (!probe || !probe.active) return;
         var count = await cancelPauseActiveNotifications('today');
-        if (__DEV__) devLog('[SmartNotif] ' + source + ' — cancelled ' + count + ' pause notifs (reason: ' + probe.reason + ')', probe.values);
+        if (__DEV__) devLog('[SmartNotif] ' + source + ' - cancelled ' + count + ' pause notifs (reason: ' + probe.reason + ')', probe.values);
       } catch (e) {
         if (__DEV__) devWarn('[SmartNotif] maybeSuppress error', e);
       }
@@ -2605,7 +2612,7 @@ function App() {
         const timeoutPromise = new Promise(function(resolve) { setTimeout(function() { resolve(TIMEOUT_SENTINEL); }, 15000); });
         const res = await Promise.race([upsertPromise, timeoutPromise]);
         if (res === TIMEOUT_SENTINEL) {
-          devLog('[ProfileSetup] <<< upsert TIMEOUT (15s) — flow continue, upsert poursuit en background');
+          devLog('[ProfileSetup] <<< upsert TIMEOUT (15s) - flow continue, upsert poursuit en background');
           // log async result quand la promise se résout finalement
           upsertPromise.then(function(r) {
             devLog('[ProfileSetup] (bg-late) upsert finalement résolu:', JSON.stringify({ error: r.error?.message || null, status: r.status }));
@@ -2628,7 +2635,7 @@ function App() {
           if (res.error) {
             devLog('[ProfileSetup] <<< upsert ERROR (résumé):', res.error.message, '| code:', res.error.code, '| status:', res.status);
           } else {
-            devLog('[ProfileSetup] <<< upsert OK — status:', res.status, '| statusText:', res.statusText);
+            devLog('[ProfileSetup] <<< upsert OK - status:', res.status, '| statusText:', res.statusText);
           }
         }
       } catch(e) {

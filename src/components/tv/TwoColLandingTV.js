@@ -24,6 +24,7 @@ import { getTodayIntention, getPilierKeyForIntention, findIntention } from '../.
 import { getCachedFavorites, primeFavoritesCache, subscribeFavorites } from '../../utils/favorites';
 import { pickBadge } from '../../utils/sessionBadges';
 import { getThisWeekSchedule } from '../../utils/weeklySchedule';
+import { isSeanceVisible } from '../../utils/catalogVisibility';
 
 const { width: SW } = Dimensions.get('window');
 const SIDE = 80;
@@ -202,17 +203,19 @@ export default function TwoColLandingTV({ piliers, lang, title, description, pri
   });
 
   // Métadonnées enrichies sous le titre : nombre total de séances du
-  // catalogue + minutes totales + "Avec Sabrina". On compte TOUT (pas de
-  // filtre vidéo — sinon on affichait "0 séances" tant que peu de vidéos
-  // étaient tournées). Parser de durée gère "12 min" et "1'59''" :
+  // catalogue + minutes totales + "Avec Sabrina". Hors mode HIDE_UNFILMED,
+  // on compte TOUT (pas de filtre vidéo — sinon on affichait "0 séances"
+  // tant que peu de vidéos étaient tournées). En mode App Store, on ne
+  // compte que le visible. Parser de durée gère "12 min" et "1'59''" :
   // X'YY'' → X + YY/60 minutes.
   const heroMeta = (function () {
     let count = 0;
     let totalMinDecimal = 0;
     (piliers || []).forEach(function (p) {
       const arr = (seancesByKey && seancesByKey[p.key]) || [];
-      arr.forEach(function (s) {
+      arr.forEach(function (s, i) {
         if (!s) return;
+        if (!isSeanceVisible(p.key, i)) return;
         count += 1;
         const raw = String(s[1] || '');
         const ap = raw.match(/(\d+)\s*'\s*(\d+)/);

@@ -13,6 +13,7 @@ import { View, Text, TextInput, ScrollView, Dimensions } from 'react-native';
 import TVCard16x9 from './TVCard16x9';
 import { pickSessionImage } from './tvImagePool';
 import { PILIER_IMAGES } from '../../constants/data';
+import { isSeanceVisible, pilierHasContent } from '../../utils/catalogVisibility';
 
 const { width: SW } = Dimensions.get('window');
 const SIDE = 80;
@@ -34,7 +35,9 @@ export default function RechercheTV({ piliers, seancesByKey, lang, onOpenPilier,
 
   const items = useMemo(function () {
     // Index de base : piliers + séances pratiques (hors théorie).
-    const pilierItems = (piliers || []).map(function (p) {
+    const pilierItems = (piliers || []).filter(function (p) {
+      return pilierHasContent(p.key, seancesByKey);
+    }).map(function (p) {
       return { key: 'r-pil-' + p.key, title: p.label, subtitle: isFr ? 'Pilier' : 'Pillar', image: PILIER_IMAGES[p.key], type: 'pilier', pilier: p, _hay: norm(p.label) };
     });
     if (!q) return pilierItems; // état vide → les 9 piliers
@@ -44,6 +47,7 @@ export default function RechercheTV({ piliers, seancesByKey, lang, onOpenPilier,
     (piliers || []).forEach(function (p) {
       ((seancesByKey && seancesByKey[p.key]) || []).forEach(function (s, i) {
         if (s[2] === 'Comprendre' || s[2] === 'Ressentir') return;
+        if (!isSeanceVisible(p.key, i)) return;
         if (norm(s[0]).indexOf(q) === -1) return;
         out.push({ key: 'r-se-' + p.key + '-' + i, title: s[0], subtitle: p.label + ' · ' + s[1], image: pickSessionImage(p.key, i), type: 'seance', pilier: p, idx: i });
       });

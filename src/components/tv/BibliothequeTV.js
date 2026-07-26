@@ -13,6 +13,7 @@ import TVCard16x9 from './TVCard16x9';
 import { pickSessionImage } from './tvImagePool';
 import { T, PILIER_IMAGES } from '../../constants/data';
 import { getCachedFavorites, subscribeFavorites } from '../../utils/favorites';
+import { countVisible, pilierHasContent } from '../../utils/catalogVisibility';
 
 const { width: SW } = Dimensions.get('window');
 const SIDE = 80;
@@ -82,8 +83,8 @@ export default function BibliothequeTV({ piliers, seancesByKey, done, onOpenPili
           {isFr ? 'Toutes tes séances, classées par pilier' : 'All your sessions, by pillar'}
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: GAP, paddingHorizontal: SIDE }}>
-          {piliers.map(function (p, i) {
-            const total = ((seancesByKey && seancesByKey[p.key]) || []).length;
+          {piliers.filter(function (p) { return pilierHasContent(p.key, seancesByKey); }).map(function (p, i) {
+            const total = countVisible((seancesByKey && seancesByKey[p.key]) || [], p.key);
             const dc = countDone(done && done[p.key]);
             return (
               <TVCard16x9

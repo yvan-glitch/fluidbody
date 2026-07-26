@@ -108,7 +108,13 @@ describe('getSeances', () => {
 });
 
 describe('getSeanceDuJour', () => {
-  test('privilégie le pilier lié aux zones de tension et saute la théorie', () => {
+  // En mode HIDE_UNFILMED (soumission App Store), la séance du jour ne peut
+  // recommander que des séances filmées : les attentes ci-dessous décrivent
+  // le catalogue complet (mode historique) et sont sautées dans l'autre mode.
+  const { HIDE_UNFILMED } = require('../utils/catalogVisibility');
+  const fullCatalog = HIDE_UNFILMED ? test.skip : test;
+
+  fullCatalog('privilégie le pilier lié aux zones de tension et saute la théorie', () => {
     // Zone 1 = Épaules → p1. Les 5 premières séances de p1 sont de la théorie,
     // donc la première pratique non faite est l’index 5.
     const r = getSeanceDuJour({}, [1], 'fr');
@@ -117,13 +123,13 @@ describe('getSeanceDuJour', () => {
     expect(['Préparer', 'Exécuter', 'Évoluer']).toContain(r.seance[2]);
   });
 
-  test('avance à la séance pratique suivante quand la première est faite', () => {
+  fullCatalog('avance à la séance pratique suivante quand la première est faite', () => {
     const r = getSeanceDuJour({ p1: { 5: true } }, [1], 'fr');
     expect(r.key).toBe('p1');
     expect(r.idx).toBe(6);
   });
 
-  test('tout est terminé → repli sur la première séance du premier pilier', () => {
+  fullCatalog('tout est terminé → repli sur la première séance du premier pilier', () => {
     const allDone = {};
     for (const pk of Object.keys(SEANCES_FR)) {
       allDone[pk] = {};

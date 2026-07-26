@@ -24,6 +24,7 @@ import { getProgramStats } from '../../utils/programs';
 import { pickSessionImage } from './tvImagePool';
 import { Icon } from '../Icons';
 import { pickBadge } from '../../utils/sessionBadges';
+import { hasVideo } from '../../utils/catalogVisibility';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const FITNESS_GREEN = '#AEEF4D'; // lime marque — couleur d'action unique TV (ex-#00DB7D)
@@ -108,7 +109,7 @@ export default function ProgrammesTV({ piliers, lang, activeProgram, onOpenPilie
   (piliers || []).forEach(function (p) {
     ((seancesByKey && seancesByKey[p.key]) || []).forEach(function (s, i) {
       if (s[2] === 'Comprendre' || s[2] === 'Ressentir') return;
-      if (!s[3]) return;
+      if (!hasVideo(p.key, i)) return;
       const badge = pickBadge({ pilierKey: p.key, idx: i, lang: lang });
       shortItems.push({ key: 'short_' + p.key + '_' + i, title: s[0], subtitle: s[1] + ' · ' + p.label, image: pickSessionImage(p.key, i), badge: badge, pilier: p, idx: i, _min: parseMin(s[1]) });
     });

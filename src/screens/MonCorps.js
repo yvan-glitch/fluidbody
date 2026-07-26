@@ -34,6 +34,7 @@ import { shouldCelebrate, markCelebrated } from '../utils/streakMilestones';
 import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
+import { isSeanceVisible, hasVideo, countVisible, pilierHasContent, useCatalogVersion } from '../utils/catalogVisibility';
 import ChallengeModal from '../components/ChallengeModal';
 import { CHALLENGE_7J, challengeDoneCount, challengeNextDay } from '../constants/challenge';
 import { safeNativeCall, diag } from '../utils/safeNativeCall';
@@ -461,6 +462,7 @@ function FocusableCard({ children, focusPreferred, style, accent, ...rest }) {
 
 function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isSubscriber, onActivateSubscription, sdjIndex, saveHealthKitWorkout, initialSeanceIdx }) {
   const tr = T[lang] || T['fr'];
+  useCatalogVersion(); // re-render quand la liste des vidéos remote arrive
   const seances = getSeances(lang)[pilier.key] || [];
   const doneCount = (done || []).filter(Boolean).length;
   const [activeVideo, setActiveVideo] = useState(null);
@@ -649,8 +651,9 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
         let lastPracticalEtape = null;
         return seances.map(([titre, duree, etape, url], i) => {
           if (etape === 'Comprendre' || etape === 'Ressentir') return null;
+          if (!isSeanceVisible(pilier.key, i)) return null;
           const isDone = done[i] === true || done[i] === 'true';
-          const noVideo = !url;
+          const noVideo = !url && !hasVideo(pilier.key, i);
           const locked = !noVideo && !canAccessSeanceIndex(i, isSubscriber, pilier.key);
           const prevPracticalEtape = lastPracticalEtape;
           lastPracticalEtape = etape;
@@ -1039,12 +1042,14 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   // PERF (2026-07-23) : les calculs des onglets Recherche et Explorer sont
   // mémoïsés — avant, la double boucle piliers × séances (~160 items) était
   // reconstruite dans le render à CHAQUE frappe clavier et à chaque re-render.
+  var catalogV = useCatalogVersion(); // re-render quand la liste des vidéos remote arrive
   var searchResults = useMemo(function() {
     var seancesData = getSeances(lang);
     var results = [];
     getPiliers(lang).forEach(function(p) {
       var ps = seancesData[p.key] || [];
       ps.forEach(function(s, idx) {
+        if (!isSeanceVisible(p.key, idx)) return;
         var titre = s[0] || '';
         var etape = s[2] || '';
         var matchQuery = !searchQuery || titre.toLowerCase().includes(searchQuery.toLowerCase());
@@ -1056,7 +1061,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       });
     });
     return results;
-  }, [lang, searchQuery, searchEtape, durationFilter]);
+  }, [lang, searchQuery, searchEtape, durationFilter, catalogV]);
 
   var explorerData = useMemo(function() {
     var seancesData = getSeances(lang);
@@ -1070,16 +1075,19 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       return _matchesDurationBucket(it.duree, durationFilter);
     });
     // Filter piliers to those containing at least one session matching the duration bucket.
+    // En mode App Store (HIDE_UNFILMED), un pilier sans aucune vidéo disparaît.
     var piliersFiltered = piliersAll.filter(function (p) {
+      if (!pilierHasContent(p.key, seancesData)) return false;
       if (!durationFilter) return true;
       var ps = seancesData[p.key] || [];
       for (var i = 0; i < ps.length; i++) {
+        if (!isSeanceVisible(p.key, i)) continue;
         if (_matchesDurationBucket(ps[i] && ps[i][1], durationFilter)) return true;
       }
       return false;
     });
     return { freeItems: freeItems, piliersFiltered: piliersFiltered };
-  }, [lang, durationFilter]);
+  }, [lang, durationFilter, catalogV]);
 
   var DURATION_CHIPS = [
     { key: '5', labelFr: '5 min', labelEn: '5 min' },
@@ -1260,7 +1268,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       var titleTemplate = function(pillarLabel) {
         var tpl = tr.calendar_event_title_template;
         if (typeof tpl === 'function') return tpl(pillarLabel);
-        return 'Fluidbody — ' + pillarLabel;
+        return 'Fluidbody : ' + pillarLabel;
       };
       var res = await calendarUtil.scheduleProgram({
         program: prog,
@@ -1684,7 +1692,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                     onPress={function() { hapticLight(); setShowChallenge(true); }}
                     activeOpacity={0.88}
                     accessibilityRole="button"
-                    accessibilityLabel={(lang === 'fr' ? 'Défi 7 jours — Libère ton dos, jour ' : '7-day challenge — Free your back, day ') + Math.min(cdCount + 1, 7)}
+                    accessibilityLabel={(lang === 'fr' ? 'Défi 7 jours : Libère ton dos, jour ' : '7-day challenge: Free your back, day ') + Math.min(cdCount + 1, 7)}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 14, marginBottom: 14, backgroundColor: 'rgba(174,239,77,0.10)', borderWidth: 1, borderColor: 'rgba(174,239,77,0.5)' }}
                   >
                     <MeduseCornerIcon size={40} tint="rgba(174,239,77,1)" />
@@ -1857,7 +1865,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                           onPress={function() { setOpenEducationPilier(p); }}
                           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                           accessibilityRole="button"
-                          accessibilityLabel={(tr.pilier_education_open_a11y || 'Comprendre') + ' — ' + p.label}
+                          accessibilityLabel={(tr.pilier_education_open_a11y || 'Comprendre') + ', ' + p.label}
                           style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}
                         >
                           <Text style={{ fontSize: 14, fontWeight: '700', color: '#ffffff', fontStyle: 'italic', letterSpacing: 0 }}>i</Text>
@@ -2023,7 +2031,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   <LinearGradient colors={["#0a1f1a", "#0f3a30", "#1ea585"]} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={{ flex: 1, padding: 16, justifyContent: 'space-between' }}>
                     <View>
                       <Text style={{ fontSize: 20, fontWeight: '800', color: '#ffffff', marginBottom: 4 }}>{tr.program_smart_card || 'Programme intelligent'}</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '400', color: 'rgba(255,255,255,0.7)', lineHeight: 18 }}>{tr.program_smart_card_sub || 'Tonifier, posture, souplesse, sérénité — choisis ton cap et on construit le parcours.'}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '400', color: 'rgba(255,255,255,0.7)', lineHeight: 18 }}>{tr.program_smart_card_sub || 'Tonifier, posture, souplesse, sérénité : choisis ton cap et on construit le parcours.'}</Text>
                     </View>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       <TouchableOpacity
@@ -2190,7 +2198,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                       {/* Gradient with 6 stops to avoid banding on 1080p+ TVs */}
                       <LinearGradient colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.05)", "rgba(0,0,0,0.18)", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.65)", "rgba(0,0,0,0.85)"]} locations={[0, 0.32, 0.5, 0.68, 0.85, 1]} style={{ flex: 1, justifyContent: "flex-end", padding: IS_TV ? 28 : 16 }}>
                         <Text style={{ fontSize: IS_TV ? 36 : 24, fontWeight: IS_TV ? "300" : "800", color: "#ffffff", marginBottom: 6, letterSpacing: IS_TV ? -0.6 : 0 }}>{p.label}</Text>
-                        <Text style={{ fontSize: IS_TV ? 16 : 12, color: "rgba(255,255,255,0.65)", letterSpacing: IS_TV ? 1.5 : 0 }}>{(ps.length || 20) + ' ' + tr.m_seances}</Text>
+                        <Text style={{ fontSize: IS_TV ? 16 : 12, color: "rgba(255,255,255,0.65)", letterSpacing: IS_TV ? 1.5 : 0 }}>{(countVisible(ps, p.key) || 20) + ' ' + tr.m_seances}</Text>
                       </LinearGradient>
                     </View>
                   </FocusableCard>

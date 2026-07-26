@@ -22,6 +22,7 @@
 // would brick output as soon as the catalogue holds a non-video étape.
 
 import { SEANCES_FR, PILIERS_BASE } from '../constants/data';
+import { hasVideo as catalogHasVideo, HIDE_UNFILMED } from './catalogVisibility';
 
 // ── Constants ──────────────────────────────────────────────────────────
 
@@ -152,7 +153,10 @@ function buildSessionIndex() {
     const sessions = SEANCES_FR[pk] || [];
     sessions.forEach((s, i) => {
       const etape = s[2];
-      const hasVideo = s[3] === true;
+      const hasVideo = catalogHasVideo(pk, i);
+      // En mode App Store (HIDE_UNFILMED), une séance sans vidéo ne doit
+      // jamais atterrir dans un programme : elle serait injouable.
+      if (HIDE_UNFILMED && !hasVideo) return;
       const key = pk + ':' + etape;
       if (!idx[key]) idx[key] = [];
       idx[key].push({ index: i, hasVideo });

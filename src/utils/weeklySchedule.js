@@ -15,6 +15,7 @@
 // Output : array de { dayIdx, dayLabel, pilier, idx, seance }.
 
 import { getPilierKeyForIntention } from './dailyIntention';
+import { hasVideo } from './catalogVisibility';
 
 const DAY_LABELS_FR = ['DIM', 'LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM'];
 const DAY_LABELS_EN = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -66,7 +67,7 @@ export function getThisWeekSchedule(piliers, seancesByKey, opts) {
       if (!s) return;
       const etape = s[2];
       if (etape === 'Comprendre') return;       // pas pour J0
-      if (!s[3]) return;                         // vidéo requise
+      if (!hasVideo(p.key, i)) return;           // vidéo requise (bundle ou remote)
       const mins = parseMin(s[1]);
       let score = 0;
       if (mins >= 12 && mins <= 18) score += 3;

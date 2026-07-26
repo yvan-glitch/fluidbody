@@ -31,6 +31,7 @@ import SeanceCompleteTV from './SeanceCompleteTV';
 import AquaticBackground from './AquaticBackground';
 import { pickSessionImage } from './tvImagePool';
 import { isFavoriteCached, subscribeFavorites, toggleFavoriteLocal } from '../../utils/favorites';
+import { isSeanceVisible, hasVideo, useCatalogVersion } from '../../utils/catalogVisibility';
 import { Icon } from '../Icons';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -184,9 +185,11 @@ export default function PilierPanelTV({ pilier, done, onToggle, onClose, lang, i
   const [resumeIndices, setResumeIndices] = useState(function () { return new Set(); });
 
   // Séances pratiques (la théorie Comprendre/Ressentir vit dans la Biblio).
+  useCatalogVersion(); // re-render quand la liste des vidéos remote arrive
   const practical = [];
   seances.forEach(function (s, i) {
     if (s[2] === 'Comprendre' || s[2] === 'Ressentir') return;
+    if (!isSeanceVisible(pilier.key, i)) return;
     practical.push({ seance: s, idx: i });
   });
   const doneCount = practical.filter(function (p) { return done[p.idx] === true || done[p.idx] === 'true'; }).length;
@@ -194,7 +197,7 @@ export default function PilierPanelTV({ pilier, done, onToggle, onClose, lang, i
   // Première séance jouable pour le bouton "Démarrer" (sinon 1re pratique).
   let firstPlayableIdx = practical.length ? practical[0].idx : 0;
   for (let k = 0; k < practical.length; k++) {
-    if (practical[k].seance[3]) { firstPlayableIdx = practical[k].idx; break; }
+    if (hasVideo(pilier.key, practical[k].idx)) { firstPlayableIdx = practical[k].idx; break; }
   }
 
   useEffect(function () {
@@ -303,7 +306,7 @@ export default function PilierPanelTV({ pilier, done, onToggle, onClose, lang, i
             const s = p.seance;
             const i = p.idx;
             const isDone = done[i] === true || done[i] === 'true';
-            const noVideo = !s[3];
+            const noVideo = !s[3] && !hasVideo(pilier.key, i);
             const locked = !noVideo && !canAccessSeanceIndex(i, isSubscriber, pilier.key);
             return (
               <SeanceCardTV

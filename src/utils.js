@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { T, PILIERS_BASE, SEANCES_FR, SEANCES_EN, ZONE_TO_PILIER, FREE_MONTHLY_SELECTION } from './constants/data';
 import { safeNativeFire } from './utils/safeNativeCall';
+import { isSeanceVisible } from './utils/catalogVisibility';
 
 const FREE_MONTHLY_SET = new Set((FREE_MONTHLY_SELECTION || []).map(function(s) { return s.pilier + '_' + s.idx; }));
 import { VIDEO_RESUME_PREFIX } from './components/VideoPlayer';
@@ -79,6 +80,7 @@ function getSeanceDuJour(done, tensionIdxs, lang) {
     for (let i = 0; i < ps.length; i++) {
       const e = ps[i] && ps[i][2];
       if (e === 'Comprendre' || e === 'Ressentir') continue;
+      if (!isSeanceVisible(p.key, i)) continue;
       if (!doneMap[i]) { firstUndone = i; break; }
     }
     // All practical sessions done in this pilier — skip it
@@ -90,6 +92,7 @@ function getSeanceDuJour(done, tensionIdxs, lang) {
     for (let i = 0; i < ps.length; i++) {
       const e = ps[i] && ps[i][2];
       if (e === 'Comprendre' || e === 'Ressentir') continue;
+      if (!isSeanceVisible(p.key, i)) continue;
       practicalCount++;
       if (doneMap[i]) doneCount++;
     }
@@ -111,11 +114,18 @@ function getSeanceDuJour(done, tensionIdxs, lang) {
   });
 
   if (candidates.length === 0) {
-    // All piliers fully done — fall back to first session of first pilier
-    const fallbackKey = piliers[0] && piliers[0].key;
-    const fallbackSeances = fallbackKey ? (seances[fallbackKey] || []) : [];
-    if (fallbackSeances.length === 0) return null;
-    return { seance: fallbackSeances[0], idx: 0, key: fallbackKey, pilier: piliers[0] };
+    // All piliers fully done — fall back to the first visible session of the
+    // first pilier that has one.
+    for (let pi = 0; pi < piliers.length; pi++) {
+      const fp = piliers[pi];
+      const fs = (seances[fp.key] || []);
+      for (let i = 0; i < fs.length; i++) {
+        if (isSeanceVisible(fp.key, i)) {
+          return { seance: fs[i], idx: i, key: fp.key, pilier: fp };
+        }
+      }
+    }
+    return null;
   }
 
   // Sort descending by score
