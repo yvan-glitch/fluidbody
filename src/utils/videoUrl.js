@@ -1,6 +1,12 @@
 // Fetches short-lived Bunny Token-Auth URLs from the `sign-video-url` edge
-// function. URLs are cached in-memory per (sessionId, kind, lang) until they
-// approach expiry, so scrubbing inside the player never re-signs.
+// function. URLs are cached in-memory per (uid, sessionId, kind, lang) until
+// they approach expiry, so scrubbing inside the player never re-signs.
+//
+// La clé de cache est préfixée par l'uid du compte authentifié (audit sécu) :
+// une URL signée pour le compte A ne peut jamais être relue par le compte B
+// sur un appareil partagé, même si une requête de signature en vol se termine
+// après le vidage du cache au sign-out. Le vidage sur SIGNED_OUT reste en
+// défense en profondeur ; le scoping par uid ferme la fenêtre de course.
 //
 // Session ids match the DownloadManager convention: `${pilierKey}_${index}`
 // (e.g. 'p2_0'). The mapping from session id to Bunny GUID lives server-side
@@ -22,8 +28,8 @@ export function buildSessionId(pilierKey, seanceIndex) {
   return `${pilierKey}_${seanceIndex}`;
 }
 
-function cacheKey(sessionId, kind, lang, quality) {
-  const base = lang ? `${sessionId}|${kind}|${lang}` : `${sessionId}|${kind}`;
+function cacheKey(uid, sessionId, kind, lang, quality) {
+  const base = lang ? `${uid}|${sessionId}|${kind}|${lang}` : `${uid}|${sessionId}|${kind}`;
   return quality ? `${base}|${quality}` : base;
 }
 
@@ -47,7 +53,14 @@ export async function getSignedVideoUrl(sessionId, kind = 'mp4', lang, quality) 
     if (pref && pref !== 'auto') effectiveQuality = pref;
   }
 
-  const key = cacheKey(sessionId, kind, lang, effectiveQuality);
+  // Récupère la session d'abord : l'uid préfixe la clé de cache pour qu'une
+  // URL signée ne puisse jamais être relue par un autre compte (cf. en-tête).
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('not-signed-in');
+  const uid = session.user && session.user.id;
+  if (!uid) throw new Error('not-signed-in');
+
+  const key = cacheKey(uid, sessionId, kind, lang, effectiveQuality);
   const now = Date.now();
   const cached = cache.get(key);
   if (cached && cached.expiresAt - SAFETY_MARGIN_MS > now) return cached.url;
@@ -57,9 +70,6 @@ export async function getSignedVideoUrl(sessionId, kind = 'mp4', lang, quality) 
   if (pending) return pending;
 
   const promise = (async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('not-signed-in');
-
     function callSign(accessToken) {
       const body = { session_id: sessionId, kind, lang };
       if (effectiveQuality) body.quality = effectiveQuality;
@@ -127,10 +137,12 @@ export function prefetchSignedVideoUrl(sessionId, kind = 'mp4', lang) {
 // l'abonné précédent, contournant le contrôle serveur d'entitlement).
 export function clearVideoUrlCache(sessionId) {
   if (!sessionId) { cache.clear(); inflight.clear(); return; }
+  // Les clés sont désormais `uid|sessionId|kind|…` : le sessionId est le 2e
+  // segment, pas le préfixe.
   for (const k of Array.from(cache.keys())) {
-    if (k.startsWith(`${sessionId}|`)) cache.delete(k);
+    if (k.split('|')[1] === sessionId) cache.delete(k);
   }
   for (const k of Array.from(inflight.keys())) {
-    if (k.startsWith(`${sessionId}|`)) inflight.delete(k);
+    if (k.split('|')[1] === sessionId) inflight.delete(k);
   }
 }
