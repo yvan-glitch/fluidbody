@@ -49,6 +49,16 @@ export async function getMyReferralCode(supabase) {
   }
 }
 
+// Efface le code de parrainage mis en cache. À appeler sur SIGNED_OUT : sinon,
+// sur un appareil partagé, le compte suivant afficherait/partagerait le code
+// du compte précédent (audit sécu : détournement du crédit de parrainage). La
+// clé reste possédée par ce module — App.js n'a pas à connaître son nom.
+export async function clearMyReferralCode() {
+  try {
+    await AsyncStorage.removeItem(MY_CODE_KEY);
+  } catch (e) {}
+}
+
 // Pose `referred_by_code` sur le profil courant. Renvoie un objet
 // { ok, error?, referrer_code? } pour que l'UI puisse afficher un
 // feedback précis (code inconnu vs déjà claim vs auto-parrainage).

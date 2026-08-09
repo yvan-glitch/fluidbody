@@ -18,13 +18,20 @@ const DOWNLOADS_KEY = 'fluid_downloads';
 // FORMAT v3 (2026-07-24) — chiffrement fort : AES-256-CTR natif
 // (react-native-quick-crypto) avec clé aléatoire par appareil stockée dans le
 // Keychain (expo-secure-store). Voir src/utils/downloadCrypto.js pour le
-// design complet. Les nouveaux téléchargements sont en v3 ; les fichiers v2
-// (XOR legacy ci-dessous) restent lisibles et sont migrés vers v3 à la
-// première lecture. Le path XOR v2 n'est conservé qu'en fallback Expo Go
-// (module natif absent).
+// design complet. TOUS les nouveaux téléchargements sont en v3.
 //
-// Le seed v2 reste uniquement pour déchiffrer/migrer l'existant — il ne
-// protège rien de sérieux (constant, dérivable du bundle JS).
+// Audit sécu (2026-08-08) : le fallback d'ÉCRITURE en XOR v2 a été supprimé.
+// Le XOR v2 n'était pas du chiffrement (keystream répété, clé = SHA-256 d'un
+// seed constant présent dans le bundle JS → dérivable, .enc v2 = clair sur
+// disque). Désormais, si le crypto natif est indisponible (Expo Go) ou lève
+// l'erreur Nitro, le téléchargement ÉCHOUE proprement (voir downloadVideo) au
+// lieu de produire un fichier v2.
+//
+// La LECTURE des fichiers v2 déjà présents sur disque (téléchargés avant ce
+// changement) reste supportée : getLocalVideoUri les déchiffre et les migre
+// opportunément vers v3 à la première lecture. Le seed ci-dessous n'est donc
+// conservé QUE pour ce déchiffrement/migration de l'existant — il ne protège
+// rien (constant, dérivable du bundle JS).
 const ENCRYPTION_SEED = 'com.ytissot.fluidbody.offline.v1';
 
 // Ensure downloads directory exists
@@ -141,26 +148,38 @@ async function downloadVideo(pilierKey, seanceIndex, onProgress, quality) {
     }
     if (!result || !result.uri) throw new Error('Download failed');
 
-    if (DLCrypto.isAvailable()) {
-      // FORMAT v3 — AES-256-CTR en flux, clé Keychain. Mémoire bornée
-      // (chunks), taille fichier ≈ taille vidéo + 20 octets d'en-tête.
+    // FORMAT v3 — AES-256-CTR en flux, clé Keychain. Mémoire bornée
+    // (chunks), taille fichier ≈ taille vidéo + 20 octets d'en-tête.
+    //
+    // Sécurité (audit 2026-08-08) : plus AUCUN fallback XOR v2 en écriture.
+    // Le XOR v2 n'était pas du chiffrement (keystream répété, clé dérivable
+    // du bundle JS) → un .enc v2 équivalait à du clair sur disque. Si le
+    // crypto natif est indisponible (Expo Go) ou lève l'erreur Nitro
+    // « unordered_map::at », on ÉCHOUE proprement le téléchargement au lieu
+    // de produire un fichier v2. Le catch principal en fin de fonction
+    // marque l'entrée en 'error', nettoie et rethrow → le caller
+    // (downloadsCache.startDownload) affiche l'Alert « réessaie ».
+    if (!DLCrypto.isAvailable()) {
+      // Nettoyage du MP4 temporaire téléchargé avant d'échouer (comme les
+      // autres chemins d'erreur), pour ne rien laisser sur disque.
+      try { await FileSystem.deleteAsync(tempPath, { idempotent: true }); } catch (de) {}
+      throw new Error('Chiffrement sécurisé indisponible sur cet appareil');
+    }
+    try {
+      await DLCrypto.encryptFileToV3(tempPath, encPath);
+    } catch (cryptoErr) {
+      // Fix 2026-07-25 : vu en prod sur device — « Exception in HostFunction:
+      // unordered_map::at: key not found » (buffer natif étranger côté Nitro).
+      // On remonte l'erreur (après nettoyage du .enc partiel ET du temp)
+      // plutôt que de retomber sur le XOR v2 : le téléchargement échoue
+      // proprement et sera retenté par l'utilisateur.
       try {
-        await DLCrypto.encryptFileToV3(tempPath, encPath);
-      } catch (cryptoErr) {
-        // Fix 2026-07-25 : vu en prod sur device — « Exception in
-        // HostFunction: unordered_map::at: key not found » (buffer natif
-        // étranger côté Nitro). Plutôt que d'échouer le téléchargement,
-        // on retombe sur le XOR v2 ; le fichier sera migré en v3 à la
-        // première lecture (chemin de migration existant).
-        try {
-          const Sentry = require('@sentry/react-native');
-          Sentry.captureException(cryptoErr);
-        } catch (se) {}
-        try { await FileSystem.deleteAsync(encPath, { idempotent: true }); } catch (de) {}
-        await encryptV2Legacy(tempPath, encPath);
-      }
-    } else {
-      await encryptV2Legacy(tempPath, encPath);
+        const Sentry = require('@sentry/react-native');
+        Sentry.captureException(cryptoErr);
+      } catch (se) {}
+      try { await FileSystem.deleteAsync(encPath, { idempotent: true }); } catch (de) {}
+      try { await FileSystem.deleteAsync(tempPath, { idempotent: true }); } catch (de) {}
+      throw cryptoErr;
     }
 
     // Cleanup temp
@@ -180,31 +199,11 @@ async function downloadVideo(pilierKey, seanceIndex, onProgress, quality) {
   }
 }
 
-// Fallback Expo Go uniquement (crypto natif absent) — ancien format v2.
-//
-// FORMAT v2 — `"v2|" + verification(16 hex) + "|" + hex(xor(base64))`.
-    // L'ancienne v1 écrivait l'XOR brut comme UTF-8 — mais l'XOR peut produire
-// les octets \0, \r, \n, etc. qui ne round-trippent PAS via UTF-8 write/read
-// (NULL truncation, normalisation CRLF). Conséquence : MP4 décrypté
-// corrompu → AVErrorFileFormatNotRecognized -11829.
-//
-// v2 encode l'XOR en hex (chars 0-9, a-f uniquement → 100% UTF-8 safe).
-// Doublement de taille acceptable (~2.7 MB vidéo → ~7 MB fichier chiffré).
-async function encryptV2Legacy(tempPath, encPath) {
-  const key = await getEncryptionKey();
-  const base64 = await FileSystem.readAsStringAsync(tempPath, { encoding: FileSystem.EncodingType.Base64 });
-
-  const verification = key.substring(0, 16);
-  const hexChars = '0123456789abcdef';
-  let hex = '';
-  for (let i = 0; i < base64.length; i++) {
-    const b = (base64.charCodeAt(i) ^ key.charCodeAt(i % key.length)) & 0xFF;
-    hex += hexChars[(b >> 4) & 0xF] + hexChars[b & 0xF];
-  }
-  const encrypted = 'v2|' + verification + '|' + hex;
-
-  await FileSystem.writeAsStringAsync(encPath, encrypted, { encoding: FileSystem.EncodingType.UTF8 });
-}
+// NB (audit sécu 2026-08-08) : l'ancien helper `encryptV2Legacy` (écriture du
+// format XOR v2) a été SUPPRIMÉ. Le XOR v2 n'était pas du chiffrement (clé
+// dérivable du bundle JS) : plus aucun nouveau fichier v2 n'est écrit. La
+// LECTURE des .enc v2 déjà sur disque reste supportée dans getLocalVideoUri
+// (déchiffrement + migration opportuniste vers v3 à la première lecture).
 
 // Check if a video is downloaded
 async function isDownloaded(pilierKey, seanceIndex) {

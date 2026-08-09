@@ -106,7 +106,7 @@ import { LEGAL, getTermsUrl, TERMS_ACCEPTED_STORAGE_KEY } from './src/constants/
 import { Linking as RNLinking } from 'react-native';
 import { Bulle, Meduse, MeduseCornerIcon, BULLES, BULLES_ONBOARDING, FloatingMedusas } from './src/components/Meduse';
 import VideoPlayer from './src/components/VideoPlayer';
-import { prefetchSignedVideoUrl, buildSessionId } from './src/utils/videoUrl';
+import { prefetchSignedVideoUrl, buildSessionId, clearVideoUrlCache } from './src/utils/videoUrl';
 import supabase from './src/lib/supabase';
 import PaywallModal, { PRODUCT_IDS } from './src/components/PaywallModal';
 import StretchTimerModal from './src/components/Timer';
@@ -147,7 +147,7 @@ import { isUserAlreadyActive } from './src/utils/activityCheck';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
 import { primeCatalogVisibility } from './src/utils/catalogVisibility';
 import { makeAppleNonce } from './src/utils/appleNonce';
-import { creditReferralOnPaid, getReferralStats, parseReferralCodeFromUrl, savePendingReferralCode } from './src/utils/referrals';
+import { creditReferralOnPaid, getReferralStats, parseReferralCodeFromUrl, savePendingReferralCode, clearMyReferralCode } from './src/utils/referrals';
 import { safeNativeCall, safeNativeFire, diag } from './src/utils/safeNativeCall';
 import { maybeAskForReview } from './src/utils/reviewPrompt';
 import { reportError } from './src/utils/reportError';
@@ -2801,9 +2801,37 @@ function App() {
       if (_event === 'SIGNED_IN') breadcrumb('Login', { uid: session?.user?.id }, { category: 'auth' });
       else if (_event === 'SIGNED_OUT') breadcrumb('Logout', undefined, { category: 'auth' });
       setSupaUser(session?.user || null);
+      if (_event === 'SIGNED_OUT') {
+        // Audit sécu : purge des caches per-user à portée module/AsyncStorage
+        // qui, sur un appareil partagé, feraient hériter le compte suivant des
+        // données du précédent. clearVideoUrlCache() (sans arg) vide le cache
+        // d'URLs Bunny signées ET la map inflight ; clearMyReferralCode()
+        // efface le code de parrainage caché. Ce ne sont pas des appels réseau,
+        // mais on reste dans le pattern setTimeout(0) du callback auth (aucun
+        // await direct ici, cf. verrou supabase-js).
+        setTimeout(function() {
+          try { clearVideoUrlCache(); } catch (e) {}
+          clearMyReferralCode().catch(function() {});
+        }, 0);
+      }
       if (session?.user) {
         const u = session.user;
         setTimeout(async function() {
+          // Aligne l'app_user_id RevenueCat sur l'uid Supabase : sans ça RC
+          // reste un id anonyme par appareil et le serveur ne peut pas
+          // vérifier l'entitlement par uid (cf. confirm-purchase, F6/F8).
+          // Différé + non-awaité dans le callback onAuthStateChange (règle
+          // auth-lock du CLAUDE.md) ; garde native (Purchases dispo, iOS,
+          // vrai appareil — même condition que rcDisabled dans MainApp)
+          // + safeNativeCall → no-op sûr en Expo Go / simulateur / tvOS.
+          // IMPORTANT (résiduel F3) : côté dashboard RevenueCat, régler
+          // « Transfer purchases » sur l'option restrictive (« keep with
+          // original App User ID ») pour qu'un changement de compte sur un
+          // appareil partagé ne transfère PAS l'abonnement d'un tiers.
+          const rcReady = Purchases && Platform.OS === 'ios' && !(Device && Device.isDevice === false);
+          if (rcReady) {
+            await safeNativeCall('rc.logIn', function() { return Purchases.logIn(u.id); }, null);
+          }
           try {
             await withTimeout(fetchAndMergeProfile(u), 8000, 'fetchProfileAuthChange');
           } catch (e) { devWarn('Profil après connexion', e); }
