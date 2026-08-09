@@ -120,9 +120,17 @@ export function prefetchSignedVideoUrl(sessionId, kind = 'mp4', lang) {
   getSignedVideoUrl(sessionId, kind, lang).catch(() => {});
 }
 
+// Purge le cache des URLs signées. Sans `sessionId`, on vide TOUT — cache et
+// map inflight comprise — ce qu'App.js appelle sur SIGNED_OUT pour qu'aucune
+// URL signée du compte précédent ne survive sur un appareil partagé (audit
+// sécu : sinon un non-abonné héritait de l'URL premium encore valide de
+// l'abonné précédent, contournant le contrôle serveur d'entitlement).
 export function clearVideoUrlCache(sessionId) {
-  if (!sessionId) { cache.clear(); return; }
+  if (!sessionId) { cache.clear(); inflight.clear(); return; }
   for (const k of Array.from(cache.keys())) {
     if (k.startsWith(`${sessionId}|`)) cache.delete(k);
+  }
+  for (const k of Array.from(inflight.keys())) {
+    if (k.startsWith(`${sessionId}|`)) inflight.delete(k);
   }
 }
