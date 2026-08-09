@@ -2804,6 +2804,21 @@ function App() {
       if (session?.user) {
         const u = session.user;
         setTimeout(async function() {
+          // Aligne l'app_user_id RevenueCat sur l'uid Supabase : sans ça RC
+          // reste un id anonyme par appareil et le serveur ne peut pas
+          // vérifier l'entitlement par uid (cf. confirm-purchase, F6/F8).
+          // Différé + non-awaité dans le callback onAuthStateChange (règle
+          // auth-lock du CLAUDE.md) ; garde native (Purchases dispo, iOS,
+          // vrai appareil — même condition que rcDisabled dans MainApp)
+          // + safeNativeCall → no-op sûr en Expo Go / simulateur / tvOS.
+          // IMPORTANT (résiduel F3) : côté dashboard RevenueCat, régler
+          // « Transfer purchases » sur l'option restrictive (« keep with
+          // original App User ID ») pour qu'un changement de compte sur un
+          // appareil partagé ne transfère PAS l'abonnement d'un tiers.
+          const rcReady = Purchases && Platform.OS === 'ios' && !(Device && Device.isDevice === false);
+          if (rcReady) {
+            await safeNativeCall('rc.logIn', function() { return Purchases.logIn(u.id); }, null);
+          }
           try {
             await withTimeout(fetchAndMergeProfile(u), 8000, 'fetchProfileAuthChange');
           } catch (e) { devWarn('Profil après connexion', e); }
