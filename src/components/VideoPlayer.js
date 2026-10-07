@@ -54,6 +54,9 @@ import { IS_TV, tvFocusProps } from '../utils/platformTV';
 import { isDownloaded, getLocalVideoUri } from './DownloadManager';
 import { getCachedPref } from '../utils/userPreferences';
 import { writeWorkoutEffortScore } from '../utils/healthkit';
+import PreSeanceModal from './PreSeanceModal';
+import WatchConnectSheet from './WatchConnectSheet';
+import { isPreSeanceAccepted, isPreSeanceAcceptedSync, acceptPreSeance } from '../utils/preSeance';
 
 // ── Small utilities (local copies to avoid circular deps) ──
 // Haptics are fired by GlassButton (FAIT) via `haptic="success"`, so
@@ -71,11 +74,28 @@ function hasProtectedVideo(flag) {
 
 const RATE_OPTIONS = [0.75, 1.0, 1.25, 1.5];
 
-// Garde-fou juridique pré-séance : confirmation unique par session (process
-// en mémoire, PAS de persistance AsyncStorage → réaffiché à chaque cold start,
-// une seule fois ensuite). Partagé entre tous les montages de VideoPlayer pour
-// ne pas réafficher l'alerte à chaque séance lancée dans la même session.
-let _preSeanceConfirmedThisSession = false;
+// Garde-fou juridique pré-séance : depuis la Phase 1 (07.10.2026), affiché
+// UNE seule fois puis mémorisé (local + Supabase), cf. src/utils/preSeance.js.
+
+// HUD : mode du minuteur (« elapsed » par défaut, « remaining » au tap) et
+// pastille « Connecter ta montre » masquée définitivement. Caches module pour
+// éviter un flash au montage ; la vérité est dans AsyncStorage.
+const TIMER_MODE_KEY = 'fluid_timer_mode';
+const WATCH_PILL_DISMISSED_KEY = 'fluid_watch_pill_dismissed';
+let _timerModeCache = null;
+let _watchPillDismissedCache = false;
+// Délai avant d'afficher la pastille montre : laisse le temps à un premier
+// échantillon de fréquence cardiaque d'arriver (pas de clignotement).
+const WATCH_PILL_GRACE_MS = 8000;
+
+function formatClock(totalSec) {
+  const sec = Math.max(0, Math.floor(totalSec || 0));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s2 = sec % 60;
+  if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s2).padStart(2, '0');
+  return String(m).padStart(2, '0') + ':' + String(s2).padStart(2, '0');
+}
 
 // ── Étape colors (also kept in App.js for PilierPanel) ──
 
@@ -292,9 +312,16 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   const [titre, duree, etape, videoFlag] = seance;
   const isTheory = etape === 'Comprendre' || etape === 'Ressentir';
   // Pré-séance : on ne gate que les vraies séances de pratique (pas le
-  // théorique Comprendre/Ressentir). Confirmé d'office si déjà validé dans
-  // cette session process, ou pour le contenu théorique.
-  const [preSeanceConfirmed, setPreSeanceConfirmed] = useState(_preSeanceConfirmedThisSession || isTheory);
+  // théorique Comprendre/Ressentir). Confirmé d'office si déjà accepté
+  // (une fois pour toutes) ou pour le contenu théorique.
+  const [preSeanceConfirmed, setPreSeanceConfirmed] = useState(isTheory || isPreSeanceAcceptedSync());
+  const [showPreSeance, setShowPreSeance] = useState(false);
+  // HUD (Phase 1) : minuteur écoulé/restant + pastille montre.
+  const [timerMode, setTimerMode] = useState(_timerModeCache || 'elapsed');
+  const [watchPillDismissed, setWatchPillDismissed] = useState(_watchPillDismissedCache);
+  const [watchGraceOver, setWatchGraceOver] = useState(false);
+  const [showWatchSheet, setShowWatchSheet] = useState(false);
+  const resumeAfterWatchSheetRef = useRef(false);
   const hasRealVideo = hasProtectedVideo(videoFlag);
   const sessionId = hasRealVideo ? buildSessionId(pilier?.key, seanceIndex) : null;
   const [showControls, setShowControls] = useState(!hasRealVideo);
@@ -718,28 +745,86 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   }, []);
 
   // ── Confirmation pré-séance (garde-fou juridique) ──
-  // Avant la 1ère lecture de la session (cold start), on demande à
-  // l'utilisateur de reconnaître qu'il s'arrête en cas de douleur. Native
-  // Alert pour rester léger ; une seule fois par session process. Tant que
-  // ce n'est pas confirmé, le compte à rebours d'intro et la lecture sont
-  // retenus (cf. shouldPlay). « Annuler » referme le lecteur.
+  // Modale maison (PreSeanceModal) affichée une seule fois : à la 1re séance
+  // pratique, jamais à la reprise d'une séance (position sauvegardée), jamais
+  // pour la théorie. Tant que ce n'est pas confirmé, le compte à rebours et
+  // la lecture sont retenus (cf. shouldPlay). « Annuler » referme le lecteur.
   useEffect(function() {
-    if (preSeanceConfirmed) return;
-    const isFrLang = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
-    const psTr = isFrLang ? T.fr : T.en;
-    Alert.alert(
-      psTr.preseance_title,
-      psTr.preseance_body,
-      [
-        { text: psTr.preseance_cancel, style: 'cancel', onPress: function() { if (onClose) onClose(); } },
-        { text: psTr.preseance_ok, style: 'default', onPress: function() {
-            _preSeanceConfirmedThisSession = true;
-            setPreSeanceConfirmed(true);
-          } },
-      ],
-      { cancelable: false }
-    );
+    if (preSeanceConfirmed) return undefined;
+    let cancelled = false;
+    (async function() {
+      const accepted = await isPreSeanceAccepted();
+      if (cancelled) return;
+      if (accepted) { setPreSeanceConfirmed(true); return; }
+      let isResume = false;
+      try {
+        if (pilier && pilier.key != null) {
+          const raw = await AsyncStorage.getItem(videoResumeStorageKey(pilier.key, seanceIndex));
+          const o = raw ? JSON.parse(raw) : null;
+          isResume = !!(o && o.positionMillis > 2000);
+        }
+      } catch (e) {}
+      if (cancelled) return;
+      if (isResume) { setPreSeanceConfirmed(true); return; }
+      setShowPreSeance(true);
+    })();
+    return function() { cancelled = true; };
   }, []);
+
+  function handlePreSeanceAccept() {
+    setShowPreSeance(false);
+    setPreSeanceConfirmed(true);
+    acceptPreSeance().catch(function() {});
+  }
+
+  function handlePreSeanceCancel() {
+    setShowPreSeance(false);
+    if (onClose) onClose();
+  }
+
+  // ── HUD : préférences mémorisées ──
+  useEffect(function() {
+    let cancelled = false;
+    Promise.all([
+      AsyncStorage.getItem(TIMER_MODE_KEY).catch(function() { return null; }),
+      AsyncStorage.getItem(WATCH_PILL_DISMISSED_KEY).catch(function() { return null; }),
+    ]).then(function(v) {
+      if (cancelled) return;
+      if (v[0] === 'elapsed' || v[0] === 'remaining') { _timerModeCache = v[0]; setTimerMode(v[0]); }
+      if (v[1] === '1') { _watchPillDismissedCache = true; setWatchPillDismissed(true); }
+    });
+    return function() { cancelled = true; };
+  }, []);
+
+  function toggleTimerMode() {
+    hapticLight();
+    setTimerMode(function(m) {
+      const next = m === 'remaining' ? 'elapsed' : 'remaining';
+      _timerModeCache = next;
+      AsyncStorage.setItem(TIMER_MODE_KEY, next).catch(function() {});
+      return next;
+    });
+  }
+
+  function dismissWatchPill() {
+    _watchPillDismissedCache = true;
+    setWatchPillDismissed(true);
+    AsyncStorage.setItem(WATCH_PILL_DISMISSED_KEY, '1').catch(function() {});
+  }
+
+  function openWatchSheet() {
+    resumeAfterWatchSheetRef.current = !!status.isPlaying;
+    try { videoRef.current?.pauseAsync(); } catch (e) {}
+    setShowWatchSheet(true);
+  }
+
+  function closeWatchSheet() {
+    setShowWatchSheet(false);
+    if (resumeAfterWatchSheetRef.current) {
+      resumeAfterWatchSheetRef.current = false;
+      try { videoRef.current?.playAsync(); } catch (e) {}
+    }
+  }
 
   // ── Compte à rebours d'intro (façon FitOn) ──
   // Petit « 3·2·1 » plein écran avant le début. Il retient aussi la lecture
@@ -750,6 +835,13 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     if (!preSeanceConfirmed) return;
     if (introN <= 0) return;
     const t = setTimeout(function() { setIntroN(function(n) { return n - 1; }); }, 900);
+    return function() { clearTimeout(t); };
+  }, [introN, preSeanceConfirmed]);
+
+  // Pastille montre : n'apparaît qu'après un délai sans aucune donnée réelle.
+  useEffect(function() {
+    if (!preSeanceConfirmed || introN > 0) return undefined;
+    const t = setTimeout(function() { setWatchGraceOver(true); }, WATCH_PILL_GRACE_MS);
     return function() { clearTimeout(t); };
   }, [introN, preSeanceConfirmed]);
 
@@ -874,6 +966,19 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   const timerMin = Math.floor(timerRemainSec / 60);
   const timerSec = timerRemainSec % 60;
   const timerStr = String(timerMin).padStart(2, '0') + ':' + String(timerSec).padStart(2, '0');
+  // Phase 1 : temps écoulé par défaut, temps restant (« −01:22 ») au tap.
+  const timerDisplay = timerMode === 'remaining' ? '\u2212' + formatClock(timerRemainSec) : formatClock(timerPosSec);
+  const timerA11ySec = timerMode === 'remaining' ? timerRemainSec : timerPosSec;
+  const timerA11y = (timerMode === 'remaining' ? tr.hud_remaining_a11y : tr.hud_elapsed_a11y)(Math.floor(timerA11ySec / 60), timerA11ySec % 60);
+  const timerProgress = status.durationMillis ? progress : Math.min(elapsedSec / ((parseInt(duree) || 15) * 60), 1);
+  // Données vitales : UNIQUEMENT des valeurs réelles. Phase 3 branchera ici
+  // useWatchLiveData() { heartRate, activeKcal, isConnected } (Apple Watch).
+  const liveData = {
+    heartRate: (hrEnabled && hr.isLive && hr.bpm != null) ? hr.bpm : null,
+    activeKcal: null,
+    isConnected: !!(hrEnabled && hr.isLive && hr.bpm != null),
+  };
+  const showWatchPill = !IS_TV && Platform.OS === 'ios' && hrEnabled && !liveData.isConnected && !watchPillDismissed && watchGraceOver;
 
   return (
     <View
@@ -957,80 +1062,100 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         </View>
       ) : null}
 
-      {/* ── HUD séance v3 « façon Apple Watch Entraînement » (25/07, demande
-          Yvan) ── bloc empilé top-left : décompte + mini anneau lime, BPM +
-          cœur battant, kcal + label rouge. Anneaux d'activité top-right
-          (3e anneau bleu = progression réelle de la séance). La ligne BPM est
-          toujours montée quand la préf HR est active : « -- » grisé sans
-          signal (sinon l'utilisateur croit la fonction disparue). */}
-      {!videoLoadFailed && !isTheory && !showControls && (
+      {/* ── HUD séance (Phase 1, 07.10.2026) ──
+          Minuteur toujours visible (temps écoulé par défaut, tap = temps
+          restant, choix mémorisé) + mini anneau de progression réelle.
+          BPM et kcal UNIQUEMENT si des données réelles arrivent : jamais de
+          « -- » ni de « 0 KCAL ». Sans donnée : pastille discrète
+          « Connecter ta montre » (masquable définitivement). Sous la capsule
+          de contrôles quand celle-ci est affichée. */}
+      {!videoLoadFailed && !isTheory && preSeanceConfirmed && introN <= 0 && !showEffort && (
         <>
-        <View pointerEvents="none" style={{ position: 'absolute', top: 50, left: 16, zIndex: 210 }}>
-          {/* Cadre Liquid Glass (25/07) : mêmes tokens que les contrôles du
-              player (GlassView intensity 70 dark + highlight/bevel/elevated).
-              Un seul blur monté pendant la lecture — OK perf (cf. règle
-              « pas de multiples BlurView », ici hors ScrollView). */}
-          <GlassView
-            intensity={70}
-            tint="dark"
-            forceDark
-            borderRadius={18}
-            highlight
-            bevel
-            elevated
-            contentStyle={{ paddingHorizontal: 14, paddingVertical: 10, minWidth: 122 }}
+        <View pointerEvents="box-none" style={{ position: 'absolute', top: showControls ? 104 : 50, left: 16, zIndex: 210, maxWidth: '72%' }}>
+          <Pressable
+            onPress={toggleTimerMode}
+            focusable={!IS_TV}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={timerA11y}
+            style={{ alignSelf: 'flex-start' }}
           >
-            {/* Ligne 1 : décompte + mini anneau de progression */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={{ fontSize: 27, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -0.5 }}>{timerStr}</Text>
-              <Svg width={17} height={17} viewBox="0 0 20 20">
-                <Circle cx="10" cy="10" r="8" stroke="rgba(174,239,77,0.25)" strokeWidth={3} fill="none" />
-                <Circle
-                  cx="10" cy="10" r="8"
-                  stroke="#AEEF4D" strokeWidth={3} fill="none" strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 8}
-                  strokeDashoffset={2 * Math.PI * 8 * (1 - (status.durationMillis ? progress : Math.min(elapsedSec / ((parseInt(duree) || 15) * 60), 1)))}
-                  transform="rotate(-90 10 10)"
-                />
-              </Svg>
-            </View>
-            {/* Ligne 2 : BPM + cœur battant */}
-            {hrEnabled && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                <Text style={{ fontSize: 27, fontWeight: '700', color: hr.bpm != null ? '#ffffff' : 'rgba(255,255,255,0.45)', fontVariant: ['tabular-nums'], letterSpacing: -0.5 }}>{hr.bpm != null ? String(hr.bpm) : '--'}</Text>
-                <PulsingHeart bpm={hr.bpm} isLive={hr.isLive} size={19} />
+            {/* Cadre Liquid Glass (25/07) : un seul blur monté pendant la
+                lecture, hors ScrollView (règle perf respectée). */}
+            <GlassView
+              intensity={70}
+              tint="dark"
+              forceDark
+              borderRadius={18}
+              highlight
+              bevel
+              elevated
+              contentStyle={{ paddingHorizontal: 14, paddingVertical: 10, minWidth: 122 }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text maxFontSizeMultiplier={1.4} style={{ fontSize: 27, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -0.5 }}>{timerDisplay}</Text>
+                <Svg width={17} height={17} viewBox="0 0 20 20">
+                  <Circle cx="10" cy="10" r="8" stroke="rgba(174,239,77,0.25)" strokeWidth={3} fill="none" />
+                  <Circle
+                    cx="10" cy="10" r="8"
+                    stroke="#AEEF4D" strokeWidth={3} fill="none" strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 8}
+                    strokeDashoffset={2 * Math.PI * 8 * (1 - timerProgress)}
+                    transform="rotate(-90 10 10)"
+                  />
+                </Svg>
               </View>
-            )}
-            {/* Ligne 3 : kcal */}
-            <Text style={{ fontSize: 24, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -0.5, marginTop: 2 }}>
-              {Math.round(elapsedSec / 60 * 5)}
-              <Text style={{ fontSize: 15, fontWeight: '800', color: '#FF3B30' }}>KCAL</Text>
-            </Text>
-          </GlassView>
+              {liveData.heartRate != null && (
+                <View accessible accessibilityLabel={tr.hud_bpm_a11y(liveData.heartRate)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                  <Text maxFontSizeMultiplier={1.4} style={{ fontSize: 27, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -0.5 }}>{String(liveData.heartRate)}</Text>
+                  <PulsingHeart bpm={liveData.heartRate} isLive size={19} />
+                </View>
+              )}
+              {liveData.activeKcal != null && liveData.activeKcal > 0 && (
+                <Text accessibilityLabel={tr.hud_kcal_a11y(Math.round(liveData.activeKcal))} maxFontSizeMultiplier={1.4} style={{ fontSize: 24, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -0.5, marginTop: 2 }}>
+                  {Math.round(liveData.activeKcal)}
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#FF3B30' }}>KCAL</Text>
+                </Text>
+              )}
+            </GlassView>
+          </Pressable>
+          {showWatchPill && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginTop: 8, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}>
+              <TouchableOpacity
+                onPress={openWatchSheet}
+                accessibilityRole="button"
+                accessibilityLabel={tr.watch_pill_a11y}
+                activeOpacity={0.75}
+                style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', paddingLeft: 14, paddingRight: 4 }}
+              >
+                <Text maxFontSizeMultiplier={1.6} style={{ fontSize: 13, fontWeight: '600', color: '#ffffff' }}>{'\u231A ' + tr.watch_pill}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={dismissWatchPill}
+                accessibilityRole="button"
+                accessibilityLabel={tr.watch_pill_hide_a11y}
+                style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Icon name="close" size={13} color="rgba(255,255,255,0.8)" strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
-        {/* Anneaux d'activité top-right (façon Watch), dans le même cadre
-            Liquid Glass que le bloc stats. */}
-        <View pointerEvents="none" style={{ position: 'absolute', top: 50, right: 16, zIndex: 210 }}>
-          <GlassView
-            intensity={70}
-            tint="dark"
-            forceDark
-            borderRadius={18}
-            highlight
-            bevel
-            elevated
-            contentStyle={{ padding: 9, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Svg width={56} height={56} viewBox="0 0 44 44">
-              <Circle cx="22" cy="22" r="19" stroke="rgba(255,59,48,0.3)" strokeWidth={3.5} fill="none" />
-              <Circle cx="22" cy="22" r="19" stroke="#FF3B30" strokeWidth={3.5} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 19} strokeDashoffset={2 * Math.PI * 19 * (1 - Math.min(elapsedSec / 60 * 5 / 400, 1))} transform="rotate(-90 22 22)" />
-              <Circle cx="22" cy="22" r="13.5" stroke="rgba(48,209,88,0.3)" strokeWidth={3.5} fill="none" />
-              <Circle cx="22" cy="22" r="13.5" stroke="#30D158" strokeWidth={3.5} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 13.5} strokeDashoffset={2 * Math.PI * 13.5 * (1 - Math.min(elapsedSec / 60 / 30, 1))} transform="rotate(-90 22 22)" />
-              <Circle cx="22" cy="22" r="8" stroke="rgba(10,132,255,0.3)" strokeWidth={3.5} fill="none" />
-              <Circle cx="22" cy="22" r="8" stroke="#0A84FF" strokeWidth={3.5} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 8} strokeDashoffset={2 * Math.PI * 8 * (1 - (status.durationMillis ? progress : Math.min(elapsedSec / ((parseInt(duree) || 15) * 60), 1)))} transform="rotate(-90 22 22)" />
-            </Svg>
-          </GlassView>
-        </View>
+        {/* Anneaux top-right : seulement avec des kcal réelles (Phase 3,
+            Apple Watch). Rouge = kcal actives / objectif Bouger, lime =
+            progression de la séance. */}
+        {liveData.activeKcal != null && liveData.activeKcal > 0 && !showControls && (
+          <View pointerEvents="none" style={{ position: 'absolute', top: 50, right: 16, zIndex: 210 }}>
+            <GlassView intensity={70} tint="dark" forceDark borderRadius={18} highlight bevel elevated contentStyle={{ padding: 9, alignItems: 'center', justifyContent: 'center' }}>
+              <Svg width={56} height={56} viewBox="0 0 44 44">
+                <Circle cx="22" cy="22" r="19" stroke="rgba(255,59,48,0.3)" strokeWidth={3.5} fill="none" />
+                <Circle cx="22" cy="22" r="19" stroke="#FF3B30" strokeWidth={3.5} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 19} strokeDashoffset={2 * Math.PI * 19 * (1 - Math.min(liveData.activeKcal / 400, 1))} transform="rotate(-90 22 22)" />
+                <Circle cx="22" cy="22" r="13.5" stroke="rgba(174,239,77,0.3)" strokeWidth={3.5} fill="none" />
+                <Circle cx="22" cy="22" r="13.5" stroke="#AEEF4D" strokeWidth={3.5} fill="none" strokeLinecap="round" strokeDasharray={2 * Math.PI * 13.5} strokeDashoffset={2 * Math.PI * 13.5 * (1 - timerProgress)} transform="rotate(-90 22 22)" />
+              </Svg>
+            </GlassView>
+          </View>
+        )}
         </>
       )}
 
@@ -1390,6 +1515,20 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             </TouchableOpacity>
           </GlassView>
         </View>
+      )}
+      <PreSeanceModal
+        visible={showPreSeance}
+        lang={lang}
+        onAccept={handlePreSeanceAccept}
+        onCancel={handlePreSeanceCancel}
+      />
+      {showWatchSheet && (
+        <WatchConnectSheet
+          visible
+          lang={lang}
+          onClose={closeWatchSheet}
+          onNeverAgain={function() { dismissWatchPill(); closeWatchSheet(); }}
+        />
       )}
     </View>
   );

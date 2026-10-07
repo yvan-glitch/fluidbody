@@ -787,7 +787,7 @@ function Biblio({ lang, isSubscriber, onActivateSubscription }) {
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
       <LivingBackground />
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="none">
-        <FloatingMedusas />
+        <FloatingMedusas opacity={0.4} />
       </View>
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'visible' }} pointerEvents="none">
         {BULLES.map((b, i) => <Bulle key={`bib-${i}`} {...b} />)}

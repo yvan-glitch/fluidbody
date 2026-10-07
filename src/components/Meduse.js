@@ -688,7 +688,10 @@ function LivingMedusa({ pct, streak, lang, showLabel }) {
 // Drift + bob + sway en native driver (transform uniquement, plus de left/top
 // pilotés par Animated.Value). 5 méduses au lieu de 7 ; rotation/pulse retirés
 // (la MeduseCornerIcon interne respire déjà via son propre breath loop).
-function FloatingMedusas({ topInset = 200, bottomInset = 140 } = {}) {
+// opacity (Phase 1, 07.10.2026) : les écrans de contenu (Mon Corps, Explorer,
+// Bibliothèque) passent ~0.4 pour que les méduses, déjà DERRIÈRE le contenu
+// (zIndex), ne gênent jamais la lecture d'un titre.
+function FloatingMedusas({ topInset = 200, bottomInset = 140, opacity = 0.78 } = {}) {
   const meds = useRef([
     { baseX: 20,          baseY: Math.max(topInset, SH * 0.28), size: 80 },
     { baseX: SW * 0.65,   baseY: Math.max(topInset, SH * 0.32), size: 68 },
@@ -773,7 +776,7 @@ function FloatingMedusas({ topInset = 200, bottomInset = 140 } = {}) {
         style={{
           position: 'absolute',
           zIndex: 0,
-          opacity: 0.78,
+          opacity: opacity,
           left: m.baseX,
           top: m.baseY,
           transform: [

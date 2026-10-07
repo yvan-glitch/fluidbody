@@ -146,6 +146,7 @@ import {
 import { isUserAlreadyActive } from './src/utils/activityCheck';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
 import { primeCatalogVisibility } from './src/utils/catalogVisibility';
+import { primeSeanceThumbnails } from './src/utils/seanceThumbnail';
 import { makeAppleNonce } from './src/utils/appleNonce';
 import { creditReferralOnPaid, getReferralStats, parseReferralCodeFromUrl, savePendingReferralCode, clearMyReferralCode } from './src/utils/referrals';
 import { safeNativeCall, safeNativeFire, diag } from './src/utils/safeNativeCall';
@@ -1622,6 +1623,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     // Visibilité du catalogue : cache local immédiat + refresh Supabase
     // best-effort (liste des session_id ayant une vidéo). Fire and forget.
     try { primeCatalogVisibility(); } catch (e) {}
+    try { primeSeanceThumbnails(); } catch (e) {}
     // Audit sécu 26/07 : purge des MP4 déchiffrés temporaires des sessions
     // précédentes (rien n'est en lecture au boot, delete sans race). Différé
     // pour ne pas concurrencer le premier rendu.

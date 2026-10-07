@@ -16,7 +16,8 @@ import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet } from 'rea
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { T, getSeanceImage } from '../constants/data';
+import { T } from '../constants/data';
+import { getSeanceVisual } from '../utils/seanceThumbnail';
 import { getPiliers, getSeances } from '../utils';
 import {
   getCachedDownloads,
@@ -80,7 +81,7 @@ export default function MesTelechargements({ visible, lang, onClose, onOpenSeanc
       title: seance[0],
       duree: seance[1],
       etape: seance[2],
-      image: getSeanceImage(pk, idx) || null,
+      image: getSeanceVisual(pk, idx) || null,
       size: entry.size || 0,
       quality: entry.quality || null,
       date: entry.date,

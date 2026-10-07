@@ -55,6 +55,7 @@ import { useEffortPromo, EffortPromoBanner, EffortPromoWalkthrough } from '../co
 import { primeFavoritesCache } from '../utils/favorites';
 import { getDailyQuote } from '../constants/sabrinaQuotes';
 import { Icon } from '../components/Icons';
+import { getSeanceVisual, useSeanceThumbnailsVersion } from '../utils/seanceThumbnail';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch(e) {}
@@ -460,11 +461,27 @@ function FocusableCard({ children, focusPreferred, style, accent, ...rest }) {
   );
 }
 
+// Haut de la zone où les méduses du PilierPanel ont le droit de dériver
+// (sous l'en-tête : retour, titre, compteur, barre de progression).
+const PP_MEDUSA_TOP = IS_TV ? 120 : 230;
+
 function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isSubscriber, onActivateSubscription, sdjIndex, saveHealthKitWorkout, initialSeanceIdx }) {
   const tr = T[lang] || T['fr'];
   useCatalogVersion(); // re-render quand la liste des vidéos remote arrive
+  useSeanceThumbnailsVersion(); // re-render quand les vignettes vidéo arrivent
   const seances = getSeances(lang)[pilier.key] || [];
-  const doneCount = (done || []).filter(Boolean).length;
+  // Phase 1 (07.10.2026) : numérotation 01, 02… des SÉANCES PRATIQUES
+  // visibles (la théorie Comprendre/Ressentir occupe les premiers index du
+  // tableau source, qu'on ne renumérote jamais). Même total pour le
+  // compteur « X séances » et la barre de progression.
+  const practicalIdxs = [];
+  seances.forEach(function(s, i) {
+    if (s && s[2] !== 'Comprendre' && s[2] !== 'Ressentir' && isSeanceVisible(pilier.key, i)) practicalIdxs.push(i);
+  });
+  const practicalNum = {};
+  practicalIdxs.forEach(function(i, n) { practicalNum[i] = n + 1; });
+  const practicalTotal = practicalIdxs.length;
+  const doneCount = practicalIdxs.filter(function(i) { return done && (done[i] === true || done[i] === 'true'); }).length;
   const [activeVideo, setActiveVideo] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
   // Remember the seance that just finished so the share card has its data
@@ -484,9 +501,11 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
   }, []);
 
   const ppMedusas = useRef([
-    { baseX: SW - 80, baseY: 40, size: 70, dx: new Animated.Value(0), dy: new Animated.Value(0) },
-    { baseX: 20, baseY: SH * 0.06, size: 54, dx: new Animated.Value(0), dy: new Animated.Value(0) },
-    { baseX: SW * 0.4, baseY: SH * 0.1, size: 42, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    // Phase 1 (07.10.2026) : départ SOUS l'en-tête (titre du pilier, compteur)
+    // et dérive limitée à la zone de liste, derrière les cartes.
+    { baseX: SW - 80, baseY: PP_MEDUSA_TOP + 40, size: 70, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    { baseX: 20, baseY: PP_MEDUSA_TOP + 160, size: 54, dx: new Animated.Value(0), dy: new Animated.Value(0) },
+    { baseX: SW * 0.4, baseY: PP_MEDUSA_TOP + 300, size: 42, dx: new Animated.Value(0), dy: new Animated.Value(0) },
   ]).current;
 
   useEffect(function() {
@@ -497,7 +516,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       function drift() {
         if (!mounted) return;
         const toX = 10 + Math.random() * (SW - m.size - 20);
-        const toY = 40 + Math.random() * (SH - m.size - 140);
+        const toY = PP_MEDUSA_TOP + Math.random() * Math.max(60, SH - m.size - 140 - PP_MEDUSA_TOP);
         const dur = 10000 + Math.random() * 6000;
         const p = Animated.parallel([
           Animated.timing(m.dx, { toValue: toX - m.baseX, duration: dur, easing: Easing.bezier(0.25, 0.1, 0.25, 1), useNativeDriver: true }),
@@ -596,7 +615,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       {BULLES.map((b, i) => <Bulle key={i} {...b} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r'+i} delay={b.delay + 2000} x={b.x + SW * 0.35} size={b.size} duration={b.duration} />)}{IS_IPAD && BULLES.map((b, i) => <Bulle key={'r2'+i} delay={b.delay + 5000} x={b.x + SW * 0.65} size={b.size} duration={b.duration} />)}
       {ppMedusas.map(function(m, i) {
         return (
-          <Animated.View key={'ppm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 2, opacity: 0.9, left: m.baseX, top: m.baseY, transform: [{ translateX: m.dx }, { translateY: m.dy }] }}>
+          <Animated.View key={'ppm-' + i} pointerEvents="none" style={{ position: 'absolute', zIndex: 0, opacity: 0.35, left: m.baseX, top: m.baseY, transform: [{ translateX: m.dx }, { translateY: m.dy }] }}>
             <MeduseCornerIcon size={m.size} breathCycleMs={3000 + i * 600} breathMaxScale={1.35} tint="rgba(174,239,77,1)" />
           </Animated.View>
         );
@@ -604,7 +623,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       {/* Layout : sur iPhone \u2192 header empil\u00E9 + ScrollView pleine largeur.
           Sur Apple TV \u2192 header en colonne gauche (~38% largeur) avec
           pilier en hero, ScrollView en colonne droite (~62%). */}
-      <View style={{ flex: 1, flexDirection: IS_TV ? 'row' : 'column' }}>
+      <View style={{ flex: 1, flexDirection: IS_TV ? 'row' : 'column', zIndex: 3 }}>
       <View style={{
         paddingTop: IS_TV ? 90 : 54,
         paddingHorizontal: IS_TV ? 60 : 22,
@@ -637,9 +656,9 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
             </View>
           )}
         </View>
-        <Text style={{ fontSize: IS_TV ? 14 : 10, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginTop: IS_TV ? 16 : 4 }}>{tr.seances_available || '5 S\u00C9ANCES \u00B7 PLUS \u00C0 VENIR'}</Text>
+        <Text accessibilityLabel={tr.seances_count(practicalTotal)} style={{ fontSize: IS_TV ? 14 : 10, color: '#AEEF4D', letterSpacing: 2, textTransform: 'uppercase', marginTop: IS_TV ? 16 : 4 }}>{tr.seances_count(practicalTotal)}</Text>
         <View style={{ height: IS_TV ? 5 : 3, backgroundColor: 'rgba(0,200,240,0.1)', borderRadius: 2, marginTop: IS_TV ? 18 : 10, overflow: 'hidden', flexDirection: 'row' }}>
-          <View style={{ height: IS_TV ? 5 : 3, flex: doneCount / 5, backgroundColor: pilier.color, borderRadius: 2 }} />
+          <View style={{ height: IS_TV ? 5 : 3, flex: practicalTotal > 0 ? Math.min(1, doneCount / practicalTotal) : 0, backgroundColor: pilier.color, borderRadius: 2 }} />
         </View>
       </View>
       <ScrollView style={{ flex: 1, paddingHorizontal: IS_TV ? 40 : 16 }} contentContainerStyle={{ paddingTop: IS_TV ? 90 : 0, paddingRight: IS_TV ? 40 : 0 }} showsVerticalScrollIndicator={false}>
@@ -655,6 +674,8 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
           const isDone = done[i] === true || done[i] === 'true';
           const noVideo = !url && !hasVideo(pilier.key, i);
           const locked = !noVideo && !canAccessSeanceIndex(i, isSubscriber, pilier.key);
+          const comingSoon = noVideo || isComingSoon(pilier.key, i);
+          const seanceNum = String(practicalNum[i] || 0).padStart(2, '0');
           const prevPracticalEtape = lastPracticalEtape;
           lastPracticalEtape = etape;
           let sectionTitle = null;
@@ -673,7 +694,10 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
               focusPreferred={i === 0}
               disabled={noVideo}
               accent={isDone ? 'green' : 'cyan'}
-              style={{ borderRadius: IS_TV ? 20 : 16, overflow: 'hidden', marginBottom: IS_TV ? 22 : 12, height: IS_TV ? 200 : 110, opacity: noVideo ? 0.45 : (locked ? 0.4 : 1) }}
+              accessibilityRole="button"
+              accessibilityLabel={tr.seance_a11y(seanceNum, titre, getRealDurationLabel(pilier.key, i, duree), noVideo || comingSoon ? tr.seance_a11y_soon : (locked ? tr.seance_a11y_locked : (isDone ? tr.seance_a11y_done : '')))}
+              accessibilityState={{ disabled: noVideo }}
+              style={{ borderRadius: IS_TV ? 20 : 16, overflow: 'hidden', marginBottom: IS_TV ? 22 : 12, minHeight: IS_TV ? 200 : 110, opacity: noVideo ? 0.75 : 1 }}
             >
               {(function() {
                 // Badge top-left (REPRENDRE / NOUVEAU / FAVORI). On désactive
@@ -698,12 +722,15 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                 </View>
               ) : null}
               <View style={{ flex: 1 }}>
-                <Image source={PILIER_IMAGES[pilier.key]} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pil-bg-' + pilier.key} style={StyleSheet.absoluteFill} />
+                {/* Vignette propre à la séance : image tirée de SA vidéo
+                    Bunny (seanceThumbnail), repli sur une vraie photo du
+                    thème tant que la vignette n'est pas générée. */}
+                <Image source={getSeanceVisual(pilier.key, i)} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-pil-bg-' + pilier.key + '-' + i} style={StyleSheet.absoluteFill} accessibilityIgnoresInvertColors />
                 <LinearGradient
                   colors={
                     isDone
                       ? ['rgba(0,30,22,0.65)', 'rgba(0,30,22,0.74)', 'rgba(0,30,22,0.80)', 'rgba(0,30,22,0.85)', 'rgba(0,30,22,0.90)', 'rgba(0,30,22,0.94)']
-                      : locked
+                      : (locked || noVideo)
                         ? ['rgba(0,14,24,0.65)', 'rgba(0,14,24,0.75)', 'rgba(0,14,24,0.82)', 'rgba(0,14,24,0.86)', 'rgba(0,14,24,0.90)', 'rgba(0,14,24,0.94)']
                         : ['rgba(0,14,24,0.42)', 'rgba(0,14,24,0.55)', 'rgba(0,14,24,0.65)', 'rgba(0,14,24,0.74)', 'rgba(0,14,24,0.82)', 'rgba(0,14,24,0.88)']
                   }
@@ -718,7 +745,11 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                   <Text style={{ fontSize: IS_TV ? 14 : 10, fontWeight: '900', color: '#ffffff', alignSelf: 'flex-end', marginBottom: 6, marginRight: (!IS_TV && !noVideo && !locked) ? 34 : 0 }}>FLUIDBODY<AnimatedPlus style={{ marginLeft: 8, color: '#AEEF4D' }}>+</AnimatedPlus></Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <View style={{ width: IS_TV ? 72 : 40, height: IS_TV ? 72 : 40, borderRadius: IS_TV ? 36 : 20, backgroundColor: isDone ? 'rgba(174,239,77,0.18)' : 'rgba(255,255,255,0.15)', borderWidth: IS_TV ? 1.5 : 0, borderColor: isDone ? 'rgba(174,239,77,0.55)' : 'transparent', alignItems: 'center', justifyContent: 'center', marginRight: IS_TV ? 22 : 14 }}>
-                      <Text style={{ fontSize: IS_TV ? 34 : 18, color: isDone ? '#AEEF4D' : '#ffffff' }}>{isDone ? '\u2713' : '\u25B6'}</Text>
+                      {locked ? (
+                        <Icon name="lock" size={IS_TV ? 30 : 17} color="#ffffff" strokeWidth={2} />
+                      ) : (
+                        <Text style={{ fontSize: IS_TV ? 34 : 18, color: isDone ? '#AEEF4D' : '#ffffff' }}>{isDone ? '\u2713' : (comingSoon ? '\u23F3' : '\u25B6')}</Text>
+                      )}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: IS_TV ? 30 : 16, fontWeight: IS_TV ? '500' : '600', color: '#ffffff', marginBottom: IS_TV ? 10 : 6, letterSpacing: IS_TV ? -0.3 : 0 }} numberOfLines={1}>{titre}</Text>
@@ -731,12 +762,18 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                         {resumeIndices.has(i) && !locked ? (
                           <Text style={{ fontSize: IS_TV ? 12 : 9, paddingHorizontal: IS_TV ? 11 : 7, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(174,239,77,0.15)', color: '#AEEF4D', fontWeight: '600' }}>{tr.reprise_badge}</Text>
                         ) : null}
-                        {isComingSoon(pilier.key, i) ? (
+                        {locked ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: IS_TV ? 11 : 7, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.16)' }}>
+                            <Icon name="lock" size={IS_TV ? 13 : 10} color="#ffffff" strokeWidth={2.2} />
+                            <Text style={{ fontSize: IS_TV ? 12 : 10, color: '#ffffff', fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>{tr.seance_locked_badge}</Text>
+                          </View>
+                        ) : null}
+                        {comingSoon ? (
                           <Text style={{ fontSize: IS_TV ? 12 : 9, paddingHorizontal: IS_TV ? 11 : 7, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(210,140,190,0.20)', color: '#E1A8C8', fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>{tr.coming_soon_badge || 'Bientôt'}</Text>
                         ) : null}
                       </View>
                     </View>
-                    <Text style={{ fontSize: IS_TV ? 32 : 13, color: '#AEEF4D', fontWeight: '200', letterSpacing: IS_TV ? -0.5 : 0, fontVariant: ['tabular-nums'] }}>{String(i + 1).padStart(2, '0')}</Text>
+                    <Text style={{ fontSize: IS_TV ? 32 : 13, color: '#AEEF4D', fontWeight: '200', letterSpacing: IS_TV ? -0.5 : 0, fontVariant: ['tabular-nums'] }}>{seanceNum}</Text>
                   </View>
                 </LinearGradient>
               </View>
@@ -1371,7 +1408,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         <Rayon left={280} width={40} delay={4000} duration={8000} opacity={0.12} />
       </View>
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }} pointerEvents="none">
-        <FloatingMedusas />
+        <FloatingMedusas opacity={0.4} />
       </View>
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: "none", overflow: "visible" }}>
         {BULLES_MONCORPS.map(function(b, i) { return <Bulle key={"mc-" + i} {...b} />; })}
@@ -1550,11 +1587,12 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           }
         })()}
         {mcTab === 'explorer' && sdj && (
-          <TouchableOpacity onPress={function() { if (onTryFreeSession) onTryFreeSession(); }} activeOpacity={0.9} style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#AEEF4D' }}>
-            <View style={{ height: ipadH(110) }}>
-              {/* getSeanceImage (pas PILIER_IMAGES) : évite la même photo que
-                  la card gratuite p2 et la pilier card juste en dessous. */}
-              <Image source={getSeanceImage(sdj.pilier.key, sdj.idx)} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-sdj-' + sdj.pilier.key + '-' + sdj.idx} style={StyleSheet.absoluteFill} />
+          <TouchableOpacity onPress={function() { if (onTryFreeSession) onTryFreeSession(); }} activeOpacity={0.9} accessibilityRole="button" accessibilityLabel={((pickBadge({ isNew: true, lang: lang }) || {}).label || 'NOUVEAU') + ', ' + sdj.seance[0] + ', ' + sdj.pilier.label + ', ' + sdj.seance[1]} style={{ marginBottom: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#AEEF4D' }}>
+            <View style={{ height: ipadH(150) }}>
+              {/* Phase 1 (07.10.2026) : image nette tirée de la VIDÉO de la
+                  séance (vignette Bunny, 1280 px), carte plus haute pour
+                  éviter le recadrage serré. Repli getSeanceImage. */}
+              <Image source={getSeanceVisual(sdj.pilier.key, sdj.idx)} contentPosition="center" contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-sdj-' + sdj.pilier.key + '-' + sdj.idx} style={StyleSheet.absoluteFill} />
               <LinearGradient colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.85)']} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
                 <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#AEEF4D', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
                   <Text style={{ fontSize: 20, color: '#000000' }}>{'\u25B6'}</Text>
@@ -1633,7 +1671,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               key: 'wk_' + e.dayIdx + '_' + e.pilier.key + '_' + e.idx,
               title: e.seance[0],
               subtitle: e.seance[1] + ' · ' + e.pilier.label,
-              image: getSeanceImage(e.pilier.key, e.idx),
+              image: getSeanceVisual(e.pilier.key, e.idx),
               badge: { label: e.dayLabel, tone: 'white' },
               pilier: e.pilier,
               idx: e.idx,
@@ -1655,7 +1693,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               key: 'fav_' + id,
               title: s[0],
               subtitle: s[1] + ' · ' + pil.label,
-              image: getSeanceImage(pk, sIdx),
+              image: getSeanceVisual(pk, sIdx),
               badge: pickBadge({ pilierKey: pk, idx: sIdx, lang: lang, isFavorite: true }),
               pilier: pil,
               idx: sIdx,
@@ -2145,7 +2183,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                           style={{ width: freeCardW, height: freeCardH, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(174,239,77,0.25)' }}
                         >
                           <View style={{ flex: 1 }}>
-                            <Image source={getSeanceImage(it.pilier.key, it.idx)} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-it-' + it.pilier.key + '-' + it.idx} style={StyleSheet.absoluteFill} />
+                            <Image source={getSeanceVisual(it.pilier.key, it.idx)} contentFit="cover" transition={200} cachePolicy="memory-disk" recyclingKey={'mc-it-' + it.pilier.key + '-' + it.idx} style={StyleSheet.absoluteFill} />
                             <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.18)', 'rgba(0,0,0,0.38)', 'rgba(0,0,0,0.60)', 'rgba(0,0,0,0.80)', 'rgba(0,0,0,0.92)']} locations={[0, 0.3, 0.5, 0.7, 0.85, 1]} style={{ flex: 1, padding: IS_TV ? 22 : 12, justifyContent: 'space-between' }}>
                               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <View style={{ backgroundColor: '#AEEF4D', borderRadius: IS_TV ? 10 : 8, paddingHorizontal: IS_TV ? 12 : 9, paddingVertical: IS_TV ? 6 : 4 }}>
