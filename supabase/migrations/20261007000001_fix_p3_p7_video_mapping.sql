@@ -10,7 +10,6 @@
 --   p3_16 Mobilité & Pilates I     p3_17 Profondeur de hanche
 --   p7_6  Roll-Up conscient        p7_7  Single Leg Circle
 
-begin;
 
 delete from public.video_assets
 where session_id in ('p3_10', 'p3_11', 'p3_15', 'p3_16', 'p3_17', 'p3_20', 'p7_6', 'p7_7');
@@ -23,4 +22,3 @@ insert into public.video_assets (session_id, bunny_path) values
   ('p7_6',  '99e5a072-174c-48e5-a3bb-2a1ea80fca6c'),
   ('p7_7',  '40f6eb5f-7976-476e-9fb2-db73f6d7914c');
 
-commit;
