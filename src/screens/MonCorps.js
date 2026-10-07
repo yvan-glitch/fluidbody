@@ -38,7 +38,8 @@ import { isSeanceVisible, hasVideo, countVisible, pilierHasContent, useCatalogVe
 import ChallengeModal from '../components/ChallengeModal';
 import { CHALLENGE_7J, challengeDoneCount, challengeNextDay } from '../constants/challenge';
 import { safeNativeCall, diag } from '../utils/safeNativeCall';
-import { getActiveProgram, getProgramStats } from '../utils/programs';
+import { getActiveProgram, getProgramStats, markSessionDone } from '../utils/programs';
+import SeanceDuJourCard from '../components/SeanceDuJourCard';
 import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
@@ -465,7 +466,7 @@ function FocusableCard({ children, focusPreferred, style, accent, ...rest }) {
 // (sous l'en-tête : retour, titre, compteur, barre de progression).
 const PP_MEDUSA_TOP = IS_TV ? 120 : 230;
 
-function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isSubscriber, onActivateSubscription, sdjIndex, saveHealthKitWorkout, initialSeanceIdx }) {
+function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isSubscriber, onActivateSubscription, sdjIndex, saveHealthKitWorkout, initialSeanceIdx, onSeanceCompleted }) {
   const tr = T[lang] || T['fr'];
   useCatalogVersion(); // re-render quand la liste des vidéos remote arrive
   useSeanceThumbnailsVersion(); // re-render quand les vignettes vidéo arrivent
@@ -582,7 +583,14 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
           seanceIndex={activeVideo}
           isDemo={activeVideo === sdjIndex && !isSubscriber}
           onClose={() => { setShowDemoLimit(false); setActiveVideo(null); }}
-          onComplete={() => { setCelebratedSeance(seances[activeVideo]); setCelebratedIdx(activeVideo); onToggle(activeVideo); setActiveVideo(null); setShowCelebration(true); }}
+          onComplete={() => {
+            setCelebratedSeance(seances[activeVideo]); setCelebratedIdx(activeVideo);
+            // Phase 2 : terminer une séance déjà faite ne la « dé-fait » plus
+            // (onToggle bascule l'état).
+            if (!(done && (done[activeVideo] === true || done[activeVideo] === 'true'))) onToggle(activeVideo);
+            if (onSeanceCompleted) onSeanceCompleted(pilier.key, activeVideo);
+            setActiveVideo(null); setShowCelebration(true);
+          }}
           onDemoLimit={() => setShowDemoLimit(true)}
           saveHealthKitWorkout={saveHealthKitWorkout}
         />
@@ -1190,6 +1198,20 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
   // than as Modals so the existing tab bar stays hidden — same pattern
   // as the existing CreateProgramScreen modal swap, just full-screen.
   const [activeProgram, setActiveProgram] = useState(null);
+  // Phase 2 : séance lancée depuis la carte « Ta séance du jour ». Si elle
+  // remplace un créneau de programme (séance prévue OU adaptée), on coche le
+  // créneau à la fin : la séance adaptée compte comme faite, aucun retard.
+  const sdjLaunchRef = useRef(null);
+  function onPilierSeanceCompleted(pilierKey, idx) {
+    const l = sdjLaunchRef.current;
+    if (!l || l.pilierKey !== pilierKey || l.idx !== idx) return;
+    sdjLaunchRef.current = null;
+    if (l.slot && supabase) {
+      markSessionDone(supabase, l.slot.programId, l.slot.week, l.slot.day, 'done').then(function(r) {
+        if (r && r.ok) setProgramRefreshTick(function(n) { return n + 1; });
+      }).catch(function() {});
+    }
+  }
   const [showMyPrograms, setShowMyPrograms] = useState(false);
   const [showProgramBuilder, setShowProgramBuilder] = useState(false);
   const [programRefreshTick, setProgramRefreshTick] = useState(0);
@@ -1719,6 +1741,42 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 </TouchableOpacity>
               ) : null}
               <Text style={{ fontSize: 13, fontWeight: '500', fontStyle: 'italic', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.1, marginBottom: 14, paddingHorizontal: 4 }}>« {getDailyQuote()} »  <Text style={{ color: '#AEEF4D', fontWeight: '700', fontStyle: 'normal' }}>Sabrina</Text></Text>
+              {/* Phase 2 (07.10.2026) : carte « Ta séance du jour » +
+                  ajustement léger (Fatiguée / Une gêne). Séance prévue =
+                  prochaine séance du programme actif, sinon séance du jour. */}
+              {(function() {
+                let planned = null;
+                let cardLabel = null;
+                try {
+                  const st = activeProgram ? getProgramStats(activeProgram) : null;
+                  const ns = st && st.nextSession;
+                  if (ns && ns.pilier_key != null && ns.session_index != null) {
+                    planned = { pilierKey: ns.pilier_key, idx: ns.session_index, slot: { programId: activeProgram.id, week: ns.week, day: ns.day } };
+                    cardLabel = tr.sdj_card_label_program(st.currentWeek, activeProgram.duration_weeks);
+                  }
+                } catch (e) {}
+                if (!planned && sdj && sdj.pilier) planned = { pilierKey: sdj.pilier.key, idx: sdj.idx, slot: null };
+                if (!planned) return null;
+                return (
+                  <SeanceDuJourCard
+                    planned={planned}
+                    label={cardLabel}
+                    piliers={piliers}
+                    seancesByKey={seancesByKey}
+                    done={done}
+                    tensionIdxs={tensionIdxs}
+                    isSubscriber={isSubscriber}
+                    lang={lang}
+                    onStart={function(pk, idx) {
+                      const pil = piliers.find(function(p) { return p.key === pk; });
+                      if (!pil) return;
+                      sdjLaunchRef.current = { pilierKey: pk, idx: idx, slot: planned.slot };
+                      setOpenInitialIdx(idx);
+                      setOpenPilier(pil);
+                    }}
+                  />
+                );
+              })()}
               {/* Défi 7 jours « Libère ton dos » — n'apparaît que quand
                   CHALLENGE_7J.enabled est true (vidéos en ligne). */}
               {CHALLENGE_7J.enabled ? (function() {
@@ -2373,7 +2431,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
       {openPilier && (IS_TV ? (
         <PilierPanelTV pilier={openPilier} done={done[openPilier.key] || Array(20).fill(false)} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); setOpenInitialIdx(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} saveHealthKitWorkout={saveHealthKitWorkout} initialSeanceIdx={openInitialIdx} />
       ) : (
-        <PilierPanel pilier={openPilier} done={done[openPilier.key] || Array(20).fill(false)} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); setOpenInitialIdx(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} saveHealthKitWorkout={saveHealthKitWorkout} initialSeanceIdx={openInitialIdx} />
+        <PilierPanel onSeanceCompleted={onPilierSeanceCompleted} pilier={openPilier} done={done[openPilier.key] || Array(20).fill(false)} onToggle={function(idx) { toggleDone(openPilier.key, idx); }} onClose={function() { setOpenPilier(null); setOpenInitialIdx(null); }} lang={lang} isRecommended={effectiveRecommended.includes(openPilier.key)} isSubscriber={isSubscriber} onActivateSubscription={onActivateSubscription} sdjIndex={sdj && sdj.pilier && sdj.pilier.key === openPilier.key ? sdj.idx : null} saveHealthKitWorkout={saveHealthKitWorkout} initialSeanceIdx={openInitialIdx} />
       ))}
       <PilierEducation
         visible={!!openEducationPilier}
