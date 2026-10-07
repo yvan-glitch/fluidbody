@@ -1,0 +1,7 @@
+{
+  "name": "fluidbody-watch",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "description": "Pont iPhone <-> Apple Watch de FLUIDBODY+ (module Expo local, Phase 3)"
+}

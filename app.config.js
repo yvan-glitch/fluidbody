@@ -30,6 +30,9 @@ const PLUGINS_INCOMPATIBLE_WITH_TVOS = [
   // bundle — l'import statique sera juste remplacé par un dynamic
   // require inside un `if (!IS_TV)` block (cf. src/screens/PairAppleTV.js).
   'expo-camera',
+  // Cible Apple Watch (Phase 3, 07.10.2026) : companion de l'app iPhone,
+  // n'a aucun sens dans le build Apple TV.
+  '@bacons/apple-targets',
   // withLiquidGlass : N'EST PLUS exclu sur tvOS.
   //
   // Historique : on excluait ce plugin du build TV en pensant que

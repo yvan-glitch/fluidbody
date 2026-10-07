@@ -1,13 +1,14 @@
 //  WatchConnectivityManager.swift
-//  FluidBody+ Watch
+//  FLUIDBODY+ Watch (Phase 3, 07.10.2026)
 //
-//  Pont montre ↔ téléphone (WCSession). Reçoit l'ordre « démarre la séance X »
-//  du téléphone et renvoie les ticks (BPM, temps, kcal) + le résumé final.
-//
-//  Côté téléphone, le module natif `WatchSessionBridge` (cf. ../ios-bridge/)
-//  envoie/écoute les mêmes messages.
-//
-//  ⚠️ Échafaudage non compilé.
+//  Protocole (miroir de modules/fluidbody-watch côté iPhone) :
+//    iPhone → montre : { type: "cmd", cmd: start|pause|resume|stop|cancel, title? }
+//    montre → iPhone : { type: "live", hr, kcal, elapsed, phase }   ~1/s
+//                      { type: "state", phase }                     à chaque changement
+//                      { type: "ended", saved, duration, kcal }     fin de séance
+//  Messages temps réel par sendMessage quand l'iPhone est joignable ; les
+//  messages importants (ended, et stop/cancel côté iPhone) passent aussi par
+//  transferUserInfo (livraison garantie, file d'attente).
 
 import Foundation
 import WatchConnectivity
@@ -17,55 +18,31 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     override init() {
         super.init()
-        if WCSession.isSupported() {
-            WCSession.default.delegate = self
-            WCSession.default.activate()
+        guard WCSession.isSupported() else { return }
+        WCSession.default.delegate = self
+        WCSession.default.activate()
+    }
+
+    func send(_ payload: [String: Any], guaranteed: Bool) {
+        guard WCSession.isSupported() else { return }
+        let s = WCSession.default
+        guard s.activationState == .activated else { return }
+        if s.isReachable {
+            s.sendMessage(payload, replyHandler: nil, errorHandler: { _ in })
+        }
+        if guaranteed {
+            s.transferUserInfo(payload)
         }
     }
 
-    // MARK: Montre → Téléphone
-    func sendTick(bpm: Double, elapsed: TimeInterval, calories: Double) {
-        let payload: [String: Any] = [
-            "type": "tick",
-            "bpm": bpm,
-            "elapsed": elapsed,
-            "calories": calories,
-        ]
-        // sendMessage est temps réel mais nécessite l'app iPhone joignable ;
-        // on tolère l'échec (le poignet reste la source de vérité de l'affichage).
-        if WCSession.default.isReachable {
-            WCSession.default.sendMessage(payload, replyHandler: nil, errorHandler: nil)
-        }
+    private func handle(_ message: [String: Any]) {
+        guard (message["type"] as? String) == "cmd", let cmd = message["cmd"] as? String else { return }
+        let title = message["title"] as? String
+        Task { @MainActor in WorkoutManager.shared.handleCommand(cmd, title: title) }
     }
 
-    func sendFinished(duration: TimeInterval, calories: Double, avgHeartRate: Double) {
-        let payload: [String: Any] = [
-            "type": "finished",
-            "duration": duration,
-            "calories": calories,
-            "avgHeartRate": avgHeartRate,
-        ]
-        // transferUserInfo est garanti (file d'attente) même si l'app n'est pas
-        // joignable à l'instant T → idéal pour un événement de fin important.
-        WCSession.default.transferUserInfo(payload)
-    }
-
-    // MARK: Téléphone → Montre (réception)
-    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
-        guard let type = message["type"] as? String else { return }
-        if type == "start" {
-            let title = message["title"] as? String ?? "Pilates"
-            let duration = message["plannedDuration"] as? TimeInterval ?? 0
-            DispatchQueue.main.async {
-                // Renseigne les métadonnées ; la vue lancera la workout après le
-                // compte à rebours. (Ici on prépare le manager.)
-                WorkoutManager.shared.start(title: title, plannedDuration: duration)
-            }
-        } else if type == "stop" {
-            DispatchQueue.main.async { WorkoutManager.shared.end() }
-        }
-    }
-
-    // MARK: Boilerplate WCSessionDelegate
-    func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: Error?) {}
+    // MARK: WCSessionDelegate
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) { handle(message) }
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) { handle(userInfo) }
+    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
 }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>WKApplication</key>
+	<true/>
+	<key>WKRunsIndependentlyOfCompanionApp</key>
+	<false/>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>workout-processing</string>
+	</array>
+	<key>NSHealthShareUsageDescription</key>
+	<string>FLUIDBODY+ lit ta fréquence cardiaque et tes calories actives pendant la séance pour les afficher en direct sur ta montre et ton iPhone.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>FLUIDBODY+ enregistre ta séance de Pilates dans l'app Santé (durée, calories actives, fréquence cardiaque) pour qu'elle compte dans tes anneaux d'activité.</string>
+</dict>
+</plist>

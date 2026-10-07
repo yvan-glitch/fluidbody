@@ -49,6 +49,7 @@ import { breadcrumb } from '../utils/breadcrumb';
 import { hapticLight } from '../utils';
 import { saveVideoDurationMin } from '../utils/videoDurations';
 import useLiveHeartRate from '../hooks/useLiveHeartRate';
+import useWatchLiveData from '../hooks/useWatchLiveData';
 import { recordSessionHour, cancelPauseActiveNotifications } from '../utils/notifications';
 import { IS_TV, tvFocusProps } from '../utils/platformTV';
 import { isDownloaded, getLocalVideoUri } from './DownloadManager';
@@ -290,6 +291,19 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   // tvOS n'a pas HealthKit → la pill BPM ne peut pas s'allumer. On force OFF.
   const hrEnabled = !IS_TV && ((showHeartRate != null) ? showHeartRate : showHrPref);
   const hr = useLiveHeartRate({ enabled: hrEnabled });
+  // Phase 3 : Apple Watch (séance HKWorkoutSession sur la montre). Pause /
+  // reprise synchronisées dans les deux sens ; sans montre, tout est no-op.
+  const statusRef = useRef({});
+  const watch = useWatchLiveData({
+    enabled: hrEnabled && !IS_TV,
+    onRemotePhase: function(phase) {
+      const st = statusRef.current || {};
+      try {
+        if (phase === 'paused' && st.isPlaying) videoRef.current?.pauseAsync();
+        if (phase === 'running' && st.isLoaded && !st.isPlaying) videoRef.current?.playAsync();
+      } catch (e) {}
+    },
+  });
   const effectiveBirthDate = userBirthDate || birthDatePref;
   const videoRef = useRef(null);
   const lastStatusRef = useRef({});
@@ -628,6 +642,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
 
   function onPlaybackStatusUpdate(s) {
     lastStatusRef.current = s;
+    statusRef.current = s;
     if (!s.isLoaded && s.error) {
       setStatus(s);
       syncKeepAwake(s);
@@ -900,6 +915,36 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     try { hr.start(); } catch (e) { if (__DEV__) devWarn('hr.start', e); }
   }, [hrEnabled, status?.isPlaying]);
 
+  // ── Apple Watch (Phase 3) ──
+  // Lancement de la séance montre à la 1re vraie lecture (après décompte et
+  // avertissement), jamais pour la théorie.
+  const watchStartedRef = useRef(false);
+  useEffect(function() {
+    if (watchStartedRef.current || isTheory || IS_TV) return;
+    if (!status?.isPlaying) return;
+    watchStartedRef.current = true;
+    try { watch.start(titre); } catch (e) {}
+  }, [status?.isPlaying]);
+  // Vidéo en pause = séance montre en pause, et inversement (idempotent :
+  // la montre ignore une pause si elle est déjà en pause, pas de boucle).
+  const prevPlayingRef = useRef(null);
+  useEffect(function() {
+    if (!status?.isLoaded) return;
+    const playing = !!status.isPlaying;
+    if (prevPlayingRef.current === playing) return;
+    const wasKnown = prevPlayingRef.current !== null;
+    prevPlayingRef.current = playing;
+    if (!wasKnown || !watch.isActiveNow()) return;
+    if (playing) watch.resume(); else watch.pause();
+  }, [status?.isLoaded, status?.isPlaying]);
+  // Lecteur fermé avant la fin (< 30 s, sinon saveExerciseTime a déjà
+  // arrêté la montre) : séance montre abandonnée, rien dans Santé.
+  useEffect(function() {
+    return function() {
+      try { if (watch.isActiveNow()) watch.cancel(); } catch (e) {}
+    };
+  }, []);
+
   // Make sure the polling interval is shut down whatever the exit path
   // (back press, complete, swipe-down on the modal). The hook also cleans
   // on unmount but stopping here means we keep the HR summary in scope
@@ -930,7 +975,15 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
       try { summary = hr.stop(); } catch (e) {}
       hrStartedRef.current = false;
     }
-    if (saveHealthKitWorkout) {
+    // Phase 3 : si la montre a suivi la séance, c'est ELLE qui enregistre
+    // l'entraînement dans Santé (Pilates, durée, kcal réelles) → pas de
+    // second workout côté iPhone (doublon dans les anneaux).
+    let watchSaves = false;
+    try {
+      watchSaves = watch.usedWatch();
+      if (watch.isActiveNow()) watch.stop();
+    } catch (e) {}
+    if (saveHealthKitWorkout && !watchSaves) {
       // Si on a une avgBpm valable, on remonte une estimation kcal un peu plus
       // honnête : Pilates oscille entre 4 et 7 kcal/min selon l'intensité.
       // 0.06 * avgBpm × min reste un proxy grossier mais corrige les sessions
@@ -973,12 +1026,19 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   const timerProgress = status.durationMillis ? progress : Math.min(elapsedSec / ((parseInt(duree) || 15) * 60), 1);
   // Données vitales : UNIQUEMENT des valeurs réelles. Phase 3 branchera ici
   // useWatchLiveData() { heartRate, activeKcal, isConnected } (Apple Watch).
-  const liveData = {
-    heartRate: (hrEnabled && hr.isLive && hr.bpm != null) ? hr.bpm : null,
-    activeKcal: null,
-    isConnected: !!(hrEnabled && hr.isLive && hr.bpm != null),
-  };
-  const showWatchPill = !IS_TV && Platform.OS === 'ios' && hrEnabled && !liveData.isConnected && !watchPillDismissed && watchGraceOver;
+  // Priorité à la montre (FC ~1/s + kcal réelles) ; perte de connexion =
+  // dernière valeur conservée, grisée (isStale). Sinon FC HealthKit iPhone.
+  const watchHasData = watch.isConnected || watch.isStale;
+  const liveData = watchHasData
+    ? { heartRate: watch.heartRate, activeKcal: watch.activeKcal, isConnected: watch.isConnected, isStale: watch.isStale }
+    : {
+        heartRate: (hrEnabled && hr.isLive && hr.bpm != null) ? hr.bpm : null,
+        activeKcal: null,
+        isConnected: !!(hrEnabled && hr.isLive && hr.bpm != null),
+        isStale: false,
+      };
+  const showWatchPill = !IS_TV && Platform.OS === 'ios' && hrEnabled && !liveData.isConnected && !liveData.isStale && !watch.isActive && !watchPillDismissed && watchGraceOver;
+  const hudValueColor = liveData.isStale ? 'rgba(255,255,255,0.45)' : '#ffffff';
 
   return (
     <View
@@ -1107,12 +1167,12 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
               </View>
               {liveData.heartRate != null && (
                 <View accessible accessibilityLabel={tr.hud_bpm_a11y(liveData.heartRate)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                  <Text maxFontSizeMultiplier={1.4} style={{ fontSize: 27, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -0.5 }}>{String(liveData.heartRate)}</Text>
-                  <PulsingHeart bpm={liveData.heartRate} isLive size={19} />
+                  <Text maxFontSizeMultiplier={1.4} style={{ fontSize: 27, fontWeight: '700', color: hudValueColor, fontVariant: ['tabular-nums'], letterSpacing: -0.5 }}>{String(liveData.heartRate)}</Text>
+                  <PulsingHeart bpm={liveData.heartRate} isLive={liveData.isConnected} size={19} />
                 </View>
               )}
               {liveData.activeKcal != null && liveData.activeKcal > 0 && (
-                <Text accessibilityLabel={tr.hud_kcal_a11y(Math.round(liveData.activeKcal))} maxFontSizeMultiplier={1.4} style={{ fontSize: 24, fontWeight: '700', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: -0.5, marginTop: 2 }}>
+                <Text accessibilityLabel={tr.hud_kcal_a11y(Math.round(liveData.activeKcal))} maxFontSizeMultiplier={1.4} style={{ fontSize: 24, fontWeight: '700', color: hudValueColor, fontVariant: ['tabular-nums'], letterSpacing: -0.5, marginTop: 2 }}>
                   {Math.round(liveData.activeKcal)}
                   <Text style={{ fontSize: 15, fontWeight: '800', color: '#FF3B30' }}>KCAL</Text>
                 </Text>

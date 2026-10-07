@@ -1,29 +1,24 @@
-// targets/watch/expo-target.config.js
-// Décrit la cible Apple Watch pour @bacons/apple-targets.
-// Lu automatiquement par le plugin lors de `npx expo prebuild -p ios`.
-//
-// ⚠️ N'a d'effet QUE si @bacons/apple-targets est installé ET ajouté aux
-//    plugins de app.json. Tant que ce n'est pas le cas, ce fichier est inerte.
+// Cible watchOS FLUIDBODY+ (Phase 3, 07.10.2026) — @bacons/apple-targets.
+// Prebuild (`npx expo prebuild -p ios --clean`) génère la cible dans Xcode à
+// partir de ce dossier. Info.plist (même dossier) porte les textes HealthKit
+// et le mode d'arrière-plan « workout-processing ».
+// Exclue du build Apple TV (cf. PLUGINS_INCOMPATIBLE_WITH_TVOS, app.config.js).
 
-/** @type {import('@bacons/apple-targets').Config} */
+/** @type {import('@bacons/apple-targets/app.plugin').Config} */
 module.exports = {
   type: 'watch',
-  name: 'FluidBody+',
+  name: 'FluidBodyWatch',
+  displayName: 'FLUIDBODY+',
   bundleIdentifier: 'com.ytissot.fluidbody.watchkitapp',
+  // watchOS 10 : symbolEffect, HKLiveWorkoutBuilder, WKApplicationDelegate.
   deploymentTarget: '10.0',
-  // HealthKit : indispensable pour la séance d'entraînement + la fréquence
-  // cardiaque temps réel au poignet.
+  icon: '../../assets/icon.png',
+  colors: {
+    $accent: '#AEEF4D',
+  },
+  frameworks: ['HealthKit', 'WatchConnectivity'],
   entitlements: {
     'com.apple.developer.healthkit': true,
-    'com.apple.developer.healthkit.background-delivery': true,
-  },
-  infoPlist: {
-    NSHealthShareUsageDescription:
-      "FluidBody+ lit ta fréquence cardiaque pendant la séance pour l'afficher en temps réel.",
-    NSHealthUpdateUsageDescription:
-      'FluidBody+ enregistre ta séance de Pilates dans Apple Santé.',
-    // Lie la montre à l'app iPhone (companion).
-    WKCompanionAppBundleIdentifier: 'com.ytissot.fluidbody',
-    WKBackgroundModes: ['workout-processing'],
+    'com.apple.developer.healthkit.access': [],
   },
 };
