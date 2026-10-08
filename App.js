@@ -1370,10 +1370,14 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [streak, setStreak] = useState(0);
   const [isSubscriber, setIsSubscriber] = useState(false);
   const ADMIN_EMAILS = [
-    'qcrm6vkbnx@privaterelay.appleid.com',
-    'xvan06@gmail.com',
+    'yvan@espace-pilates.ch',
+    'sabrina@espace-pilates.ch',
     'yvan.tissot@icloud.com',
     'sabrina.tissot@icloud.com',
+    'admin@fluidbody.ch',
+    // Comptes déjà admin auparavant (connexion Apple masquée / Gmail)
+    'qcrm6vkbnx@privaterelay.appleid.com',
+    'xvan06@gmail.com',
   ];
   const isAdmin = !!(supaUser && supaUser.email && ADMIN_EMAILS.indexOf(supaUser.email.toLowerCase()) !== -1);
   const effectiveIsSubscriber = isSubscriber || isAdmin;
