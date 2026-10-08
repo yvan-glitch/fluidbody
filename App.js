@@ -80,6 +80,7 @@ import ViewShot from 'react-native-view-shot';
 import { U_JELLY, U_WAVE, FREE_SEANCE_INDEX, ZONE_TO_PILIER, T, SEANCES_FR, SEANCES_EN, PILIERS_BASE, PILIER_IMAGES, SABRINA_QUOTES } from './src/constants/data';
 import { Linking as RNLinking } from 'react-native';
 import { Bulle, Rayon, Meduse, MeduseCornerIcon, VideoPlaceholderMeduse, BULLES, BULLES_MONCORPS, BULLES_ONBOARDING, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState, LivingMedusa, FloatingMedusas, MeduseRain, PluieBulles } from './src/components/Meduse';
+import SouffleLoader from './src/components/SouffleLoader';
 import VideoPlayer, { VIDEO_RESUME_PREFIX } from './src/components/VideoPlayer';
 import { prefetchSignedVideoUrl, buildSessionId } from './src/utils/videoUrl';
 import supabase from './src/lib/supabase';
@@ -2500,14 +2501,14 @@ function App() {
         <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
         {/* Glow effect behind medusa */}
         <Animated.View style={{ position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(0,190,208,0.08)', opacity: splashGlow, transform: [{ scale: splashGlow.interpolate({ inputRange: [0.3, 0.8], outputRange: [1, 1.5] }) }] }} />
-        {/* Medusa */}
+        {/* Logo Souffle animé */}
         <Animated.View style={{ opacity: splashOpacity, transform: [{ scale: splashScale }], marginBottom: 24 }}>
-          <MeduseCornerIcon size={120} breathCycleMs={2500} />
+          <SouffleLoader size={160} breathCycleMs={2500} />
         </Animated.View>
         {/* FLUIDBODY+ */}
         <Animated.View style={{ opacity: splashTextOpacity, flexDirection: 'row', alignItems: 'baseline', marginBottom: 8 }}>
           <Text style={{ fontSize: 32, fontWeight: '900', color: '#ffffff', letterSpacing: 1 }}>FLUIDBODY</Text>
-          <AnimatedPlus style={{ fontSize: 34, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
+          <AnimatedPlus style={{ fontSize: 34, fontWeight: '900', color: '#E8FF1A', marginLeft: 8 }}>+</AnimatedPlus>
         </Animated.View>
         {/* Tagline */}
         <Animated.View style={{ opacity: splashTagOpacity }}>
