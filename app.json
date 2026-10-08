@@ -2,6 +2,7 @@
   "expo": {
     "name": "FluidBody+",
     "slug": "fluidbody",
+    "scheme": "fluidbody",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -86,7 +87,8 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "expo-web-browser"
     ]
   }
 }

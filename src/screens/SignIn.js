@@ -10,6 +10,7 @@ import LivingBackground from '../components/LivingBackground';
 
 let AppleAuth = null;
 try { AppleAuth = require('expo-apple-authentication'); } catch(e) {}
+import { signInWithGoogle } from '../lib/googleAuth';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -106,6 +107,25 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
     }
   }
 
+  async function handleGoogleSignIn() {
+    if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
+    setLoading(true); setError('');
+    try {
+      const r = await signInWithGoogle(supabase);
+      if (r.cancelled) { setLoading(false); return; }
+      if (r.error) {
+        setError(r.error); Alert.alert('Google — erreur', r.error);
+        setLoading(false); return;
+      }
+      setLoading(false);
+      onSuccess && onSuccess();
+    } catch (e) {
+      const msg = e?.message || tr.ob_auth_err_net || 'Erreur Google';
+      setError(msg); Alert.alert('Google — erreur', msg);
+      setLoading(false);
+    }
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
@@ -180,6 +200,22 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
               {tr.auth_apple || 'Continuer avec Apple'}
             </GlassButton>
           ) : null}
+          <GlassButton
+            onPress={handleGoogleSignIn}
+            loading={loading}
+            size="md"
+            style={{ marginBottom: 16 }}
+            leftIcon={
+                <Svg width={18} height={18} viewBox="0 0 48 48">
+                  <Path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z" />
+                  <Path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+                  <Path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+                  <Path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z" />
+                </Svg>
+            }
+          >
+            {tr.auth_google || 'Continuer avec Google'}
+          </GlassButton>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
             <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(229,255,0,0.25)' }} />
             <Text style={{ fontSize: 11, color: '#E5FF00', marginHorizontal: 14, letterSpacing: 1, textTransform: 'uppercase' }}>{tr.auth_or || 'ou'}</Text>
