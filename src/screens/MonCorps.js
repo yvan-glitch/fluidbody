@@ -477,6 +477,9 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
       <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
         {seances.map(([titre, duree, etape, url], i) => {
           if (etape === 'Comprendre' || etape === 'Ressentir') return null;
+          // Numérotation sur les seules séances pratiques affichées (01, 02…)
+          let visibleNum = 0;
+          for (let k = 0; k <= i; k++) { const e = seances[k][2]; if (e !== 'Comprendre' && e !== 'Ressentir') visibleNum++; }
           const isDone = done[i] === true || done[i] === 'true';
           const noVideo = !url;
           const locked = !noVideo && !canAccessSeanceIndex(i, isSubscriber, pilier.key);
@@ -518,7 +521,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                         ) : null}
                       </View>
                     </View>
-                    <Text style={{ fontSize: 13, color: '#AEEF4D', fontWeight: '300' }}>{String(i + 1).padStart(2, '0')}</Text>
+                    <Text style={{ fontSize: 13, color: '#AEEF4D', fontWeight: '300' }}>{String(visibleNum).padStart(2, '0')}</Text>
                   </View>
                 </LinearGradient>
               </View>
