@@ -2577,9 +2577,9 @@ function App() {
         <LinearGradient colors={['#000a1a', '#001a2e', '#003a55', '#006d85', '#00a5b8', '#00c8d4']} locations={[0, 0.18, 0.4, 0.6, 0.82, 1]} style={StyleSheet.absoluteFill} />
         {/* Glow effect behind medusa */}
         <Animated.View style={{ position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(0,190,208,0.08)', opacity: splashGlow, transform: [{ scale: splashGlow.interpolate({ inputRange: [0.3, 0.8], outputRange: [1, 1.5] }) }] }} />
-        {/* Logo méduse (identique à l'icône et au splash natif) */}
+        {/* Petite méduse animée (choix d'Yvan, 09.10.2026) */}
         <Animated.View style={{ opacity: splashOpacity, transform: [{ scale: splashScale }], marginBottom: 24 }}>
-          <ExpoImage source={require('./assets/logo-meduse.png')} style={{ width: 160, height: 160 }} contentFit="contain" accessibilityLabel="FluidBody+" />
+          <MeduseCornerIcon size={120} breathCycleMs={2500} />
         </Animated.View>
         {/* FLUIDBODY+ */}
         <Animated.View style={{ opacity: splashTextOpacity, flexDirection: 'row', alignItems: 'baseline', marginBottom: 8 }}>
