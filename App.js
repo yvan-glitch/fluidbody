@@ -2484,14 +2484,21 @@ function App() {
     }
     checkSession();
     if (!supabase) return undefined;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Le callback ne doit PAS attendre d'appel Supabase : setSession / exchangeCodeForSession
+    // attendent la fin des callbacks en tenant le verrou auth, et une requête Supabase ici
+    // le redemande -> blocage (spinner infini après la connexion Google). On sort donc
+    // le travail du callback avec setTimeout (recommandation Supabase).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSupaUser(session?.user || null);
       if (session?.user) {
-        try {
-          await fetchAndMergeProfile(session.user);
-          setShowAuth(false);
-          setOnboardingDone(true);
-        } catch (e) { devWarn('Profil après connexion', e); }
+        const user = session.user;
+        setTimeout(async () => {
+          try {
+            await fetchAndMergeProfile(user);
+            setShowAuth(false);
+            setOnboardingDone(true);
+          } catch (e) { devWarn('Profil après connexion', e); }
+        }, 0);
       }
     });
     return () => subscription?.unsubscribe();
