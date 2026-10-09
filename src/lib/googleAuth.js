@@ -23,18 +23,27 @@ function parseParams(url) {
   return out;
 }
 
+// Garde-fou : aucune étape ne doit pouvoir bloquer l'interface indéfiniment.
+function withTimeout(promise, ms, label) {
+  let t;
+  const timeout = new Promise(function (_, reject) {
+    t = setTimeout(function () { reject(new Error('Délai dépassé (' + label + '). Réessaie.')); }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(function () { clearTimeout(t); });
+}
+
 // Retourne { ok: true, user } | { cancelled: true } | { error: string }
 export async function signInWithGoogle(supabase) {
   if (!supabase) return { error: 'Supabase indisponible.' };
   if (!WebBrowser) return { error: 'Module expo-web-browser non chargé.' };
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await withTimeout(supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: GOOGLE_REDIRECT_URL,
       skipBrowserRedirect: true,
       queryParams: { prompt: 'select_account' },
     },
-  });
+  }), 20000, 'préparation Google');
   if (error) return { error: error.message };
   if (!data || !data.url) return { error: 'URL Google introuvable.' };
 
@@ -45,12 +54,12 @@ export async function signInWithGoogle(supabase) {
   if (p.error || p.error_description) return { error: p.error_description || p.error };
 
   if (p.code) {
-    const { data: s, error: e2 } = await supabase.auth.exchangeCodeForSession(p.code);
+    const { data: s, error: e2 } = await withTimeout(supabase.auth.exchangeCodeForSession(p.code), 20000, 'échange du code');
     if (e2) return { error: e2.message };
     return { ok: true, user: s && s.user };
   }
   if (p.access_token && p.refresh_token) {
-    const { data: s, error: e2 } = await supabase.auth.setSession({ access_token: p.access_token, refresh_token: p.refresh_token });
+    const { data: s, error: e2 } = await withTimeout(supabase.auth.setSession({ access_token: p.access_token, refresh_token: p.refresh_token }), 20000, 'ouverture de session');
     if (e2) return { error: e2.message };
     return { ok: true, user: s && s.user };
   }
