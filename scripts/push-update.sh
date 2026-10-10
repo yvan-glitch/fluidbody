@@ -28,6 +28,9 @@ fi
 
 MESSAGE="$1"
 
+# Garde-fou (10.10.2026) : jamais d'OTA depuis un arbre non commité / non poussé.
+"$(dirname "$0")/check-clean.sh" || exit 1
+
 echo "🚀 Publishing OTA update to production + production-tv channels..."
 echo ""
 echo "Message: $MESSAGE"

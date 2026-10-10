@@ -6,6 +6,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 FluidBody is a **Pilates/wellness mobile app** built with React Native + Expo (SDK 54). It targets iOS and Android with support for iPad scaling. The app is in French by default and supports 2 languages (fr, en) with auto-detection from device locale (`SUPPORTED_APP_LANGS` in App.js; es/it devices fall back to fr). Les blocs es/it n'existent PAS dans `T` (data.js), contrairement à ce que d'anciennes notes affirmaient.
 
+## Règles de travail (10.10.2026, après la divergence des deux Mac)
+
+Contexte : le clone du Mac du bureau était resté au 12 mai ; les builds 121 à 142
+des 8 et 9 octobre sont partis de là (app de mai + logo + Google), d'où tirets,
+vidéos cassées et crash sur l'iPhone. Les commits de cette lignée sont gardés
+dans la branche `sauvegarde/bureau-2026-10-09`.
+
+- **GitHub est la seule source de vérité.** Deux Mac (maison et bureau), donc :
+  `git pull` avant de commencer, `./scripts/fin.sh "message"` (commit + push)
+  avant de quitter le Mac et avant tout build ou OTA.
+- **Jamais de build ni d'OTA depuis un arbre non commité ou non poussé** :
+  `scripts/check-clean.sh` le vérifie, il est appelé par `push-update.sh` et
+  `build-ios.sh`. Sur expo.dev, un git ref avec `*` = build non traçable.
+- **Builds** : `./scripts/build-ios.sh` (cloud EAS, profil production, envoi
+  TestFlight). Un build natif n'est nécessaire que si package.json, app.json,
+  les plugins ou `modules/` changent ; sinon OTA (`./scripts/push-update.sh`).
+- **Fin de session Claude** : commit + push systématiques, confirmés dans le
+  message de clôture.
+- **Fichiers hors git à copier à la main sur chaque Mac** : `.env`,
+  `credentials.json`, `credentials/`.
+- **Connexion Google** : module natif `@react-native-google-signin` si
+  `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` est défini, sinon repli Supabase OAuth
+  par navigateur (`src/lib/googleAuth.js`, `expo-web-browser`, redirect
+  `fluidbody://auth-callback`).
+
 ## Development Commands
 
 ```bash
