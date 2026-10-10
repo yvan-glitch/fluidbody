@@ -16,6 +16,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ytissot.fluidbody",
+      "icon": {
+        "light": "./assets/icon.png",
+        "dark": "./assets/icon-dark.png",
+        "tinted": "./assets/icon-tinted.png"
+      },
       "appleTeamId": "R5V88AS9MX",
       "usesAppleSignIn": true,
       "infoPlist": {
@@ -169,6 +174,7 @@
     },
     "plugins": [
       "expo-localization",
+      "expo-web-browser",
       "expo-apple-authentication",
       [
         "@kingstinct/react-native-healthkit",

@@ -72,6 +72,11 @@ try {
   GoogleSignin = g.GoogleSignin;
   GoogleStatusCodes = g.statusCodes;
 } catch(e) {}
+import { signInWithGoogle as signInWithGoogleWeb, isGoogleWebFlowAvailable } from './src/lib/googleAuth';
+// Connexion Google par navigateur (Supabase OAuth + expo-web-browser) : repli
+// utilisé quand le module natif n'est pas chargé ou pas configuré (pas de
+// EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID). Réglages côté Supabase : fournisseur
+// Google + redirect URL fluidbody://auth-callback (faits le 09.10.2026).
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
 let _googleConfigured = false;
@@ -615,7 +620,8 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
   const validPass = password.length >= 6;
   const canSubmit = validEmail && validPass && !loading;
   const appleAvailable = !!AppleAuth && Platform.OS === 'ios';
-  const googleAvailable = !!GoogleSignin && !!GOOGLE_WEB_CLIENT_ID;
+  const googleNativeReady = !!GoogleSignin && !!GOOGLE_WEB_CLIENT_ID;
+  const googleAvailable = googleNativeReady || isGoogleWebFlowAvailable();
 
   async function postAuthProfileSync(extraPrenom) {
     if (!supabase) return;
@@ -728,9 +734,27 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
 
   async function handleGoogleSignIn() {
     if (!supabase) { Alert.alert('FluidBody+', tr.err_supabase_unavailable || 'Supabase indisponible.'); return; }
-    if (!GoogleSignin) { Alert.alert('Google Sign In', tr.err_google_module || 'Module @react-native-google-signin non chargé. Rebuild requis.'); return; }
-    if (!GOOGLE_WEB_CLIENT_ID) { Alert.alert('Google Sign In', tr.err_google_not_configured || "Connexion Google pas encore configurée (webClientId manquant)."); return; }
     if (!termsAccepted) { setError(tr.ob_auth_terms_required || 'Tu dois accepter les CGU pour créer un compte.'); return; }
+    if (!googleNativeReady) {
+      // Repli navigateur (Supabase OAuth). Même flux que le natif après succès.
+      if (!isGoogleWebFlowAvailable()) { Alert.alert('Google Sign In', tr.err_google_module || 'Module Google non chargé. Rebuild requis.'); return; }
+      setLoading(true); setError('');
+      try {
+        const r = await signInWithGoogleWeb(supabase);
+        if (r.cancelled) { setLoading(false); return; }
+        if (r.error) { setError(r.error); Alert.alert('Google Sign In', r.error); setLoading(false); return; }
+        const gName = r.user?.user_metadata?.given_name || (r.user?.user_metadata?.full_name || '').split(' ')[0] || '';
+        AsyncStorage.setItem(TERMS_ACCEPTED_STORAGE_KEY, String(LEGAL.termsVersion || '1.0')).catch(() => {});
+        setLoading(false);
+        onSuccess && onSuccess();
+        postAuthProfileSync(gName).catch(function(e) { devWarn('postAuthProfileSync google web (background)', e); });
+      } catch (e) {
+        const msg = e?.message || tr.ob_auth_err_net || 'Erreur.';
+        setError(msg); Alert.alert('Google Sign In : erreur', msg);
+        setLoading(false);
+      }
+      return;
+    }
     ensureGoogleConfigured();
     setLoading(true); setError('');
     try {
@@ -960,7 +984,8 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
   const validPass = password.length >= 6;
   const canSubmit = validEmail && validPass && !loading;
   const appleAvailable = !!AppleAuth && Platform.OS === 'ios';
-  const googleAvailable = !!GoogleSignin && !!GOOGLE_WEB_CLIENT_ID;
+  const googleNativeReady = !!GoogleSignin && !!GOOGLE_WEB_CLIENT_ID;
+  const googleAvailable = googleNativeReady || isGoogleWebFlowAvailable();
 
   const floatingMedusas = useRef([
     { baseX: SW - 80, baseY: SH * 0.12, size: 72, breath: 3200, dx: new Animated.Value(0), dy: new Animated.Value(0) },
@@ -1077,8 +1102,29 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
 
   async function handleGoogleSignIn() {
     if (!supabase) { Alert.alert('FluidBody+', tr.err_supabase_unavailable || 'Supabase indisponible.'); return; }
-    if (!GoogleSignin) { Alert.alert('Google Sign In', tr.err_google_module || 'Module @react-native-google-signin non chargé. Rebuild requis.'); return; }
-    if (!GOOGLE_WEB_CLIENT_ID) { Alert.alert('Google Sign In', tr.err_google_not_configured || "Connexion Google pas encore configurée (webClientId manquant)."); return; }
+    if (!googleNativeReady) {
+      // Repli navigateur (Supabase OAuth) : voir AuthScreen.
+      if (!isGoogleWebFlowAvailable()) { Alert.alert('Google Sign In', tr.err_google_module || 'Module Google non chargé. Rebuild requis.'); return; }
+      setLoading(true); setError('');
+      try {
+        const r = await signInWithGoogleWeb(supabase);
+        if (r.cancelled) { setLoading(false); return; }
+        if (r.error) { setError(r.error); Alert.alert('Google Sign In', r.error); setLoading(false); return; }
+        const gName = r.user?.user_metadata?.given_name || (r.user?.user_metadata?.full_name || '').split(' ')[0] || '';
+        if (gName) {
+          try { await supabase.auth.updateUser({ data: { prenom: gName } }); } catch(_) {}
+          try { if (r.user?.id) { await supabase.from('profiles').upsert({ id: r.user.id, prenom: gName, updated_at: new Date().toISOString() }); } } catch(e) { reportError('profiles.upsert.onboardingGoogleWeb', e); }
+        }
+        AsyncStorage.setItem(TERMS_ACCEPTED_STORAGE_KEY, String(LEGAL.termsVersion || '1.0')).catch(() => {});
+        setLoading(false);
+        finish();
+      } catch (e) {
+        const msg = e?.message || tr.ob_auth_err_net || 'Erreur.';
+        setError(msg); Alert.alert('Google Sign In : erreur', msg);
+        setLoading(false);
+      }
+      return;
+    }
     ensureGoogleConfigured();
     setLoading(true); setError('');
     try {
@@ -1494,7 +1540,8 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   // (utilisé pour la review Apple + admin officiel). À sortir en env var
   // / Supabase row à terme — pour l'instant hardcodé pour ne pas bloquer
   // la submission.
-  const ADMIN_EMAILS = ['admin@fluidbody.ch', 'yvan@espace-pilates.ch', 'sabrina@espace-pilates.ch'];
+  // Miroir du secret serveur ADMIN_EMAILS (edge function sign-video-url) : les deux listes doivent rester identiques.
+  const ADMIN_EMAILS = ['admin@fluidbody.ch', 'yvan@espace-pilates.ch', 'sabrina@espace-pilates.ch', 'sabrina.tissot@icloud.com'];
   const isAdmin = !!(supaUser && supaUser.email && ADMIN_EMAILS.indexOf(supaUser.email.toLowerCase()) !== -1);
   const effectiveIsSubscriber = isSubscriber || isAdmin;
   const [paywallVisible, setPaywallVisible] = useState(false);
@@ -3103,7 +3150,7 @@ function App() {
           {/* FLUIDBODY+ */}
           <Animated.View style={{ opacity: splashTextOpacity, flexDirection: 'row', alignItems: 'baseline', marginBottom: 8 }}>
             <Text style={{ fontSize: 32, fontWeight: '900', color: '#ffffff', letterSpacing: 1 }}>FLUIDBODY</Text>
-            <AnimatedPlus style={{ fontSize: 34, fontWeight: '900', color: '#AEEF4D', marginLeft: 8 }}>+</AnimatedPlus>
+            <AnimatedPlus style={{ fontSize: 34, fontWeight: '900', color: '#E8FF1A', marginLeft: 8 }}>+</AnimatedPlus>
           </Animated.View>
           {/* Tagline */}
           <Animated.View style={{ opacity: splashTagOpacity }}>

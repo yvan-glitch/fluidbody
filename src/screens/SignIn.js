@@ -12,6 +12,7 @@ import LivingBackground from '../components/LivingBackground';
 import { withTimeout } from '../utils/withTimeout';
 import { makeAppleNonce } from '../utils/appleNonce';
 import { reportError } from '../utils/reportError';
+import { signInWithGoogle as signInWithGoogleWeb, isGoogleWebFlowAvailable } from '../lib/googleAuth';
 
 let AppleAuth = null;
 try { AppleAuth = require('expo-apple-authentication'); } catch(e) {}
@@ -58,7 +59,9 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
   const appleAvailable = !!AppleAuth && Platform.OS === 'ios';
   // Google dispo dès que le module natif est là ET qu'un webClientId est configuré.
   // Visible iOS + Android (sur Android, c'est le bouton social principal).
-  const googleAvailable = !!GoogleSignin && !!GOOGLE_WEB_CLIENT_ID;
+  const googleNativeReady = !!GoogleSignin && !!GOOGLE_WEB_CLIENT_ID;
+  // Repli navigateur (Supabase OAuth + expo-web-browser) quand le natif n'est pas configuré.
+  const googleAvailable = googleNativeReady || isGoogleWebFlowAvailable();
   const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
 
   const floatingMedusas = useRef([
@@ -69,7 +72,7 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
   ]).current;
 
   useEffect(() => {
-    if (!googleAvailable) return;
+    if (!googleNativeReady) return;
     try {
       GoogleSignin.configure({
         webClientId: GOOGLE_WEB_CLIENT_ID,
@@ -171,9 +174,29 @@ export default function SignInScreen({ lang, supabase, prefillEmail, onSuccess, 
 
   async function handleGoogleSignIn() {
     if (!supabase) { Alert.alert('FluidBody+', 'Supabase indisponible.'); return; }
-    if (!GoogleSignin) { Alert.alert('Google Sign In', 'Module @react-native-google-signin non chargé. Rebuild requis.'); return; }
-    if (!GOOGLE_WEB_CLIENT_ID) { Alert.alert('Google Sign In', "Connexion Google pas encore configurée (webClientId manquant)."); return; }
     if (!termsAccepted) { setError(tr.ob_auth_terms_required || 'Tu dois accepter les CGU pour continuer.'); return; }
+    if (!googleNativeReady) {
+      if (!isGoogleWebFlowAvailable()) { Alert.alert('Google Sign In', 'Module Google non chargé. Rebuild requis.'); return; }
+      setLoading(true); setError('');
+      try {
+        const r = await signInWithGoogleWeb(supabase);
+        if (r.cancelled) { setLoading(false); return; }
+        if (r.error) { setError(r.error); Alert.alert('Google Sign In', r.error); setLoading(false); return; }
+        const gName = r.user?.user_metadata?.given_name || (r.user?.user_metadata?.full_name || '').split(' ')[0] || '';
+        if (gName) {
+          try { await supabase.auth.updateUser({ data: { prenom: gName } }); } catch(_) {}
+          try { if (r.user?.id) { await supabase.from('profiles').upsert({ id: r.user.id, prenom: gName, updated_at: new Date().toISOString() }); } } catch(e) { reportError('profiles.upsert.signInGoogleWeb', e); }
+        }
+        persistTermsAccepted();
+        setLoading(false);
+        onSuccess && onSuccess();
+      } catch (e) {
+        const msg = e?.message || tr.ob_auth_err_net || 'Erreur.';
+        setError(msg); Alert.alert('Google Sign In : erreur', msg);
+        setLoading(false);
+      }
+      return;
+    }
     setLoading(true); setError('');
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
