@@ -8,7 +8,7 @@
 -- p3_0 (« Comprendre la hanche »), dont la vidéo n'existe plus dans Bunny.
 
 delete from public.video_assets
-where session_id in ('p3_0', 'p3_10', 'p3_11', 'p3_15', 'p3_16', 'p3_17', 'p3_20', 'p7_6', 'p7_7');
+where session_id in ('p3_0', 'p3_10', 'p3_11', 'p3_15', 'p3_16', 'p3_17', 'p3_18', 'p3_20', 'p7_6', 'p7_7');
 
 insert into public.video_assets (session_id, bunny_path) values
   ('p2_0',  '02edcbb8-ca7c-4b58-8e64-719ad457bf92'), -- Le dos expliqué
@@ -25,5 +25,6 @@ insert into public.video_assets (session_id, bunny_path) values
   ('p9_5',  'f8028b90-35cd-4b62-804b-89c9e5ccb2de')  -- Réveil hormonal
 on conflict (session_id) do update set bunny_path = excluded.bunny_path;
 
+-- Exécutée en prod le 10.10.2026 12:40 via le SQL Editor (12 lignes OK).
 -- Contrôle : 12 lignes attendues.
 select session_id, bunny_path from public.video_assets order by session_id;
