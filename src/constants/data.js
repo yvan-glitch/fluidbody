@@ -17,8 +17,8 @@ export const FREE_SEANCE_INDEX = 0;
 // les deux listes synchronisées, sinon la vidéo sera « indisponible »
 // pour les non-abonnés.
 export const FREE_MONTHLY_SELECTION = [
-  { pilier: 'p2', idx: 0 },   // Dos · Comprendre — "Le dos expliqué"
-  { pilier: 'p7', idx: 10 },  // Mat Pilates · Exécuter — "La série des 5"
+  { pilier: 'p9', idx: 5 },   // Ménopause · Exécuter — "Réveil hormonal" (10 min)
+  { pilier: 'p7', idx: 5 },   // Mat Pilates · Préparer — "Le Hundred : initiation" (20 min)
 ];
 
 export const ZONE_TO_PILIER = { 0: 'p2', 1: 'p1', 2: 'p3', 3: 'p4', 4: 'p5', 5: 'p6', 6: 'p8' };
@@ -359,28 +359,6 @@ export const T = {
     breath_done_title: 'Bravo',
     breath_done_sub: 'Ton anneau respiration est complété pour aujourd\'hui.',
     breath_done_cta: 'Merci',
-    paywall_testimonials: [
-      { name: 'Anne-Sophie', age: 47, text: '"Je n\'avais jamais tenu une routine. Ici je respire d\'abord, et le reste suit."' },
-      { name: 'Marc', age: 53, text: '"Trois mois et mon dos m\'a oublié. C\'est la simplicité du protocole qui m\'a accroché."' },
-      { name: 'Léa', age: 32, text: '"L\'app me parle juste : pas de cris, pas de chrono qui fait peur. Je reviens chaque soir."' },
-      { name: 'Catherine', age: 61, text: '"À mon âge on me parlait toujours de ménagement. Ici on me parle de mouvement, et mes hanches me disent merci."' },
-      { name: 'Julien', age: 39, text: '"Huit heures par jour assis au bureau. Les séances courtes ont changé mes fins de journée, la nuque ne tire plus."' },
-      { name: 'Nathalie', age: 44, text: '"Entre le travail et les enfants, quinze minutes c\'est tout ce que j\'ai. Et quinze minutes suffisent, c\'est ça qui m\'a surprise."' },
-      { name: 'Pierre', age: 58, text: '"Je croyais que le Pilates n\'était pas pour les hommes. Première séance, j\'ai compris que je n\'avais jamais vraiment respiré."' },
-      { name: 'Sophie', age: 35, text: '"La voix de Sabrina change tout. On dirait qu\'elle est dans la pièce, jamais pressée, toujours précise."' },
-      { name: 'Isabelle', age: 50, text: '"Je télécharge mes séances avant la montagne. Pas de réseau, pas d\'excuse, et le chalet est devenu mon studio."' },
-      { name: 'David', age: 42, text: '"Mes anneaux Apple Watch se ferment enfin sans forcer. Le plus dur maintenant, c\'est de sauter un jour."' },
-      { name: 'Claire', age: 36, text: '"Après ma deuxième grossesse, je ne sentais plus mon centre. Séance après séance, je me suis retrouvée."' },
-      { name: 'François', age: 64, text: '"Mon physio m\'a dit de bouger entre les rendez-vous. Maintenant c\'est lui qui me demande ce que je fais de nouveau."' },
-      { name: 'Valérie', age: 48, text: '"Je dors mieux depuis que je fais la séance du soir. Dix minutes de respiration et la journée se dépose."' },
-      { name: 'Thomas', age: 29, text: '"Je cours deux fois par semaine. Le Pilates a réglé ce que la course cassait : hanches libres, foulée plus légère."' },
-      { name: 'Martine', age: 67, text: '"Je pensais que c\'était trop tard pour commencer. Un an plus tard, je monte mes escaliers sans penser à mes genoux."' },
-      { name: 'Laurent', age: 51, text: '"Le golf me coinçait le bas du dos à chaque saison. Depuis la routine mobilité, mon swing est plus ample et plus fluide."' },
-      { name: 'Émilie', age: 33, text: '"Enseignante, debout toute la journée. Les micro-pauses ont changé mes semaines, je rentre sans les épaules aux oreilles."' },
-      { name: 'Christine', age: 55, text: '"J\'ai tout essayé, jamais tenu plus d\'un mois. Ici j\'en suis à deux cents jours et ce n\'est plus un effort, c\'est mon rituel."' },
-      { name: 'Antoine', age: 45, text: '"En déplacement toutes les semaines. Mes séances me suivent partout, la chambre d\'hôtel est devenue un tapis."' },
-      { name: 'Olivier', age: 37, text: '"Jeune papa, mes nuits sont courtes. Quinze minutes avant que la maison se réveille, et je tiens la journée."' },
-    ],
     paywall_compare_title: 'En complément de ton studio',
     paywall_compare_app: 'App Fluidbody',
     paywall_compare_studio: 'Studio Espace Pilates',
@@ -1143,28 +1121,6 @@ export const T = {
     breath_done_title: 'Beautiful',
     breath_done_sub: 'Your breath ring is closed for today.',
     breath_done_cta: 'Thanks',
-    paywall_testimonials: [
-      { name: 'Anne-Sophie', age: 47, text: '"I had never kept a routine going. Here I breathe first, and the rest follows."' },
-      { name: 'Marc', age: 53, text: '"Three months in, my back forgot me. The simplicity of the protocol is what hooked me."' },
-      { name: 'Léa', age: 32, text: '"The app speaks to me right: no shouting, no scary timer. I come back every evening."' },
-      { name: 'Catherine', age: 61, text: '"At my age everyone told me to slow down. Here they talk about movement, and my hips are grateful."' },
-      { name: 'Julien', age: 39, text: '"Eight hours a day at a desk. The short sessions changed my evenings, my neck finally lets go."' },
-      { name: 'Nathalie', age: 44, text: '"Between work and the kids, fifteen minutes is all I have. And fifteen minutes is enough, that\'s what surprised me."' },
-      { name: 'Pierre', age: 58, text: '"I thought Pilates wasn\'t for men. One session in, I realised I had never truly breathed."' },
-      { name: 'Sophie', age: 35, text: '"Sabrina\'s voice changes everything. It feels like she\'s in the room, never rushed, always precise."' },
-      { name: 'Isabelle', age: 50, text: '"I download my sessions before heading to the mountains. No signal, no excuse, and the chalet became my studio."' },
-      { name: 'David', age: 42, text: '"My Apple Watch rings finally close without forcing it. The hardest part now is skipping a day."' },
-      { name: 'Claire', age: 36, text: '"After my second pregnancy I couldn\'t feel my core anymore. Session after session, I found myself again."' },
-      { name: 'François', age: 64, text: '"My physio told me to move between appointments. Now he\'s the one asking what I\'ve been doing."' },
-      { name: 'Valérie', age: 48, text: '"I sleep better since I started the evening session. Ten minutes of breathing and the day settles."' },
-      { name: 'Thomas', age: 29, text: '"I run twice a week. Pilates fixed what running was breaking: free hips, a lighter stride."' },
-      { name: 'Martine', age: 67, text: '"I thought it was too late to start. A year later I climb my stairs without thinking about my knees."' },
-      { name: 'Laurent', age: 51, text: '"Golf used to lock up my lower back every season. Since the mobility routine my swing is wider and smoother."' },
-      { name: 'Émilie', age: 33, text: '"I\'m a teacher, on my feet all day. The micro breaks changed my weeks, I come home without my shoulders up to my ears."' },
-      { name: 'Christine', age: 55, text: '"I tried everything, never lasted a month. I\'m at two hundred days now and it\'s no longer an effort, it\'s my ritual."' },
-      { name: 'Antoine', age: 45, text: '"I travel every week. My sessions follow me everywhere, the hotel room became a mat."' },
-      { name: 'Olivier', age: 37, text: '"New dad, short nights. Fifteen minutes before the house wakes up, and I can carry the day."' },
-    ],
     paywall_compare_title: 'Alongside your studio',
     paywall_compare_app: 'Fluidbody App',
     paywall_compare_studio: 'Espace Pilates studio',

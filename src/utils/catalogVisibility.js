@@ -13,10 +13,14 @@
 //      DB apparaît donc dans l'app sans OTA ni rebuild.
 //
 // Interrupteur produit : HIDE_UNFILMED.
-//   false (aujourd'hui) — comportement historique, tout le catalogue visible.
-//   true (build de soumission) — les séances sans vidéo sont masquées, les
-//   piliers sans aucune vidéo disparaissent des listes. Un seul endroit à
-//   flipper, tous les écrans suivent.
+//   true (depuis le 13.11.2026) — les séances sans vidéo sont masquées, les
+//   piliers sans aucune vidéo disparaissent des listes. Tous les écrans suivent.
+//   false — comportement historique, tout le catalogue visible.
+//
+// Exception admin (13.11.2026) : les comptes admin (Yvan, Sabrina) gardent le
+// catalogue complet, qui leur sert de plan de tournage. App.js appelle
+// setCatalogAdminMode(isAdmin) ; les séances sans vidéo portent alors le
+// badge « À filmer ».
 //
 // Convention d'id : `${pilierKey}_${index}` — l'index est TOUJOURS celui du
 // tableau source dans data.js. Les helpers renvoient des paires {seance, idx}
@@ -27,7 +31,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import supabase from '../lib/supabase';
 import { SEANCES_FR } from '../constants/data';
 
-export const HIDE_UNFILMED = false;
+export const HIDE_UNFILMED = true;
+
+let adminSeeAll = false;
+export function isCatalogAdminMode() { return adminSeeAll; }
+// Vrai quand les séances sans vidéo doivent être masquées pour CE compte.
+export function isHidingUnfilmed() { return HIDE_UNFILMED && !adminSeeAll; }
 
 const CACHE_KEY = 'fluid_video_sessions_v1';
 const FETCH_TIMEOUT_MS = 8000;
@@ -96,6 +105,13 @@ export async function primeCatalogVisibility() {
   } catch (e) {}
 }
 
+export function setCatalogAdminMode(on) {
+  const next = !!on;
+  if (next === adminSeeAll) return;
+  adminSeeAll = next;
+  notify();
+}
+
 export function subscribeCatalogVisibility(fn) {
   listeners.add(fn);
   return function () { listeners.delete(fn); };
@@ -117,7 +133,7 @@ export function hasVideo(pilierKey, idx) {
 }
 
 export function isSeanceVisible(pilierKey, idx) {
-  if (!HIDE_UNFILMED) return true;
+  if (!isHidingUnfilmed()) return true;
   return hasVideo(pilierKey, idx);
 }
 
@@ -131,7 +147,7 @@ export function visibleSeances(seances, pilierKey) {
 }
 
 export function countVisible(seances, pilierKey) {
-  if (!HIDE_UNFILMED) return (seances || []).length;
+  if (!isHidingUnfilmed()) return (seances || []).length;
   let n = 0;
   (seances || []).forEach(function (s, i) {
     if (isSeanceVisible(pilierKey, i)) n += 1;
@@ -139,13 +155,23 @@ export function countVisible(seances, pilierKey) {
   return n;
 }
 
+// Nombre de séances réellement filmées (pour le compteur admin).
+export function countFilmed(seances, pilierKey) {
+  let n = 0;
+  (seances || []).forEach(function (s, i) {
+    if ((s && s[3] === true) || hasVideo(pilierKey, i)) n += 1;
+  });
+  return n;
+}
+
 export function pilierHasContent(pilierKey, seancesByKey) {
-  if (!HIDE_UNFILMED) return true;
+  if (!isHidingUnfilmed()) return true;
   return countVisible((seancesByKey || {})[pilierKey], pilierKey) > 0;
 }
 
 // Réservé aux tests.
 export function __resetForTests(ids) {
   primed = false;
+  adminSeeAll = false;
   remoteSet = Array.isArray(ids) ? new Set(ids) : null;
 }

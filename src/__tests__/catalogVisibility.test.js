@@ -71,3 +71,23 @@ describe('préservation des index', () => {
     });
   });
 });
+
+describe('mode admin (plan de tournage)', () => {
+  const { setCatalogAdminMode, isHidingUnfilmed, countFilmed } = require('../utils/catalogVisibility');
+  const maybe = HIDE_UNFILMED ? test : test.skip;
+
+  maybe('un admin voit tout le catalogue, un compte normal seulement le filmé', () => {
+    expect(isSeanceVisible('p1', 7)).toBe(false);
+    setCatalogAdminMode(true);
+    expect(isHidingUnfilmed()).toBe(false);
+    expect(isSeanceVisible('p1', 7)).toBe(true);
+    expect(pilierHasContent('p6', SEANCES_FR)).toBe(true);
+    setCatalogAdminMode(false);
+    expect(isSeanceVisible('p1', 7)).toBe(false);
+  });
+
+  test('countFilmed compte les séances avec vidéo', () => {
+    expect(countFilmed(SEANCES_FR.p6, 'p6')).toBe(0);
+    expect(countFilmed(SEANCES_FR.p9, 'p9')).toBeGreaterThanOrEqual(3);
+  });
+});

@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
   // se voit refuser la séance d'essai → vidéo « indisponible ».
   // + Sélection gratuite du mois (2 vidéos) — miroir de FREE_MONTHLY_SELECTION
   // dans src/constants/data.js. Garder les deux listes synchronisées.
-  const FREE_MONTHLY_IDS = new Set(["p2_0", "p7_10"]);
+  const FREE_MONTHLY_IDS = new Set(["p9_5", "p7_5"]);
   // + Théorie (étapes Comprendre/Ressentir) gratuite pour tous — décision
   // produit du 26/07 : aligne le serveur sur canAccessSeanceIndex (le client
   // affichait la théorie déverrouillée mais le serveur répondait 403).

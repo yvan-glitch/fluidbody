@@ -34,7 +34,7 @@ import { shouldCelebrate, markCelebrated } from '../utils/streakMilestones';
 import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
-import { isSeanceVisible, hasVideo, countVisible, pilierHasContent, useCatalogVersion } from '../utils/catalogVisibility';
+import { isSeanceVisible, hasVideo, countVisible, countFilmed, isCatalogAdminMode, pilierHasContent, useCatalogVersion } from '../utils/catalogVisibility';
 import ChallengeModal from '../components/ChallengeModal';
 import { CHALLENGE_7J, challengeDoneCount, challengeNextDay } from '../constants/challenge';
 import { safeNativeCall, diag } from '../utils/safeNativeCall';
@@ -777,7 +777,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
                           </View>
                         ) : null}
                         {comingSoon ? (
-                          <Text style={{ fontSize: IS_TV ? 12 : 9, paddingHorizontal: IS_TV ? 11 : 7, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(210,140,190,0.20)', color: '#E1A8C8', fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>{tr.coming_soon_badge || 'Bientôt'}</Text>
+                          <Text style={{ fontSize: IS_TV ? 12 : 9, paddingHorizontal: IS_TV ? 11 : 7, paddingVertical: IS_TV ? 5 : 3, borderRadius: 8, backgroundColor: 'rgba(210,140,190,0.20)', color: '#E1A8C8', fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>{(noVideo && isCatalogAdminMode()) ? (lang === 'en' ? 'To film' : 'À filmer') : (tr.coming_soon_badge || 'Bientôt')}</Text>
                         ) : null}
                       </View>
                     </View>
@@ -2294,7 +2294,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                       {/* Gradient with 6 stops to avoid banding on 1080p+ TVs */}
                       <LinearGradient colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.05)", "rgba(0,0,0,0.18)", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.65)", "rgba(0,0,0,0.85)"]} locations={[0, 0.32, 0.5, 0.68, 0.85, 1]} style={{ flex: 1, justifyContent: "flex-end", padding: IS_TV ? 28 : 16 }}>
                         <Text style={{ fontSize: IS_TV ? 36 : 24, fontWeight: IS_TV ? "300" : "800", color: "#ffffff", marginBottom: 6, letterSpacing: IS_TV ? -0.6 : 0 }}>{p.label}</Text>
-                        <Text style={{ fontSize: IS_TV ? 16 : 12, color: "rgba(255,255,255,0.65)", letterSpacing: IS_TV ? 1.5 : 0 }}>{(countVisible(ps, p.key) || 20) + ' ' + tr.m_seances}</Text>
+                        <Text style={{ fontSize: IS_TV ? 16 : 12, color: "rgba(255,255,255,0.65)", letterSpacing: IS_TV ? 1.5 : 0 }}>{isCatalogAdminMode() ? (countFilmed(ps, p.key) + (lang === 'en' ? ' filmed of ' : ' filmées sur ') + ps.length) : ((countVisible(ps, p.key) || 20) + ' ' + tr.m_seances)}</Text>
                       </LinearGradient>
                     </View>
                   </FocusableCard>

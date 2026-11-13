@@ -150,7 +150,7 @@ import {
 } from './src/utils/notifications';
 import { isUserAlreadyActive } from './src/utils/activityCheck';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
-import { primeCatalogVisibility } from './src/utils/catalogVisibility';
+import { primeCatalogVisibility, setCatalogAdminMode } from './src/utils/catalogVisibility';
 import { primeSeanceThumbnails } from './src/utils/seanceThumbnail';
 import { makeAppleNonce } from './src/utils/appleNonce';
 import { creditReferralOnPaid, getReferralStats, parseReferralCodeFromUrl, savePendingReferralCode, clearMyReferralCode } from './src/utils/referrals';
@@ -1553,6 +1553,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   // Miroir du secret serveur ADMIN_EMAILS (edge function sign-video-url) : les deux listes doivent rester identiques.
   const ADMIN_EMAILS = ['admin@fluidbody.ch', 'yvan@espace-pilates.ch', 'sabrina@espace-pilates.ch', 'sabrina.tissot@icloud.com', 'yvan.tissot@icloud.com', 'qcrm6vkbnx@privaterelay.appleid.com'];
   const isAdmin = !!(supaUser && supaUser.email && ADMIN_EMAILS.indexOf(supaUser.email.toLowerCase()) !== -1);
+  // Les admins gardent le catalogue complet (plan de tournage) ; les autres
+  // comptes ne voient que les séances filmées.
+  useEffect(function() { setCatalogAdminMode(isAdmin); }, [isAdmin]);
   const effectiveIsSubscriber = isSubscriber || isAdmin;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [freeDetailVisible, setFreeDetailVisible] = useState(false);

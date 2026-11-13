@@ -120,7 +120,7 @@ subtitles; the edge function picks the asset suffix from `kind`.
 
 Gratuité (26/07/2026, client `canAccessSeanceIndex` et serveur alignés) :
 index 0 de chaque pilier + sélection du mois (`FREE_MONTHLY_SELECTION`,
-2 vidéos, miroir serveur `FREE_MONTHLY_IDS`) + toute la théorie
+2 vidéos : p9_5 et p7_5 depuis le 13.11.2026, miroir serveur `FREE_MONTHLY_IDS`) + toute la théorie
 Comprendre/Ressentir (indices 0-4 de chaque pilier, miroir serveur
 `FREE_THEORY_IDS`). Toute modif doit être faite des DEUX côtés.
 
@@ -128,9 +128,10 @@ Visibilité catalogue (26/07/2026) : `src/utils/catalogVisibility.js` est la
 source de vérité « cette séance a-t-elle une vidéo / faut-il la montrer ».
 Fusionne les flags bundle (s[3]) avec la table `video_assets` (colonne
 session_id lisible par le client, refresh au boot, cache AsyncStorage) : une
-vidéo liée en DB apparaît sans OTA. Interrupteur `HIDE_UNFILMED` (false en
-beta ; true = mode soumission App Store, séances sans vidéo masquées,
-piliers vides retirés). Ne JAMAIS renuméroter les index de séances.
+vidéo liée en DB apparaît sans OTA. Interrupteur `HIDE_UNFILMED` = true depuis
+le 13.11.2026 (séances sans vidéo masquées, piliers vides retirés), SAUF
+pour les comptes admin qui gardent tout le catalogue comme plan de tournage
+(`setCatalogAdminMode`, badge « À filmer », compteur « filmées sur total »). Ne JAMAIS renuméroter les index de séances.
 
 Setup:
 - Bunny dashboard: enable Token Authentication on the pull zone (see
