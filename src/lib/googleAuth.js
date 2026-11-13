@@ -69,3 +69,20 @@ export async function signInWithGoogle(supabase) {
   }
   return { error: 'Réponse Google incomplète.' };
 }
+
+// Retour du lien de confirmation d'e-mail (« Confirm email » activé dans
+// Supabase le 13.11.2026). Le lien ramène sur fluidbody://auth-callback avec
+// soit un code (PKCE), soit les jetons : on ouvre la session directement.
+// Renvoie true si l'URL était bien un retour d'authentification.
+export async function completeAuthFromUrl(supabase, url) {
+  if (!supabase || !url || String(url).indexOf(GOOGLE_REDIRECT_URL) !== 0) return false;
+  try {
+    const p = parseParams(url);
+    if (p.code) {
+      await withTimeout(supabase.auth.exchangeCodeForSession(p.code), 20000, 'échange du code');
+    } else if (p.access_token && p.refresh_token) {
+      await withTimeout(supabase.auth.setSession({ access_token: p.access_token, refresh_token: p.refresh_token }), 20000, 'ouverture de session');
+    }
+  } catch (e) {}
+  return true;
+}

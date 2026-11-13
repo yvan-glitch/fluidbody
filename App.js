@@ -72,7 +72,7 @@ try {
   GoogleSignin = g.GoogleSignin;
   GoogleStatusCodes = g.statusCodes;
 } catch(e) {}
-import { signInWithGoogle as signInWithGoogleWeb, isGoogleWebFlowAvailable } from './src/lib/googleAuth';
+import { signInWithGoogle as signInWithGoogleWeb, isGoogleWebFlowAvailable, completeAuthFromUrl } from './src/lib/googleAuth';
 // Connexion Google par navigateur (Supabase OAuth + expo-web-browser) : repli
 // utilisé quand le module natif n'est pas chargé ou pas configuré (pas de
 // EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID). Réglages côté Supabase : fournisseur
@@ -673,7 +673,7 @@ function AuthScreen({ onSkip, onSuccess, lang = 'fr', prenomHint = '', langForPr
         const { data, error: err } = await withTimeout(supabase.auth.signUp({
           email: em,
           password,
-          options: { data: { prenom: String(prenomHint || '').trim().slice(0, 50).replace(/[<>]/g, '') } },
+          options: { emailRedirectTo: 'fluidbody://auth-callback', data: { prenom: String(prenomHint || '').trim().slice(0, 50).replace(/[<>]/g, '') } },
         }), 15000, 'signUp');
         if (err) { setError(err.message); setLoading(false); return; }
         if (!data.session) { setError(tr.ob_auth_confirm); setLoading(false); return; }
@@ -1041,7 +1041,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
     setLoading(true); setError(''); setEmailExistsErr(false);
     try {
       if (mode === 'up') {
-        const { data, error: err } = await withTimeout(supabase.auth.signUp({ email: em, password }), 15000, 'signUp');
+        const { data, error: err } = await withTimeout(supabase.auth.signUp({ email: em, password, options: { emailRedirectTo: 'fluidbody://auth-callback' } }), 15000, 'signUp');
         if (err) {
           const msg = (err.message || '').toLowerCase();
           if (msg.includes('already') || msg.includes('exists') || msg.includes('registered') || msg.includes('déjà')) {
@@ -2961,6 +2961,11 @@ function App() {
   useEffect(function() {
     function handleUrl(url) {
       if (!url) return;
+      // Lien de confirmation d'e-mail : ouvre la session et s'arrête là.
+      if (String(url).indexOf('fluidbody://auth-callback') === 0) {
+        completeAuthFromUrl(supabase, url).catch(function() {});
+        return;
+      }
       const code = parseReferralCodeFromUrl(url);
       if (!code) return;
       if (__DEV__) devLog('referral deep link, code captured:', code);
