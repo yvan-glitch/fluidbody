@@ -106,7 +106,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // react-native-view-shot: native module manquant sur tvOS, lazy require avec fallback
 let ViewShot = null;
 try { ViewShot = require('react-native-view-shot').default; } catch(e) {}
-import { U_JELLY, ZONE_TO_PILIER, T, PILIER_IMAGES, SABRINA_QUOTES } from './src/constants/data';
+import { U_JELLY, ZONE_TO_PILIER, T, PILIER_IMAGES, SABRINA_QUOTES, PILIERS_BASE } from './src/constants/data';
 import { LEGAL, getTermsUrl, TERMS_ACCEPTED_STORAGE_KEY } from './src/constants/legal';
 import { Linking as RNLinking } from 'react-native';
 import { Bulle, Meduse, MeduseCornerIcon, BULLES, BULLES_ONBOARDING, FloatingMedusas } from './src/components/Meduse';
@@ -479,6 +479,19 @@ function getAppLangFromLocale() {
 
 const RC_ENTITLEMENT_ID = 'Fluidbody Pilates Pro';
 const RC_API_KEY_IOS = process.env.EXPO_PUBLIC_RC_API_KEY_IOS || '';
+// RevenueCat : logIn ne doit JAMAIS partir avant configure (audit 10.10, B2).
+// Si la session Supabase arrive avant la config (différée de 1,2 s dans
+// MainApp), l'uid est mis en attente ici et rejoué juste après configure.
+let _rcConfigured = false;
+let _rcPendingUid = null;
+// Source unique des clés de piliers pour l'état `done` (audit 10.10, B1 :
+// p9 manquait, d'où un crash en fin de séance Ménopause).
+const DONE_PILIER_KEYS = PILIERS_BASE.map(function(p) { return p.key; }).sort();
+function emptyDone() {
+  const o = {};
+  DONE_PILIER_KEYS.forEach(function(k) { o[k] = Array(20).fill(false); });
+  return o;
+}
 
 const COACH_IMAGE = require('./assets/coach.jpg');
 
@@ -1530,10 +1543,7 @@ function TVMainView({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChan
 function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChange, onAccountDeleted, onProfileSave }) {
   diag('MainApp.render', 'enter');
   const tr = T[lang] || T['fr'];
-  const [done, setDone] = useState({
-    p1: Array(20).fill(false), p2: Array(20).fill(false), p3: Array(20).fill(false),
-    p4: Array(20).fill(false), p5: Array(20).fill(false), p6: Array(20).fill(false), p7: Array(20).fill(false), p8: Array(20).fill(false),
-  });
+  const [done, setDone] = useState(emptyDone);
   const [streak, setStreak] = useState(0);
   const [isSubscriber, setIsSubscriber] = useState(false);
   // Allowlist d'emails qui bypass IAP. Réduit à un seul email dédié
@@ -1568,6 +1578,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   const [profileRefreshKey, setProfileRefreshKey] = useState(0);
   const [rcPackagesByProductId, setRcPackagesByProductId] = useState({});
   const [rcLoadingPrices, setRcLoadingPrices] = useState(false);
+  // Rechargement des offres à l'ouverture du paywall si le chargement du
+  // boot a échoué (audit 10.10, B7 : paywall sans prix, sans nouvel essai).
+  const loadOfferingsRef = useRef(null);
   const [coachWelcomeVisible, setCoachWelcomeVisible] = useState(false);
   const [medicalDisclaimerVisible, setMedicalDisclaimerVisible] = useState(false);
   const [purchaseConfettiActive, setPurchaseConfettiActive] = useState(false);
@@ -1685,6 +1698,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
 
   const openPaywall = useStableCallback(function() {
     setPaywallVisible(true);
+    if (_rcConfigured && loadOfferingsRef.current && !rcLoadingPrices && Object.keys(rcPackagesByProductId || {}).length === 0) {
+      loadOfferingsRef.current();
+    }
     // Refresh "à l'ouverture" plutôt que de mounter un listener continu :
     // l'utilisateur n'ouvre le paywall qu'en pressant un CTA, donc on a
     // un point d'entrée clair où re-fetcher.
@@ -1826,7 +1842,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         if (savedDone) {
           const parsed = JSON.parse(savedDone);
           const fixed = {};
-          ['p1','p2','p3','p4','p5','p6','p7','p8'].forEach(function(k) {
+          DONE_PILIER_KEYS.forEach(function(k) {
             fixed[k] = parsed[k] ? parsed[k].map(v => v === true || v === 'true') : Array(20).fill(false);
           });
           setDone(fixed);
@@ -1835,7 +1851,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           try {
             const { data } = await supabase.from('progression').select('done').eq('user_id', supaUser.id).single();
             if (data?.done) {
-              const fixed = {};
+              const fixed = emptyDone();
               Object.keys(data.done).forEach(k => { fixed[k] = (data.done[k] || []).map(v => v === true || v === 'true'); });
               setDone(fixed);
             }
@@ -1918,10 +1934,18 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
 
     async function initRevenueCat() {
       const configured = safeNativeCall('rc.configure', function() {
-        Purchases.configure({ apiKey: RC_API_KEY_IOS });
-        return true;
+        const knownUid = _rcPendingUid || (supaUser && supaUser.id) || null;
+        Purchases.configure(knownUid ? { apiKey: RC_API_KEY_IOS, appUserID: knownUid } : { apiKey: RC_API_KEY_IOS });
+        return knownUid || true;
       }, false);
       if (!configured) return;
+      _rcConfigured = true;
+      // Une session arrivée pendant le délai de 1,2 s : on la rejoue ici.
+      if (_rcPendingUid && _rcPendingUid !== configured) {
+        const lateUid = _rcPendingUid;
+        await safeNativeCall('rc.logIn', function() { return Purchases.logIn(lateUid); }, null);
+      }
+      _rcPendingUid = null;
 
       try { await refreshCustomerInfo(); } catch (e) {}
 
@@ -1936,6 +1960,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
         return true;
       }, false);
 
+      async function loadOfferings() {
       try {
         if (__DEV__) devLog('Loading products...', PRODUCT_IDS);
         setRcLoadingPrices(true);
@@ -1976,6 +2001,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       } finally {
         if (mounted) setRcLoadingPrices(false);
       }
+      }
+      loadOfferingsRef.current = loadOfferings;
+      await loadOfferings();
     }
 
     // Defer the RC init burst by ~1.2s so the WelcomeIntro → MainApp
@@ -1991,6 +2019,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     }, 1200);
     return () => {
       mounted = false;
+      loadOfferingsRef.current = null;
       if (rcDeferTimer) { try { clearTimeout(rcDeferTimer); } catch (e) {} }
       if (customerInfoListener) {
         safeNativeCall('rc.removeCustomerInfoUpdateListener', function() {
@@ -2007,7 +2036,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
       const fluidKeys = keys.filter(function(k) { return k.startsWith('fluid') || k === DONE_KEY || k === 'is_subscription_active'; });
       if (fluidKeys.length > 0) await AsyncStorage.multiRemove(fluidKeys);
     } catch(e) {}
-    setDone({ p1: Array(20).fill(false), p2: Array(20).fill(false), p3: Array(20).fill(false), p4: Array(20).fill(false), p5: Array(20).fill(false), p6: Array(20).fill(false), p7: Array(20).fill(false), p8: Array(20).fill(false) });
+    setDone(emptyDone());
     setStreak(0);
     setIsSubscriber(false);
     try { await clearAchievements(); } catch (e) {}
@@ -2019,8 +2048,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   // bloquer le retour visuel du tap. L'ordre interne des blocs de fond est
   // préservé à l'identique (calendar → achievements → streak).
   const toggleDone = useStableCallback(function(key, idx) {
-    const wasDone = !!done[key][idx];
-    const next = { ...done, [key]: [...done[key]] };
+    const cur = Array.isArray(done[key]) ? done[key] : Array(20).fill(false);
+    const wasDone = !!cur[idx];
+    const next = { ...done, [key]: [...cur] };
     next[key][idx] = !next[key][idx];
     // Retour haptique : fierté quand on valide une séance, discret quand on décoche.
     if (next[key][idx]) { hapticSuccess(); } else { hapticLight(); }
@@ -2859,6 +2889,7 @@ function App() {
         // mais on reste dans le pattern setTimeout(0) du callback auth (aucun
         // await direct ici, cf. verrou supabase-js).
         setTimeout(function() {
+          _rcPendingUid = null;
           try { clearVideoUrlCache(); } catch (e) {}
           clearMyReferralCode().catch(function() {});
         }, 0);
@@ -2879,7 +2910,11 @@ function App() {
           // appareil partagé ne transfère PAS l'abonnement d'un tiers.
           const rcReady = Purchases && Platform.OS === 'ios' && !(Device && Device.isDevice === false);
           if (rcReady) {
-            await safeNativeCall('rc.logIn', function() { return Purchases.logIn(u.id); }, null);
+            if (_rcConfigured) {
+              await safeNativeCall('rc.logIn', function() { return Purchases.logIn(u.id); }, null);
+            } else {
+              _rcPendingUid = u.id; // rejoué après Purchases.configure (MainApp)
+            }
           }
           try {
             await withTimeout(fetchAndMergeProfile(u), 8000, 'fetchProfileAuthChange');

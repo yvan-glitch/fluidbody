@@ -18,7 +18,7 @@ const BUNNY_TOKEN_KEY = Deno.env.get("BUNNY_TOKEN_KEY") ?? "";
 const BUNNY_PULL_ZONE_HOST =
   Deno.env.get("BUNNY_PULL_ZONE_HOST") ?? "vz-1a4e2cac-0dc.b-cdn.net";
 const SIGNED_URL_TTL_SECONDS = parseInt(
-  Deno.env.get("SIGNED_URL_TTL_SECONDS") ?? "1800",
+  Deno.env.get("SIGNED_URL_TTL_SECONDS") ?? "7200",
   10,
 );
 const REVENUECAT_SECRET_API_KEY =

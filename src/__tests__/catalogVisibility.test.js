@@ -19,10 +19,11 @@ import { SEANCES_FR } from '../constants/data';
 afterEach(() => __resetForTests(null));
 
 describe('flags du bundle', () => {
-  test('les 4 séances filmées sont détectées', () => {
+  test('les séances filmées sont détectées', () => {
     expect(hasVideo('p2', 0)).toBe(true);
     expect(hasVideo('p2', 1)).toBe(true);
-    expect(hasVideo('p3', 0)).toBe(true);
+    expect(hasVideo('p3', 0)).toBe(false); // flag retiré le 10.10.2026 (vidéo absente de Bunny)
+    expect(hasVideo('p3', 5)).toBe(true);
     expect(hasVideo('p9', 5)).toBe(true);
   });
 

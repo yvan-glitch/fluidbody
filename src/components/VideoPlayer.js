@@ -448,7 +448,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
             if (!cancelled && !localUri) {
               Alert.alert(
                 'Téléchargement corrompu',
-                'Le fichier hors-ligne est illisible. Re-téléchargez la séance.'
+                'Le fichier hors ligne est illisible. Télécharge à nouveau la séance.'
                   + (__DEV__ ? '\n\nDébug : ' + trace.join(' | ') : '')
               );
               setVideoLoadFailed(true);
@@ -468,8 +468,10 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
         breadcrumb('Bunny URL fetch error', { pilier: pilier?.key, seanceIndex, msg }, { category: 'video', level: 'error' });
         if (__DEV__) devWarn('VideoPlayer.urlResolve.ERR', msg);
         Alert.alert(
-          'Vidéo indisponible',
-          'Impossible de charger la séance.'
+          msg === 'not-signed-in' ? 'Compte gratuit requis' : 'Vidéo indisponible',
+          (msg === 'not-signed-in'
+            ? 'Crée ton compte gratuit (onglet Profil) pour lire cette séance. Ça prend moins d\'une minute.'
+            : 'Impossible de charger la séance. Vérifie ta connexion puis réessaie.')
             + (__DEV__ ? '\n\nDébug : ' + trace.join(' | ') : '')
         );
         setVideoLoadFailed(true);
@@ -657,11 +659,13 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
       const isLocal = u.indexOf('file://') === 0 || u.indexOf('/var/') === 0 || u.indexOf('Caches') !== -1;
       if (!alertedOnceRef.current) {
         alertedOnceRef.current = true;
+        // Jamais d'URI signée ni d'erreur brute en prod (audit 10.10, B4).
         Alert.alert(
-          isLocal ? 'Lecture locale échouée' : 'Lecture distante échouée',
-          (isLocal ? 'Fichier hors-ligne illisible.' : 'Connexion ou URL Bunny indisponible.')
-          + '\n\nURI : ' + (u ? u.slice(0, 120) : '(vide)')
-          + '\nErreur : ' + (s.error || 'inconnue')
+          'Vidéo indisponible',
+          (isLocal
+            ? 'Le fichier hors ligne est illisible. Supprime le téléchargement puis relance la séance.'
+            : 'La lecture a échoué. Vérifie ta connexion puis réessaie.')
+          + (__DEV__ ? '\n\nURI : ' + (u ? u.slice(0, 120) : '(vide)') + '\nErreur : ' + (s.error || 'inconnue') : '')
         );
       }
       return;
