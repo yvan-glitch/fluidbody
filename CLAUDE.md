@@ -140,6 +140,8 @@ changer l'id. Carte `src/components/MaterielCard.js`, en tête de « Pour toi »
 tant qu'elle n'a pas été ouverte (`fluid_materiel_seen_v1`) et toujours en
 tête d'« Explorer » (iPhone/iPad, pas Apple TV). Lecteur en mode `isInfo` :
 rien n'est compté (ni Santé, ni minutes, ni effort, ni « séance faite »).
+Le fichier Bunny dure 3'40 : le lecteur coupe à 1'45 (`MATERIEL_END_SEC`,
+prop `endAtSec` de VideoPlayer) ; remettre à 0 si le fichier est remplacé.
 
 Setup:
 - Bunny dashboard: enable Token Authentication on the pull zone (see

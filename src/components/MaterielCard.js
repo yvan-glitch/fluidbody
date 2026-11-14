@@ -27,6 +27,10 @@ import { getSeanceThumbnailUri, useSeanceThumbnailsVersion } from '../utils/sean
 export const MATERIEL_KEY = 'materiel';
 export const MATERIEL_INDEX = 0;
 const SEEN_KEY = 'fluid_materiel_seen_v1';
+// Le fichier Bunny dure 3'40 ; seule la partie 0'00 → 1'45 est la vidéo
+// matériel. Coupe faite dans le lecteur (`endAtSec`). À remettre à 0 si le
+// fichier Bunny est remplacé par une version déjà coupée.
+export const MATERIEL_END_SEC = 105;
 
 // Vu/pas vu partagé entre les instances (Pour toi + Explorer).
 let seenCache = null; // null = pas encore lu
@@ -121,6 +125,7 @@ export default function MaterielCard({ lang, hideWhenSeen, height }) {
           <VideoPlayer
             key="materiel-0"
             isInfo
+            endAtSec={MATERIEL_END_SEC}
             seance={seance}
             pilier={pilier}
             lang={lang}

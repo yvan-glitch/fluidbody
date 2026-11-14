@@ -270,7 +270,7 @@ function VideoPlayPauseIcon({ playing, size = 36 }) {
 // `isInfo` (14.11.2026) : vidéo d'information hors catalogue (ex. « Le
 // matériel »). Ce n'est pas une séance : ni fréquence cardiaque, ni
 // entraînement Santé, ni minutes d'exercice, ni évaluation d'effort.
-export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, isDemo, onDemoLimit, saveHealthKitWorkout, userBirthDate, showHeartRate, isInfo }) {
+export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, isDemo, onDemoLimit, saveHealthKitWorkout, userBirthDate, showHeartRate, isInfo, endAtSec }) {
   const tr = T[lang] || T['fr'];
 
   // showHeartRate / userBirthDate peuvent venir en prop (override pour tests)
@@ -645,7 +645,31 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     }
   }
 
+  // `endAtSec` (14.11.2026) : coupe la vidéo à cette seconde sans toucher au
+  // fichier Bunny. Le statut est réécrit (durée = point de coupe) : barre de
+  // progression, minuteur, scrubbing et reprise suivent donc la durée coupée.
+  const endAtMs = endAtSec > 0 ? Math.round(endAtSec * 1000) : 0;
+  const cutPausedRef = useRef(false);
   function onPlaybackStatusUpdate(s) {
+    if (endAtMs && s && s.isLoaded && s.durationMillis > endAtMs) {
+      const reached = (s.positionMillis || 0) >= endAtMs;
+      const rawPlaying = !!s.isPlaying;
+      s = Object.assign({}, s, {
+        durationMillis: endAtMs,
+        positionMillis: Math.min(s.positionMillis || 0, endAtMs),
+        isPlaying: reached ? false : s.isPlaying,
+      });
+      if (reached) {
+        // Tant que la lecture tourne au-delà de la coupe, on la stoppe.
+        if (rawPlaying) { try { videoRef.current?.pauseAsync(); } catch (e) {} }
+        if (!cutPausedRef.current) {
+          cutPausedRef.current = true;
+          try { revealControls(); } catch (e) {}
+        }
+      } else {
+        cutPausedRef.current = false;
+      }
+    }
     lastStatusRef.current = s;
     statusRef.current = s;
     if (!s.isLoaded && s.error) {
@@ -706,7 +730,12 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
       Animated.timing(playScale, { toValue: 0.94, duration: 70, useNativeDriver: true }),
       Animated.spring(playScale, { toValue: 1, friction: 4, tension: 280, useNativeDriver: true }),
     ]).start();
-    if (status.isPlaying) { videoRef.current?.pauseAsync(); } else { videoRef.current?.playAsync(); }
+    if (status.isPlaying) { videoRef.current?.pauseAsync(); }
+    else if (endAtMs && (status.positionMillis || 0) >= endAtMs - 250) {
+      // Arrivé à la coupe : « lecture » relance depuis le début.
+      try { videoRef.current?.setPositionAsync(0).then(function () { videoRef.current?.playAsync(); }); } catch (e) {}
+    }
+    else { videoRef.current?.playAsync(); }
     bumpTimer();
   }
 
