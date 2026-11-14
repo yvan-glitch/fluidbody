@@ -1,5 +1,13 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { Fragment, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { NavigationContext, NavigationContainerRefContext } from '@react-navigation/native';
+
+// Safe useNavigation : retourne null sur tvOS où MonCorps est rendu hors
+// NavigationContainer (cf. App.js TVMainView). Évite le crash.
+function useSafeNavigation() {
+  const navCtx = useContext(NavigationContext);
+  const rootRef = useContext(NavigationContainerRefContext);
+  return navCtx || rootRef || null;
+}
 import { Text, StyleSheet, Animated, Easing, View, TouchableOpacity, ScrollView, Dimensions, Modal, Platform, TextInput, Share } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -961,7 +969,7 @@ function ZoneIcon({ idx, color, size }) {
 function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange, streak, isSubscriber, onActivateSubscription, onTryFreeSession, saveHealthKitWorkout }) {
   var tr = T[lang] || T["fr"];
   var theme = useTheme().theme;
-  var navigation = useNavigation();
+  var navigation = useSafeNavigation();
   var [openPilier, setOpenPilier] = useState(null);
   var [openInitialIdx, setOpenInitialIdx] = useState(null);
   var [mcTab, setMcTab] = useState('pour_vous');
@@ -1074,7 +1082,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
           })()}
           {prenom ? (
             <TouchableOpacity
-              onPress={function() { try { navigation.navigate(tr.tabs[3]); } catch(e) {} }}
+              onPress={function() { try { if (navigation) navigation.navigate(tr.tabs[3]); } catch(e) {} }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               activeOpacity={0.7}
             >
