@@ -133,6 +133,14 @@ le 13.11.2026 (séances sans vidéo masquées, piliers vides retirés), SAUF
 pour les comptes admin qui gardent tout le catalogue comme plan de tournage
 (`setCatalogAdminMode`, badge « À filmer », compteur « filmées sur total »). Ne JAMAIS renuméroter les index de séances.
 
+Vidéo « Le matériel » (14.11.2026) : vidéo d'information hors piliers, id
+`materiel_0` (ligne `video_assets`, migration 20261114000000). Gratuite pour
+tout compte connecté grâce à la règle serveur « index 0 gratuit » : ne pas
+changer l'id. Carte `src/components/MaterielCard.js`, en tête de « Pour toi »
+tant qu'elle n'a pas été ouverte (`fluid_materiel_seen_v1`) et toujours en
+tête d'« Explorer » (iPhone/iPad, pas Apple TV). Lecteur en mode `isInfo` :
+rien n'est compté (ni Santé, ni minutes, ni effort, ni « séance faite »).
+
 Setup:
 - Bunny dashboard: enable Token Authentication on the pull zone (see
   `supabase/README.md` for the exact clicks).

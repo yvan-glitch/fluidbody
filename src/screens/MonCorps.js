@@ -40,6 +40,7 @@ import { CHALLENGE_7J, challengeDoneCount, challengeNextDay } from '../constants
 import { safeNativeCall, diag } from '../utils/safeNativeCall';
 import { getActiveProgram, getProgramStats, markSessionDone } from '../utils/programs';
 import SeanceDuJourCard from '../components/SeanceDuJourCard';
+import MaterielCard from '../components/MaterielCard';
 import MyPrograms from './MyPrograms';
 import ProgramBuilder from './ProgramBuilder';
 import calendarUtil from '../utils/calendar';
@@ -1558,6 +1559,11 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
         {/* Promo effort / charge d'entraînement — aussi sur l'écran
             d'ouverture (demande Yvan 25/07), onglet Pour vous uniquement.
             pad=0 : le contentContainer a déjà paddingHorizontal 16. */}
+        {/* Vidéo « Le matériel » (14.11.2026) : en tête de Pour toi tant
+            qu'elle n'a pas été ouverte, toujours en tête d'Explorer. */}
+        {!IS_TV && (mcTab === 'pour_vous' || mcTab === 'explorer') ? (
+          <MaterielCard lang={lang} hideWhenSeen={mcTab === 'pour_vous'} height={ipadH(120)} />
+        ) : null}
         {mcTab === 'pour_vous' && !IS_TV && effortPromo.visible ? (
           <EffortPromoBanner
             lang={lang}

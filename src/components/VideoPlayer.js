@@ -267,7 +267,10 @@ function VideoPlayPauseIcon({ playing, size = 36 }) {
 
 // ── Main VideoPlayer component ──
 
-export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, isDemo, onDemoLimit, saveHealthKitWorkout, userBirthDate, showHeartRate }) {
+// `isInfo` (14.11.2026) : vidéo d'information hors catalogue (ex. « Le
+// matériel »). Ce n'est pas une séance : ni fréquence cardiaque, ni
+// entraînement Santé, ni minutes d'exercice, ni évaluation d'effort.
+export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang, seanceIndex, isDemo, onDemoLimit, saveHealthKitWorkout, userBirthDate, showHeartRate, isInfo }) {
   const tr = T[lang] || T['fr'];
 
   // showHeartRate / userBirthDate peuvent venir en prop (override pour tests)
@@ -289,7 +292,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
     return function() { cancelled = true; };
   }, []);
   // tvOS n'a pas HealthKit → la pill BPM ne peut pas s'allumer. On force OFF.
-  const hrEnabled = !IS_TV && ((showHeartRate != null) ? showHeartRate : showHrPref);
+  const hrEnabled = !IS_TV && !isInfo && ((showHeartRate != null) ? showHeartRate : showHrPref);
   const hr = useLiveHeartRate({ enabled: hrEnabled });
   // Phase 3 : Apple Watch (séance HKWorkoutSession sur la montre). Pause /
   // reprise synchronisées dans les deux sens ; sans montre, tout est no-op.
@@ -1469,7 +1472,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                     forceDark
                     size="lg"
                     haptic="success"
-                    accessibilityLabel={tr.seance_done}
+                    accessibilityLabel={isInfo ? (tr.materiel_close || tr.seance_done) : tr.seance_done}
                     onPress={() => {
                       bumpTimer();
                       Animated.sequence([
@@ -1478,6 +1481,8 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                       ]).start();
                       completedRef.current = true;
                       if (pilier?.key != null && seanceIndex != null) clearVideoResume(pilier.key, seanceIndex);
+                      // Vidéo d'information : on ferme, rien n'est compté.
+                      if (isInfo) { onComplete(); return; }
                       saveExerciseTime(getElapsedMinutes());
                       // Smart notifications — if the user watched ≥80% of a
                       // real video, treat as an active break and suppress the
@@ -1515,7 +1520,7 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
                       fontWeight: '700',
                     }}
                   >
-                    {tr.seance_done}
+                    {isInfo ? (tr.materiel_close || tr.seance_done) : tr.seance_done}
                   </GlassButton>
                 </Animated.View>
               )}
