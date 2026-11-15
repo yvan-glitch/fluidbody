@@ -1551,7 +1551,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   // / Supabase row à terme — pour l'instant hardcodé pour ne pas bloquer
   // la submission.
   // Miroir du secret serveur ADMIN_EMAILS (edge function sign-video-url) : les deux listes doivent rester identiques.
-  const ADMIN_EMAILS = ['admin@fluidbody.ch', 'yvan@espace-pilates.ch', 'sabrina@espace-pilates.ch', 'sabrina.tissot@icloud.com', 'yvan.tissot@icloud.com', 'qcrm6vkbnx@privaterelay.appleid.com'];
+  const ADMIN_EMAILS = ['admin@fluidbody.ch', 'yvan@espace-pilates.ch', 'sabrina@espace-pilates.ch', 'sabrina.tissot@icloud.com', 'yvan.tissot@icloud.com', 'qcrm6vkbnx@privaterelay.appleid.com', 'maelle.raemy@gmail.com'];
   const isAdmin = !!(supaUser && supaUser.email && ADMIN_EMAILS.indexOf(supaUser.email.toLowerCase()) !== -1);
   // Les admins gardent le catalogue complet (plan de tournage) ; les autres
   // comptes ne voient que les séances filmées.
