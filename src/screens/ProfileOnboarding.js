@@ -179,7 +179,11 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
 
   const init = initialData || {};
   // Mode édition (re-entrée depuis Profil) → on saute le step parrainage.
-  const TOTAL_STEPS = initialData ? TOTAL_STEPS_EDIT : TOTAL_STEPS_INITIAL;
+  // 22.11.2026 : à la première arrivée on ne demande plus que le prénom (0)
+  // et les objectifs (4). Naissance, mesures, niveau et fréquence se
+  // complètent depuis Profil (mode édition, 5 étapes comme avant).
+  const FLOW = initialData ? [0, 1, 2, 3, 4] : [0, 4];
+  const TOTAL_STEPS = FLOW.length;
 
   // ── State ──
   const [step, setStep] = useState(0);
@@ -308,24 +312,26 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
 
   function snapshotPatchForStep(s) {
     const patch = {};
-    if (s >= 0) {
+    // Seules les étapes réellement parcourues alimentent le patch.
+    function seen(n) { return FLOW.indexOf(n) !== -1 && n <= s; }
+    if (seen(0)) {
       patch.prenom = prenom.trim() || null;
       patch.gender = gender || null;
     }
-    if (s >= 1 && birthDate) {
+    if (seen(1) && birthDate) {
       patch.birth_date = birthDate.getFullYear() + '-' + String(birthDate.getMonth() + 1).padStart(2, '0') + '-' + String(birthDate.getDate()).padStart(2, '0');
     }
-    if (s >= 2) {
+    if (seen(2)) {
       // Defensive bounds — slider + commitTextInput already enforce these,
       // but cached values from older versions might be out of range.
       if (heightCm && heightCm >= 120 && heightCm <= 220) patch.height_cm = heightCm;
       if (weightKg && weightKg >= 30 && weightKg <= 200) patch.weight_kg = weightKg;
     }
-    if (s >= 3) {
+    if (seen(3)) {
       if (practiceLevel) patch.practice_level = practiceLevel;
       if (frequency) patch.frequency = frequency;
     }
-    if (s >= 4) {
+    if (seen(4)) {
       patch.goals = goals.slice(0, 2);
     }
     return patch;
@@ -373,13 +379,14 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
     if (!canAdvance()) return;
     // Persist the step's current data, then move forward.
     await persistIncremental(step);
-    if (step < TOTAL_STEPS - 1) {
-      animateStepTo(step + 1);
+    const curPos = FLOW.indexOf(step);
+    if (curPos < TOTAL_STEPS - 1) {
+      animateStepTo(FLOW[curPos + 1]);
       return;
     }
     // Final step (referral) → claim if applicable, then bubble up.
     await maybeClaimReferralOnFinish();
-    const finalPatch = Object.assign({}, snapshotPatchForStep(TOTAL_STEPS - 1), {
+    const finalPatch = Object.assign({}, snapshotPatchForStep(FLOW[TOTAL_STEPS - 1]), {
       onboarding_completed: true,
       onboarding_completed_at: new Date().toISOString(),
     });
@@ -431,7 +438,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
       if (typeof onClose === 'function') onClose();
       return;
     }
-    animateStepTo(step - 1);
+    animateStepTo(FLOW[Math.max(0, FLOW.indexOf(step) - 1)]);
   }
 
   function toggleGoal(key) {
@@ -503,6 +510,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
   ];
 
   const config = stepConfigs[step];
+  const pos = Math.max(0, FLOW.indexOf(step));
 
   const sliderHairline = {
     text: colors.text,
@@ -525,10 +533,10 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
             <ChevronLeft color={colors.text} />
           </Pressable>
           <View style={{ flex: 1, marginHorizontal: 14 }}>
-            <ProgressPills step={step} total={TOTAL_STEPS} accent={colors.accent} hairline={colors.hairline} />
+            <ProgressPills step={pos} total={TOTAL_STEPS} accent={colors.accent} hairline={colors.hairline} />
           </View>
           <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.4 }}>
-            {((tr.onb_step_of && typeof tr.onb_step_of === 'function') ? tr.onb_step_of(step + 1, TOTAL_STEPS) : (step + 1) + '/' + TOTAL_STEPS)}
+            {((tr.onb_step_of && typeof tr.onb_step_of === 'function') ? tr.onb_step_of(pos + 1, TOTAL_STEPS) : (pos + 1) + '/' + TOTAL_STEPS)}
           </Text>
         </View>
       </View>
@@ -848,7 +856,7 @@ export default function ProfileOnboardingScreen({ lang, initialData, supaUser, o
             loading={savingState === 'saving'}
             onPress={next}
           >
-            {step === TOTAL_STEPS - 1
+            {pos === TOTAL_STEPS - 1
               ? (ctaLabel || tr.onb_finish || 'Finish')
               : (tr.onb_next || 'Next')}
           </GlassButton>

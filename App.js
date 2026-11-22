@@ -977,7 +977,7 @@ function OnboardingScreen({ onDone, initialLang, onSwitchToSignIn }) {
   const authTranslateY = useRef(new Animated.Value(-260)).current;
 
   useEffect(() => {
-    const t = setTimeout(() => setAuthVisible(true), 3000);
+    const t = setTimeout(() => setAuthVisible(true), 1200);
     return () => clearTimeout(t);
   }, []);
 
@@ -1374,8 +1374,9 @@ async function setupNotifications(lang = 'fr') {
     const rawHour = await AsyncStorage.getItem('fluid_notif_hour');
     let savedHour = rawHour != null && rawHour !== '' ? parseInt(rawHour) : await getPreferredHour();
     if (!Number.isFinite(savedHour) || savedHour < 0 || savedHour > 23) savedHour = 18;
-    const pauseEnabled = (await AsyncStorage.getItem('fluid_notif_pause_enabled')) !== 'false';
-    const quoteEnabled = (await AsyncStorage.getItem('fluid_quote_enabled')) !== 'false';
+    // 22.11.2026 : désactivées par défaut (45 rappels par semaine, c'était trop).
+    const pauseEnabled = (await AsyncStorage.getItem('fluid_notif_pause_enabled')) === 'true';
+    const quoteEnabled = (await AsyncStorage.getItem('fluid_quote_enabled')) === 'true';
     const quoteHour = parseInt(await AsyncStorage.getItem('fluid_quote_hour')) || 8;
     // Master toggle pour le rappel quotidien (default ON).
     const dailyEnabled = (await AsyncStorage.getItem('fluid_notif_daily_enabled')) !== 'false';
@@ -1452,6 +1453,13 @@ async function sendWelcomeNotification(prenom, lang = 'fr') {
     await AsyncStorage.setItem(WELCOME_KEY, '1');
   } catch(e) { sentryCapture(e, { where: 'sendWelcomeNotification' }); }
 }
+
+// Premier lancement allégé (22.11.2026) : on va droit à la première vidéo.
+// L'animation « Bienvenue » (4,5 s) et le mot de la coach (placeholder tant
+// que la vidéo de Sabrina n'est pas tournée) sont coupés ; l'avertissement
+// médical reste. Repasser à true pour les réactiver.
+const FIRST_LAUNCH_WELCOME_ANIM = false;
+const FIRST_LAUNCH_COACH_WELCOME = false;
 
 const FLUID_SUB_KEY = 'fluid_sub';
 const DONE_KEY = 'fluidbody_done';
@@ -1614,7 +1622,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   // → ProfilTV s'ouvrait tout seul. On le coupe purement sur TV.
   const coachWelcomeTriggeredRef = useRef(false);
   function maybeShowCoachWelcome() {
-    if (coachWelcomeTriggeredRef.current || IS_TV) return;
+    if (!FIRST_LAUNCH_COACH_WELCOME || coachWelcomeTriggeredRef.current || IS_TV) return;
     isCoachWelcomeSeen().then(function(seen) {
       if (seen || coachWelcomeTriggeredRef.current) return;
       coachWelcomeTriggeredRef.current = true;
@@ -1647,7 +1655,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     let cancelled = false;
     isWelcomeAnimationShown().then(function(shown) {
       if (cancelled) return;
-      if (shown) { runMedicalGate(); }
+      if (shown || !FIRST_LAUNCH_WELCOME_ANIM) { runMedicalGate(); }
       else { setWelcomeAnimVisible(true); }
     });
     return function() { cancelled = true; };
@@ -2116,7 +2124,7 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
           nowHour: new Date().getHours(),
           recentPiliers: recent,
         });
-        if (fresh && fresh.length > 0) {
+        if (fresh && fresh.length > 0 && !MILESTONES.includes(newTotal)) {
           // On affiche le premier débloqué ; les éventuels suivants seront
           // visibles dans la section "Badges" de l'écran Activité.
           setTimeout(function () { setNewAchievement(fresh[0]); }, 800);
@@ -2617,9 +2625,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    AsyncStorage.getItem('fluid_welcome_intro_done')
-      .then(function(v) { setWelcomeShown(v === '1'); })
-      .catch(function() { setWelcomeShown(true); });
+    // 22.11.2026 : l'écran « zones de tension » ne fait plus partie de
+    // l'arrivée (les objectifs de ProfileOnboarding suffisent ; les tensions
+    // restent modifiables dans l'app).
+    setWelcomeShown(true);
   }, []);
 
   function dismissWelcomeIntro() {
@@ -2988,7 +2997,7 @@ function App() {
 
   async function handleOnboardingDone(p, l, t) {
     setPrenom(p); setLang(l); setTensionIdxs(t); setOnboardingDone(true);
-    sendWelcomeNotification(p, l);
+    // 22.11.2026 : plus de notification de bienvenue 3 s après l'inscription.
     if (!supabase) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;

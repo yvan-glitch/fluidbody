@@ -265,8 +265,8 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   useEffect(function() {
     AsyncStorage.getItem('fluid_notif_hour').then(function(v) { if (v) setNotifHour(parseInt(v) || 7); });
     AsyncStorage.getItem('fluid_notif_daily_enabled').then(function(v) { setDailyEnabled(v !== 'false'); });
-    AsyncStorage.getItem('fluid_notif_pause_enabled').then(function(v) { setPauseEnabled(v !== 'false'); });
-    AsyncStorage.getItem('fluid_quote_enabled').then(function(v) { setQuoteEnabled(v !== 'false'); });
+    AsyncStorage.getItem('fluid_notif_pause_enabled').then(function(v) { setPauseEnabled(v === 'true'); });
+    AsyncStorage.getItem('fluid_quote_enabled').then(function(v) { setQuoteEnabled(v === 'true'); });
     AsyncStorage.getItem('fluid_quote_hour').then(function(v) { if (v) setQuoteHour(parseInt(v) || 8); });
     AsyncStorage.getItem('fluid_show_hr').then(function(v) { setShowHrEnabled(v !== 'false'); });
     try {

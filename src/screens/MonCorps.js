@@ -813,7 +813,7 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
           </View>
         )
       ) : (
-        <CelebrationOverlay visible={showCelebration} onDone={() => { setShowCelebration(false); setShowReflection(true); }} pilier={pilier} lang={lang} seance={celebratedSeance} />
+        <CelebrationOverlay visible={showCelebration} onDone={() => { setShowCelebration(false); /* 22.11.2026 : plus de 2e question après « Comment c'était ? » */ }} pilier={pilier} lang={lang} seance={celebratedSeance} />
       )}
       <PostSessionReflection
         visible={showReflection}

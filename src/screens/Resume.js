@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 import { T, ZONE_TO_PILIER, PILIER_IMAGES } from '../constants/data';
+import { countSessionsThisWeek } from '../utils/weekGoal';
 import { Bulle, BULLES, LivingMedusa, MEDUSA_STATES, MEDUSA_STATE_NAMES, getMeduseState } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import LivingBackground from '../components/LivingBackground';
@@ -437,6 +438,21 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
   // PERF (2026-07-23) : totalDone / recentSeances / sortedPiliers étaient
   // recalculés à chaque render — mémoïsés sur leurs vraies dépendances.
   const totalDone = useMemo(function() { return Object.values(done).flat().filter(Boolean).length; }, [done]);
+  // Séances faites depuis lundi (clé du jour = celle du calendrier d'activité).
+  const [weekCount, setWeekCount] = useState(0);
+  useEffect(function() {
+    let cancelled = false;
+    function load() {
+      AsyncStorage.getItem('fluid_activity_calendar').then(function(raw) {
+        if (cancelled) return;
+        setWeekCount(countSessionsThisWeek(raw ? JSON.parse(raw) : {}, new Date()));
+      }).catch(function() {});
+    }
+    load();
+    // toggleDone écrit le calendrier en tâche de fond : on relit un peu après.
+    const t = setTimeout(load, 1200);
+    return function() { cancelled = true; clearTimeout(t); };
+  }, [done]);
   const totalDoneCapped = Math.min(totalDone, 40);
   const pct = Math.round(totalDoneCapped / 40 * 100);
   const recommendedPiliers = useMemo(function() { return (tensionIdxs || []).map(function(i) { return ZONE_TO_PILIER[i]; }); }, [tensionIdxs]);
@@ -617,14 +633,9 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
         {(function() {
           const weekGoal = 3;
           const now = new Date();
-          const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay() + 1);
-          let weekDone = 0;
-          for (let d = 0; d < 7; d++) {
-            const day = new Date(startOfWeek); day.setDate(startOfWeek.getDate() + d);
-            const key = day.toISOString().slice(0, 10);
-          }
-          const allDone = Object.values(done).flat();
-          weekDone = Math.min(totalDone, weekGoal);
+                    // 22.11.2026 : séances de la semaine en cours (lundi à dimanche),
+          // et plus le total à vie.
+          const weekDone = Math.min(weekCount, weekGoal);
           const weekPct = Math.min(1, weekDone / weekGoal);
           return (
             <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(0,18,38,0.35)', borderWidth: 1, borderColor: '#AEEF4D', borderRadius: 12, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -637,7 +648,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: '#ffffff' }}>{tr.weekly_goal || 'Objectif semaine'}</Text>
-                <Text style={{ fontSize: 11, color: 'rgba(174,239,77,0.5)', marginTop: 2 }}>{weekDone >= weekGoal ? (tr.weekly_done || 'Objectif atteint !') : (tr.weekly_remaining || (weekGoal - weekDone) + ' séance(s) restante(s)')}</Text>
+                <Text style={{ fontSize: 11, color: 'rgba(174,239,77,0.5)', marginTop: 2 }}>{weekDone >= weekGoal ? (tr.weekly_done || 'Objectif atteint !') : ((weekGoal - weekDone) + ' ' + (tr.weekly_remaining || 'séance(s) restante(s)'))}</Text>
               </View>
             </View>
           );
