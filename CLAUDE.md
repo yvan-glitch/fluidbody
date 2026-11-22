@@ -163,6 +163,13 @@ objectifs, Santé, avertissement médical. L'autorisation des notifications est
 demandée après la première séance (ou au 2e lancement), jamais à l'arrivée ;
 pause active et phrase du jour sont désactivées par défaut.
 
+Pour toi (22.11.2026, 2e lot) : carte « Reprendre » (`ReprendreCard`, dernière
+vidéo interrompue), chips « 5 / 10 / 20 min » sur la séance du jour
+(`TEMPS` dans seanceDuJour.js), rangées « Tourné à <lieu> » dès 2 vidéos
+(`video_assets.location`, option `--lieu` de publier-video.js), carte admin
+« Plan de tournage » (`PlanTournage`, `utils/shootingPlan.js`). Le défi 7 jours
+s'affiche tout seul dès que ses 7 vidéos sont en ligne (`challengeLive`).
+
 Setup:
 - Bunny dashboard: enable Token Authentication on the pull zone (see
   `supabase/README.md` for the exact clicks).

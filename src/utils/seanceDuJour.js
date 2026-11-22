@@ -26,6 +26,19 @@ export function dureeMinutes(duree) {
   return parseInt(m[1], 10) + (m[2] ? parseInt(m[2], 10) / 60 : 0);
 }
 
+// Temps disponible (22.11.2026) : « 5 min », « 10 min », « 20 min ».
+// Bornes en minutes [min, max[ de la durée annoncée de la séance.
+export const TEMPS = { min5: [0, 8], min10: [8, 15], min20: [15, 31] };
+
+// Durée annoncée en minutes : "15 min" → 15 ; "12'30''" → 12.5 ; sinon Infinity.
+export function minutesOf(duree) {
+  const viaQuote = dureeMinutes(duree);
+  if (viaQuote !== Infinity) return viaQuote;
+  if (typeof duree !== 'string') return Infinity;
+  const m = duree.match(/(\d+)\s*min/i);
+  return m ? parseInt(m[1], 10) : Infinity;
+}
+
 // Meilleur candidat : disponible, pas la séance prévue ; on préfère une
 // séance pas encore faite, puis la plus courte, puis l'index le plus bas.
 function pick(list, exclude) {
@@ -46,7 +59,7 @@ function pick(list, exclude) {
  * selectSeanceDuJour(seancePrevue, choix, catalogue)
  *
  * @param seancePrevue { pilierKey, idx }   séance prévue (programme ou séance du jour)
- * @param choix        null | 'fatiguee' | 'gene'
+ * @param choix        null | 'fatiguee' | 'gene' | 'min5' | 'min10' | 'min20'
  * @param catalogue    {
  *   byPilier: { [pilierKey]: [{ pilierKey, idx, etape, duree, available, done }] },
  *   tensionPiliers: ['p2', …]   piliers des zones de tension (onboarding, ZONE_TO_PILIER)
@@ -69,6 +82,23 @@ export function selectSeanceDuJour(seancePrevue, choix, catalogue) {
   const byPilier = catalogue.byPilier;
   const prevuList = byPilier[seancePrevue.pilierKey] || [];
   const prevu = prevuList.find(function (s) { return s.idx === seancePrevue.idx; });
+
+  if (TEMPS[choix]) {
+    // Une séance pratique qui tient dans le temps annoncé : le pilier prévu
+    // d'abord, puis les autres. Si la séance prévue convient déjà, on la garde.
+    const lo = TEMPS[choix][0], hi = TEMPS[choix][1];
+    const fits = function (x) {
+      const m = minutesOf(x.duree);
+      return niveauOf(x.etape) >= 0 && m >= lo && m < hi;
+    };
+    if (prevu && prevu.available && fits(prevu)) return fallback;
+    const order = [seancePrevue.pilierKey].concat(Object.keys(byPilier).filter(function (k) { return k !== seancePrevue.pilierKey; }));
+    for (let i = 0; i < order.length; i++) {
+      const s = pick((byPilier[order[i]] || []).filter(fits), seancePrevue);
+      if (s) return { pilierKey: s.pilierKey, idx: s.idx, adapted: true, reason: choix };
+    }
+    return fallback;
+  }
 
   if (choix === 'fatiguee') {
     // Même pilier, niveau inférieur (Évoluer → Exécuter → Préparer). Si la

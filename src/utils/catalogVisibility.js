@@ -40,6 +40,7 @@ export function isHidingUnfilmed() { return HIDE_UNFILMED && !adminSeeAll; }
 
 const CACHE_KEY = 'fluid_video_sessions_v1';
 const DATES_KEY = 'fluid_video_dates_v1';
+const PLACES_KEY = 'fluid_video_places_v1';
 const FETCH_TIMEOUT_MS = 8000;
 
 // --- Source 1 : flags du bundle -------------------------------------------
@@ -104,6 +105,33 @@ export function pickRecentIds(dates, now, days, max) {
     .map(function (x) { return x.id; });
 }
 
+// Lieux de tournage (video_assets.location) : { session_id: 'Minorque' }.
+let remotePlaces = {};
+function applyRemotePlaces(map) {
+  if (!map || typeof map !== 'object') return;
+  const same = JSON.stringify(map) === JSON.stringify(remotePlaces);
+  remotePlaces = map;
+  if (!same) notify();
+}
+export function getVideoPlace(pilierKey, idx) {
+  return remotePlaces[pilierKey + '_' + idx] || null;
+}
+// [{ place, ids: [...] }] pour les lieux qui comptent au moins `min` vidéos
+// de piliers, le lieu le plus fourni d'abord. Pur.
+export function groupByPlace(places, min) {
+  const by = {};
+  Object.keys(places || {}).forEach(function (id) {
+    const p = places[id];
+    if (!p || !/^p\d+_\d+$/.test(id)) return;
+    (by[p] = by[p] || []).push(id);
+  });
+  return Object.keys(by)
+    .filter(function (p) { return by[p].length >= (min || 2); })
+    .map(function (p) { return { place: p, ids: by[p].sort() }; })
+    .sort(function (a, b) { return b.ids.length - a.ids.length || (a.place < b.place ? -1 : 1); });
+}
+export function videoPlaces(min) { return groupByPlace(remotePlaces, min); }
+
 export function recentVideoIds(days, max) {
   return pickRecentIds(remoteDates, new Date(), days, max);
 }
@@ -118,6 +146,8 @@ export async function primeCatalogVisibility() {
     if (raw) applyRemoteIds(JSON.parse(raw));
     const rawDates = await AsyncStorage.getItem(DATES_KEY);
     if (rawDates) applyRemoteDates(JSON.parse(rawDates));
+    const rawPlaces = await AsyncStorage.getItem(PLACES_KEY);
+    if (rawPlaces) applyRemotePlaces(JSON.parse(rawPlaces));
   } catch (e) {}
   // 2. Refresh réseau best-effort.
   if (!supabase) return;
@@ -128,7 +158,11 @@ export async function primeCatalogVisibility() {
     // created_at n'est lisible qu'après la migration 20261122020000 ; tant
     // qu'elle n'est pas poussée, la requête échoue et on retombe sur
     // session_id seul (pas de rangée « Nouveautés », rien d'autre ne change).
-    let res = await Promise.race([supabase.from('video_assets').select('session_id, created_at'), timeoutP]);
+    // Même principe pour `location` (migration 20261122180000).
+    let res = await Promise.race([supabase.from('video_assets').select('session_id, created_at, location'), timeoutP]);
+    if (!res || res.error || !Array.isArray(res.data)) {
+      res = await Promise.race([supabase.from('video_assets').select('session_id, created_at'), timeoutP]);
+    }
     if (!res || res.error || !Array.isArray(res.data)) {
       res = await Promise.race([supabase.from('video_assets').select('session_id'), timeoutP]);
     }
@@ -143,6 +177,12 @@ export async function primeCatalogVisibility() {
       if (Object.keys(dates).length > 0) {
         applyRemoteDates(dates);
         try { await AsyncStorage.setItem(DATES_KEY, JSON.stringify(dates)); } catch (e) {}
+      }
+      if (data.length > 0 && data[0] && 'location' in data[0]) {
+        const places = {};
+        data.forEach(function (r) { if (r && r.session_id && r.location) places[r.session_id] = String(r.location).trim(); });
+        applyRemotePlaces(places);
+        try { await AsyncStorage.setItem(PLACES_KEY, JSON.stringify(places)); } catch (e) {}
       }
     }
   } catch (e) {}

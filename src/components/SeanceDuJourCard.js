@@ -17,10 +17,11 @@ import { canAccessSeanceIndex, isComingSoon, hapticLight } from '../utils';
 import { hasVideo, isSeanceVisible } from '../utils/catalogVisibility';
 import { getSeanceVisual } from '../utils/seanceThumbnail';
 import { getRealDurationLabel } from '../utils/videoDurations';
-import { selectSeanceDuJour } from '../utils/seanceDuJour';
+import { selectSeanceDuJour, minutesOf, TEMPS } from '../utils/seanceDuJour';
 
 const LIME = '#AEEF4D';
 const CHOIX_KEY = 'fluid_ajustement_jour';
+const CHOIX_VALIDES = ['fatiguee', 'gene', 'min5', 'min10', 'min20'];
 
 function todayKey() {
   const d = new Date();
@@ -63,7 +64,7 @@ export default function SeanceDuJourCard({ planned, label, piliers, seancesByKey
       if (cancelled || !raw) return;
       try {
         const o = JSON.parse(raw);
-        if (o && o.day === todayKey() && (o.choix === 'fatiguee' || o.choix === 'gene')) setChoix(o.choix);
+        if (o && o.day === todayKey() && CHOIX_VALIDES.indexOf(o.choix) !== -1) setChoix(o.choix);
       } catch (e) {}
     }).catch(function () {});
     return function () { cancelled = true; };
@@ -98,7 +99,18 @@ export default function SeanceDuJourCard({ planned, label, piliers, seancesByKey
     }
   }
 
+  // Temps disponible (22.11.2026) : un seul geste, pas de questionnaire.
+  if (choix === 'min5' || choix === 'min10' || choix === 'min20') {
+    const isFr = (lang || 'fr').toLowerCase().indexOf('fr') === 0;
+    if (sel.adapted) message = isFr ? 'Voilà une séance qui tient dans ton temps.' : 'Here is a session that fits your time.';
+    else if (minutesOf(seance[1]) >= TEMPS[choix][0] && minutesOf(seance[1]) < TEMPS[choix][1]) message = isFr ? 'Ta séance du jour tient déjà dans ce temps.' : "Today's session already fits.";
+    else message = isFr ? "Pas encore de séance de cette durée : voici celle du jour." : "No session of that length yet: here is today's.";
+  }
+
   const chips = [
+    { key: 'min5', label: '5 min' },
+    { key: 'min10', label: '10 min' },
+    { key: 'min20', label: '20 min' },
     { key: 'fatiguee', label: tr.sdj_chip_fatigue },
     { key: 'gene', label: tr.sdj_chip_gene },
   ];

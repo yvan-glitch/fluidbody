@@ -2,7 +2,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
-import { pickRecentIds } from '../utils/catalogVisibility';
+import { pickRecentIds, groupByPlace } from '../utils/catalogVisibility';
 
 describe('pickRecentIds (rangée Nouveautés)', () => {
   const now = new Date('2026-11-22T17:00:00Z');
@@ -28,5 +28,16 @@ describe('pickRecentIds (rangée Nouveautés)', () => {
   test('sans dates, rien', () => {
     expect(pickRecentIds({}, now, 14, 8)).toEqual([]);
     expect(pickRecentIds(null, now, 14, 8)).toEqual([]);
+  });
+});
+
+describe('groupByPlace (rangées Tourné à)', () => {
+  test('garde les lieux avec assez de vidéos, le plus fourni en premier', () => {
+    const g = groupByPlace({ p3_1: 'Minorque', p3_2: 'Minorque', p9_5: 'Verbier', p7_5: 'Minorque', p9_6: 'Verbier', materiel_0: 'Studio', p2_0: 'Studio' }, 2);
+    expect(g).toEqual([{ place: 'Minorque', ids: ['p3_1', 'p3_2', 'p7_5'] }, { place: 'Verbier', ids: ['p9_5', 'p9_6'] }]);
+  });
+  test('rien à grouper', () => {
+    expect(groupByPlace({}, 2)).toEqual([]);
+    expect(groupByPlace(null, 2)).toEqual([]);
   });
 });

@@ -34,7 +34,9 @@ import { shouldCelebrate, markCelebrated } from '../utils/streakMilestones';
 import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
-import { isSeanceVisible, hasVideo, countVisible, countFilmed, isCatalogAdminMode, pilierHasContent, useCatalogVersion, displayOrder, recentVideoIds } from '../utils/catalogVisibility';
+import { isSeanceVisible, hasVideo, countVisible, countFilmed, isCatalogAdminMode, pilierHasContent, useCatalogVersion, displayOrder, recentVideoIds, getVideoPlace, videoPlaces } from '../utils/catalogVisibility';
+import ReprendreCard from '../components/ReprendreCard';
+import PlanTournage from '../components/PlanTournage';
 import ChallengeModal from '../components/ChallengeModal';
 import { CHALLENGE_7J, challengeDoneCount, challengeNextDay } from '../constants/challenge';
 import { safeNativeCall, diag } from '../utils/safeNativeCall';
@@ -1721,13 +1723,29 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
             newItems.push({
               key: 'new_' + id,
               title: nS[0],
-              subtitle: nS[1] + ' · ' + nPil.label,
+              subtitle: nS[1] + ' · ' + nPil.label + (getVideoPlace(nPk, nIdx) ? ' · ' + getVideoPlace(nPk, nIdx) : ''),
               image: getSeanceVisual(nPk, nIdx),
               badge: { label: lang === 'fr' ? 'Nouveau' : 'New', tone: 'lime' },
               pilier: nPil,
               idx: nIdx,
             });
           });
+          // « Tourné à… » : une rangée par lieu qui compte au moins 2 vidéos.
+          const placeRows = videoPlaces(2).map(function(g) {
+            const items = [];
+            g.ids.forEach(function(id) {
+              const pUs = id.lastIndexOf('_');
+              const pPk = id.slice(0, pUs);
+              const pIdx = parseInt(id.slice(pUs + 1), 10);
+              const pPil = piliers.find(function(p) { return p.key === pPk; });
+              const pS = pPil && seancesByKey[pPk] && seancesByKey[pPk][pIdx];
+              if (!pPil || !pS) return;
+              items.push({ key: 'place_' + id, title: pS[0], subtitle: pS[1] + ' · ' + pPil.label, image: getSeanceVisual(pPk, pIdx), badge: null, pilier: pPil, idx: pIdx });
+            });
+            return { place: g.place, items: items };
+          }).filter(function(r) { return r.items.length >= 2; });
+          // Défi 7 jours : s'allume tout seul quand ses 7 vidéos sont en ligne.
+          const challengeLive = CHALLENGE_7J.enabled || CHALLENGE_7J.days.every(function(d) { return hasVideo(d.pilier, d.idx); });
           const favItems = [];
           const favIds = getCachedFavorites() || [];
           for (let i = 0; i < favIds.length; i++) {
@@ -1770,6 +1788,14 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                 </TouchableOpacity>
               ) : null}
               <Text style={{ fontSize: 13, fontWeight: '500', fontStyle: 'italic', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.1, marginBottom: 14, paddingHorizontal: 4 }}>« {getDailyQuote()} »  <Text style={{ color: '#AEEF4D', fontWeight: '700', fontStyle: 'normal' }}>Sabrina</Text></Text>
+              <ReprendreCard
+                piliers={piliers}
+                seancesByKey={seancesByKey}
+                lang={lang}
+                refreshKey={openPilier ? 'ouvert' : 'ferme'}
+                onOpen={function(pil, idx) { setOpenInitialIdx(idx); setOpenPilier(pil); }}
+              />
+              {isCatalogAdminMode() ? <PlanTournage piliers={piliers} seancesByKey={getSeances('fr')} /> : null}
               {/* Phase 2 (07.10.2026) : carte « Ta séance du jour » +
                   ajustement léger (Fatiguée / Une gêne). Séance prévue =
                   prochaine séance du programme actif, sinon séance du jour. */}
@@ -1808,7 +1834,7 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               })()}
               {/* Défi 7 jours « Libère ton dos » — n'apparaît que quand
                   CHALLENGE_7J.enabled est true (vidéos en ligne). */}
-              {CHALLENGE_7J.enabled ? (function() {
+              {challengeLive ? (function() {
                 const cdCount = challengeDoneCount(done);
                 const cdNext = challengeNextDay(done);
                 const cdDone = cdNext === -1;
@@ -1883,6 +1909,16 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               {/* Rangée "Mes favoris" iPhone (Lot 2 Speir-inspired) — hidden
                   si l'utilisateur n'a aucun cœur. Tap → ouvre la séance
                   directement via setOpenInitialIdx + setOpenPilier. */}
+              {placeRows.map(function(r) {
+                return (
+                  <SeanceCarouselRow
+                    key={'place_' + r.place}
+                    title={(lang === 'fr' ? 'Tourné à ' : 'Filmed in ') + r.place}
+                    items={r.items}
+                    onItemPress={function(it) { setOpenInitialIdx(it.idx); setOpenPilier(it.pilier); }}
+                  />
+                );
+              })}
               {favItems.length > 0 ? (
                 <SeanceCarouselRow
                   title={lang === 'fr' ? 'Mes favoris' : 'My favorites'}

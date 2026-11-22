@@ -109,3 +109,35 @@ describe('helpers', () => {
     expect(niveauOf('Comprendre')).toBe(-1);
   });
 });
+
+describe('temps disponible (5 / 10 / 20 min)', () => {
+  const { selectSeanceDuJour: sel, minutesOf } = require('../seanceDuJour');
+  const cat = {
+    byPilier: {
+      p3: [
+        { pilierKey: 'p3', idx: 0, etape: 'Comprendre', duree: '5 min', available: true, done: false },
+        { pilierKey: 'p3', idx: 5, etape: 'Préparer', duree: '20 min', available: true, done: false },
+        { pilierKey: 'p3', idx: 6, etape: 'Préparer', duree: "9'30''", available: true, done: false },
+        { pilierKey: 'p3', idx: 7, etape: 'Exécuter', duree: '12 min', available: false, done: false },
+      ],
+      p7: [
+        { pilierKey: 'p7', idx: 5, etape: 'Préparer', duree: '6 min', available: true, done: false },
+      ],
+    },
+    tensionPiliers: [],
+  };
+  test('lit les deux formats de durée', () => {
+    expect(minutesOf('15 min')).toBe(15);
+    expect(minutesOf("9'30''")).toBe(9.5);
+    expect(minutesOf(null)).toBe(Infinity);
+  });
+  test('10 min : séance du même pilier qui tient dans le temps', () => {
+    expect(sel({ pilierKey: 'p3', idx: 5 }, 'min10', cat)).toEqual({ pilierKey: 'p3', idx: 6, adapted: true, reason: 'min10' });
+  });
+  test('5 min : rien dans le pilier prévu, on va dans un autre (jamais la théorie)', () => {
+    expect(sel({ pilierKey: 'p3', idx: 5 }, 'min5', cat)).toEqual({ pilierKey: 'p7', idx: 5, adapted: true, reason: 'min5' });
+  });
+  test('20 min : la séance prévue convient déjà', () => {
+    expect(sel({ pilierKey: 'p3', idx: 5 }, 'min20', cat).adapted).toBe(false);
+  });
+});
