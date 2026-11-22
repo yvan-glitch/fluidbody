@@ -45,6 +45,7 @@ function PulsingHeart({ bpm, isLive, size = 19 }) {
 }
 import { GlassView, GlassButton, GLASS_RADII, GLASS_EASING, GLASS_DURATIONS } from './ui';
 import { getSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
+import { hasVideo as hasCatalogVideo } from '../utils/catalogVisibility';
 import { breadcrumb } from '../utils/breadcrumb';
 import { hapticLight } from '../utils';
 import { saveVideoDurationMin } from '../utils/videoDurations';
@@ -339,7 +340,10 @@ export default function VideoPlayer({ seance, pilier, onClose, onComplete, lang,
   const [watchGraceOver, setWatchGraceOver] = useState(false);
   const [showWatchSheet, setShowWatchSheet] = useState(false);
   const resumeAfterWatchSheetRef = useRef(false);
-  const hasRealVideo = hasProtectedVideo(videoFlag);
+  // Vidéo liée seulement en base (video_assets) : le lecteur suit la même
+  // source de vérité que le catalogue (catalogVisibility), sans attendre d'OTA.
+  const hasRealVideo = hasProtectedVideo(videoFlag)
+    || (!!pilier?.key && typeof seanceIndex === 'number' && hasCatalogVideo(pilier.key, seanceIndex));
   const sessionId = hasRealVideo ? buildSessionId(pilier?.key, seanceIndex) : null;
   const [showControls, setShowControls] = useState(!hasRealVideo);
   const [uri, setUri] = useState('');
