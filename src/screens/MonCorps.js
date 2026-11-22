@@ -34,7 +34,7 @@ import { shouldCelebrate, markCelebrated } from '../utils/streakMilestones';
 import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
-import { isSeanceVisible, hasVideo, countVisible, countFilmed, isCatalogAdminMode, pilierHasContent, useCatalogVersion, displayOrder } from '../utils/catalogVisibility';
+import { isSeanceVisible, hasVideo, countVisible, countFilmed, isCatalogAdminMode, pilierHasContent, useCatalogVersion, displayOrder, recentVideoIds } from '../utils/catalogVisibility';
 import ChallengeModal from '../components/ChallengeModal';
 import { CHALLENGE_7J, challengeDoneCount, challengeNextDay } from '../constants/challenge';
 import { safeNativeCall, diag } from '../utils/safeNativeCall';
@@ -1707,6 +1707,27 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
               idx: e.idx,
             };
           });
+          // Nouveautés (22.11.2026) : vidéos publiées depuis moins de 14 jours,
+          // d'après la date de video_assets. Vide tant que la migration
+          // 20261122020000 n'est pas poussée.
+          const newItems = [];
+          recentVideoIds(14, 8).forEach(function(id) {
+            const nUs = id.lastIndexOf('_');
+            const nPk = id.slice(0, nUs);
+            const nIdx = parseInt(id.slice(nUs + 1), 10);
+            const nPil = piliers.find(function(p) { return p.key === nPk; });
+            const nS = nPil && seancesByKey[nPk] && seancesByKey[nPk][nIdx];
+            if (!nPil || !nS) return;
+            newItems.push({
+              key: 'new_' + id,
+              title: nS[0],
+              subtitle: nS[1] + ' · ' + nPil.label,
+              image: getSeanceVisual(nPk, nIdx),
+              badge: { label: lang === 'fr' ? 'Nouveau' : 'New', tone: 'lime' },
+              pilier: nPil,
+              idx: nIdx,
+            });
+          });
           const favItems = [];
           const favIds = getCachedFavorites() || [];
           for (let i = 0; i < favIds.length; i++) {
@@ -1810,6 +1831,15 @@ function MonCorps({ prenom, done, toggleDone, lang, tensionIdxs, onTensionChange
                   </TouchableOpacity>
                 );
               })() : null}
+              {newItems.length > 0 ? (
+                <View style={{ marginTop: -10, marginBottom: 16 }}>
+                  <SeanceCarouselRow
+                    title={lang === 'fr' ? 'Nouveautés' : 'New this week'}
+                    items={newItems}
+                    onItemPress={function(it) { setOpenInitialIdx(it.idx); setOpenPilier(it.pilier); }}
+                  />
+                </View>
+              ) : null}
               {/* Collage + bloc abonnement fondu dedans (layout Fitness+,
                   demande Yvan 25/07 : « l'option d'abonnement sur les images
                   comme Apple »). Le dégradé absorbe les rangées 2-3 ; le

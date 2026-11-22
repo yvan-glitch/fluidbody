@@ -34,6 +34,7 @@ const DEFAULT_HOUR = 7;
 const STREAK_PROT_ID_KEY = 'fluid_streak_prot_notif_id';
 const ONBOARDING_NUDGE_KEY = 'fluid_post_onboarding_nudge_scheduled';
 const ONBOARDING_FIRST_OPEN_KEY = 'fluid_first_open_ts';
+const ONBOARDING_NUDGE_ID_KEY = 'fluid_post_onboarding_nudge_id';
 
 function isReady() {
   if (!Notifications) return false;
@@ -146,6 +147,12 @@ export async function schedulePostOnboardingNudge({ lang }) {
   if (!isReady()) return false;
   try {
     if (await AsyncStorage.getItem(ONBOARDING_NUDGE_KEY)) return false;
+    // Une séance déjà faite : la relance n'a plus de raison d'être.
+    const doneRaw = await AsyncStorage.getItem('fluidbody_done');
+    if (doneRaw && doneRaw.indexOf('true') !== -1) {
+      await AsyncStorage.setItem(ONBOARDING_NUDGE_KEY, '1');
+      return false;
+    }
     const perm = await safeNativeCall('notif.getPermissionsAsync.nudge', function() { return Notifications.getPermissionsAsync(); }, null);
     if (!perm || perm.status !== 'granted') return false;
     const firstRaw = await AsyncStorage.getItem(ONBOARDING_FIRST_OPEN_KEY);
@@ -162,7 +169,7 @@ export async function schedulePostOnboardingNudge({ lang }) {
     const seconds = Math.max(60, target - elapsed);
     if (seconds > 72 * 3600) return false; // too late, skip
     const tr = T[lang] || T.fr;
-    await safeNativeCall('notif.schedule.nudge', function() {
+    const nudgeId = await safeNativeCall('notif.schedule.nudge', function() {
       return Notifications.scheduleNotificationAsync({
         content: {
           title: tr.notif_nudge_title || 'Sabrina t\'attend',
@@ -172,9 +179,23 @@ export async function schedulePostOnboardingNudge({ lang }) {
         trigger: trigTimeInterval(seconds, false),
       });
     }, null);
+    if (nudgeId != null) await AsyncStorage.setItem(ONBOARDING_NUDGE_ID_KEY, String(nudgeId));
     await AsyncStorage.setItem(ONBOARDING_NUDGE_KEY, '1');
     return true;
   } catch (e) { return false; }
+}
+
+// Annule la relance à 24 h dès qu'une séance est faite.
+export async function cancelPostOnboardingNudge() {
+  if (!isReady()) return;
+  try {
+    const id = await AsyncStorage.getItem(ONBOARDING_NUDGE_ID_KEY);
+    if (!id) return;
+    await safeNativeCall('notif.cancelScheduled.nudge', function() {
+      return Notifications.cancelScheduledNotificationAsync(id);
+    }, null);
+    await AsyncStorage.removeItem(ONBOARDING_NUDGE_ID_KEY);
+  } catch (e) {}
 }
 
 // ───────── Milestone reward ─────────

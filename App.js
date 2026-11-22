@@ -145,12 +145,14 @@ import {
   getPreferredHour,
   scheduleStreakProtectionToday,
   schedulePostOnboardingNudge,
+  cancelPostOnboardingNudge,
   scheduleMilestoneReward,
   cancelPauseActiveNotifications,
 } from './src/utils/notifications';
 import { isUserAlreadyActive } from './src/utils/activityCheck';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess } from './src/utils';
 import { primeCatalogVisibility, setCatalogAdminMode } from './src/utils/catalogVisibility';
+import { useIsAdmin } from './src/utils/admin';
 import { primeSeanceThumbnails } from './src/utils/seanceThumbnail';
 import { makeAppleNonce } from './src/utils/appleNonce';
 import { creditReferralOnPaid, getReferralStats, parseReferralCodeFromUrl, savePendingReferralCode, clearMyReferralCode } from './src/utils/referrals';
@@ -1359,12 +1361,27 @@ function _trigTimeInterval(seconds, repeats) {
   return { type: (TYPES && TYPES.TIME_INTERVAL) || 'timeInterval', seconds: seconds, repeats: !!repeats };
 }
 
-async function setupNotifications(lang = 'fr') {
+async function setupNotifications(lang = 'fr', opts) {
   try {
     if (!Notifications || !Device) return;
     if (!Device.isDevice) return;
-    const perm = await safeNativeCall('notif.requestPermissionsAsync', function() { return Notifications.requestPermissionsAsync(); }, null);
-    if (!perm || perm.status !== 'granted') return;
+    // 22.11.2026 : on ne demande plus l'autorisation à l'arrivée. La question
+    // est posée après la première séance (opts.ask), ou au 2e lancement si
+    // aucune séance n'a encore été faite (pour que la relance puisse partir).
+    let perm = await safeNativeCall('notif.getPermissionsAsync', function() { return Notifications.getPermissionsAsync(); }, null);
+    if (!perm || perm.status !== 'granted') {
+      let ask = !!(opts && opts.ask);
+      if (!ask) {
+        const launches = (parseInt(await AsyncStorage.getItem('fluid_launch_count'), 10) || 0) + 1;
+        await AsyncStorage.setItem('fluid_launch_count', String(launches));
+        const doneRaw = await AsyncStorage.getItem(DONE_KEY);
+        ask = launches >= 2 || !!(doneRaw && doneRaw.indexOf('true') !== -1);
+      }
+      if (!ask) return;
+      if (perm && perm.status === 'denied' && perm.canAskAgain === false) return;
+      perm = await safeNativeCall('notif.requestPermissionsAsync', function() { return Notifications.requestPermissionsAsync(); }, null);
+      if (!perm || perm.status !== 'granted') return;
+    }
     await safeNativeCall('notif.cancelAllScheduled', function() { return Notifications.cancelAllScheduledNotificationsAsync(); }, null);
     const tr = T[lang] || T['fr'];
     // Adaptive default: if the user never set a custom hour, lean on the
@@ -1558,9 +1575,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
   // (utilisé pour la review Apple + admin officiel). À sortir en env var
   // / Supabase row à terme — pour l'instant hardcodé pour ne pas bloquer
   // la submission.
-  // Miroir du secret serveur ADMIN_EMAILS (edge function sign-video-url) : les deux listes doivent rester identiques.
-  const ADMIN_EMAILS = ['admin@fluidbody.ch', 'yvan@espace-pilates.ch', 'sabrina@espace-pilates.ch', 'sabrina.tissot@icloud.com', 'yvan.tissot@icloud.com', 'qcrm6vkbnx@privaterelay.appleid.com', 'maelle.raemy@gmail.com'];
-  const isAdmin = !!(supaUser && supaUser.email && ADMIN_EMAILS.indexOf(supaUser.email.toLowerCase()) !== -1);
+  // Admins : la liste vit côté serveur (table app_admins, RPC is_admin),
+  // cf. src/utils/admin.js.
+  const isAdmin = useIsAdmin(supabase, supaUser);
   // Les admins gardent le catalogue complet (plan de tournage) ; les autres
   // comptes ne voient que les séances filmées.
   useEffect(function() { setCatalogAdminMode(isAdmin); }, [isAdmin]);
@@ -1886,10 +1903,9 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
     const deferTimer = setTimeout(function() {
       diag('mainapp.mount.deferred', 'fired');
       loadData();
-      setupNotifications(lang);
-      // Schedule the 24h post-onboarding nudge (no-op if already scheduled or
-      // permission denied).
-      schedulePostOnboardingNudge({ lang: lang });
+      // Relance à 24 h : après setupNotifications (qui peut demander
+      // l'autorisation), no-op si déjà planifiée, refusée ou séance faite.
+      setupNotifications(lang).then(function() { schedulePostOnboardingNudge({ lang: lang }); });
       // Prime achievements cache for instant render in Stats/Activité.
       primeAchievements().catch(function () {});
     }, 800);
@@ -2075,6 +2091,12 @@ function MainApp({ prenom, lang, tensionIdxs, supabase, supaUser, onTensionChang
        .catch(function(e) { reportError('progression.upsert', e); });
     }
     if (wasDone) return; // Décocher : rien d'autre à déclencher.
+    // Une séance est faite : plus de relance « Sabrina t'attend ». Si c'est
+    // la toute première, c'est le bon moment pour proposer les rappels.
+    cancelPostOnboardingNudge();
+    if (Object.values(done).flat().filter(Boolean).length === 0) {
+      setTimeout(function() { setupNotifications(lang, { ask: true }); }, 6000);
+    }
     // First séance modal
     if (!supaUser) {
       const prevTotal = Object.values(done).flat().filter(Boolean).length;

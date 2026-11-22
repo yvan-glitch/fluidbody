@@ -207,6 +207,16 @@ Deno.serve(async (req) => {
   // Entitlement: admin email → profiles.is_subscriber → live RC fallback.
   const email = (user.email || "").toLowerCase();
   let entitled = ADMIN_EMAILS.includes(email);
+  // Liste unique des admins : table app_admins (migration 20261122030000).
+  // Le secret ADMIN_EMAILS reste accepté tant qu'il est défini.
+  if (!entitled && email) {
+    const { data: adminRow } = await admin
+      .from("app_admins")
+      .select("email")
+      .eq("email", email)
+      .maybeSingle();
+    if (adminRow) entitled = true;
+  }
 
   let rcAppUserId: string | null = null;
   if (!entitled) {

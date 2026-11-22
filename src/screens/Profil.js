@@ -21,7 +21,7 @@ import { Bulle, FloatingMedusas, BULLES } from '../components/Meduse';
 import AnimatedPlus from '../components/AnimatedPlus';
 import healthkit from '../utils/health';
 import { getPiliers } from '../utils';
-import { getMyReferralCode, getReferralStats } from '../utils/referrals';
+import { getMyReferralCode, getReferralStats, claimReferralCode } from '../utils/referrals';
 import calendarUtil from '../utils/calendar';
 import { deleteMyAccount } from '../utils/accountDeletion';
 import { getUnlockedSync, subscribe as subscribeAchievements } from '../utils/achievements';
@@ -126,6 +126,21 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
   const [referralCode, setReferralCode] = useState(null);
   const [referralStats, setReferralStats] = useState({ referrals_count: 0, free_days_earned: 0, free_days_used: 0, free_days_available: 0 });
   const [referralCopiedToast, setReferralCopiedToast] = useState(false);
+  // Saisie du code d'une amie (déplacée ici depuis l'onboarding, 22.11.2026).
+  const [friendCode, setFriendCode] = useState('');
+  const [friendCodeStatus, setFriendCodeStatus] = useState('idle'); // idle | validating | ok | err:<raison>
+  async function submitFriendCode() {
+    if (friendCodeStatus === 'validating' || !friendCode.trim()) return;
+    setFriendCodeStatus('validating');
+    const res = await claimReferralCode(supabase, friendCode);
+    if (res && res.ok) { setFriendCodeStatus('ok'); return; }
+    const err = res && res.error;
+    if (err === 'code_not_found') setFriendCodeStatus('err:not_found');
+    else if (err === 'self_referral') setFriendCodeStatus('err:self');
+    else if (err === 'already_claimed') setFriendCodeStatus('err:already');
+    else if (err === 'invalid_code') setFriendCodeStatus('err:invalid');
+    else setFriendCodeStatus('err:generic');
+  }
   // Easter egg — 5 taps on the avatar pill within 3s, admin-only. Opens the
   // "Coach mode" debug panel.
   const [coachModeVisible, setCoachModeVisible] = useState(false);
@@ -794,6 +809,45 @@ function ProfilScreen({ prenom, done, lang, streak, supabase, supaUser, onLogout
               >
                 <Text style={{ fontSize: 14, fontWeight: '700', color: '#000000' }}>{tr.referral_share_btn || 'Partager mon code'}</Text>
               </TouchableOpacity>
+
+              {/* Code d'une amie : saisie manuelle (22.11.2026). */}
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 13, color: theme.colors.textSecondary, marginBottom: 8 }}>
+                  {lang === 'fr' ? "Tu as reçu le code d'une amie ?" : "Got a friend's code?"}
+                </Text>
+                {friendCodeStatus === 'ok' ? (
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#AEEF4D' }}>{tr.onb_referral_ok || 'Code activé !'}</Text>
+                ) : (
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TextInput
+                      value={friendCode}
+                      onChangeText={function(v) { setFriendCode(v); if (friendCodeStatus !== 'idle') setFriendCodeStatus('idle'); }}
+                      placeholder={tr.onb_referral_placeholder || 'Ex : SOPHIE-A1B2'}
+                      placeholderTextColor="rgba(255,255,255,0.35)"
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      returnKeyType="done"
+                      onSubmitEditing={submitFriendCode}
+                      accessibilityLabel={lang === 'fr' ? "Code de parrainage d'une amie" : "Friend's referral code"}
+                      style={{ flex: 1, height: 44, borderRadius: 12, paddingHorizontal: 14, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: theme.colors.hairline, color: theme.colors.text, fontSize: 15 }}
+                    />
+                    <TouchableOpacity
+                      onPress={submitFriendCode}
+                      disabled={!friendCode.trim() || friendCodeStatus === 'validating'}
+                      accessibilityRole="button"
+                      accessibilityLabel={tr.onb_referral_validate || 'Valider le code'}
+                      style={{ height: 44, paddingHorizontal: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#AEEF4D', opacity: (!friendCode.trim() || friendCodeStatus === 'validating') ? 0.4 : 1 }}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#AEEF4D' }}>{friendCodeStatus === 'validating' ? '…' : (lang === 'fr' ? 'Valider' : 'Apply')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {friendCodeStatus.indexOf('err:') === 0 ? (
+                  <Text style={{ fontSize: 12, color: '#FF8A7A', marginTop: 6 }}>
+                    {tr['onb_referral_err_' + friendCodeStatus.slice(4)] || (lang === 'fr' ? "Ce code n'a pas pu être activé." : 'This code could not be applied.')}
+                  </Text>
+                ) : null}
+              </View>
 
               {/* Stats — 3 chiffres glass mini-cards */}
               <View style={{ flexDirection: 'row', gap: 8 }}>

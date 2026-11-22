@@ -39,6 +39,7 @@ export function isCatalogAdminMode() { return adminSeeAll; }
 export function isHidingUnfilmed() { return HIDE_UNFILMED && !adminSeeAll; }
 
 const CACHE_KEY = 'fluid_video_sessions_v1';
+const DATES_KEY = 'fluid_video_dates_v1';
 const FETCH_TIMEOUT_MS = 8000;
 
 // --- Source 1 : flags du bundle -------------------------------------------
@@ -80,6 +81,33 @@ function applyRemoteIds(ids) {
   if (!same) notify();
 }
 
+// Dates de publication (video_assets.created_at), pour la rangée « Nouveautés ».
+let remoteDates = {}; // { session_id: ISO }
+function applyRemoteDates(map) {
+  if (!map || typeof map !== 'object') return;
+  const same = JSON.stringify(map) === JSON.stringify(remoteDates);
+  remoteDates = map;
+  if (!same) notify();
+}
+
+// Ids des séances de piliers publiées depuis moins de `days` jours, la plus
+// récente d'abord. Pur (testable) : tout vient des arguments.
+export function pickRecentIds(dates, now, days, max) {
+  const limit = (days || 14) * 86400000;
+  const t0 = now.getTime();
+  return Object.keys(dates || {})
+    .filter(function (id) { return /^p\d+_\d+$/.test(id); })
+    .map(function (id) { return { id: id, t: Date.parse(dates[id]) }; })
+    .filter(function (x) { return Number.isFinite(x.t) && t0 - x.t <= limit && x.t - t0 < 86400000; })
+    .sort(function (a, b) { return b.t - a.t || (a.id < b.id ? -1 : 1); })
+    .slice(0, max || 8)
+    .map(function (x) { return x.id; });
+}
+
+export function recentVideoIds(days, max) {
+  return pickRecentIds(remoteDates, new Date(), days, max);
+}
+
 let primed = false;
 export async function primeCatalogVisibility() {
   if (primed) return;
@@ -88,19 +116,34 @@ export async function primeCatalogVisibility() {
   try {
     const raw = await AsyncStorage.getItem(CACHE_KEY);
     if (raw) applyRemoteIds(JSON.parse(raw));
+    const rawDates = await AsyncStorage.getItem(DATES_KEY);
+    if (rawDates) applyRemoteDates(JSON.parse(rawDates));
   } catch (e) {}
   // 2. Refresh réseau best-effort.
   if (!supabase) return;
   try {
-    const fetchP = supabase.from('video_assets').select('session_id');
     const timeoutP = new Promise(function (resolve) {
       setTimeout(function () { resolve({ data: null, error: new Error('timeout') }); }, FETCH_TIMEOUT_MS);
     });
-    const { data, error } = await Promise.race([fetchP, timeoutP]);
+    // created_at n'est lisible qu'après la migration 20261122020000 ; tant
+    // qu'elle n'est pas poussée, la requête échoue et on retombe sur
+    // session_id seul (pas de rangée « Nouveautés », rien d'autre ne change).
+    let res = await Promise.race([supabase.from('video_assets').select('session_id, created_at'), timeoutP]);
+    if (!res || res.error || !Array.isArray(res.data)) {
+      res = await Promise.race([supabase.from('video_assets').select('session_id'), timeoutP]);
+    }
+    const data = res && res.data;
+    const error = res && res.error;
     if (!error && Array.isArray(data)) {
       const ids = data.map(function (r) { return r && r.session_id; }).filter(Boolean);
       applyRemoteIds(ids);
       try { await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(ids)); } catch (e) {}
+      const dates = {};
+      data.forEach(function (r) { if (r && r.session_id && r.created_at) dates[r.session_id] = r.created_at; });
+      if (Object.keys(dates).length > 0) {
+        applyRemoteDates(dates);
+        try { await AsyncStorage.setItem(DATES_KEY, JSON.stringify(dates)); } catch (e) {}
+      }
     }
   } catch (e) {}
 }

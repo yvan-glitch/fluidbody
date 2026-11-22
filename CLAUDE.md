@@ -143,6 +143,26 @@ rien n'est compté (ni Santé, ni minutes, ni effort, ni « séance faite »).
 Le fichier Bunny dure 3'40 : le lecteur coupe à 1'45 (`MATERIEL_END_SEC`,
 prop `endAtSec` de VideoPlayer) ; remettre à 0 si le fichier est remplacé.
 
+Publier une vidéo sur une séance existante (22.11.2026) :
+`node scripts/publier-video.js p6_5 <GUID Bunny> [--push]` vérifie la séance,
+contrôle la vidéo chez Bunny si `BUNNY_KEY` est défini, écrit la migration, et
+avec `--push` enchaîne `supabase db push` + `fin.sh`. Pas d'OTA nécessaire.
+
+Rangée « Nouveautés » (Pour toi) : vidéos dont `video_assets.created_at` a
+moins de 14 jours (`recentVideoIds` dans catalogVisibility.js ; colonne lisible
+par le client depuis la migration 20261122020000).
+
+Admins (22.11.2026) : la liste vit dans la table `app_admins` (migration
+20261122030000), lue par sign-video-url et par la RPC `is_admin()` que le
+client appelle (`src/utils/admin.js`, hook `useIsAdmin`). Ajouter un admin =
+une ligne dans la table. `FALLBACK_ADMIN_EMAILS` ne sert que si la RPC ne
+répond pas.
+
+Arrivée et notifications (22.11.2026) : première arrivée = compte, prénom,
+objectifs, Santé, avertissement médical. L'autorisation des notifications est
+demandée après la première séance (ou au 2e lancement), jamais à l'arrivée ;
+pause active et phrase du jour sont désactivées par défaut.
+
 Setup:
 - Bunny dashboard: enable Token Authentication on the pull zone (see
   `supabase/README.md` for the exact clicks).

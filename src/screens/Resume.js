@@ -440,12 +440,16 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
   const totalDone = useMemo(function() { return Object.values(done).flat().filter(Boolean).length; }, [done]);
   // Séances faites depuis lundi (clé du jour = celle du calendrier d'activité).
   const [weekCount, setWeekCount] = useState(0);
+  const [doneToday, setDoneToday] = useState(false);
   useEffect(function() {
     let cancelled = false;
     function load() {
       AsyncStorage.getItem('fluid_activity_calendar').then(function(raw) {
         if (cancelled) return;
-        setWeekCount(countSessionsThisWeek(raw ? JSON.parse(raw) : {}, new Date()));
+        const cal = raw ? JSON.parse(raw) : {};
+        setWeekCount(countSessionsThisWeek(cal, new Date()));
+        // Même clé que l'écriture du calendrier dans toggleDone (date UTC).
+        setDoneToday((Number(cal[new Date().toISOString().slice(0, 10)]) || 0) > 0);
       }).catch(function() {});
     }
     load();
@@ -613,7 +617,7 @@ function ResumeScreen({ done, lang, streak, prenom, tensionIdxs, supaUser, onCre
           if (streak > 0) {
             const allDoneToday = Object.values(done).flat().filter(Boolean).length;
           }
-          const atRisk = streak > 0 && totalDone > 0;
+          const atRisk = streak > 0 && totalDone > 0 && !doneToday;
           return atRisk && streak >= 2 ? (
             <View style={{ marginHorizontal: 20, backgroundColor: 'rgba(255,150,0,0.08)', borderWidth: 1, borderColor: 'rgba(255,180,60,0.4)', borderRadius: 12, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <Icon name="flame" size={24} color="#FFB43C" />
