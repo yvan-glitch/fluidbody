@@ -29,7 +29,7 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import supabase from '../lib/supabase';
-import { SEANCES_FR } from '../constants/data';
+import { SEANCES_FR, SEANCE_DISPLAY_FIRST } from '../constants/data';
 
 export const HIDE_UNFILMED = true;
 
@@ -137,11 +137,21 @@ export function isSeanceVisible(pilierKey, idx) {
   return hasVideo(pilierKey, idx);
 }
 
+// Index du tableau source dans l'ordre d'affichage : les séances de
+// SEANCE_DISPLAY_FIRST[pilierKey] d'abord, puis les autres dans l'ordre.
+export function displayOrder(pilierKey, n) {
+  const first = ((SEANCE_DISPLAY_FIRST && SEANCE_DISPLAY_FIRST[pilierKey]) || []).filter(function (i) { return i >= 0 && i < n; });
+  const out = first.slice();
+  for (let i = 0; i < n; i++) if (first.indexOf(i) === -1) out.push(i);
+  return out;
+}
+
 // [{seance, idx}] — idx = index du tableau source, jamais renuméroté.
 export function visibleSeances(seances, pilierKey) {
   const out = [];
-  (seances || []).forEach(function (s, i) {
-    if (isSeanceVisible(pilierKey, i)) out.push({ seance: s, idx: i });
+  const list = seances || [];
+  displayOrder(pilierKey, list.length).forEach(function (i) {
+    if (isSeanceVisible(pilierKey, i)) out.push({ seance: list[i], idx: i });
   });
   return out;
 }

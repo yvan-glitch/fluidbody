@@ -31,7 +31,7 @@ import SeanceCompleteTV from './SeanceCompleteTV';
 import AquaticBackground from './AquaticBackground';
 import { pickSessionImage } from './tvImagePool';
 import { isFavoriteCached, subscribeFavorites, toggleFavoriteLocal } from '../../utils/favorites';
-import { isSeanceVisible, hasVideo, useCatalogVersion } from '../../utils/catalogVisibility';
+import { isSeanceVisible, hasVideo, useCatalogVersion, displayOrder } from '../../utils/catalogVisibility';
 import { Icon } from '../Icons';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -187,7 +187,8 @@ export default function PilierPanelTV({ pilier, done, onToggle, onClose, lang, i
   // Séances pratiques (la théorie Comprendre/Ressentir vit dans la Biblio).
   useCatalogVersion(); // re-render quand la liste des vidéos remote arrive
   const practical = [];
-  seances.forEach(function (s, i) {
+  displayOrder(pilier.key, seances.length).forEach(function (i) {
+    const s = seances[i];
     if (s[2] === 'Comprendre' || s[2] === 'Ressentir') return;
     if (!isSeanceVisible(pilier.key, i)) return;
     practical.push({ seance: s, idx: i });

@@ -34,7 +34,7 @@ import { shouldCelebrate, markCelebrated } from '../utils/streakMilestones';
 import PilierEducation from './PilierEducation';
 import { prefetchSignedVideoUrl, buildSessionId } from '../utils/videoUrl';
 import { getPiliers, getSeances, getSeanceDuJour, canAccessSeanceIndex, getResumeIndicesForPilier, hapticLight, hapticSuccess, isComingSoon } from '../utils';
-import { isSeanceVisible, hasVideo, countVisible, countFilmed, isCatalogAdminMode, pilierHasContent, useCatalogVersion } from '../utils/catalogVisibility';
+import { isSeanceVisible, hasVideo, countVisible, countFilmed, isCatalogAdminMode, pilierHasContent, useCatalogVersion, displayOrder } from '../utils/catalogVisibility';
 import ChallengeModal from '../components/ChallengeModal';
 import { CHALLENGE_7J, challengeDoneCount, challengeNextDay } from '../constants/challenge';
 import { safeNativeCall, diag } from '../utils/safeNativeCall';
@@ -477,7 +477,8 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
   // tableau source, qu'on ne renumérote jamais). Même total pour le
   // compteur « X séances » et la barre de progression.
   const practicalIdxs = [];
-  seances.forEach(function(s, i) {
+  displayOrder(pilier.key, seances.length).forEach(function(i) {
+    const s = seances[i];
     if (s && s[2] !== 'Comprendre' && s[2] !== 'Ressentir' && isSeanceVisible(pilier.key, i)) practicalIdxs.push(i);
   });
   const practicalNum = {};
@@ -677,7 +678,8 @@ function PilierPanel({ pilier, done, onToggle, onClose, lang, isRecommended, isS
         // Le map s'exécutant dans l'ordre, une simple variable de closure
         // suffit — même sémantique, une seule passe.
         let lastPracticalEtape = null;
-        return seances.map(([titre, duree, etape, url], i) => {
+        return displayOrder(pilier.key, seances.length).map((i) => {
+          const [titre, duree, etape, url] = seances[i];
           if (etape === 'Comprendre' || etape === 'Ressentir') return null;
           if (!isSeanceVisible(pilier.key, i)) return null;
           const isDone = done[i] === true || done[i] === 'true';

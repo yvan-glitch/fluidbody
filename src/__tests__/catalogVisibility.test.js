@@ -59,7 +59,7 @@ describe('mode HIDE_UNFILMED=true (soumission App Store)', () => {
   maybe('seules les séances avec vidéo sont visibles', () => {
     expect(isSeanceVisible('p2', 0)).toBe(true);
     expect(isSeanceVisible('p1', 7)).toBe(false);
-    expect(pilierHasContent('p6', SEANCES_FR)).toBe(false);
+    expect(pilierHasContent('p8', SEANCES_FR)).toBe(false);
   });
 });
 
@@ -87,7 +87,20 @@ describe('mode admin (plan de tournage)', () => {
   });
 
   test('countFilmed compte les séances avec vidéo', () => {
-    expect(countFilmed(SEANCES_FR.p6, 'p6')).toBe(0);
+    expect(countFilmed(SEANCES_FR.p8, 'p8')).toBe(0);
+    expect(countFilmed(SEANCES_FR.p6, 'p6')).toBe(1);
     expect(countFilmed(SEANCES_FR.p9, 'p9')).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('ordre d\'affichage (SEANCE_DISPLAY_FIRST)', () => {
+  test('Échauffement (p3_22) est affiché en tête de Mobilité, index inchangés', () => {
+    const { displayOrder } = require('../utils/catalogVisibility');
+    const order = displayOrder('p3', SEANCES_FR.p3.length);
+    expect(order[0]).toBe(22);
+    expect(order.length).toBe(SEANCES_FR.p3.length);
+    expect(new Set(order).size).toBe(order.length);
+    expect(SEANCES_FR.p3[22][0]).toBe('Échauffement');
+    expect(displayOrder('p1', 3)).toEqual([0, 1, 2]);
   });
 });
