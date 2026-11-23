@@ -80,3 +80,6 @@ eas-last-builds.json
 
 # Sauvegardes git locales
 *.bundle
+
+# Planches de choix des vignettes (scripts/planche-vignettes.js)
+planches/
